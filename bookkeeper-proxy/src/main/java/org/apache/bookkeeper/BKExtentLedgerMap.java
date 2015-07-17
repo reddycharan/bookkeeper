@@ -1,8 +1,6 @@
 package org.apache.bookkeeper;
 
 import java.util.Hashtable;
-import java.util.Set;
-
 import org.apache.bookkeeper.client.LedgerHandle;
 
 public class BKExtentLedgerMap {
@@ -12,27 +10,20 @@ public class BKExtentLedgerMap {
 	public LedgerPrivateData getLedgerPrivate(String extentId) {
 		return extentToLedgerMap.get(extentId);
 	}
-
-	public LedgerHandle getLedgerHandle(String extentId) {
-		return extentToLedgerMap.get(extentId).getLedgerHandle();
-	}
 	
 	public boolean extentExists(String extentID) {
-		if (extentToLedgerMap.get(extentID)  != null)
-			return true;
-		
-		return false;
+		return extentToLedgerMap.containsKey(extentID);
 	}
 	
 	public void deleteLedgerPrivate(String extentId) {
 		extentToLedgerMap.remove(extentId);
 	}
 	
-	public void createLedger(String extentId, LedgerHandle lh) {
+	public void createLedgerMap(String extentId, LedgerHandle lh) {
 		
 		LedgerPrivateData lpd = new LedgerPrivateData();
 		
-		lpd.setLedgerHandle(lh);
+		lpd.setWriteLedgerHandle(lh);
 		// Just opened, no trailer.
 		lpd.setTrailerId(BKPConstants.NO_ENTRY);
 		extentToLedgerMap.put(extentId, lpd);

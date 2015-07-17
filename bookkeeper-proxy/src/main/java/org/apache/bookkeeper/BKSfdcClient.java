@@ -3,7 +3,6 @@ package org.apache.bookkeeper;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
-import java.util.Set;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -12,6 +11,10 @@ import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.zookeeper.KeeperException;
 
+/**
+ * @author vjujjuri
+ *
+ */
 public class BKSfdcClient {
 	final String server = "localhost:2181";
 	BKExtentLedgerMap elm = new BKExtentLedgerMap();
@@ -22,7 +25,7 @@ public class BKSfdcClient {
 	Object ledgerObj = null;
 	boolean exists = false;
 
-	private void setUp() {
+	public BKSfdcClient() {
 		try {
 			bk = new BookKeeper(server);
 		} catch (InterruptedException ie) {
@@ -32,26 +35,13 @@ public class BKSfdcClient {
 		}
 	}
 
-	private void tearDown() {
-		try {
-			bk.close();
-		} catch (InterruptedException ie) {
-			// ignore
-		} catch (BKException e) {
-			// LOG.error(e.toString());
-		}
-	}
-
 	public byte LedgerCreate(String extentId) {
 		try {
-			if (bk == null)
-				setUp();
-
 			if (elm.extentExists(extentId))
 				return BKPConstants.SF_ErrorExist;
 
 			lh = bk.createLedger(3, 2, DigestType.MAC, "foo".getBytes());
-			elm.createLedger(extentId, lh);
+			elm.createLedgerMap(extentId, lh);
 
 		} catch (InterruptedException ie) {
 			// ignore
@@ -65,33 +55,110 @@ public class BKSfdcClient {
 		return BKPConstants.SF_OK;
 	}
 	
+	public byte LedgerOpenRead(String extentId) {
+		
+		LedgerHandle rlh;
+		
+		if (!elm.extentExists(extentId))
+			return BKPConstants.SF_ErrorNotFound;
+		
+		LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+		
+		rlh = lpd.getReadLedgerHandle();
+		
+		if (rlh != null) {
+			// The ledger is already open for read. 
+			// Nothing to do
+			return BKPConstants.SF_OK;
+		}
+		
+		// Let us check if we have LedgerID
+		long lId = lpd.getLedgerId();
+		
+		try {
+			rlh = bk.openLedgerNoRecovery(lId, DigestType.MAC, "foo".getBytes());
+		} catch (BKException | InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return BKPConstants.SF_InternalError;
+		}
+		elm.getLedgerPrivate(extentId).setReadLedgerHandle(rlh);
+		return BKPConstants.SF_OK;
+	}
+	
 	public long LedgerNextEntry(String extentId) {
-		
 		return (elm.getLedgerPrivate(extentId).allocateEntryId()); 
-		
 	}
 
 	public boolean LedgerStat(String extentId) {
-		if (bk == null)
-			setUp();
-
 		return elm.extentExists(extentId);
 	}
 
 	public void LedgerDeleteAll() {
 		elm.deleteAllLedgerHandles();
 	}
+	
+	public byte LedgerWriteClose(String extentId) {
+		
+		if (!elm.extentExists(extentId)){
+			// No Extent just return OK
+			return BKPConstants.SF_OK;
+		}
+		
+		lh = elm.getLedgerPrivate(extentId).getWriteLedgerHandle();
+		
+		if (lh == null)
+			return BKPConstants.SF_OK;
+		
+		try {
+			lh.close();
+			// Reset Ledger Handle
+			// TODO  Serialize handle setters and getters
+			elm.getLedgerPrivate(extentId).setWriteLedgerHandle(null);
+		} catch (InterruptedException | BKException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return BKPConstants.SF_ErrorNotFound;
+		}
+		return BKPConstants.SF_OK;
+	}
+	
+	
+	public byte LedgerReadClose(String extentId) {
+		
+		if (!elm.extentExists(extentId)){
+			// No Extent just return OK
+			return BKPConstants.SF_OK;
+		}
+		
+		lh = elm.getLedgerPrivate(extentId).getReadLedgerHandle();
+		
+		if (lh == null)
+			return BKPConstants.SF_OK;
+		
+		try {
+			lh.close();
+			// Reset the Ledger Handle
+			// TODO: Need to serialize handle get/set
+			elm.getLedgerPrivate(extentId).setReadLedgerHandle(null);
+		} catch (InterruptedException | BKException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return BKPConstants.SF_ErrorNotFound;
+		}
+		return BKPConstants.SF_OK;
+	}
+	
 
 	public byte LedgerDelete(String extentId) {
 
 		try {
-			if (bk == null)
-				setUp();
-
-			lh = elm.getLedgerPrivate(extentId).getLedgerHandle();
+			if (!elm.extentExists(extentId))
+				return BKPConstants.SF_ErrorNotFound;
+			
+			lh = elm.getLedgerPrivate(extentId).getWriteLedgerHandle();
 			bk.deleteLedger(lh.getId());
 			elm.deleteLedgerPrivate(extentId);
-
 		} catch (InterruptedException ie) {
 			// ignore
 		} catch (BKException e) {
@@ -109,23 +176,17 @@ public class BKSfdcClient {
 		byte[] data = new byte[bdata.capacity()];
 
 		try {
-			if (bk == null)
-				setUp();
-
 			exists = elm.extentExists(extentId);
 			if (exists == false) {
-				System.out.println(" Add entry: does not exist, extentId: "
-						+ extentId.toString());
 				return BKPConstants.SF_InternalError;
 			}
 			
 			LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
-			lh = lpd.getLedgerHandle();
-			System.out.println(" Ledger Handle: " + lh.getId());
+			lh = lpd.getWriteLedgerHandle();
 
 			bdata.get(data, 0, data.length);
-			System.out.println("data.length: " + data.length);
+			
 			// TODO: verify checksum
 			
 			// API Requirement:
@@ -182,63 +243,53 @@ public class BKSfdcClient {
 			
 			if (timeoutLoopCount == 0) {
 				// Return Error
-				System.out.println("############# OutOfSequenceTimeout before lock");
-				System.out.println("aEid: " + aEid + " wEid: " + wEid + " FragmentId: " + fragmentId);
 				return BKPConstants.SF_OutOfSequenceTimeout;
-			} else
-				System.out.println("********** Passed New test");
+			}
 			
-			// Hold the lock and perform above check again under lock to make sure.
+			// Hold the lock and perform above check again under lock to make
+			// sure the above condition is still true.
 			lpd.lockLedger();
-			wEid = lpd.getLastWriteEntryId();
-			aEid = lpd.getAllocedEntryId();
-			if (fragmentId == 0) { 
-				if (!((wEid == aEid) || (wEid == aEid -1))) {
-					System.out.println("aEid: " + aEid + " wEid: " + wEid + " FragmentId: " + fragmentId);
-					lpd.unlockLedger();
-					return BKPConstants.SF_OutOfSequenceTimeout;
-				}
-			} else {
-				if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId != 1)) {
-					lpd.unlockLedger();
-					return BKPConstants.SF_OutOfSequenceTimeout;
-				} else {
-					if (fragmentId != (wEid + 2)) {
-						lpd.unlockLedger();
+			try {
+				wEid = lpd.getLastWriteEntryId();
+				aEid = lpd.getAllocedEntryId();
+				if (fragmentId == 0) {
+					if (!((wEid == aEid) || (wEid == aEid - 1))) {
 						return BKPConstants.SF_OutOfSequenceTimeout;
 					}
+				} else {
+					if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId != 1)) {
+						return BKPConstants.SF_OutOfSequenceTimeout;
+					} else {
+						if (fragmentId != (wEid + 2)) {
+							return BKPConstants.SF_OutOfSequenceTimeout;
+						}
+					}
 				}
+
+				entryId = lh.addEntry(data, 0, data.length);
+				lpd.setLastWriteEntryId(entryId);
+
+				// entryId and FragmentId are off by one.
+				// BK starts at entryID 0 and Store assumes it to be 1.
+
+				// Handle Trailer
+				if (fragmentId == 0) {
+					if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
+						Thread.dumpStack();
+					}
+					lpd.setTrailerId(entryId);
+				} else {
+					if (entryId != (fragmentId - 1)) {
+						System.out.println("entryId and fragmentIds are not synced.");
+						System.out.println("entryId expected: "
+								+ (fragmentId - 1) + " returned by BK: "
+								+ entryId);
+						Thread.dumpStack();
+					}
+				}
+			} finally {
+				lpd.unlockLedger();
 			}
-			
-			entryId = lh.addEntry(data, 0, data.length);
-			lpd.setLastWriteEntryId(entryId);
-			
-			// entryId and FragmentId are off by one.
-			// BK starts at entryID 0 and Store assumes it to be 1.
-			
-
-			// Handle Trailer
-			if (fragmentId == 0) {
-				if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
-					Thread.dumpStack();
-				}
-				lpd.setTrailerId(entryId);
-			} else {
-				if (entryId != (fragmentId -1)) {
-					System.out.println("entryId and fragmentIds are not synced.");
-					System.out.println("entryId expected: " + (fragmentId - 1) + 
-							" returned by BK: " + entryId);
-					Thread.dumpStack();
-				}
-			}
-			lpd.unlockLedger();
-
-			System.out.println(" fragID: " + fragmentId + " entryId: "
-					+ entryId);
-
-			// TODO Assert that the ledgerEntry returned is the
-			// same as the entryId passed to us.
-			// assert(entry == fragmentId)
 		} catch (InterruptedException ie) {
 			// ignore
 		} catch (BKException e) {
@@ -254,30 +305,27 @@ public class BKSfdcClient {
 	public ByteBuffer LedgerGetEntry(String extentId, int fragmentId, int size) {
 		int entryId = fragmentId;
 		ByteBuffer bdata = ByteBuffer.allocate(size);
-		byte[] data = new byte[size];
+		byte[] data;
 
 		try {
-			if (bk == null)
-				setUp();
-
 			exists = elm.extentExists(extentId);
 			if (exists == false) {
-				System.out.println(" Read entry: does not exist, extentId: "
-						+ extentId.toString());
 				return null;
 			}
 			
 			LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-			lh = lpd.getLedgerHandle();
-			System.out.println(" READ Ledger Handle: " + lh.getId());
-
+			lh = lpd.getReadLedgerHandle();
+			
+			if (lh == null) {
+				LedgerOpenRead(extentId);
+				lh = lpd.getReadLedgerHandle();
+			}
 
 			Enumeration<LedgerEntry> entries = null;
 
 			if (fragmentId == 0) {
 				// Trailer
 				entryId = (int) lpd.getTrailerId();
-				System.out.println("Trailer entryId: " + entryId);
 			} else { // It is not a trailer
 				entryId = fragmentId -1;
 				if (entryId == lpd.getTrailerId()) {
@@ -285,18 +333,15 @@ public class BKSfdcClient {
 					return null;
 				}
 			}
-			System.out.println("fragmentId: " + fragmentId + " entryId: " + entryId);
 
 			entries = lh.readEntries(entryId, entryId);
 			LedgerEntry e = entries.nextElement();
 
 			data = e.getEntry();
-			System.out.println("Data: " + data.length + " bData: " + bdata);
 			bdata.put(data, 0, Math.min(data.length, bdata.remaining()));
-			System.out.println("bdata: " + bdata);
 
 		} catch (InterruptedException ie) {
-			// ignore
+			Thread.dumpStack();
 		} catch (BKException bke) {
 			// LOG.error(bke.toString());
 			return null;
