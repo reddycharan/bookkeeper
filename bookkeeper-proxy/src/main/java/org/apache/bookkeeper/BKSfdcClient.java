@@ -89,9 +89,36 @@ public class BKSfdcClient {
 	public long LedgerNextEntry(String extentId) {
 		return (elm.getLedgerPrivate(extentId).allocateEntryId()); 
 	}
-
-	public boolean LedgerStat(String extentId) {
+	
+	public boolean LedgerExists(String extentId){
 		return elm.extentExists(extentId);
+	}
+
+	public int LedgerStat(String extentId) {
+		int ledgerSize;
+		LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+		
+		// Check if we have write ledger handle open.
+		LedgerHandle lh = lpd.getWriteLedgerHandle();
+		
+		if (lh == null) {
+			// Check if we have read leader handle
+			lh = lpd.getReadLedgerHandle();
+		}
+		
+		if (lh == null) {
+			byte ret;
+			// Don't have ledger opened, open it for read.
+			ret = LedgerOpenRead(extentId);
+			if (ret != BKPConstants.SF_OK) {
+				return 0;
+			}
+			lh = lpd.getReadLedgerHandle();
+		}
+		
+		// We have a ledger handle.
+		ledgerSize = (int) lh.getLength();
+		return ledgerSize;
 	}
 
 	public void LedgerDeleteAll() {
@@ -155,9 +182,8 @@ public class BKSfdcClient {
 		try {
 			if (!elm.extentExists(extentId))
 				return BKPConstants.SF_ErrorNotFound;
-			
-			lh = elm.getLedgerPrivate(extentId).getWriteLedgerHandle();
-			bk.deleteLedger(lh.getId());
+			long lId = elm.getLedgerPrivate(extentId).getLedgerId();
+			bk.deleteLedger(lId);
 			elm.deleteLedgerPrivate(extentId);
 		} catch (InterruptedException ie) {
 			// ignore

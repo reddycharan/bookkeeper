@@ -8,8 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class BKProxyWorker implements Runnable {
 	SocketChannel clientChannel;
-//	BKtempLedger bk;
-	BKSfdcClient bk;
+//	BKtempLedger bksc;
+	BKSfdcClient bksc;
 	AtomicInteger globalThreadId;
 	final int myThreadNum;
 	byte reqId = 0;
@@ -31,7 +31,7 @@ class BKProxyWorker implements Runnable {
 			e.printStackTrace();
 		}
 //		this.bk = (BKtempLedger)wtl;
-		this.bk = (BKSfdcClient)wtl;
+		this.bksc = (BKSfdcClient)wtl;
 	}
 
 	public void run() {
@@ -74,11 +74,16 @@ class BKProxyWorker implements Runnable {
 				switch (reqId) {
 
 				case (BKPConstants.LedgerStatReq): { 
+					
 					resp.put(BKPConstants.LedgerStatResp);
-					if (bk.LedgerStat(extentIDstr)) {
-						resp.put(BKPConstants.SF_OK);
+					
+					// Check if the extent exists
+					if (!bksc.LedgerExists(extentIDstr)){
+						resp.put(BKPConstants.SF_ErrorExist);
 					} else {
-						resp.put(BKPConstants.SF_ErrorNotFound);
+						int lSize = bksc.LedgerStat(extentIDstr);
+						resp.put(BKPConstants.SF_OK);
+						resp.putInt(lSize);
 					}
 					resp.flip();
 					while (resp.hasRemaining()) {
@@ -88,7 +93,7 @@ class BKProxyWorker implements Runnable {
 				}
 				
 				case (BKPConstants.LedgerWriteCloseReq): {
-					byte ret = bk.LedgerWriteClose(extentIDstr);
+					byte ret = bksc.LedgerWriteClose(extentIDstr);
 					resp.put(BKPConstants.LedgerWriteCloseResp);
 					resp.put(ret);
 					resp.flip();
@@ -99,7 +104,7 @@ class BKProxyWorker implements Runnable {
 				}
 				
 				case (BKPConstants.LedgerOpenReadReq): {
-					byte ret = bk.LedgerOpenRead(extentIDstr);
+					byte ret = bksc.LedgerOpenRead(extentIDstr);
 					resp.put(BKPConstants.LedgerOpenReadResp);
 					resp.put(ret);
 					resp.flip();
@@ -110,7 +115,7 @@ class BKProxyWorker implements Runnable {
 				}
 				
 				case (BKPConstants.LedgerReadCloseReq): {
-					byte ret = bk.LedgerReadClose(extentIDstr);
+					byte ret = bksc.LedgerReadClose(extentIDstr);
 					resp.put(BKPConstants.LedgerReadCloseResp);
 					resp.put(ret);
 					resp.flip();
@@ -121,7 +126,7 @@ class BKProxyWorker implements Runnable {
 				}
 				
 				case (BKPConstants.LedgerDeleteReq): {
-					byte ret = bk.LedgerDelete(extentIDstr);
+					byte ret = bksc.LedgerDelete(extentIDstr);
 					resp.put(BKPConstants.LedgerDeleteResp);
 					resp.put(ret);
 					resp.flip();
@@ -133,7 +138,7 @@ class BKProxyWorker implements Runnable {
 			
 				case (BKPConstants.LedgerDeleteAllReq): { 
 					
-					bk.LedgerDeleteAll();
+					bksc.LedgerDeleteAll();
 
 					resp.put(BKPConstants.LedgerDeleteAllResp);
 					resp.put(BKPConstants.SF_OK);
@@ -147,7 +152,7 @@ class BKProxyWorker implements Runnable {
 
 				case (BKPConstants.LedgerCreateReq): { 
 					
-					byte ret = bk.LedgerCreate(extentIDstr);
+					byte ret = bksc.LedgerCreate(extentIDstr);
 				
 					resp.put(BKPConstants.LedgerCreateResp);
 					resp.put(ret);
@@ -162,7 +167,7 @@ class BKProxyWorker implements Runnable {
 				
 				case (BKPConstants.LedgerNextEntryIdReq): {
 					// FragmentId = EntryId + 1
-					int nextFragmentId = (int) bk.LedgerNextEntry(extentIDstr) + 1;
+					int nextFragmentId = (int) bksc.LedgerNextEntry(extentIDstr) + 1;
 					resp.put(BKPConstants.LedgerNextEntryIdResp);
 					resp.put(BKPConstants.SF_OK);
 					resp.putInt(nextFragmentId);
@@ -196,7 +201,7 @@ class BKProxyWorker implements Runnable {
 									
 					ledgerEntry.flip();
 					
-					byte ret = bk.LedgerPutEntry(extentIDstr, fragmentId, ledgerEntry);
+					byte ret = bksc.LedgerPutEntry(extentIDstr, fragmentId, ledgerEntry);
 
 					resp.put(ret);
 					resp.flip();
@@ -221,7 +226,7 @@ class BKProxyWorker implements Runnable {
 					resp.put(BKPConstants.LedgerReadEntryResp);
 
 					// Now get the fragment/entry
-					ledgerEntry = bk.LedgerGetEntry(extentIDstr, fragmentId, bufSize);
+					ledgerEntry = bksc.LedgerGetEntry(extentIDstr, fragmentId, bufSize);
 
 					if (ledgerEntry == null) {
 						resp.put(BKPConstants.SF_ErrorNotFound);
