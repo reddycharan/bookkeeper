@@ -1,7 +1,5 @@
 package org.apache.bookkeeper;
 
-import org.apache.bookkeeper.client.LedgerHandle;
-
 public interface BKPConstants {
 	// Requests
 	public static final byte LedgerStatReq = 1;
@@ -17,7 +15,7 @@ public interface BKPConstants {
 	public static final byte LedgerListGetReq = 11;
 	public static final byte LedgerDeleteAllReq = 12;
 
-	// Repsonses
+	// Responses
 	public static final byte LedgerStatResp = 101;
 	public static final byte LedgerDeleteResp = 102;
 	public static final byte LedgerCreateResp = 103;
@@ -55,5 +53,5 @@ public interface BKPConstants {
 	public static final long NO_ENTRY = -1;
 	public static final int WRITE_TIMEOUT = 10; // 10 secs.
 	public static final int WORKER_THREAD_LIMIT = 1000; // Just a number.
-
+	
 }

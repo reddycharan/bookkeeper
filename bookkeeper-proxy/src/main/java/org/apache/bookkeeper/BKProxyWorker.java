@@ -6,6 +6,8 @@ import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.codec.binary.Hex;
+
 class BKProxyWorker implements Runnable {
 	SocketChannel clientChannel;
 //	BKtempLedger bksc;
@@ -25,6 +27,7 @@ class BKProxyWorker implements Runnable {
 			// Set both send-buffer and receive-buffer limits of the socket to 64k.
 			this.clientChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF, 65536);
 			this.clientChannel.setOption(java.net.StandardSocketOptions.SO_SNDBUF, 65536);
+			this.clientChannel.setOption(java.net.StandardSocketOptions.TCP_NODELAY, true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			globalThreadId.decrementAndGet();
@@ -32,6 +35,51 @@ class BKProxyWorker implements Runnable {
 		}
 //		this.bk = (BKtempLedger)wtl;
 		this.bksc = (BKSfdcClient)wtl;
+	}
+	
+	static void reqToString(byte req) {
+		String lstr;
+		switch(req) {
+		case (BKPConstants.LedgerStatReq):
+			lstr = "LedgerStatReq";
+			break;
+		case (BKPConstants.LedgerDeleteReq):
+			lstr = "LedgerDeleteReq";
+			break;
+		case (BKPConstants.LedgerCreateReq):
+			lstr = "LedgerCreateReq";
+			break;
+		case (BKPConstants.LedgerWriteCloseReq):
+			lstr = "LedgerWriteCloseReq";
+			break;
+		case (BKPConstants.LedgerOpenRecoverReq):
+			lstr = "LedgerOpenRecoverReq";
+			break;
+		case (BKPConstants.LedgerOpenReadReq):
+			lstr = "LedgerOpenReadReq";
+			break;
+		case (BKPConstants.LedgerWriteEntryReq):
+			lstr = "LedgerWriteEntryReq";
+			break;
+		case (BKPConstants.LedgerReadEntryReq):
+			lstr = "LedgerReadEntryReq";
+			break;
+		case (BKPConstants.LedgerNextEntryIdReq):
+			lstr = "LedgerNextEntryIdReq";
+			break;
+		case (BKPConstants.LedgerReadCloseReq):
+			lstr = "LedgerReadCloseReq";
+			break;
+		case (BKPConstants.LedgerListGetReq):
+			lstr = "LedgerListGetReq";
+			break;
+		case (BKPConstants.LedgerDeleteAllReq):
+			lstr = "LedgerDeleteAllReq";
+			break;
+		default:
+			lstr = "UnKnownRequest";
+		}
+		System.out.println(lstr);
 	}
 
 	public void run() {
@@ -66,10 +114,12 @@ class BKProxyWorker implements Runnable {
 				reqId = req.get();
 				req.get(extentId);
 
-//				System.out.println(" Received Request: " + reqId);
+				//System.out.println(" Received Request: " + reqId);
 				String extentIDstr = new StringBuilder(new String(extentId, 0,
 						extentId.length - 1)).toString();
-//				System.out.println("ExtentID: " + extentIDstr);
+				System.out.print("Request: " );
+				reqToString(reqId);
+				System.out.println(" ExtentID: " + Hex.encodeHexString(extentId));
 				
 				switch (reqId) {
 
@@ -79,7 +129,7 @@ class BKProxyWorker implements Runnable {
 					
 					// Check if the extent exists
 					if (!bksc.LedgerExists(extentIDstr)){
-						resp.put(BKPConstants.SF_ErrorExist);
+						resp.put(BKPConstants.SF_ErrorNotFound);
 					} else {
 						int lSize = bksc.LedgerStat(extentIDstr);
 						resp.put(BKPConstants.SF_OK);
@@ -166,11 +216,17 @@ class BKProxyWorker implements Runnable {
 				}
 				
 				case (BKPConstants.LedgerNextEntryIdReq): {
-					// FragmentId = EntryId + 1
-					int nextFragmentId = (int) bksc.LedgerNextEntry(extentIDstr) + 1;
+					int nextFragmentId;
 					resp.put(BKPConstants.LedgerNextEntryIdResp);
-					resp.put(BKPConstants.SF_OK);
-					resp.putInt(nextFragmentId);
+
+					if (bksc.LedgerExists(extentIDstr)) {
+						// FragmentId = EntryId + 1
+						nextFragmentId = (int) bksc.LedgerNextEntry(extentIDstr) + 1;
+						resp.put(BKPConstants.SF_OK);
+						resp.putInt(nextFragmentId);
+					} else {
+						resp.putShort(BKPConstants.SF_ErrorNotFound);
+					}
 					resp.flip();
 					while (resp.hasRemaining()) {
 						clientChannel.write(resp);
