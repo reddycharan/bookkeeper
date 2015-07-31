@@ -117,10 +117,10 @@ class BKProxyWorker implements Runnable {
 				//System.out.println(" Received Request: " + reqId);
 				String extentIDstr = new StringBuilder(new String(extentId, 0,
 						extentId.length - 1)).toString();
-				System.out.print("Request: " );
-				reqToString(reqId);
-				System.out.println(" ExtentID: " + Hex.encodeHexString(extentId));
-				
+//				System.out.print("Request: " );
+//				reqToString(reqId);
+//				System.out.println(" ExtentID: " + Hex.encodeHexString(extentId));
+//				
 				switch (reqId) {
 
 				case (BKPConstants.LedgerStatReq): { 
