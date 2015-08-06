@@ -87,6 +87,7 @@ class BKProxyWorker implements Runnable {
 		ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
 		ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
 		ByteBuffer erreq = ByteBuffer.allocate(BKPConstants.READ_REQ_SIZE);
+		ByteBuffer cByteBuf = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
 
 		req.order(ByteOrder.nativeOrder());
 		resp.order(ByteOrder.nativeOrder());
@@ -247,17 +248,15 @@ class BKProxyWorker implements Runnable {
 
 					fragmentId = ewreq.getInt();
 					wSize = ewreq.getInt();
-					
-					ByteBuffer ledgerEntry = ByteBuffer.allocate(wSize);
-					
+										
 					bytesRead = 0;
-					
-					while(ledgerEntry.position() < wSize)
-						bytesRead += clientChannel.read(ledgerEntry);
+					cByteBuf.clear();
+					while(cByteBuf.position() < wSize)
+						bytesRead += clientChannel.read(cByteBuf);
 									
-					ledgerEntry.flip();
+					cByteBuf.flip();
 					
-					byte ret = bksc.LedgerPutEntry(extentIDstr, fragmentId, ledgerEntry);
+					byte ret = bksc.LedgerPutEntry(extentIDstr, fragmentId, cByteBuf);
 
 					resp.put(ret);
 					resp.flip();
@@ -292,7 +291,7 @@ class BKProxyWorker implements Runnable {
 							clientChannel.write(resp);
 						}
 						
-					} else if(bufSize < ledgerEntry.limit()) {
+					} else if(bufSize < ledgerEntry.position()) {
 						resp.put(BKPConstants.SF_ShortREAD);
 						resp.flip();
 						while (resp.hasRemaining()) {

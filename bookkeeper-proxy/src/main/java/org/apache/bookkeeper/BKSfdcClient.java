@@ -24,6 +24,8 @@ public class BKSfdcClient {
 	LedgerEntry ledgerEntry = null;
 	Object ledgerObj = null;
 	boolean exists = false;
+	ByteBuffer cByteBuffer = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
+
 
 	public BKSfdcClient() {
 		try {
@@ -199,7 +201,6 @@ public class BKSfdcClient {
 
 	public byte LedgerPutEntry(String extentId, int fragmentId, ByteBuffer bdata) {
 		long entryId;
-		byte[] data = new byte[bdata.capacity()];
 
 		try {
 			exists = elm.extentExists(extentId);
@@ -210,8 +211,6 @@ public class BKSfdcClient {
 			LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
 			lh = lpd.getWriteLedgerHandle();
-
-			bdata.get(data, 0, data.length);
 			
 			// TODO: verify checksum
 			
@@ -292,7 +291,7 @@ public class BKSfdcClient {
 					}
 				}
 
-				entryId = lh.addEntry(data, 0, data.length);
+				entryId = lh.addEntry(bdata.array(), 0, bdata.limit());
 				lpd.setLastWriteEntryId(entryId);
 
 				// entryId and FragmentId are off by one.
@@ -330,7 +329,6 @@ public class BKSfdcClient {
 
 	public ByteBuffer LedgerGetEntry(String extentId, int fragmentId, int size) {
 		int entryId = fragmentId;
-		ByteBuffer bdata = ByteBuffer.allocate(size);
 		byte[] data;
 
 		try {
@@ -364,7 +362,9 @@ public class BKSfdcClient {
 			LedgerEntry e = entries.nextElement();
 
 			data = e.getEntry();
-			bdata.put(data, 0, Math.min(data.length, bdata.remaining()));
+			cByteBuffer.clear();
+			cByteBuffer.put(data, 0, Math.min(data.length, cByteBuffer.remaining()));
+			//cByteBuffer.flip();
 
 		} catch (InterruptedException ie) {
 			Thread.dumpStack();
@@ -372,6 +372,6 @@ public class BKSfdcClient {
 			// LOG.error(bke.toString());
 			return null;
 		}
-		return bdata;
+		return cByteBuffer;
 	}
 }
