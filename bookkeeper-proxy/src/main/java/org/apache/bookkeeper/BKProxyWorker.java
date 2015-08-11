@@ -96,7 +96,7 @@ class BKProxyWorker implements Runnable {
 
 
 		byte[] extentId = new byte[BKPConstants.EXTENTID_SIZE];
-		int bytesRead = 0;
+		int bytesRead;
 
 		try {
 			System.out.println("Starting thread " + myThreadNum);
@@ -104,7 +104,10 @@ class BKProxyWorker implements Runnable {
 			while (true) {
 				req.clear();
 				resp.clear();
-				bytesRead = clientChannel.read(req); // read into buffer.
+				bytesRead = 0;
+				while (bytesRead >= 0 && bytesRead < req.capacity()) {
+					bytesRead = clientChannel.read(req); // read into buffer.
+				}
 
 				if (bytesRead < 0) {
 					System.out.println("Exiting Thread: " + myThreadNum );
@@ -240,7 +243,10 @@ class BKProxyWorker implements Runnable {
 					int wSize;
 					
 					ewreq.clear();
-					clientChannel.read(ewreq);
+					bytesRead = 0;
+					while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
+						bytesRead += clientChannel.read(ewreq);
+					};
 					ewreq.flip();
 					
 					// Put the Response out as first step.
@@ -251,8 +257,9 @@ class BKProxyWorker implements Runnable {
 										
 					bytesRead = 0;
 					cByteBuf.clear();
-					while(cByteBuf.position() < wSize)
+					while(bytesRead >= 0 && bytesRead < wSize) {
 						bytesRead += clientChannel.read(cByteBuf);
+					}
 									
 					cByteBuf.flip();
 					
@@ -273,7 +280,10 @@ class BKProxyWorker implements Runnable {
 					ByteBuffer ledgerEntry = null;
 					
 					erreq.clear();
-					clientChannel.read(erreq);
+					bytesRead = 0;
+					while (bytesRead >= 0 && bytesRead < erreq.capacity()) {
+						bytesRead += clientChannel.read(erreq);
+					};
 					erreq.flip();
 					fragmentId = erreq.getInt();
 					bufSize = erreq.getInt();
