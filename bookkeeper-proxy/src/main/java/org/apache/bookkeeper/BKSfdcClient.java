@@ -16,8 +16,7 @@ import org.apache.zookeeper.KeeperException;
  *
  */
 public class BKSfdcClient {
-	final String server = "localhost:2181";
-	BKExtentLedgerMap elm = new BKExtentLedgerMap();
+	BKExtentLedgerMap elm = null;
 	long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
 	BookKeeper bk = null;
 	LedgerHandle lh = null;
@@ -27,14 +26,9 @@ public class BKSfdcClient {
 	ByteBuffer cByteBuffer = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
 
 
-	public BKSfdcClient() {
-		try {
-			bk = new BookKeeper(server);
-		} catch (InterruptedException ie) {
-			// ignore
-		} catch (KeeperException | IOException e) {
-			// LOG.error(e.toString());
-		}
+	public BKSfdcClient(BookKeeper bk, BKExtentLedgerMap elm) {
+		this.bk = bk;
+		this.elm = elm;
 	}
 
 	public byte LedgerCreate(String extentId) {

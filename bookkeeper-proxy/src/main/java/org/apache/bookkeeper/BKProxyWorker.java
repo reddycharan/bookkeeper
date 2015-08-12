@@ -6,6 +6,7 @@ import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.commons.codec.binary.Hex;
 
 class BKProxyWorker implements Runnable {
@@ -18,7 +19,7 @@ class BKProxyWorker implements Runnable {
 	byte respId = 0;
 	
 
-	public BKProxyWorker(AtomicInteger threadId, SocketChannel sSock, Object wtl  ) {
+	public BKProxyWorker(AtomicInteger threadId, SocketChannel sSock, BookKeeper bk, BKExtentLedgerMap elm) {
 		this.clientChannel = sSock;
 		this.globalThreadId = threadId;
 		this.myThreadNum = globalThreadId.get();
@@ -34,7 +35,7 @@ class BKProxyWorker implements Runnable {
 			e.printStackTrace();
 		}
 //		this.bk = (BKtempLedger)wtl;
-		this.bksc = (BKSfdcClient)wtl;
+		this.bksc = new BKSfdcClient(bk, elm);
 	}
 	
 	static void reqToString(byte req) {

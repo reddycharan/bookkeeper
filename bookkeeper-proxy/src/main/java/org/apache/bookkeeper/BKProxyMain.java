@@ -1,9 +1,13 @@
 package org.apache.bookkeeper;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.zookeeper.KeeperException;
 
 /*
  * The main() loops while listening on the well known port. (5555)
@@ -12,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class BKProxyMain {
 	static AtomicInteger threadNum = new AtomicInteger();
+	final static String bkserver = "localhost:2181";
 
 	public static void main(String args[]) throws Exception {
 		threadNum.set(0);
@@ -19,9 +24,17 @@ public class BKProxyMain {
 		serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF, 65536);
 		serverChannel.socket().bind(new InetSocketAddress(5555));
 		SocketChannel sock = null;
-//		Place holder for testing with tempLedger;
-//		BKtempLedger bk = new BKtempLedger();
-		BKSfdcClient bk = new BKSfdcClient();
+		BookKeeper bk = null;
+		BKExtentLedgerMap elm = new BKExtentLedgerMap();
+
+		try {
+			bk = new BookKeeper(bkserver);
+		} catch (InterruptedException ie) {
+			// ignore
+		} catch (KeeperException | IOException e) {
+			// LOG.error(e.toString());
+			System.exit(1);
+		}
 
 		while (true) {
 			System.out.println("SFStore BK-Proxy: Waiting for connection... ");
@@ -33,7 +46,7 @@ public class BKProxyMain {
 			}
 			
 			// Worker thread to handle each backend's write requests
-			new Thread(new BKProxyWorker(threadNum, sock, (Object)bk)).start();
+			new Thread(new BKProxyWorker(threadNum, sock, bk, elm)).start();
 
 			threadNum.incrementAndGet();
 		}
