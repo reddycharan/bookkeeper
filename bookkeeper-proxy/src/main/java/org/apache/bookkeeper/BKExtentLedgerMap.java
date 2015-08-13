@@ -1,10 +1,11 @@
 package org.apache.bookkeeper;
 
-import java.util.Hashtable;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.bookkeeper.client.LedgerHandle;
 
 public class BKExtentLedgerMap {
-	private Hashtable<String, LedgerPrivateData> extentToLedgerMap = new Hashtable<String, LedgerPrivateData>();
+	private ConcurrentHashMap<String, LedgerPrivateData> extentToLedgerMap = new ConcurrentHashMap<String, LedgerPrivateData>();
 	
 
 	public LedgerPrivateData getLedgerPrivate(String extentId) {

@@ -25,7 +25,6 @@ public class BKSfdcClient {
 	boolean exists = false;
 	ByteBuffer cByteBuffer = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
 
-
 	public BKSfdcClient(BookKeeper bk, BKExtentLedgerMap elm) {
 		this.bk = bk;
 		this.elm = elm;

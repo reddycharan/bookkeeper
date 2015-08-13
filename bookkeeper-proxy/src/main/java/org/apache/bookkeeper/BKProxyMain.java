@@ -24,6 +24,8 @@ public class BKProxyMain {
 		serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF, 65536);
 		serverChannel.socket().bind(new InetSocketAddress(5555));
 		SocketChannel sock = null;
+		
+		// Global structures
 		BookKeeper bk = null;
 		BKExtentLedgerMap elm = new BKExtentLedgerMap();
 
