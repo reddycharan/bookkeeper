@@ -8,6 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /*
  * The main() loops while listening on the well known port. (5555)
@@ -17,6 +20,7 @@ import org.apache.zookeeper.KeeperException;
 public class BKProxyMain {
 	static AtomicInteger threadNum = new AtomicInteger();
 	final static String bkserver = "localhost:2181";
+	private final static Logger LOG = LoggerFactory.getLogger(BKProxyMain.class);
 
 	public static void main(String args[]) throws Exception {
 		threadNum.set(0);
@@ -34,7 +38,7 @@ public class BKProxyMain {
 		} catch (InterruptedException ie) {
 			// ignore
 		} catch (KeeperException | IOException e) {
-			// LOG.error(e.toString());
+			LOG.error(e.toString());
 			System.exit(1);
 		}
 
