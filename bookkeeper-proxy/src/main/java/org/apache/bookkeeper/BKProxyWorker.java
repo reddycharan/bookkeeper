@@ -230,7 +230,7 @@ class BKProxyWorker implements Runnable {
 						resp.put(BKPConstants.SF_OK);
 						resp.putInt(nextFragmentId);
 					} else {
-						resp.putShort(BKPConstants.SF_ErrorNotFound);
+						resp.put(BKPConstants.SF_ErrorNotFound);
 					}
 					resp.flip();
 					while (resp.hasRemaining()) {
