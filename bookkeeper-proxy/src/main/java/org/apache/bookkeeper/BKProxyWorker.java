@@ -11,7 +11,6 @@ import org.apache.commons.codec.binary.Hex;
 
 class BKProxyWorker implements Runnable {
 	SocketChannel clientChannel;
-//	BKtempLedger bksc;
 	BKSfdcClient bksc;
 	AtomicInteger globalThreadId;
 	final int myThreadNum;
@@ -34,7 +33,6 @@ class BKProxyWorker implements Runnable {
 			globalThreadId.decrementAndGet();
 			e.printStackTrace();
 		}
-//		this.bk = (BKtempLedger)wtl;
 		this.bksc = new BKSfdcClient(bk, elm);
 	}
 	
