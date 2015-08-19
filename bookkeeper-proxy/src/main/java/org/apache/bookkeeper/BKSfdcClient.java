@@ -11,10 +11,6 @@ import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.zookeeper.KeeperException;
 
-/**
- * @author vjujjuri
- *
- */
 public class BKSfdcClient {
 	BKExtentLedgerMap elm = null;
 	long ledgerId = LedgerHandle.INVALID_ENTRY_ID;

@@ -48,10 +48,11 @@
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>2.5.3</version>
 				<configuration>
+                                <tarLongFileMode>posix</tarLongFileMode>
 					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>org.apache.bookkeeper.BKProxyServer</mainClass>
+							<mainClass>org.apache.bookkeeper.BKProxyMain</mainClass>
 						</manifest>
 					</archive>
 					<descriptors>

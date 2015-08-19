@@ -1,24 +1,23 @@
-bkproxy
+bookkeeper-proxy
 =======
 
-The bkproxy code is in two parts 
-1. bkproxy-server
-2. bkproxy-client
-
-The bkproxy-server is responsible for talking to the bookkeeper, the bkproxy-client is just a test client to read/write data to the server
-
-The bkrpoxy-client project depends on the bkproxy-server
-
-Run the bkproxy-server before the bkproxy-client
+The bookkeeper-proxy is responsible for accepting requests and communicating 
+with bookkeeper through the client APIs.
 
 Building the code
 ==================
 
 From command line
 
-1. git clone https://git.soma.salesforce.com/ksubramanian/bkproxy
+1. git clone https://git.soma.salesforce.com/SFStoreage/bookkeeper.git
 
-2. mvn install
+2. cd bookkeeper
+
+3. git checkout -b sfstore origin/sfstore
+
+4. make sure your JAVA_HOME is set
+
+5. mvn clean; mvn install -DskipTests=true
 
 
 Importing to Eclipse
@@ -27,30 +26,19 @@ In order for Eclipse to build mvn projects we need to install M2Eclipse. Eclipse
 
 1. File -> Import -> Maven -> Existing Maven Project
 
-2. Navigate to bkproxy (you could also import just the bkproxy-server or bkproxy-client)
+2. Navigate to bookkeeper-proxy 
 
 3. If 'Build Automatically' is checked, Eclipse would just build
 
-Running the server/client
+Running the proxy
 =========================
 
-From command line
+From command line, run
 
-1. mvn install 
-
-This will generate two jar files for both the bkproxy-server and bkproxy-client under their respective target directories
-
-2. java -jar bkproxy-server/target/bkproxy-server-1.0-SNAPSHOT-jar-with-dependencies.jar
-
-3. java -jar bkproxy-client/target/bkproxy-client-1.0-SNAPSHOT-jar-with-dependencies.jar 
+	java -jar bookkeeper-proxy/target/bookkeeper-proxy-4.4.0-SNAPSHOT-jar-with-dependencies.jar
 
 From Eclipse
 
-To run the bkproxy-server, 
+To run the bookkeeper proxy,
 
-open BKProxyServer.java, right-click anywhere on the file and 'Run As' -> Java Application
-
-To run the bkprox-client, 
- 
-open BKProxyClient.java right-click anywhere on the file and 'Run As' -> Java Application 
- 
+open BKProxyMain.java, right-click anywhere on the file and 'Run As' -> Java Application
