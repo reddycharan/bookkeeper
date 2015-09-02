@@ -325,13 +325,19 @@ public class BKSfdcClient {
 			if (exists == false) {
 				return null;
 			}
-			
+
 			LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-			lh = lpd.getReadLedgerHandle();
-			
+			// If we are the writer, we will have write ledger handle
+			// and it will have the most recent information.
+			// So let us try to get write ledger handle first.
+			lh = lpd.getWriteLedgerHandle();
 			if (lh == null) {
-				LedgerOpenRead(extentId);
 				lh = lpd.getReadLedgerHandle();
+				if (lh == null) {
+					// Let us open the ledger for read
+					LedgerOpenRead(extentId);
+					lh = lpd.getReadLedgerHandle();
+				}
 			}
 
 			Enumeration<LedgerEntry> entries = null;
