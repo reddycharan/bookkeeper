@@ -10,6 +10,8 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BKSfdcClient {
 	BKExtentLedgerMap elm = null;
@@ -20,6 +22,7 @@ public class BKSfdcClient {
 	Object ledgerObj = null;
 	boolean exists = false;
 	ByteBuffer cByteBuffer = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
+	private final static Logger LOG = LoggerFactory.getLogger(BKSfdcClient.class);
 
 	public BKSfdcClient(BookKeeper bk, BKExtentLedgerMap elm) {
 		this.bk = bk;
@@ -58,7 +61,7 @@ public class BKSfdcClient {
 		rlh = lpd.getReadLedgerHandle();
 		
 		if (rlh != null) {
-			// The ledger is already open for read. 
+			// The ledger is already opened for read.
 			// Nothing to do
 			return BKPConstants.SF_OK;
 		}
@@ -131,7 +134,6 @@ public class BKSfdcClient {
 		try {
 			lh.close();
 			// Reset Ledger Handle
-			// TODO  Serialize handle setters and getters
 			elm.getLedgerPrivate(extentId).setWriteLedgerHandle(null);
 		} catch (InterruptedException | BKException e) {
 			// TODO Auto-generated catch block
@@ -157,7 +159,6 @@ public class BKSfdcClient {
 		try {
 			lh.close();
 			// Reset the Ledger Handle
-			// TODO: Need to serialize handle get/set
 			elm.getLedgerPrivate(extentId).setReadLedgerHandle(null);
 		} catch (InterruptedException | BKException e) {
 			// TODO Auto-generated catch block
@@ -281,16 +282,17 @@ public class BKSfdcClient {
 				// Handle Trailer
 				if (fragmentId == 0) {
 					if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
-						Thread.dumpStack();
+						LOG.error("Trying to re-set trailer for the ledger {}", extentId);
+						return BKPConstants.SF_ErrorBadRequest;
 					}
 					lpd.setTrailerId(entryId);
+					// Close the ledger
+					LedgerWriteClose(extentId);
 				} else {
 					if (entryId != (fragmentId - 1)) {
-						System.out.println("entryId and fragmentIds are not synced.");
-						System.out.println("entryId expected: "
-								+ (fragmentId - 1) + " returned by BK: "
-								+ entryId);
-						Thread.dumpStack();
+						LOG.error("entryId and fragmentIds are not synced. entryId returned by BK {} but expected: {}",
+								   entryId, (fragmentId - 1));
+						return BKPConstants.SF_InternalError;
 					}
 				}
 			} finally {
@@ -337,6 +339,18 @@ public class BKSfdcClient {
 			if (fragmentId == 0) {
 				// Trailer
 				entryId = (int) lpd.getTrailerId();
+				if (entryId == BKPConstants.NO_ENTRY) {
+					if (!lh.isClosed()) {
+						// Trying to read the trailer of an non closed ledger.
+						// TODO: Throw an exception?
+						LOG.info("Trying to read the trailer of Extent: {} before closing", extentId);
+						return null;
+					}
+					// This is a closed entry. We need to get last entry through protocol
+					// and update our local cache.
+					lpd.setTrailerId(lh.getLastAddConfirmed());
+					entryId = (int) lpd.getTrailerId();
+				}
 			} else { // It is not a trailer
 				entryId = fragmentId -1;
 				if (entryId == lpd.getTrailerId()) {
