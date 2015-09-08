@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.commons.codec.binary.Hex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class BKProxyWorker implements Runnable {
 	SocketChannel clientChannel;
@@ -16,6 +18,7 @@ class BKProxyWorker implements Runnable {
 	final int myThreadNum;
 	byte reqId = 0;
 	byte respId = 0;
+	private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
 	
 
 	public BKProxyWorker(AtomicInteger threadId, SocketChannel sSock, BookKeeper bk, BKExtentLedgerMap elm) {
@@ -247,13 +250,24 @@ class BKProxyWorker implements Runnable {
 						bytesRead += clientChannel.read(ewreq);
 					};
 					ewreq.flip();
-					
+
 					// Put the Response out as first step.
 					resp.put(BKPConstants.LedgerWriteEntryResp);
 
 					fragmentId = ewreq.getInt();
 					wSize = ewreq.getInt();
-										
+					if (wSize > cByteBuf.capacity()) {
+						LOG.error("Write message size:{} bigger than allowed:{}",
+								  wSize, cByteBuf.capacity());
+						// TODO: Throw Exception.
+						resp.put(BKPConstants.SF_ErrorBadRequest);
+						resp.flip();
+						while (resp.hasRemaining()) {
+							clientChannel.write(resp);
+						}
+						break;
+					}
+
 					bytesRead = 0;
 					cByteBuf.clear();
 					while(bytesRead >= 0 && bytesRead < wSize) {

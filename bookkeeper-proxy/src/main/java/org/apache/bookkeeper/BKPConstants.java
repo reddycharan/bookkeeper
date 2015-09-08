@@ -51,8 +51,8 @@ public interface BKPConstants {
 	public static final int READ_REQ_SIZE = 8;
 	public static final int WRITE_REQ_SIZE = 8;
 	public static final long NO_ENTRY = -1;
+    // TODO: Move these to configuration file
 	public static final int WRITE_TIMEOUT = 10; // 10 secs.
 	public static final int WORKER_THREAD_LIMIT = 1000; // Just a number.
-	public static final int MAX_FRAG_SIZE = 65536; // TODO: Does it include header too?
-	
+	public static final int MAX_FRAG_SIZE = 1048576; // 1MB
 }
