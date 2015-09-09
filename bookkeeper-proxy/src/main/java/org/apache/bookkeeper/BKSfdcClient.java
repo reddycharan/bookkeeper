@@ -204,15 +204,17 @@ public class BKSfdcClient {
 			// TODO: verify checksum
 			
 			// API Requirement:
-			// In Good Path:
-			//   Rules:
-			//      1. All allocated fragments must be committed before committing trailer.
-			//      2. FragmentId = EntryId + 1
-			//      3. TrailerId = Last entryId of the Ledger.
-			//      4. Allow write only if the fragment# is the next in sequence.
-			//                    fragmentId == last_committed_entryId + 2
-			//      5. Allow trailer only if last_comitted entryId  == max allocated entryId
-			
+			// Need to map first and last fragmentIds between SDB and BK.
+			//
+			// 1. SDB treats FragmentId 0 as the last entry.
+			//    For BK it is really the last entry(highest entryId of the ledger).
+			// 2. FragmentId 1 is the first entry for SDB, but
+			//    entryId 1 is the second entry for BK as it starts entryId with 0.
+			//
+			// Rules:
+			//   1. FragmentId = entryId + 1; first entryId is 0 and first FragmentId = 1
+			//   2. TrailerId(FragmentId 0)  = Last entryId of the Ledger.
+			//
 			// Logic: 
 			// All writes hold lock to serialize access to BK. BK allows single writer.
 			// timedout = 0;
@@ -232,13 +234,9 @@ public class BKSfdcClient {
 			// unlock();
 			int timeoutLoopCount = BKPConstants.WRITE_TIMEOUT * 1000;
 			long wEid = lpd.getLastWriteEntryId();
-			long aEid = lpd.getAllocedEntryId();
 			while (timeoutLoopCount != 0) {
 				
 				if (fragmentId == 0){
-					// TODO: For now allow one outstanding allocateID as the stream increments
-					// next write unconditionally. 
-					if ((wEid == aEid) || (wEid == aEid - 1)) // All allocated entries are committed. We can write trailer
 						break; // allow write
 				} else {
 					if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId == 1)) // First write
@@ -252,7 +250,6 @@ public class BKSfdcClient {
 				Thread.sleep(1);
 				timeoutLoopCount--;
 				wEid = lpd.getLastWriteEntryId();
-				aEid = lpd.getAllocedEntryId();
 			}
 			
 			if (timeoutLoopCount == 0) {
@@ -265,12 +262,7 @@ public class BKSfdcClient {
 			lpd.lockLedger();
 			try {
 				wEid = lpd.getLastWriteEntryId();
-				aEid = lpd.getAllocedEntryId();
-				if (fragmentId == 0) {
-					if (!((wEid == aEid) || (wEid == aEid - 1))) {
-						return BKPConstants.SF_OutOfSequenceTimeout;
-					}
-				} else {
+				if (fragmentId != 0) {
 					if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId != 1)) {
 						return BKPConstants.SF_OutOfSequenceTimeout;
 					} else {
