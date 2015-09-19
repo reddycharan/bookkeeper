@@ -8,13 +8,9 @@ class LedgerPrivateData {
     LedgerHandle wlh; // Write Ledger Handle
     LedgerHandle rlh; // Read Ledger Handle
     volatile long lId = BKPConstants.NO_ENTRY; // LedgerId
-    volatile long tEntryId = BKPConstants.NO_ENTRY; // Trailer/Last entryId of
-                                                    // the ledger
-    volatile long aEntryId = BKPConstants.NO_ENTRY; // Max entryId that is
-                                                    // allocated/granted to the
-                                                    // client
-    volatile long wEntryId = BKPConstants.NO_ENTRY; // Latest committed entryId
-                                                    // to BK.
+    volatile long tEntryId = BKPConstants.NO_ENTRY; // Trailer/Last entryId of the ledger
+    volatile long aEntryId = BKPConstants.NO_ENTRY; // Max entryId that is allocated/granted to the client
+    volatile long wEntryId = BKPConstants.NO_ENTRY; // Latest committed entryId to BK.
     private final ReentrantLock lpLock = new ReentrantLock();
 
     public LedgerHandle getWriteLedgerHandle() {
@@ -46,10 +42,12 @@ class LedgerPrivateData {
     }
 
     public void setTrailerId(long trailerId) {
+        assert (this.tEntryId == BKPConstants.NO_ENTRY);
         this.tEntryId = trailerId;
     }
 
-    public void setLastWriteEntryId(long entryId) {
+    public synchronized void setLastWriteEntryId(long entryId) {
+        assert ((this.wEntryId == BKPConstants.NO_ENTRY) || (this.wEntryId == entryId -1));
         this.wEntryId = entryId;
     }
 

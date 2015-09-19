@@ -5,10 +5,12 @@ import java.nio.ByteBuffer;
 import java.util.Enumeration;
 
 import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.LedgerHandleAdv;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,15 +36,13 @@ public class BKSfdcClient {
             if (elm.extentExists(extentId))
                 return BKPConstants.SF_ErrorExist;
 
-            lh = bk.createLedger(3, 2, DigestType.MAC, "foo".getBytes());
+            lh = bk.createLedgerAdv(3, 3, 2, DigestType.MAC, "foo".getBytes());
             elm.createLedgerMap(extentId, lh);
 
-        } catch (InterruptedException ie) {
-            // ignore
-        } catch (BKException e) {
-            // LOG.error(e.toString());
-            // Should return an error status, need to map BK errors into SFStore
-            // errors
+        } catch (InterruptedException | BKException e) {
+            LOG.error(e.toString());
+            // TODO: Should return an error status came from BK;
+            // TODO: map BK errors into SFStore errors
             return BKPConstants.SF_InternalError;
         }
 
@@ -72,7 +72,7 @@ public class BKSfdcClient {
         try {
             rlh = bk.openLedgerNoRecovery(lId, DigestType.MAC, "foo".getBytes());
         } catch (BKException | InterruptedException e) {
-            // TODO Auto-generated catch block
+            LOG.error(e.toString());
             e.printStackTrace();
             return BKPConstants.SF_InternalError;
         }
@@ -136,7 +136,7 @@ public class BKSfdcClient {
             // Reset Ledger Handle
             elm.getLedgerPrivate(extentId).setWriteLedgerHandle(null);
         } catch (InterruptedException | BKException e) {
-            // TODO Auto-generated catch block
+            LOG.error(e.toString());
             e.printStackTrace();
             return BKPConstants.SF_ErrorNotFound;
         }
@@ -160,7 +160,7 @@ public class BKSfdcClient {
             // Reset the Ledger Handle
             elm.getLedgerPrivate(extentId).setReadLedgerHandle(null);
         } catch (InterruptedException | BKException e) {
-            // TODO Auto-generated catch block
+            LOG.error(e.toString());
             e.printStackTrace();
             return BKPConstants.SF_ErrorNotFound;
         }
@@ -175,12 +175,8 @@ public class BKSfdcClient {
             long lId = elm.getLedgerPrivate(extentId).getLedgerId();
             bk.deleteLedger(lId);
             elm.deleteLedgerPrivate(extentId);
-        } catch (InterruptedException ie) {
-            // ignore
-        } catch (BKException e) {
-            // LOG.error(e.toString());
-            // Should return an error status, need to map BK errors into SFStore
-            // errors
+        } catch (InterruptedException | BKException e) {
+            LOG.error(e.toString());
             return BKPConstants.SF_InternalError;
         }
 
@@ -206,111 +202,39 @@ public class BKSfdcClient {
             // Need to map first and last fragmentIds between SDB and BK.
             //
             // 1. SDB treats FragmentId 0 as the last entry.
-            // For BK it is really the last entry(highest entryId of the
-            // ledger).
+            // For BK it is really the last entry (highest entryId of the ledger).
             // 2. FragmentId 1 is the first entry for SDB, but
             // entryId 1 is the second entry for BK as it starts entryId with 0.
             //
             // Rules:
-            // 1. FragmentId = entryId + 1; first entryId is 0 and first
-            // FragmentId = 1
+            // 1. FragmentId = entryId + 1; first entryId is 0 and first FragmentId = 1
             // 2. TrailerId(FragmentId 0) = Last entryId of the Ledger.
-            //
-            // Logic:
-            // All writes hold lock to serialize access to BK. BK allows single
-            // writer.
-            // timedout = 0;
-            // while(timeout) {
-            // if (fragmentId == last_comitted_entryId + 2)
-            // break;
-            // sleep(1);
-            // }
-            // if(timedout)
-            // return SF_OutOfSequenceTimeout;
-            // lock()
-            // if (fragmentId != last_comitted_entryId + 2) {
-            // unlock()
-            // return SF_OutOfSequenceTimeout;
-            // }
-            // bkhandle.write();
-            // unlock();
-            int timeoutLoopCount = BKPConstants.WRITE_TIMEOUT * 1000;
-            long wEid = lpd.getLastWriteEntryId();
-            while (timeoutLoopCount != 0) {
 
-                if (fragmentId == 0) {
-                    break; // allow write
-                } else {
-                    if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId == 1)) // First
-                                                                              // write
-                        break; // allow write
-                    else {
-                        if (fragmentId == (wEid + 2)) // We are safe to move
-                                                      // ahead with write
-                            break; // allow write
-                    }
+            // entryId and FragmentId are off by one.
+            // BK starts at entryID 0 and Store assumes it to be 1.
+            long tmpEntryId;
+            if (fragmentId != 0)
+                tmpEntryId = fragmentId - 1;
+            else
+                tmpEntryId = lpd.getLastWriteEntryId() + 1;
+            entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
+            assert(entryId == tmpEntryId);
+            lpd.setLastWriteEntryId(entryId);
+
+            // Handle Trailer
+            if (fragmentId == 0) {
+                if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
+                    LOG.error("Trying to re-set trailer for the ledger {}", extentId);
+                    return BKPConstants.SF_ErrorBadRequest;
                 }
-                // Need to wait until timed out or one of the above conditions
-                // are met.
-                Thread.sleep(1);
-                timeoutLoopCount--;
-                wEid = lpd.getLastWriteEntryId();
+                lpd.setTrailerId(entryId);
+                // Close the ledger
+                LedgerWriteClose(extentId);
             }
-
-            if (timeoutLoopCount == 0) {
-                // Return Error
-                return BKPConstants.SF_OutOfSequenceTimeout;
-            }
-
-            // Hold the lock and perform above check again under lock to make
-            // sure the above condition is still true.
-            lpd.lockLedger();
-            try {
-                wEid = lpd.getLastWriteEntryId();
-                if (fragmentId != 0) {
-                    if ((wEid == BKPConstants.NO_ENTRY) && (fragmentId != 1)) {
-                        return BKPConstants.SF_OutOfSequenceTimeout;
-                    } else {
-                        if (fragmentId != (wEid + 2)) {
-                            return BKPConstants.SF_OutOfSequenceTimeout;
-                        }
-                    }
-                }
-
-                entryId = lh.addEntry(bdata.array(), 0, bdata.limit());
-                lpd.setLastWriteEntryId(entryId);
-
-                // entryId and FragmentId are off by one.
-                // BK starts at entryID 0 and Store assumes it to be 1.
-
-                // Handle Trailer
-                if (fragmentId == 0) {
-                    if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
-                        LOG.error("Trying to re-set trailer for the ledger {}", extentId);
-                        return BKPConstants.SF_ErrorBadRequest;
-                    }
-                    lpd.setTrailerId(entryId);
-                    // Close the ledger
-                    LedgerWriteClose(extentId);
-                } else {
-                    if (entryId != (fragmentId - 1)) {
-                        LOG.error("entryId and fragmentIds are not synced. entryId returned by BK {} but expected: {}",
-                                entryId, (fragmentId - 1));
-                        return BKPConstants.SF_InternalError;
-                    }
-                }
-            } finally {
-                lpd.unlockLedger();
-            }
-        } catch (InterruptedException ie) {
-            // ignore
-        } catch (BKException e) {
-            // LOG.error(e.toString());
-            // Should return an error status, need to map BK errors into SFStore
-            // errors
+        } catch (InterruptedException | BKException e) {
+            LOG.error(e.toString());
             return BKPConstants.SF_InternalError;
         }
-
         return BKPConstants.SF_OK;
     }
 
@@ -370,12 +294,18 @@ public class BKSfdcClient {
             data = e.getEntry();
             cByteBuffer.clear();
             cByteBuffer.put(data, 0, Math.min(data.length, cByteBuffer.remaining()));
-            // cByteBuffer.flip();
-
         } catch (InterruptedException ie) {
-            Thread.dumpStack();
+            LOG.error(ie.toString());
+            ie.printStackTrace();
+            return null;
         } catch (BKException bke) {
-            // LOG.error(bke.toString());
+            if (bke.getCode() != Code.ReadException) {
+                // SDB tries to find the end of the Extent by reading until it gets an error.
+                // Current readEntries() returns BKReadException in this case.
+                // Since it is valid error for us, skip printing error for this error.
+                LOG.error(bke.toString());
+                bke.printStackTrace();
+            }
             return null;
         }
         return cByteBuffer;
