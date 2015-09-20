@@ -29,8 +29,11 @@ public class BKExtentLedgerMap {
         extentToLedgerMap.put(extentId, lpd);
     }
 
+    public String[] getAllExtentIds() {
+        return extentToLedgerMap.keySet().toArray(new String[extentToLedgerMap.keySet().size()]);
+    }
+
     public void deleteAllLedgerHandles() {
-        // TODO: Delete all LedgerHandles too
         extentToLedgerMap.clear();
     }
 }

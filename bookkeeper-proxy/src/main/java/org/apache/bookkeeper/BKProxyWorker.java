@@ -247,8 +247,7 @@ class BKProxyWorker implements Runnable {
                     bytesRead = 0;
                     while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
                         bytesRead += clientChannel.read(ewreq);
-                    }
-                    ;
+                    };
                     ewreq.flip();
 
                     // Put the Response out as first step.

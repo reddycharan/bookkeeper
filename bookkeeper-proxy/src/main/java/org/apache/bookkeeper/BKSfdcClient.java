@@ -116,6 +116,10 @@ public class BKSfdcClient {
     }
 
     public void LedgerDeleteAll() {
+        String[] ledgerIdList = elm.getAllExtentIds();
+        for (int i = 0; i < ledgerIdList.length; i++) {
+            this.LedgerDelete(ledgerIdList[i]);
+        }
         elm.deleteAllLedgerHandles();
     }
 
