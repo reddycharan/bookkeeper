@@ -7,6 +7,7 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,11 +121,10 @@ class BKProxyWorker implements Runnable {
                 req.get(extentId);
 
                 // System.out.println(" Received Request: " + reqId);
-                String extentIDstr = new StringBuilder(new String(extentId, 0, extentId.length - 1)).toString();
+                String extentIDstr = Hex.encodeHexString(extentId);
                 // System.out.print("Request: " );
                 // reqToString(reqId);
-                // System.out.println(" ExtentID: " +
-                // Hex.encodeHexString(extentId));
+                // System.out.println(" ExtentID: " + extentIDstr);
                 //
                 switch (reqId) {
 
@@ -144,6 +144,38 @@ class BKProxyWorker implements Runnable {
                     while (resp.hasRemaining()) {
                         clientChannel.write(resp);
                     }
+                    break;
+                }
+
+                case (BKPConstants.LedgerListGetReq): {
+                    String[] extentIds = bksc.LedgerList();
+
+                    resp.put(BKPConstants.LedgerListGetResp);
+                    resp.put(BKPConstants.SF_OK);
+                    resp.putInt(extentIds.length);
+                    resp.flip();
+
+                    while (resp.hasRemaining()) {
+                        clientChannel.write(resp);
+                    }
+
+                    int esize = extentIds.length * BKPConstants.EXTENTID_SIZE;
+                    ByteBuffer ebuf = ByteBuffer.allocate(esize);
+                    for (int i = 0; i < extentIds.length; i++) {
+                        byte[] ebytes;
+                        try {
+                            ebytes = Hex.decodeHex(extentIds[i].toCharArray());
+                        } catch (DecoderException de) {
+                            throw new IOException(de);
+                        }
+                        ebuf.put(ebytes);
+                    }
+
+                    ebuf.flip();
+                    while (ebuf.hasRemaining()) {
+                        clientChannel.write(ebuf);
+                    }
+
                     break;
                 }
 

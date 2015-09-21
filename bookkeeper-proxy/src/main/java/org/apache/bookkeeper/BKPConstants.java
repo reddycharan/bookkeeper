@@ -26,7 +26,7 @@ public interface BKPConstants {
     public static final byte LedgerReadEntryResp = 108;
     public static final byte LedgerNextEntryIdResp = 109;
     public static final byte LedgerReadCloseResp = 110;
-    public static final byte LedgerLisGettResp = 111;
+    public static final byte LedgerListGetResp = 111;
     public static final byte LedgerDeleteAllResp = 112;
 
     // Error Codes

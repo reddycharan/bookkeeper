@@ -123,6 +123,10 @@ public class BKSfdcClient {
         elm.deleteAllLedgerHandles();
     }
 
+    public String[] LedgerList() {
+        return elm.getAllExtentIds();
+    }
+
     public byte LedgerWriteClose(String extentId) {
 
         if (!elm.extentExists(extentId)) {
