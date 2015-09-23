@@ -88,8 +88,8 @@ public class BKSfdcClient {
         return elm.extentExists(extentId);
     }
 
-    public int LedgerStat(String extentId) {
-        int ledgerSize;
+    public long LedgerStat(String extentId) {
+        long ledgerSize;
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
         // Check if we have write ledger handle open.
@@ -111,7 +111,7 @@ public class BKSfdcClient {
         }
 
         // We have a ledger handle.
-        ledgerSize = (int) lh.getLength();
+        ledgerSize = lh.getLength();
         return ledgerSize;
     }
 

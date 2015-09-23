@@ -46,7 +46,7 @@ public interface BKPConstants {
     // Defines
     public static final int EXTENTID_SIZE = 16;
     public static final int GENERIC_REQ_SIZE = 24;
-    public static final int RESP_SIZE = 6;
+    public static final int RESP_SIZE = 10;
     public static final int READ_REQ_SIZE = 8;
     public static final int WRITE_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;

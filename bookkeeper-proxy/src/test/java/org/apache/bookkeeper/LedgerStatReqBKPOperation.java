@@ -6,15 +6,15 @@ import java.nio.channels.SocketChannel;
 
 public class LedgerStatReqBKPOperation extends BKPOperationExtension {
 
-    private int expectedSize;
+    private long expectedSize;
 
     public LedgerStatReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
-            byte responseType, byte expectedReturnStatus, int expectedSize) {
+            byte responseType, byte expectedReturnStatus, long expectedSize) {
         super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.expectedSize = expectedSize;
     }
 
-    public int getExpectedSize() {
+    public long getExpectedSize() {
         return expectedSize;
     }
 
@@ -30,7 +30,7 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
         byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentUUIDBytes(operationParameters[3]);
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
-        int expectedSize = Integer.valueOf(operationParameters[5]);
+        long expectedSize = Long.valueOf(operationParameters[5]);
 
         LedgerStatReqBKPOperation lsOperation = new LedgerStatReqBKPOperation(timeSlot, threadId, requestType, extentId,
                 BKPConstants.LedgerStatResp, expectedReturnStatus, expectedSize);
@@ -40,7 +40,7 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
     @Override
     public void receivePayloadAndVerify(SocketChannel clientSocketChannel) throws OperationException, IOException {
         if (getExpectedReturnStatus() == BKPConstants.SF_OK) {
-            getIntFromResponseAndVerify(clientSocketChannel, expectedSize, "ExpectedSize");
+            getLongFromResponseAndVerify(clientSocketChannel, expectedSize, "ExpectedSize");
         }
     }
 }

@@ -133,12 +133,12 @@ class BKProxyWorker implements Runnable {
                     resp.put(BKPConstants.LedgerStatResp);
 
                     // Check if the extent exists
-                    if (!bksc.LedgerExists(extentIDstr)) {
+                    if (!bksc.LedgerExists(extentIDstr)) {                        
                         resp.put(BKPConstants.SF_ErrorNotFound);
                     } else {
-                        int lSize = bksc.LedgerStat(extentIDstr);
+                        long lSize = bksc.LedgerStat(extentIDstr);
                         resp.put(BKPConstants.SF_OK);
-                        resp.putInt(lSize);
+                        resp.putLong(lSize);
                     }
                     resp.flip();
                     while (resp.hasRemaining()) {

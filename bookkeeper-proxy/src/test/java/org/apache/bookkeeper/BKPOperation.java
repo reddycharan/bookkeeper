@@ -188,6 +188,22 @@ public abstract class BKPOperation {
         }
     }
 
+    public void getLongFromResponseAndVerify(SocketChannel clientSocketChannel, long expectedValue, String paramName)
+            throws OperationException, IOException {
+        ByteBuffer nextLongResp = ByteBuffer.allocate(Long.SIZE / Byte.SIZE);
+        nextLongResp.order(ByteOrder.nativeOrder());
+        while (nextLongResp.hasRemaining()) {
+            clientSocketChannel.read(nextLongResp);
+        }
+        nextLongResp.flip();
+        long actualvalue = nextLongResp.getLong();
+        if (actualvalue != expectedValue) {
+            throw new OperationException(String.format(
+                    "Operation at Timeslot: %d in ThreadId: %s has failed because of unexpected %s : %d, whereas the expected value is %d",
+                    getTimeSlot(), getThreadId(), paramName, actualvalue, expectedValue));
+        }
+    }
+    
     public void getEntryFromResponseAndVerify(SocketChannel clientSocketChannel, byte[] expectedByteArray,
             String paramName) throws IOException, OperationException {
         ByteBuffer actualTrailer = ByteBuffer.allocate(expectedByteArray.length);
