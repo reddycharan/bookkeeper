@@ -25,7 +25,7 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
         LedgerListGetReqBKPOperation llgOperation = new LedgerListGetReqBKPOperation(timeSlot, threadId, requestType,
-                extentId, BKPConstants.LedgerLisGettResp, expectedReturnStatus);
+                extentId, BKPConstants.LedgerListGetResp, expectedReturnStatus);
         return llgOperation;
     }
 
