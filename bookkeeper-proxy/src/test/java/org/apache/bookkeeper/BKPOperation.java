@@ -94,9 +94,6 @@ public abstract class BKPOperation {
         case BKPConstants.LedgerReadEntryReq:
             bkpOperation = LedgerReadEntryReqBKPOperation.createLedgerReadEntryReqBKPOperation(operationDefinition);
             break;
-        case BKPConstants.LedgerNextEntryIdReq:
-            bkpOperation = LedgerNextEntryIdReqBKPOperation.createLedgerNextEntryIdReqBKPOperation(operationDefinition);
-            break;
         case BKPConstants.LedgerReadCloseReq:
             bkpOperation = LedgerReadCloseReqBKPOperation.createLedgerReadCloseReqBKPOperation(operationDefinition);
             break;

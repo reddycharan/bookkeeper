@@ -2,35 +2,32 @@ package org.apache.bookkeeper;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.bookkeeper.client.LedgerHandle;
-
 public class BKExtentLedgerMap {
-    private ConcurrentHashMap<String, LedgerPrivateData> extentToLedgerMap = new ConcurrentHashMap<String, LedgerPrivateData>();
+    private ConcurrentHashMap<BKExtentId, LedgerPrivateData> extentToLedgerMap = new ConcurrentHashMap<BKExtentId, LedgerPrivateData>();
 
-    public LedgerPrivateData getLedgerPrivate(String extentId) {
+    public LedgerPrivateData getLedgerPrivate(BKExtentId extentId) {
         return extentToLedgerMap.get(extentId);
     }
 
-    public boolean extentExists(String extentID) {
-        return extentToLedgerMap.containsKey(extentID);
+    public boolean extentMapExists(BKExtentId extentId) {
+        return extentToLedgerMap.containsKey(extentId);
     }
 
-    public void deleteLedgerPrivate(String extentId) {
+    public void deleteLedgerPrivate(BKExtentId extentId) {
         extentToLedgerMap.remove(extentId);
     }
 
-    public void createLedgerMap(String extentId, LedgerHandle lh) {
+    public LedgerPrivateData createLedgerMap(BKExtentId extentId) {
 
         LedgerPrivateData lpd = new LedgerPrivateData();
-
-        lpd.setWriteLedgerHandle(lh);
         // Just opened, no trailer.
         lpd.setTrailerId(BKPConstants.NO_ENTRY);
-        extentToLedgerMap.put(extentId, lpd);
+        extentToLedgerMap.put(extentId.copy(), lpd);
+        return lpd;
     }
 
-    public String[] getAllExtentIds() {
-        return extentToLedgerMap.keySet().toArray(new String[extentToLedgerMap.keySet().size()]);
+    public BKExtentId[] getAllExtentIds() {
+        return extentToLedgerMap.keySet().toArray(new BKExtentId[extentToLedgerMap.keySet().size()]);
     }
 
     public void deleteAllLedgerHandles() {

@@ -60,10 +60,8 @@ public class BKProxyMain implements Runnable {
                 System.out.println("SFStore BK-Proxy: Waiting for connection... ");
                 sock = serverChannel.accept();
 
-                if (threadNum.get() == BKPConstants.WORKER_THREAD_LIMIT) { // max
-                                                                           // connections
-                    System.out
-                            .println("Bailing out!! Maximum Connections Reached: " + BKPConstants.WORKER_THREAD_LIMIT);
+                if (threadNum.get() == BKPConstants.WORKER_THREAD_LIMIT) { // max connections
+                    System.out.println("Bailing out!! Maximum Connections Reached: " + BKPConstants.WORKER_THREAD_LIMIT);
                     break;
                 }
 

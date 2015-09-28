@@ -10,7 +10,7 @@ public interface BKPConstants {
     public static final byte LedgerOpenReadReq = 6;
     public static final byte LedgerWriteEntryReq = 7;
     public static final byte LedgerReadEntryReq = 8;
-    public static final byte LedgerNextEntryIdReq = 9;
+    public static final byte ReservedForFutureReq = 9;
     public static final byte LedgerReadCloseReq = 10;
     public static final byte LedgerListGetReq = 11;
     public static final byte LedgerDeleteAllReq = 12;
@@ -24,7 +24,7 @@ public interface BKPConstants {
     public static final byte LedgerOpenReadResp = 106;
     public static final byte LedgerWriteEntryResp = 107;
     public static final byte LedgerReadEntryResp = 108;
-    public static final byte LedgerNextEntryIdResp = 109;
+    public static final byte ReservedForFutureResp = 109;
     public static final byte LedgerReadCloseResp = 110;
     public static final byte LedgerListGetResp = 111;
     public static final byte LedgerDeleteAllResp = 112;
