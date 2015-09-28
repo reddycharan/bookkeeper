@@ -289,6 +289,18 @@ class BKProxyWorker implements Runnable {
                     wSize = ewreq.getInt();
                     if (wSize > cByteBuf.capacity()) {
                         LOG.error("Write message size:{} bigger than allowed:{}", wSize, cByteBuf.capacity());
+                        // #W-2763423 it is required to read the oversized
+                        // fragment and empty out the clientsocketchannel,
+                        // otherwise it would corrupt the clientsocketchannel
+                        bytesRead = 0;
+                        cByteBuf.clear();
+                        while (bytesRead < wSize) {
+                            bytesRead += clientChannel.read(cByteBuf);
+                            if (!cByteBuf.hasRemaining()) {
+                                cByteBuf.clear();
+                            }
+                        }
+                        cByteBuf.clear();
                         // TODO: Throw Exception.
                         resp.put(BKPConstants.SF_ErrorBadRequest);
                         resp.flip();

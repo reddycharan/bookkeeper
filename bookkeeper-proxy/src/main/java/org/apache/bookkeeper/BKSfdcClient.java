@@ -146,7 +146,7 @@ public class BKSfdcClient {
         } catch (InterruptedException | BKException e) {
             LOG.error(e.toString());
             e.printStackTrace();
-            return BKPConstants.SF_ErrorNotFound;
+            return BKPConstants.SF_InternalError;
         }
         return BKPConstants.SF_OK;
     }
@@ -170,7 +170,7 @@ public class BKSfdcClient {
         } catch (InterruptedException | BKException e) {
             LOG.error(e.toString());
             e.printStackTrace();
-            return BKPConstants.SF_ErrorNotFound;
+            return BKPConstants.SF_InternalError;
         }
         return BKPConstants.SF_OK;
     }
@@ -197,12 +197,15 @@ public class BKSfdcClient {
         try {
             exists = elm.extentExists(extentId);
             if (exists == false) {
-                return BKPConstants.SF_InternalError;
+                return BKPConstants.SF_ErrorNotFound;
             }
 
             LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
             lh = lpd.getWriteLedgerHandle();
+            if (lh == null) {
+                return BKPConstants.SF_InternalError;
+            }
 
             // TODO: verify checksum
 

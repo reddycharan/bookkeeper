@@ -18,7 +18,7 @@ public class BKPClientThread implements Runnable {
     private AtomicReference<BKPOperation> nextOperationRef;
     private SocketChannel clientSocketChannel;
     private int portNo;
-    public static final int TIMEOUTDURATIONINSECS = 4;
+    public static int timeoutDurationInSecs = 4;
 
     public BKPClientThread(String threadId, CyclicBarrier cycBarrier, int portNo) throws IOException {
         this.threadId = threadId;
@@ -59,7 +59,7 @@ public class BKPClientThread implements Runnable {
         while ((!currentTestScenarioState.isScenarioDone()) && (!currentTestScenarioState.isScenarioFailed())
                 && (!cycBarrier.isBroken())) {
             try {
-                cycBarrier.await(TIMEOUTDURATIONINSECS, TimeUnit.SECONDS);
+                cycBarrier.await(timeoutDurationInSecs, TimeUnit.SECONDS);
                 BKPOperation nextoperation = getNextOperation();
                 if (nextoperation != null) {
                     nextoperation.perform(clientSocketChannel);
