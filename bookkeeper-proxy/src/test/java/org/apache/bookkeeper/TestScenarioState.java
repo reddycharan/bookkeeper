@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
@@ -23,7 +24,7 @@ public class TestScenarioState {
     public static final int MAXNUMOFFRAGMENTS = 20;
 
     private HashMap<String, BKProxyMain> bkProxiesMap;
-    private HashMap<String, UUID> extentIdMap;
+    private HashMap<String, Long> extentIdMap;
     private ConcurrentHashMap<ByteArrayWrapper, AtomicReferenceArray<byte[]>> confirmedFragmentsOfExtents;
     private ConcurrentHashMap<ByteArrayWrapper, AtomicReferenceArray<byte[]>> inFlightFragmentsOfExtents;
     private AtomicBoolean scenarioDone;
@@ -35,9 +36,10 @@ public class TestScenarioState {
     private HashMap<String, BKPClientThread> thisTestScenarioThreads;
     private TestScenarioCyclicBarrier cycBarrier;
     private CountDownLatch currentTestScenarioThreadCountDownLatch;
+    private Random rand;
 
     private TestScenarioState() {
-        this.extentIdMap = new HashMap<String, UUID>();
+        this.extentIdMap = new HashMap<String, Long>();
         this.confirmedFragmentsOfExtents = new ConcurrentHashMap<ByteArrayWrapper, AtomicReferenceArray<byte[]>>();
         this.inFlightFragmentsOfExtents = new ConcurrentHashMap<ByteArrayWrapper, AtomicReferenceArray<byte[]>>();
         scenarioDone = new AtomicBoolean(false);
@@ -46,6 +48,7 @@ public class TestScenarioState {
         thisTestScenarioThreads = new HashMap<String, BKPClientThread>();
         currentTimeSlot = new AtomicInteger(-1);
         failedOperations = new Vector<BKPOperation>();
+        rand = new Random();
     }
 
     public void addAndStartBKP(String bkProxyName, int bkProxyPort) throws InterruptedException {
@@ -149,10 +152,10 @@ public class TestScenarioState {
     }
 
     public void newExtentCreated(byte[] extentId) {
-        confirmedFragmentsOfExtents.put(new ByteArrayWrapper(extentId), new AtomicReferenceArray<byte[]>(
-                MAXNUMOFFRAGMENTS));
-        inFlightFragmentsOfExtents.put(new ByteArrayWrapper(extentId), new AtomicReferenceArray<byte[]>(
-                MAXNUMOFFRAGMENTS));
+        confirmedFragmentsOfExtents.put(new ByteArrayWrapper(extentId),
+                new AtomicReferenceArray<byte[]>(MAXNUMOFFRAGMENTS));
+        inFlightFragmentsOfExtents.put(new ByteArrayWrapper(extentId),
+                new AtomicReferenceArray<byte[]>(MAXNUMOFFRAGMENTS));
     }
 
     public void newFragmentAdded(byte[] extentId, int fragmentId, byte[] fragment) {
@@ -220,30 +223,30 @@ public class TestScenarioState {
         return failedOperations;
     }
 
-    public UUID getExtentUUID(String extentId) {
-        UUID extentUUID;
+    public Long getExtentLong(String extentId) {
+        Long extentLong;
         if (extentIdMap.containsKey(extentId)) {
-            extentUUID = extentIdMap.get(extentId);
+            extentLong = extentIdMap.get(extentId);
         } else {
-            extentUUID = UUID.randomUUID();
-            extentIdMap.put(extentId, extentUUID);
+            extentLong = Math.abs(rand.nextLong());
+            extentIdMap.put(extentId, extentLong);
         }
-        return extentUUID;
+        return extentLong;
     }
 
-    public byte[] getExtentUUIDBytes(String extentId) {
-        UUID extentUUID = getExtentUUID(extentId);
+    public byte[] getExtentIDBytes(String extentId) {
+        Long extentLong = getExtentLong(extentId);
         byte[] bytes = new byte[16];
         ByteBuffer b = ByteBuffer.wrap(bytes);
-        b.putLong(extentUUID.getMostSignificantBits());
-        b.putLong(extentUUID.getLeastSignificantBits());
+        b.putLong(0);
+        b.putLong(extentLong);
         return b.array();
     }
 
-    private static final class ByteArrayWrapper {
+    static final class ByteArrayWrapper {
         private final byte[] data;
 
-        private ByteArrayWrapper(byte[] data) {
+        ByteArrayWrapper(byte[] data) {
             if (data == null) {
                 throw new NullPointerException();
             }

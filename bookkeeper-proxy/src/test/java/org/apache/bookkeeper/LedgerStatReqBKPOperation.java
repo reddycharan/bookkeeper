@@ -27,7 +27,7 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
 
         int timeSlot = Integer.valueOf(operationParameters[0]);
         String threadId = operationParameters[1];
-        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentUUIDBytes(operationParameters[3]);
+        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(operationParameters[3]);
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
         long expectedSize = Long.valueOf(operationParameters[5]);

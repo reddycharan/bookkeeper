@@ -40,7 +40,7 @@ public class LedgerReadEntryReqBKPOperation extends BKPOperationExtension {
 
         int timeSlot = Integer.valueOf(operationParameters[0]);
         String threadId = operationParameters[1];
-        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentUUIDBytes(operationParameters[3]);
+        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(operationParameters[3]);
         int fragmentID = Integer.valueOf(operationParameters[4]);
         int size = Integer.valueOf(operationParameters[5]);
         byte expectedReturnStatus = Byte.valueOf(operationParameters[6]);

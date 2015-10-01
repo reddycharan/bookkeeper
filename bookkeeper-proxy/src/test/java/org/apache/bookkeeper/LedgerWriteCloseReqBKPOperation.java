@@ -21,7 +21,7 @@ public class LedgerWriteCloseReqBKPOperation extends BKPOperationExtension {
 
         int timeSlot = Integer.valueOf(operationParameters[0]);
         String threadId = operationParameters[1];
-        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentUUIDBytes(operationParameters[3]);
+        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(operationParameters[3]);
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
         LedgerWriteCloseReqBKPOperation lwcOperation = new LedgerWriteCloseReqBKPOperation(timeSlot, threadId,
                 requestType, extentId, BKPConstants.LedgerWriteCloseResp, expectedReturnStatus);

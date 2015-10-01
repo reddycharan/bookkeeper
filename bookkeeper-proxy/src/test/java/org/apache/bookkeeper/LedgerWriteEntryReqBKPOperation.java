@@ -44,7 +44,7 @@ public class LedgerWriteEntryReqBKPOperation extends BKPOperationExtension {
         boolean newRequest = Boolean.valueOf(operationParameters[3]);
         boolean expectingResponse = Boolean.valueOf(operationParameters[4]);
 
-        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentUUIDBytes(operationParameters[5]);
+        byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(operationParameters[5]);
         int fragmentID = Integer.valueOf(operationParameters[6]);
         int size = Integer.valueOf(operationParameters[7]);
         byte expectedReturnStatus = Byte.valueOf(operationParameters[8]);
