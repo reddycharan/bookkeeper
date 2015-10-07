@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+
 public class TestScenarioState {
 
     private static TestScenarioState currentTestScenario;
@@ -37,6 +39,7 @@ public class TestScenarioState {
     private TestScenarioCyclicBarrier cycBarrier;
     private CountDownLatch currentTestScenarioThreadCountDownLatch;
     private Random rand;
+    private BookKeeperProxyConfiguraiton commonBKPConfig;
 
     private TestScenarioState() {
         this.extentIdMap = new HashMap<String, Long>();
@@ -49,10 +52,13 @@ public class TestScenarioState {
         currentTimeSlot = new AtomicInteger(-1);
         failedOperations = new Vector<BKPOperation>();
         rand = new Random();
+        commonBKPConfig = new BookKeeperProxyConfiguraiton();
     }
 
     public void addAndStartBKP(String bkProxyName, int bkProxyPort) throws InterruptedException {
-        BKProxyMain bkProxy = new BKProxyMain(bkProxyPort);
+        BookKeeperProxyConfiguraiton thisBKPConfig = new BookKeeperProxyConfiguraiton(commonBKPConfig);
+        thisBKPConfig.setBKProxyPort(bkProxyPort);
+        BKProxyMain bkProxy = new BKProxyMain(thisBKPConfig);
         Thread bkProxyThread = new Thread(bkProxy);
         bkProxyThread.start();
         Thread.sleep(2000);
@@ -93,7 +99,7 @@ public class TestScenarioState {
     }
 
     public void addBKPClientThread(String threadId, String bkpId) throws IOException {
-        int bkpPort = bkProxiesMap.get(bkpId).getBkProxyPort();
+        int bkpPort = bkProxiesMap.get(bkpId).getBookKeeperProxyConfiguraiton().getBKProxyPort();
         BKPClientThread bkpThread = new BKPClientThread(threadId, cycBarrier, bkpPort);
         thisTestScenarioThreads.put(threadId, bkpThread);
     }
@@ -221,6 +227,10 @@ public class TestScenarioState {
 
     public Vector<BKPOperation> getFailedOperations() {
         return failedOperations;
+    }
+
+    public BookKeeperProxyConfiguraiton getCommonBKPConfig() {
+        return commonBKPConfig;
     }
 
     public Long getExtentLong(String extentId) {

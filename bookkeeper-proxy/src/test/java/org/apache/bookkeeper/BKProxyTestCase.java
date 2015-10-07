@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.After;
 import org.junit.Assert;
@@ -31,7 +32,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public void testcaseSetup() throws InterruptedException {
         BKPClientThread.timeoutDurationInSecs = 4;
         TestScenarioState.instantiateCurrentTestScenarioState();
-        BKProxyMain.bkserver = zkUtil.getZooKeeperConnectString();
+        TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
+        currentScenario.getCommonBKPConfig().setZkServers(zkUtil.getZooKeeperConnectString());
     }
 
     @After
@@ -64,7 +66,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
      * In this testcase Ledger is created, opened and closed for write and read.
      * Then LedgerDeleteAll is called. It is called twice to make sure it is ok
      * to call even though it is already deleted all.
-     * 
+     *
      * @throws IOException
      * @throws InterruptedException
      */
@@ -87,7 +89,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     /**
      * In this testcase LedgerList is called at several places - before and
      * after Ledger Write and Read, Open and close.
-     * 
+     *
      * @throws IOException
      * @throws InterruptedException
      */
@@ -204,6 +206,9 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
      */
     @Test
     public void tryWritingOversizedFragment() throws IOException, InterruptedException {
+        TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
+        BookKeeperProxyConfiguraiton commonBKPConfig = currentScenario.getCommonBKPConfig();
+
         //Increasing TimeoutDuration because it might take longer time to create and send fragment of size BKPConstants.MAX_FRAG_SIZE
         BKPClientThread.timeoutDurationInSecs = 8;
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
@@ -213,13 +218,13 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   THREADDETAILS + "-Thread3-BKP1\n"
                                     +   NUMOFSLOTS + "-11\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-"+(BKPConstants.MAX_FRAG_SIZE+100)+"-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-"+(commonBKPConfig.getMaxFragSize()+100)+"-"+BKPConstants.SF_ErrorBadRequest+"\n"
                                     +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-100-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-"+(BKPConstants.MAX_FRAG_SIZE)+"-"+BKPConstants.SF_OK+"-100\n"
+                                    +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-"+(commonBKPConfig.getMaxFragSize())+"-"+BKPConstants.SF_OK+"-100\n"
                                     +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-9-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";

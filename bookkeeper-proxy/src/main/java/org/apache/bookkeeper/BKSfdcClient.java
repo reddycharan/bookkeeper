@@ -12,23 +12,37 @@ import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerHandleAdv;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BKSfdcClient {
+    private final BookKeeperProxyConfiguraiton bkpConfig;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
     LedgerHandle lh = null;
     LedgerEntry ledgerEntry = null;
     Object ledgerObj = null;
-    ByteBuffer cByteBuffer = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
+    ByteBuffer cByteBuffer;
     private final static Logger LOG = LoggerFactory.getLogger(BKSfdcClient.class);
+    private int ensembleSize;
+    private int writeQuorumSize;
+    private int ackQuorumSize;
+    private String password;
+    private DigestType digestType;
 
-    public BKSfdcClient(BookKeeper bk, BKExtentLedgerMap elm) {
+    public BKSfdcClient(BookKeeperProxyConfiguraiton bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
+        this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
+        cByteBuffer = ByteBuffer.allocate(bkpConfig.getMaxFragSize());
+        this.ensembleSize = bkpConfig.getEnsembleSize();
+        this.writeQuorumSize = bkpConfig.getWriteQuorumSize();
+        this.ackQuorumSize = bkpConfig.getAckQuorumSize();
+        this.password = bkpConfig.getPassword();
+        this.digestType = bkpConfig.getDigestType();
     }
 
     public byte ledgerCreate(BKExtentId extentId) {
@@ -36,7 +50,8 @@ public class BKSfdcClient {
             if (elm.extentMapExists(extentId))
                 return BKPConstants.SF_ErrorExist;
 
-            lh = bk.createLedgerAdv(extentId.asLong(), 3, 3, 2, DigestType.MAC, "foo".getBytes());
+            lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize, digestType,
+                    password.getBytes());
             elm.createLedgerMap(extentId).setWriteLedgerHandle(lh);
 
         } catch (BKException e) {
@@ -58,8 +73,8 @@ public class BKSfdcClient {
         LedgerHandle rlh;
 
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        
-        if (lpd == null){
+
+        if (lpd == null) {
             // No local mapping, create it
             lpd = elm.createLedgerMap(extentId);
         }
@@ -70,13 +85,12 @@ public class BKSfdcClient {
             // Nothing to do
             return BKPConstants.SF_OK;
         }
-        
+
         // Let us try to open the ledger for read
         try {
-            rlh = bk.openLedgerNoRecovery(extentId.asLong(), DigestType.MAC, "foo".getBytes());
+            rlh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
         } catch (InterruptedException | BKException e) {
-            if ((e instanceof BKException) &&
-                    ((BKException)e).getCode() == Code.NoSuchLedgerExistsException) {                
+            if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
                 elm.deleteLedgerPrivate(extentId);
                 return BKPConstants.SF_ErrorNotFound;
             }

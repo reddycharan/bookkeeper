@@ -7,10 +7,12 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class BKProxyWorker implements Runnable {
+    private final BookKeeperProxyConfiguraiton bkpConfig;
     SocketChannel clientChannel;
     BKSfdcClient bksc;
     AtomicInteger globalThreadId;
@@ -19,22 +21,26 @@ class BKProxyWorker implements Runnable {
     byte respId = 0;
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
 
-    public BKProxyWorker(AtomicInteger threadId, SocketChannel sSock, BookKeeper bk, BKExtentLedgerMap elm) {
+    public BKProxyWorker(BookKeeperProxyConfiguraiton bkpConfig, AtomicInteger threadId, SocketChannel sSock,
+            BookKeeper bk, BKExtentLedgerMap elm) {
+        this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
         this.globalThreadId = threadId;
         this.myThreadNum = globalThreadId.get();
         try {
             // To facilitate Data Extents,
             // Set both send-buffer and receive-buffer limits of the socket to 64k.
-            this.clientChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF, 65536);
-            this.clientChannel.setOption(java.net.StandardSocketOptions.SO_SNDBUF, 65536);
-            this.clientChannel.setOption(java.net.StandardSocketOptions.TCP_NODELAY, true);
+            this.clientChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
+                    bkpConfig.getClientChannelReceiveBufferSize());
+            this.clientChannel.setOption(java.net.StandardSocketOptions.SO_SNDBUF,
+                    bkpConfig.getClientChannelSendBufferSize());
+            this.clientChannel.setOption(java.net.StandardSocketOptions.TCP_NODELAY, bkpConfig.getTCPNoDelay());
         } catch (IOException e) {
             // TODO Auto-generated catch block
             globalThreadId.decrementAndGet();
             e.printStackTrace();
         }
-        this.bksc = new BKSfdcClient(bk, elm);
+        this.bksc = new BKSfdcClient(bkpConfig, bk, elm);
     }
 
     static String reqToString(byte req) {
@@ -87,7 +93,7 @@ class BKProxyWorker implements Runnable {
         ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
         ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
         ByteBuffer erreq = ByteBuffer.allocate(BKPConstants.READ_REQ_SIZE);
-        ByteBuffer cByteBuf = ByteBuffer.allocate(BKPConstants.MAX_FRAG_SIZE);
+        ByteBuffer cByteBuf = ByteBuffer.allocate(bkpConfig.getMaxFragSize());
 
         req.order(ByteOrder.nativeOrder());
         resp.order(ByteOrder.nativeOrder());
@@ -145,7 +151,7 @@ class BKProxyWorker implements Runnable {
 
                     // Count number of elements in the list.
                     int listCount = 0;
-                    for (@SuppressWarnings("unused") Long lId: iterable) {
+                    for (@SuppressWarnings("unused") Long lId : iterable) {
                         listCount++;
                     }
 
@@ -167,13 +173,13 @@ class BKProxyWorker implements Runnable {
                     // more extents/ledgers got added or deleted in between and receiver
                     // is expected to read listCount*BKPConstants.EXTENTID_SIZE bytes.
                     // Hence we are adopting the following logic:
-                    //    - If extents were added after taking the listCount, we send at the most
-                    //      listCunt number of extents.
-                    //    - If extents were deleted after taking the listCount, we send extent#0s.
+                    // - If extents were added after taking the listCount, we send at the most
+                    // listCunt number of extents.
+                    // - If extents were deleted after taking the listCount, we send extent#0s.
 
                     ByteBuffer bExtentId = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
                     iterable = bksc.ledgerList();
-                    for (Long pId: iterable) {
+                    for (Long pId : iterable) {
                         bExtentId.clear();
                         bExtentId.putLong(0L);
                         bExtentId.putLong(pId.longValue());
@@ -280,7 +286,7 @@ class BKProxyWorker implements Runnable {
                     bytesRead = 0;
                     while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
                         bytesRead += clientChannel.read(ewreq);
-                    };
+                    }
                     ewreq.flip();
 
                     // Put the Response out as first step.
