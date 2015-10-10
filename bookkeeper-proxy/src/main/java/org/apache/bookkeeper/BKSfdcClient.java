@@ -68,7 +68,60 @@ public class BKSfdcClient {
         return BKPConstants.SF_OK;
     }
 
-    public byte ledgerOpenRead(BKExtentId extentId) {
+    /*
+     * Opens an inactive ledger. i.e no more writes are going in.
+     * If this mode is attempted on an active ledger, it will stop
+     * accepting any more writes after this operation.
+     */
+    public synchronized byte ledgerRecoveryOpenRead(BKExtentId extentId) {
+
+        LedgerHandle lh;
+
+        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+
+        if (lpd == null) {
+            // No local mapping, create it
+            lpd = elm.createLedgerMap(extentId);
+        } else {
+            lh = lpd.getRecoveryReadLedgerHandle();
+            if (lh != null) {
+                // The ledger is already opened for read.
+                // Nothing to do
+                return BKPConstants.SF_OK;
+            }
+
+            // Opening for recovery.
+            // The ledger must have closed or this is a crash recovery.
+            // In either case we should not have write ledger handle.
+            if (lpd.getWriteLedgerHandle() != null) {
+                LOG.error("Opening ExtentId: {} in recovery mode while write open is active.",
+                           extentId.asHexString());
+                return BKPConstants.SF_ErrorBadRequest;
+            }
+        }
+
+        // Let us try to open the ledger for read
+        try {
+            lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
+        } catch (InterruptedException | BKException e) {
+            if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
+                elm.deleteLedgerPrivate(extentId);
+                return BKPConstants.SF_ErrorNotFound;
+            }
+            LOG.error(e.toString());
+            return BKPConstants.SF_InternalError;
+        }
+
+        lpd.setRecoveryReadLedgerHandle(lh);
+        return BKPConstants.SF_OK;
+    }
+
+    /*
+     * Opens ledger while it is still actively adding(writing) entries.
+     * In this mode, ledger is changing hence one may not get the latest and
+     * greatest state and entries of the ledger.
+     */
+    public synchronized byte ledgerNonRecoveryOpenRead(BKExtentId extentId) {
 
         LedgerHandle rlh;
 
@@ -77,13 +130,13 @@ public class BKSfdcClient {
         if (lpd == null) {
             // No local mapping, create it
             lpd = elm.createLedgerMap(extentId);
-        }
-
-        rlh = lpd.getReadLedgerHandle();
-        if (rlh != null) {
-            // The ledger is already opened for read.
-            // Nothing to do
-            return BKPConstants.SF_OK;
+        } else {
+            rlh = lpd.getNonRecoveryReadLedgerHandle();
+            if (rlh != null) {
+                // The ledger is already opened for read.
+                // Nothing to do
+                return BKPConstants.SF_OK;
+            }
         }
 
         // Let us try to open the ledger for read
@@ -98,7 +151,7 @@ public class BKSfdcClient {
             return BKPConstants.SF_InternalError;
         }
 
-        lpd.setReadLedgerHandle(rlh);
+        lpd.setNonRecoveryReadLedgerHandle(rlh);
         return BKPConstants.SF_OK;
     }
 
@@ -111,21 +164,16 @@ public class BKSfdcClient {
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
         // Check if we have write ledger handle open.
-        LedgerHandle lh = lpd.getWriteLedgerHandle();
-
-        if (lh == null) {
-            // Check if we have read leader handle
-            lh = lpd.getReadLedgerHandle();
-        }
+        LedgerHandle lh = lpd.getAnyLedgerHandle();
 
         if (lh == null) {
             byte ret;
             // Don't have ledger opened, open it for read.
-            ret = ledgerOpenRead(extentId);
+            ret = ledgerNonRecoveryOpenRead(extentId);
             if (ret != BKPConstants.SF_OK) {
                 return 0;
             }
-            lh = lpd.getReadLedgerHandle();
+            lh = lpd.getAnyLedgerHandle();
         }
 
         // We have a ledger handle.
@@ -172,24 +220,45 @@ public class BKSfdcClient {
 
     public byte ledgerReadClose(BKExtentId extentId) {
 
+        LedgerHandle nrrlh, rrlh;
         if (!elm.extentMapExists(extentId)) {
             // No Extent just return OK
             return BKPConstants.SF_OK;
         }
+        // Close all read ledger handles.
 
-        lh = elm.getLedgerPrivate(extentId).getReadLedgerHandle();
+        nrrlh = elm.getLedgerPrivate(extentId).getNonRecoveryReadLedgerHandle();
+        rrlh = elm.getLedgerPrivate(extentId).getRecoveryReadLedgerHandle();
 
-        if (lh == null)
+        // If we have no ledger handle opened for read, return success.
+        if ((nrrlh == null) && (rrlh == null))
             return BKPConstants.SF_OK;
 
-        try {
-            lh.close();
-            // Reset the Ledger Handle
-            elm.getLedgerPrivate(extentId).setReadLedgerHandle(null);
-        } catch (InterruptedException | BKException e) {
-            LOG.error(e.toString());
-            e.printStackTrace();
-            return BKPConstants.SF_InternalError;
+        // Take care of non-recovery ledger handle.
+        if (nrrlh != null) {
+            try {
+                nrrlh.close();
+                // Reset the Ledger Handle
+                elm.getLedgerPrivate(extentId).setNonRecoveryReadLedgerHandle(null);
+            } catch (InterruptedException | BKException e) {
+                LOG.error(e.toString());
+                e.printStackTrace();
+                return BKPConstants.SF_InternalError;
+            }
+        }
+
+        // Take care of recovery ledger handle.
+        if (rrlh != null)
+        {
+            try {
+                rrlh.close();
+                // Reset the Ledger Handle
+                elm.getLedgerPrivate(extentId).setRecoveryReadLedgerHandle(null);
+            } catch (InterruptedException | BKException e) {
+                LOG.error(e.toString());
+                e.printStackTrace();
+                return BKPConstants.SF_InternalError;
+            }
         }
         return BKPConstants.SF_OK;
     }
@@ -278,22 +347,21 @@ public class BKSfdcClient {
 
         try {
             if (!elm.extentMapExists(extentId)) {
-                if (ledgerOpenRead(extentId) != BKPConstants.SF_OK)
+                if (ledgerRecoveryOpenRead(extentId) != BKPConstants.SF_OK)
                     return null;
             }
 
             LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
             // If we are the writer, we will have write ledger handle
             // and it will have the most recent information.
-            // So let us try to get write ledger handle first.
-            lh = lpd.getWriteLedgerHandle();
+            lh = lpd.getAnyLedgerHandle();
             if (lh == null) {
-                lh = lpd.getReadLedgerHandle();
-                if (lh == null) {
-                    // Let us open the ledger for read
-                    ledgerOpenRead(extentId);
-                    lh = lpd.getReadLedgerHandle();
-                }
+                // Let us open the ledger for read in recovery mode.
+                // All reads without prior opens will be performed
+                // through opening the ledger in recovery mode.
+                if (ledgerRecoveryOpenRead(extentId)  != BKPConstants.SF_OK)
+                    return null;
+                lh = lpd.getRecoveryReadLedgerHandle();
             }
 
             Enumeration<LedgerEntry> entries = null;

@@ -217,8 +217,19 @@ class BKProxyWorker implements Runnable {
                 }
 
                 case (BKPConstants.LedgerOpenReadReq): {
-                    byte ret = bksc.ledgerOpenRead(extentId);
+                    byte ret = bksc.ledgerNonRecoveryOpenRead(extentId);
                     resp.put(BKPConstants.LedgerOpenReadResp);
+                    resp.put(ret);
+                    resp.flip();
+                    while (resp.hasRemaining()) {
+                        clientChannel.write(resp);
+                    }
+                    break;
+                }
+
+                case (BKPConstants.LedgerOpenRecoverReq): {
+                    byte ret = bksc.ledgerRecoveryOpenRead(extentId);
+                    resp.put(BKPConstants.LedgerOpenRecoverResp);
                     resp.put(ret);
                     resp.flip();
                     while (resp.hasRemaining()) {

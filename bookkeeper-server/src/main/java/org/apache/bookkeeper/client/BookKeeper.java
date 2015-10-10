@@ -921,7 +921,11 @@ public class BookKeeper {
         // Wait
         counter.block(0);
         if (counter.getrc() != BKException.Code.OK) {
-            LOG.error("Error deleting ledger " + lId + " : " + counter.getrc());
+            if (counter.getrc() == BKException.Code.NoSuchLedgerExistsException) {
+                LOG.warn("Error deleting ledger " + lId + " : " + counter.getrc());
+            } else {
+                LOG.error("Error deleting ledger " + lId + " : " + counter.getrc());
+            }
             throw BKException.create(counter.getrc());
         }
     }
