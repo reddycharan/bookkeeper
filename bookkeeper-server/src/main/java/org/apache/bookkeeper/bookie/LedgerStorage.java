@@ -115,4 +115,8 @@ interface LedgerStorage {
      * Get the JMX management bean for this LedgerStorage
      */
     BKMBeanInfo getJMXBean();
+
+    void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException;
+
+    ByteBuffer getLastAddConfirmed(long ledgerId);
 }

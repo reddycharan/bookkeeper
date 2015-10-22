@@ -83,6 +83,9 @@ public class BookKeeper {
     private OpStatsLogger deleteOpLogger;
     private OpStatsLogger readOpLogger;
     private OpStatsLogger addOpLogger;
+    private OpStatsLogger writeLacOpLogger;
+    private OpStatsLogger readLacOpLogger;
+
 
     // whether the socket factory is one we created, or is owned by whoever
     // instantiated us
@@ -106,6 +109,7 @@ public class BookKeeper {
     final EnsemblePlacementPolicy placementPolicy;
 
     final ClientConfiguration conf;
+    final int explicitLacInterval;
 
     // Close State
     boolean closed = false;
@@ -239,7 +243,7 @@ public class BookKeeper {
     }
 
     /**
-     * Contructor for use with the builder. Other constructors also use it.
+     * Constructor for use with the builder. Other constructors also use it.
      */
     private BookKeeper(ClientConfiguration conf,
                        ZooKeeper zkc,
@@ -312,6 +316,12 @@ public class BookKeeper {
         this.ledgerManagerFactory = LedgerManagerFactory.newLedgerManagerFactory(conf, this.zk);
         this.ledgerManager = new CleanupLedgerManager(ledgerManagerFactory.newLedgerManager());
         this.ledgerIdGenerator = ledgerManagerFactory.newLedgerIdGenerator();
+        this.explicitLacInterval = conf.getExplictLacInterval();
+        LOG.debug("Explicit LAC Interval : {}", this.explicitLacInterval);
+    }
+
+    public int getExplicitLacInterval() {
+        return explicitLacInterval;
     }
 
     private EnsemblePlacementPolicy initializeEnsemblePlacementPolicy(ClientConfiguration conf)
@@ -786,8 +796,11 @@ public class BookKeeper {
      * to add entries to the ledger. Any attempt to add entries will throw an
      * exception.
      *
-     * Reads from the returned ledger will only be able to read entries up until
+     * Reads from the returned ledger will be able to read entries up until
      * the lastConfirmedEntry at the point in time at which the ledger was opened.
+     * If an attempt is made to read beyond the ledger handle's LAC, an attempt is made
+     * to get the latest LAC from bookies or metadata, and if the entry_id of the read request
+     * is less than or equal to the new LAC, read will be allowed to proceed.
      *
      * @param lId
      *          ledger identifier
@@ -1109,6 +1122,8 @@ public class BookKeeper {
         openOpLogger = stats.getOpStatsLogger(BookKeeperClientStats.OPEN_OP);
         readOpLogger = stats.getOpStatsLogger(BookKeeperClientStats.READ_OP);
         addOpLogger = stats.getOpStatsLogger(BookKeeperClientStats.ADD_OP);
+        writeLacOpLogger = stats.getOpStatsLogger(BookKeeperClientStats.WRITE_LAC_OP);
+        readLacOpLogger = stats.getOpStatsLogger(BookKeeperClientStats.READ_LAC_OP);
     }
 
     OpStatsLogger getCreateOpLogger() { return createOpLogger; }
@@ -1116,4 +1131,6 @@ public class BookKeeper {
     OpStatsLogger getDeleteOpLogger() { return deleteOpLogger; }
     OpStatsLogger getReadOpLogger() { return readOpLogger; }
     OpStatsLogger getAddOpLogger() { return addOpLogger; }
+    OpStatsLogger getWriteLacOpLogger() { return writeLacOpLogger; }
+    OpStatsLogger getReadLacOpLogger() { return readLacOpLogger; }
 }

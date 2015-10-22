@@ -52,7 +52,6 @@ public class BKSfdcClient {
             lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize, digestType,
                     password.getBytes());
             elm.createLedgerMap(extentId).setWriteLedgerHandle(lh);
-
         } catch (BKException e) {
             LOG.error(e.toString());
             if (e.getCode() == Code.LedgerExistException) {
@@ -92,7 +91,8 @@ public class BKSfdcClient {
             // The ledger must have closed or this is a crash recovery.
             // In either case we should not have write ledger handle.
             if (lpd.getWriteLedgerHandle() != null) {
-                LOG.info("Opening ExtentId: {} in recovery mode while write open is active.", extentId.asHexString());
+                LOG.info("Opening ExtentId: {} in recovery mode while write open is active.",
+                        extentId.asHexString());
                 return BKPConstants.SF_ErrorBadRequest;
             }
         }
@@ -130,7 +130,6 @@ public class BKSfdcClient {
         LedgerHandle rlh;
 
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-
         if (lpd == null) {
             // No local mapping, create it
             lpd = elm.createLedgerMap(extentId);

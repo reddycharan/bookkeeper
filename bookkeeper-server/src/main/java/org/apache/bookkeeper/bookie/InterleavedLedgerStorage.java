@@ -214,6 +214,14 @@ class InterleavedLedgerStorage implements LedgerStorage, EntryLogListener {
         return ledgerCache.isFenced(ledgerId);
     }
 
+    public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+        ledgerCache.updateLastAddConfirmed(ledgerId, lac);
+    }
+
+    public ByteBuffer getLastAddConfirmed(long ledgerId) {
+        return ledgerCache.getLastAddConfirmed(ledgerId);
+    }
+
     @Override
     public void setMasterKey(long ledgerId, byte[] masterKey) throws IOException {
         ledgerCache.setMasterKey(ledgerId, masterKey);

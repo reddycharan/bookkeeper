@@ -62,6 +62,8 @@ class FileInfo {
 
     private FileChannel fc;
     private File lf;
+    private ByteBuffer lastAddConfirmed = null;
+
     byte[] masterKey;
 
     /**
@@ -96,6 +98,16 @@ class FileInfo {
 
     public long getSizeSinceLastwrite() {
         return sizeSinceLastwrite;
+    }
+
+    public ByteBuffer getLastAddConfirmed() {
+        LOG.debug("fileInfo:GetLac: {}", lastAddConfirmed);
+        return lastAddConfirmed;
+    }
+
+    public void setLastAddConfirmed(ByteBuffer lac) {
+        this.lastAddConfirmed = lac;
+        LOG.debug("fileInfo:SetLac: {}", lastAddConfirmed);
     }
 
     synchronized public void readHeader() throws IOException {

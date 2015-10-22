@@ -52,9 +52,10 @@ enum StatusCode {
 enum OperationType {
     READ_ENTRY = 1;
     ADD_ENTRY = 2;
-    // Not supported yet.
-    RANGE_READ_ENTRY = 3;
-    RANGE_ADD_ENTRY = 4;
+    RANGE_READ_ENTRY = 3; // Not supported yet.
+    RANGE_ADD_ENTRY = 4; // Not supported yet.
+    WRITE_LAC = 5;
+    READ_LAC = 6;
 }
 
 /**
@@ -71,6 +72,8 @@ message Request {
     // Requests
     optional ReadRequest readRequest = 100;
     optional AddRequest addRequest = 101;
+    optional WriteLacRequest writeLacRequest = 102;
+    optional ReadLacRequest readLacRequest = 103;
 }
 
 message ReadRequest {
@@ -96,6 +99,17 @@ message AddRequest {
     required bytes body = 4;
 }
 
+message WriteLacRequest {
+    required int64 ledgerId = 1;
+    required int64 lac = 2;
+    required bytes masterKey = 3;
+    required bytes body = 4;
+}
+
+message ReadLacRequest {
+    required int64 ledgerId = 1;
+}
+
 message Response {
 
     required BKPacketHeader header = 1;
@@ -105,6 +119,8 @@ message Response {
     // Response
     optional ReadResponse readResponse = 100;
     optional AddResponse addResponse = 101;
+    optional WriteLacResponse writeLacResponse = 102;
+    optional ReadLacResponse readLacResponse = 103;
 
 }
 
@@ -119,4 +135,16 @@ message AddResponse {
     required StatusCode status = 1;
     required int64 ledgerId = 2;
     required int64 entryId = 3;
+}
+
+message WriteLacResponse {
+    required StatusCode status = 1;
+    required int64 ledgerId = 2;
+}
+
+message ReadLacResponse {
+    required StatusCode status = 1;
+    required int64 ledgerId = 2;
+    optional bytes lacBody = 3; // lac sent by PutLacRequest
+    optional bytes lastEntryBody = 4; // Actual last entry on the disk
 }

@@ -23,6 +23,7 @@ package org.apache.bookkeeper.bookie;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * This class maps a ledger entry number into a location (entrylogid, offset) in
@@ -47,4 +48,6 @@ interface LedgerCache extends Closeable {
     void deleteLedger(long ledgerId) throws IOException;
 
     LedgerCacheBean getJMXBean();
+    void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException;
+    ByteBuffer getLastAddConfirmed(long ledgerId);
 }

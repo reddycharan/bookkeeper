@@ -311,6 +311,15 @@ public class TestSyncThread {
         }
 
         @Override
+        public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) {
+        }
+
+        @Override
+        public ByteBuffer getLastAddConfirmed(long ledgerId) {
+            return null;
+        }
+
+        @Override
         public Checkpoint checkpoint(Checkpoint checkpoint)
                 throws IOException {
             return checkpoint;

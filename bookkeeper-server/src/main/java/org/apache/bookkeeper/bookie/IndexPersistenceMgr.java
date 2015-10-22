@@ -360,6 +360,34 @@ public class IndexPersistenceMgr {
         }
     }
 
+    void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+        FileInfo fi = null;
+        try {
+            fi = getFileInfo(ledgerId, null);
+            fi.setLastAddConfirmed(lac);
+            return;
+        } finally {
+            if (null != fi) {
+                fi.release();
+            }
+        }
+    }
+
+    public ByteBuffer getLastAddConfirmed(long ledgerId) {
+        FileInfo fi = null;
+        try {
+            fi = getFileInfo(ledgerId, null);
+            return fi.getLastAddConfirmed();
+        } catch (IOException e) {
+            LOG.error("Exception during getLastAddConfirmed: {}", e);
+            return null;
+        } finally {
+            if (null != fi) {
+                fi.release();
+            }
+        }
+    }
+
     int getOpenFileLimit() {
         return openFileLimit;
     }

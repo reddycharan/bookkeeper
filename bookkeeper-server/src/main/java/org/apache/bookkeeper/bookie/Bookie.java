@@ -53,6 +53,7 @@ import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNS;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -1144,6 +1145,36 @@ public class Bookie extends BookieCriticalThread {
         }
     }
 
+    public void lastAddConfirmedUpdate(ByteBuffer entry, Object ctx, byte[] masterKey)
+            throws IOException, BookieException {
+        try {
+            long ledgerId = entry.getLong();
+            LedgerDescriptor handle = handles.getHandle(ledgerId, masterKey);
+            entry.rewind();
+            synchronized (handle) {
+                handle.updateLastAddConfirmed(entry);
+            }
+        } catch (NoWritableLedgerDirException e) {
+            transitionToReadOnlyMode();
+            throw new IOException(e);
+        }
+    }
+
+
+    public ByteBuffer getLastAddConfirmed(long ledgerId) {
+        try {
+            ByteBuffer lac;
+            LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
+            synchronized (handle) {
+                lac = handle.getLastAddConfirmed();
+            }
+            return lac;
+        } catch (IOException e) {
+            LOG.error("Exception during getLastAddConfirmed: {}", e);
+            return null;
+        }
+    }
+
     /**
      * Add entry to a ledger.
      * @throws BookieException.LedgerFencedException if the ledger is fenced
@@ -1376,4 +1407,5 @@ public class Bookie extends BookieCriticalThread {
     public int getExitCode() {
         return exitCode;
     }
+
 }

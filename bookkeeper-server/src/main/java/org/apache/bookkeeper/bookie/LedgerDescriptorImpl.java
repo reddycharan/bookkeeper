@@ -69,6 +69,15 @@ public class LedgerDescriptorImpl extends LedgerDescriptor {
     }
 
     @Override
+    void updateLastAddConfirmed(ByteBuffer lac) throws IOException {
+        ledgerStorage.updateLastAddConfirmed(ledgerId, lac);
+    }
+
+    @Override
+    ByteBuffer getLastAddConfirmed() {
+        return ledgerStorage.getLastAddConfirmed(ledgerId);
+    }
+    @Override
     long addEntry(ByteBuffer entry) throws IOException {
         long ledgerId = entry.getLong();
 

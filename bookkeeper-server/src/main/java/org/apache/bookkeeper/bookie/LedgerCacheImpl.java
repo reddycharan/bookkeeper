@@ -22,6 +22,7 @@
 package org.apache.bookkeeper.bookie;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -124,6 +125,14 @@ public class LedgerCacheImpl implements LedgerCache {
     @Override
     public boolean isFenced(long ledgerId) throws IOException {
         return indexPersistenceManager.isFenced(ledgerId);
+    }
+
+    public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+        indexPersistenceManager.updateLastAddConfirmed(ledgerId, lac);
+    }
+
+    public ByteBuffer getLastAddConfirmed(long ledgerId) {
+        return indexPersistenceManager.getLastAddConfirmed(ledgerId);
     }
 
     @Override

@@ -131,6 +131,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
      */
     @Test
     public void basicLedgerDeleteAllTest() throws IOException, InterruptedException {
+
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
                                     +   NUMOFTHREADS + "-1\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
@@ -669,6 +670,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         executeTestcase(testDefinition);
     }
 
+
     /**
      * Trying to read ledger fragments before write is closed
      * @throws IOException
@@ -960,7 +962,78 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
-    
+
+    /*
+     * Create two proxys, BKP1 and BKP2
+     * BKP1 writes writes 4 entries and doesn't close the extent ext1.
+     * BKP2 opens ext1 in readNoRecovery mode, successfully reads first 3 entries, and fails to read 4th entry.
+     *      After waiting 10 secs it can successfully read 4th entry because explicitLAC should kick-in on the BKP1 context
+     *      So BKP2 can read it after wait.
+     */
+    @Test
+    public void ReadTail() throws IOException, InterruptedException {
+
+        TestScenarioState.getCurrentTestScenarioState().getCommonBKPConfig().setExplictLacInterval(2);
+
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP2\n"
+                                    +   NUMOFSLOTS + "-14\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
+                                    +   BKPOPERATION + "-10-Thread2-"+Operation.SleepReq+"-5000\n"
+                                    +   BKPOPERATION + "-11-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-12-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-13-Thread2-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+
+        executeTestcase(testDefinition);
+    }
+
+    /*
+     * Just like TailRead() but continues the tail for few more entries.
+     */
+    @Test
+    public void tailingRead() throws IOException, InterruptedException {
+
+        TestScenarioState.getCurrentTestScenarioState().getCommonBKPConfig().setExplictLacInterval(2);
+
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP2\n"
+                                    +   NUMOFSLOTS + "-18\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
+                                    +   BKPOPERATION + "-10-Thread2-"+Operation.SleepReq+"-5000\n"
+                                    +   BKPOPERATION + "-11-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-12-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-5-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-13-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
+                                    +   BKPOPERATION + "-14-Thread2-"+Operation.SleepReq+"-5000\n"
+                                    +   BKPOPERATION + "-15-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-16-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-17-Thread2-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+
+        executeTestcase(testDefinition);
+    }
     public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         parseTestDefinition(testDefinition);

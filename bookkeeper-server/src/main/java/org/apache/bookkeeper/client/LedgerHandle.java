@@ -29,11 +29,18 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import static java.util.concurrent.TimeUnit.*;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
+import org.apache.bookkeeper.client.AsyncCallback.AddLacCallback;
 import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadLastConfirmedCallback;
@@ -51,6 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.RateLimiter;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Ledger handle contains ledger metadata and is used to access the read and
@@ -65,11 +73,15 @@ public class LedgerHandle {
     final long ledgerId;
     long lastAddPushed;
     volatile long lastAddConfirmed;
+    volatile long explicitLastAddConfirmed;
+    volatile long piggyBackedLastAddConfirmed;
+
     long length;
     final DigestManager macManager;
     final DistributionSchedule distributionSchedule;
 
     final RateLimiter throttler;
+    private ScheduledExecutorService lastAddConfirmedUpdateScheduler = null;
 
     /**
      * Invalid entry id. This value is returned from methods which
@@ -91,11 +103,12 @@ public class LedgerHandle {
         this.metadata = metadata;
         this.pendingAddOps = new ConcurrentLinkedQueue<PendingAddOp>();
 
+
         if (metadata.isClosed()) {
-            lastAddConfirmed = lastAddPushed = metadata.getLastEntryId();
+            lastAddConfirmed = lastAddPushed = piggyBackedLastAddConfirmed = explicitLastAddConfirmed = metadata.getLastEntryId();
             length = metadata.getLength();
         } else {
-            lastAddConfirmed = lastAddPushed = INVALID_ENTRY_ID;
+            lastAddConfirmed = lastAddPushed = piggyBackedLastAddConfirmed = explicitLastAddConfirmed = INVALID_ENTRY_ID;
             length = 0;
         }
 
@@ -120,6 +133,13 @@ public class LedgerHandle {
                                                   return pendingAddOps.size();
                                               }
                                           });
+
+        if (!metadata.isClosed() && !(this instanceof ReadOnlyLedgerHandle) && bk.getExplicitLacInterval() > 0) {
+            String explictLastAddConfirmedExecutorName = String.format("LastAddConfirmedUpdateTimer-%d-%s", ledgerId, "%d");
+            lastAddConfirmedUpdateScheduler = Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder().setNameFormat(explictLastAddConfirmedExecutorName).build());
+            explictLastAddConfirmedUpdate(this);
+            LOG.debug("Created explicit LAC scheduled updater: {}", explictLastAddConfirmedExecutorName);
+        }
     }
 
     /**
@@ -145,6 +165,18 @@ public class LedgerHandle {
      */
     public long getLastAddConfirmed() {
         return lastAddConfirmed;
+    }
+
+    public long getExplicitLastAddConfirmed() {
+        return explicitLastAddConfirmed;
+    }
+
+    public void setExplicitLastAddConfirmed(long explicitLastAddConfirmed) {
+        this.explicitLastAddConfirmed = explicitLastAddConfirmed;
+    }
+
+    public long getPiggyBackedLastAddConfirmed() {
+        return piggyBackedLastAddConfirmed;
     }
 
     /**
@@ -231,6 +263,11 @@ public class LedgerHandle {
         asyncClose(new SyncCloseCallback(), counter);
 
         counter.block(0);
+
+        if(this.lastAddConfirmedUpdateScheduler != null) {
+            this.lastAddConfirmedUpdateScheduler.shutdownNow();
+        }
+
         if (counter.getrc() != BKException.Code.OK) {
             throw BKException.create(counter.getrc());
         }
@@ -447,9 +484,25 @@ public class LedgerHandle {
      */
     public void asyncReadEntries(long firstEntry, long lastEntry,
                                  ReadCallback cb, Object ctx) {
+
         // Little sanity check
-        if (firstEntry < 0 || lastEntry > lastAddConfirmed
-                || firstEntry > lastEntry) {
+        if (firstEntry < 0 || firstEntry > lastEntry) {
+            cb.readComplete(BKException.Code.ReadException, this, null, ctx);
+            return;
+        }
+
+        // Check  if need to send explicit readLastConfirmed
+        if (firstEntry > lastAddConfirmed || lastEntry > lastAddConfirmed) {
+            try {
+                readLac();
+            } catch (BKException | InterruptedException e) {
+                // This is optional and if we can't read LAC that is fine.
+                LOG.info("ReadLac failed exception : {}", e);
+            }
+        }
+
+        // Check if we got LAC update to satisfy this request.
+        if (lastEntry > lastAddConfirmed) {
             cb.readComplete(BKException.Code.ReadException, this, null, ctx);
             return;
         }
@@ -639,6 +692,28 @@ public class LedgerHandle {
         doAsyncAddEntry(op, data, offset, length, cb, ctx);
     }
 
+    /**
+     * Make a LastAddUpdate request.
+     *
+     */
+    void asyncLastAddConfirmedUpdate(final long lastAddConfirmedUpdate) {
+        final LastAddConfirmedCallback cb = LastAddConfirmedCallback.instance;
+        final PendingWriteLacOp op = new PendingWriteLacOp(LedgerHandle.this, cb, null);
+        op.setLac(lastAddConfirmedUpdate);
+        try {
+            LOG.debug("Sending Explicit LAC: {}", lastAddConfirmedUpdate);
+            bk.mainWorkerPool.submit(new SafeRunnable() {
+                @Override
+                public void safeRun() {
+                    ChannelBuffer toSend = macManager.computeDigestAndPackageForSendingLac(lastAddConfirmed);
+                    op.initiate(toSend);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            cb.addLacComplete(bk.getReturnRc(BKException.Code.InterruptedException), LedgerHandle.this, null);
+        }
+    }
+
     void doAsyncAddEntry(final PendingAddOp op, final byte[] data, final int offset, final int length,
                          final AddCallback cb, final Object ctx) {
 
@@ -762,6 +837,17 @@ public class LedgerHandle {
         new ReadLastConfirmedOp(this, innercb).initiate();
     }
 
+    public void asyncReadLac(final ReadLastConfirmedCallback cb, final Object ctx) {
+        PendingReadLacOp.LacCallback innercb = new PendingReadLacOp.LacCallback() {
+
+            @Override
+            public void getLacComplete(int rc, long lac) {
+                cb.readLastConfirmedComplete(rc, lac, ctx);
+            }
+        };
+        new PendingReadLacOp(this, innercb).initiate();
+    }
+
     /**
      * Obtains asynchronously the last confirmed write from a quorum of bookies.
      * It is similar as
@@ -870,6 +956,33 @@ public class LedgerHandle {
         return ctx.getlastConfirmed();
     }
 
+    public void readLac() throws InterruptedException, BKException {
+        synchronized (this) {
+            if (metadata.isClosed()) {
+                lastAddConfirmed = metadata.getLastEntryId();
+                length = metadata.getLength();
+                return;
+            }
+        }
+        LastConfirmedCtx ctx = new LastConfirmedCtx();
+        asyncReadLac(new SyncReadLastConfirmedCallback(), ctx );
+        synchronized(ctx) {
+            while (!ctx.ready()) {
+                ctx.wait();
+            }
+        }
+        if (ctx.getRC() != BKException.Code.OK) {
+            throw BKException.create(ctx.getRC());
+        }
+        // Must be a success, set lastAddConfirmed
+        long receivedLac = ctx.getlastConfirmed();
+        LOG.debug("Current LAC: {} ; Received LAC: {}", lastAddConfirmed, receivedLac);
+        if (receivedLac > lastAddConfirmed) {
+            // Update lastAddConfirmed
+            lastAddConfirmed = receivedLac;
+        }
+    }
+
     /**
      * Obtains synchronously the last confirmed write from a quorum of bookies.
      * It is similar as {@link #readLastConfirmed()}, but it doesn't wait all the responses
@@ -942,11 +1055,37 @@ public class LedgerHandle {
                 LOG.debug("Head of the queue entryId: {} is not lac: {} + 1", pendingAddOp.entryId, lastAddConfirmed);
                 return;
             }
+
             pendingAddOps.remove();
+            piggyBackedLastAddConfirmed = lastAddConfirmed;
             lastAddConfirmed = pendingAddOp.entryId;
+
             pendingAddOp.submitCallback(BKException.Code.OK);
         }
 
+    }
+
+    private void explictLastAddConfirmedUpdate(final LedgerHandle lh) {
+        int explicitLacIntervalInSec = bk.getExplicitLacInterval();
+        final Runnable updateLacTask = new Runnable() {
+            @Override
+            public void run() {
+                if (lh.getExplicitLastAddConfirmed() < lh.getPiggyBackedLastAddConfirmed()) {
+                    LOG.debug("explicitLac:{} piggybackLac:{}", lh.getExplicitLastAddConfirmed(), lh.getPiggyBackedLastAddConfirmed() );
+                    lh.setExplicitLastAddConfirmed(lh.getPiggyBackedLastAddConfirmed());
+                    return;
+                }
+                // explicitLastAddConfirmed >= piggybackedLastAddConfirmed
+                if (lh.getLastAddConfirmed() > lh.getExplicitLastAddConfirmed()) {
+                    // Send Explicit LAC
+                    asyncLastAddConfirmedUpdate(lh.getLastAddConfirmed());
+                    lh.setExplicitLastAddConfirmed(lh.getLastAddConfirmed());
+                    LOG.debug("After sending explict LAC lac: {}  explicitLac:{}", lh.getLastAddConfirmed(), lh.getExplicitLastAddConfirmed());
+
+                }
+            }
+        };
+        this.lastAddConfirmedUpdateScheduler.scheduleAtFixedRate(updateLacTask, explicitLacIntervalInSec, explicitLacIntervalInSec, SECONDS);
     }
 
     ArrayList<BookieSocketAddress> replaceBookieInMetadata(final BookieSocketAddress addr, final int bookieIndex)
@@ -1284,6 +1423,32 @@ public class LedgerHandle {
                 LOG.warn("Close failed: " + BKException.getMessage(rc));
             }
             // noop
+        }
+    }
+
+    static class LastAddConfirmedCallback implements AddLacCallback {
+        static LastAddConfirmedCallback instance = new LastAddConfirmedCallback();
+        /**
+         * Implementation of callback interface for synchronous read method.
+         *
+         * @param rc
+         *          return code
+         * @param leder
+         *          ledger identifier
+         * @param entry
+         *          entry identifier
+         * @param ctx
+         *          control object
+         */
+        @Override
+        public void addLacComplete(int rc, LedgerHandle lh, Object ctx) {
+            if (rc != BKException.Code.OK) {
+                LOG.warn("LastAddConfirmedUpdate failed: " + BKException.getMessage(rc));
+                // Reset the explicitLAC so we start from the beginning.
+                lh.setExplicitLastAddConfirmed(INVALID_ENTRY_ID);
+            } else {
+                LOG.debug("Callback LAC Updated for: {} ", lh.getId());
+            }
         }
     }
 

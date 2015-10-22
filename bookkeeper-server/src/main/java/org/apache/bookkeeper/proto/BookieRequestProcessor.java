@@ -37,6 +37,9 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_REQUEST;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_LAC;
+
 
 public class BookieRequestProcessor implements RequestProcessor {
 
@@ -69,6 +72,8 @@ public class BookieRequestProcessor implements RequestProcessor {
     final OpStatsLogger addEntryStats;
     final OpStatsLogger readRequestStats;
     final OpStatsLogger readEntryStats;
+    final OpStatsLogger writeLacStats;
+    final OpStatsLogger readLacStats;
 
     public BookieRequestProcessor(ServerConfiguration serverCfg, Bookie bookie,
                                   StatsLogger statsLogger) {
@@ -86,6 +91,8 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.addRequestStats = statsLogger.getOpStatsLogger(ADD_ENTRY_REQUEST);
         this.readEntryStats = statsLogger.getOpStatsLogger(READ_ENTRY);
         this.readRequestStats = statsLogger.getOpStatsLogger(READ_ENTRY_REQUEST);
+        this.writeLacStats = statsLogger.getOpStatsLogger(WRITE_LAC);
+        this.readLacStats = statsLogger.getOpStatsLogger(READ_LAC);
     }
 
     @Override
@@ -122,6 +129,12 @@ public class BookieRequestProcessor implements RequestProcessor {
                     break;
                 case READ_ENTRY:
                     processReadRequestV3(r, c);
+                    break;
+                case WRITE_LAC:
+                    processWriteLacRequestV3(r,c);
+                    break;
+                case READ_LAC:
+                    processReadLacRequestV3(r,c);
                     break;
                 default:
                     BookkeeperProtocol.Response.Builder response =
@@ -169,6 +182,24 @@ public class BookieRequestProcessor implements RequestProcessor {
             read.run();
         } else {
             readThreadPool.submit(read);
+        }
+    }
+
+    private void processWriteLacRequestV3(final BookkeeperProtocol.Request r, final Channel c) {
+        WriteLacProcessorV3 writeLac = new WriteLacProcessorV3(r, c, this);
+        if (null == writeThreadPool) {
+            writeLac.run();
+        } else {
+            writeThreadPool.submit(writeLac);
+        }
+    }
+
+    private void processReadLacRequestV3(final BookkeeperProtocol.Request r, final Channel c) {
+        ReadLacProcessorV3 readLac = new ReadLacProcessorV3(r, c, this);
+        if (null == readThreadPool) {
+            readLac.run();
+        } else {
+            readThreadPool.submit(readLac);
         }
     }
 
