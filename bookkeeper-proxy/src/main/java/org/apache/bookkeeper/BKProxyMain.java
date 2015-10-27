@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 public class BKProxyMain implements Runnable {
 
     private static final String CONFIG_FILE = "conf/bk_client_proxy.conf";
-    private static AtomicInteger threadNum = new AtomicInteger();
+    private AtomicInteger threadNum = new AtomicInteger();
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyMain.class);
 
     private ServerSocketChannel serverChannel;

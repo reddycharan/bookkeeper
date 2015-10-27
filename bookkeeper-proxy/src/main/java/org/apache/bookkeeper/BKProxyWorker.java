@@ -15,8 +15,7 @@ class BKProxyWorker implements Runnable {
     private final BookKeeperProxyConfiguraiton bkpConfig;
     SocketChannel clientChannel;
     BKSfdcClient bksc;
-    AtomicInteger globalThreadId;
-    final int myThreadNum;
+    AtomicInteger globalThreadId;    
     byte reqId = 0;
     byte respId = 0;
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
@@ -25,8 +24,7 @@ class BKProxyWorker implements Runnable {
             BookKeeper bk, BKExtentLedgerMap elm) {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
-        this.globalThreadId = threadId;
-        this.myThreadNum = globalThreadId.get();
+        this.globalThreadId = threadId;       
         try {
             // To facilitate Data Extents,
             // Set both send-buffer and receive-buffer limits of the socket to 64k.
@@ -104,7 +102,7 @@ class BKProxyWorker implements Runnable {
         int bytesRead;
 
         try {
-            System.out.println("Starting thread " + myThreadNum);
+            LOG.info("Starting thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
 
             while (true) {
                 req.clear();
@@ -115,7 +113,7 @@ class BKProxyWorker implements Runnable {
                 }
 
                 if (bytesRead < 0) {
-                    System.out.println("Exiting Thread: " + myThreadNum);
+                    LOG.info("Exiting Thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
                     break;
                 }
 
@@ -402,7 +400,7 @@ class BKProxyWorker implements Runnable {
                 }
             }
             clientChannel.close();
-            System.out.println("Ending thread " + myThreadNum);
+            LOG.info("Ending thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
             globalThreadId.decrementAndGet();
         } catch (IOException e) {
             System.out.println(e);
