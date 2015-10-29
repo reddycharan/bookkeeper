@@ -543,7 +543,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void multipleExtentsWritesUsingMultipleBKProxies() throws IOException, InterruptedException {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   BKPDETAILS + "-BKP2-6666\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
                                     +   NUMOFTHREADS + "-6\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
@@ -573,7 +573,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void multipleExtentsWritesAndReadsUsingMultipleBKProxies() throws IOException, InterruptedException {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   BKPDETAILS + "-BKP2-6666\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
                                     +   NUMOFTHREADS + "-6\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
@@ -711,6 +711,195 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-6-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_ErrorNotFound+"-30000\n";
         executeTestcase(testDefinition, "readFragment0WithoutWriteClose");
+    }
+
+    /**
+     * In this testcase LedgerOpenRecoverReq is called before LedgerWriteCloseReq and it is supposed to receive error response.
+     * LedgerOpenRecoverReq after LedgerWriteClose should work normally.
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void tryToOpenRecoveryBeforeWriteClose() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-3\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   NUMOFSLOTS + "-9\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
+                                    // here we are trying to do OpenRecover in the same BKProxy and it is supposed to fail since write is not closed
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // by now write is closed, so openrecover should function normally
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
+                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
+                                    +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    +   BKPOPERATION + "-8-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition, "tryToOpenRecoveryBeforeWriteClose");
+    }
+
+    /**
+     * In this testcase, after LedgerOpenRecoverReq we try to write a new fragment and it is expected to fail.
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void tryToWriteAfterOpenRecover() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-6\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   THREADDETAILS + "-Thread4-BKP2\n"
+                                    +   THREADDETAILS + "-Thread5-BKP2\n"
+                                    +   THREADDETAILS + "-Thread6-BKP2\n"
+                                    +   NUMOFSLOTS + "-8\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
+                                    // here we are trying to OpenRecover in thread connected to other BKProxy (BKP2), so it should succeed
+                                    +   BKPOPERATION + "-4-Thread4-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // here we are trying to write a fragment in a thread connected to the former BKProxy (BKP1) though it was already
+                                    // recoveryopened and hence it should fail.
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-300-"+BKPConstants.SF_InternalError+"\n"
+                                    +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition, "tryToWriteAfterOpenRecover");
+    }
+
+    /**
+     * In this testcase we try to read fragment which is in pending write, from another thread, which is connected to the same BKProxy, and it is expected to
+     * fail
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void tryToReadOutOfOrderWritesInSameBKProxy() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-3\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   NUMOFSLOTS + "-10\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
+                                    // this is out-of-order write
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-5-300-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
+                                    +   BKPOPERATION + "-6-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    // entry 4 is never written, so it is supposed to fail
+                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    // since entry 4 is not written, we shouldn't be able to read pending out-of-order
+                                    +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition, "tryToReadOutOfOrderWritesInSameBKProxy");
+    }
+
+    /**
+     * In this testcase we try to read fragment which is in pending write, from another thread, which is connected to the other BKProxy, and it is expected to
+     * fail
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void outOfOrderWritesOpenReadInOtherBKProxy() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-6\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   THREADDETAILS + "-Thread4-BKP2\n"
+                                    +   THREADDETAILS + "-Thread5-BKP2\n"
+                                    +   THREADDETAILS + "-Thread6-BKP2\n"
+                                    +   NUMOFSLOTS + "-10\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
+                                    // this is out-of-order write
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-5-300-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread4-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-6-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
+                                    +   BKPOPERATION + "-6-Thread5-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
+                                    +   BKPOPERATION + "-6-Thread6-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    // entry 4 is never written, so it is supposed to fail
+                                    +   BKPOPERATION + "-7-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    // since entry 4 is not written, we shouldn't be able to read pending out-of-order entry even in thread connected to other BKProxy (BKP2)
+                                    +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    +   BKPOPERATION + "-9-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition, "outOfOrderWritesOpenReadInOtherBKProxy");
+    }
+
+    /**
+     * In this testcase Ledger Write is closed even though there are pending writes, and then LedgerStat is called to
+     * check if it returns correct value after discarding out-of-order writes
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void ledgerStatAfterOutOfOrderWriteClose() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-3\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   NUMOFSLOTS + "-6\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-3-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-4-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // since pending writes (fragment 3 and 4) are discarded after writeclose, now stat should return response 10
+                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n";
+        executeTestcase(testDefinition, "ledgerstatAfterOutOfOrderWriteClose");
+    }
+
+    /**
+     * In this testcase, in threads connected to other BKProxy, LedgerReadEntryReq is called without explicitly opening Ledger for Read. It is supposed to
+     * open Ledger for Read with Recovery and function normally
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void outOfOrderWritesGetEntryImplicitOpenRecover() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-6\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   THREADDETAILS + "-Thread4-BKP2\n"
+                                    +   THREADDETAILS + "-Thread5-BKP2\n"
+                                    +   THREADDETAILS + "-Thread6-BKP2\n"
+                                    +   NUMOFSLOTS + "-9\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
+                                    // this is out-of-order write
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-5-300-"+BKPConstants.SF_OK+"\n"
+                                    // in threads connected to other BKProxy (BKP2), without explicitly opening for Read, ReadEntry requests are made
+                                    // concurrently. This will implicitly do LedgerOpenRecovery and it is supposed to be synchronized properly
+                                    +   BKPOPERATION + "-5-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
+                                    +   BKPOPERATION + "-5-Thread5-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
+                                    +   BKPOPERATION + "-5-Thread6-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    // entry 4 is never written, so it is supposed to fail
+                                    +   BKPOPERATION + "-6-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    // since it was RecoveryOpen, out-of-order pending writes should be discarded. So reading entry 5 should fail
+                                    +   BKPOPERATION + "-7-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition, "outOfOrderWritesGetEntryImplicitOpenRecover");
     }
 
     public void executeTestcase(String testDefinition, String testcaseName) throws IOException, InterruptedException {
