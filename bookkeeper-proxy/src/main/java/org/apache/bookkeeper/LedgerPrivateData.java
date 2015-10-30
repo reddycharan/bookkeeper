@@ -1,5 +1,8 @@
 package org.apache.bookkeeper;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.bookkeeper.client.LedgerHandle;
 
 class LedgerPrivateData {
@@ -7,6 +10,19 @@ class LedgerPrivateData {
     LedgerHandle rlh = null; // Read Ledger Handle
     LedgerHandle rrlh = null; // Recovery Read Ledger Handle.
     volatile long tEntryId = BKPConstants.NO_ENTRY; // Trailer/Last entryId of the ledger
+    private Lock ledgerRecoveryOpenLock;
+
+    LedgerPrivateData() {
+        ledgerRecoveryOpenLock = new ReentrantLock();
+    }
+
+    public void acquireLedgerRecoveryOpenLock(){
+        ledgerRecoveryOpenLock.lock();
+    }
+    
+    public void releaseLedgerRecoveryOpenLock(){
+        ledgerRecoveryOpenLock.unlock();
+    }
 
     public LedgerHandle getWriteLedgerHandle() {
         return wlh;

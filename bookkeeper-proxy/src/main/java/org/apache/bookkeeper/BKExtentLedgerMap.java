@@ -18,12 +18,11 @@ public class BKExtentLedgerMap {
     }
 
     public LedgerPrivateData createLedgerMap(BKExtentId extentId) {
-
         LedgerPrivateData lpd = new LedgerPrivateData();
         // Just opened, no trailer.
         lpd.setTrailerId(BKPConstants.NO_ENTRY);
-        extentToLedgerMap.put(extentId.copy(), lpd);
-        return lpd;
+        extentToLedgerMap.putIfAbsent(extentId.copy(), lpd);
+        return extentToLedgerMap.get(extentId);
     }
 
     public BKExtentId[] getAllExtentIds() {

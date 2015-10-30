@@ -3,6 +3,7 @@ package org.apache.bookkeeper;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
+import java.util.concurrent.locks.Lock;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
@@ -11,9 +12,7 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.LedgerHandleAdv;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,11 +68,10 @@ public class BKSfdcClient {
     }
 
     /*
-     * Opens an inactive ledger. i.e no more writes are going in.
-     * If this mode is attempted on an active ledger, it will stop
-     * accepting any more writes after this operation.
+     * Opens an inactive ledger. i.e no more writes are going in. If this mode is attempted on an active ledger, it will
+     * stop accepting any more writes after this operation.
      */
-    public synchronized byte ledgerRecoveryOpenRead(BKExtentId extentId) {
+    public byte ledgerRecoveryOpenRead(BKExtentId extentId) {
 
         LedgerHandle lh;
 
@@ -94,25 +92,31 @@ public class BKSfdcClient {
             // The ledger must have closed or this is a crash recovery.
             // In either case we should not have write ledger handle.
             if (lpd.getWriteLedgerHandle() != null) {
-                LOG.error("Opening ExtentId: {} in recovery mode while write open is active.",
-                           extentId.asHexString());
+                LOG.error("Opening ExtentId: {} in recovery mode while write open is active.", extentId.asHexString());
                 return BKPConstants.SF_ErrorBadRequest;
             }
         }
-
-        // Let us try to open the ledger for read
+        
+        lpd.acquireLedgerRecoveryOpenLock();
         try {
-            lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
-        } catch (InterruptedException | BKException e) {
-            if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
-                elm.deleteLedgerPrivate(extentId);
-                return BKPConstants.SF_ErrorNotFound;
-            }
-            LOG.error(e.toString());
-            return BKPConstants.SF_InternalError;
-        }
+            if (lpd.getRecoveryReadLedgerHandle() == null) {
+                // Let us try to open the ledger for read
+                try {
+                    lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
+                } catch (InterruptedException | BKException e) {
+                    if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
+                        elm.deleteLedgerPrivate(extentId);
+                        return BKPConstants.SF_ErrorNotFound;
+                    }
+                    LOG.error(e.toString());
+                    return BKPConstants.SF_InternalError;
+                }
 
-        lpd.setRecoveryReadLedgerHandle(lh);
+                lpd.setRecoveryReadLedgerHandle(lh);
+            }
+        } finally {
+            lpd.releaseLedgerRecoveryOpenLock();
+        }
         return BKPConstants.SF_OK;
     }
 
@@ -121,7 +125,7 @@ public class BKSfdcClient {
      * In this mode, ledger is changing hence one may not get the latest and
      * greatest state and entries of the ledger.
      */
-    public synchronized byte ledgerNonRecoveryOpenRead(BKExtentId extentId) {
+    public byte ledgerNonRecoveryOpenRead(BKExtentId extentId) {
 
         LedgerHandle rlh;
 
@@ -350,7 +354,7 @@ public class BKSfdcClient {
                 if (ledgerRecoveryOpenRead(extentId) != BKPConstants.SF_OK)
                     return null;
             }
-
+        
             LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
             // If we are the writer, we will have write ledger handle
             // and it will have the most recent information.
