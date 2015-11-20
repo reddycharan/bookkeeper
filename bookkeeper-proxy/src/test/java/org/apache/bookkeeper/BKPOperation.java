@@ -156,16 +156,14 @@ public abstract class BKPOperation {
             receiveResponseAndVerify(clientSocketChannel);
             receivePayloadAndVerify(clientSocketChannel);
             catalogBookKeeping();
-        } catch (OperationException e) {
-            e.printStackTrace();
+        } catch (OperationException e) {            
             isOperationFailed = true;
             operationException = e;
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException e) {            
             isOperationFailed = true;
             operationException = new IOException(String.format(
                     "Operation at Timeslot: %d in ThreadId: %s has failed because of unexpected IOException: %s",
-                    getTimeSlot(), getThreadId(), e.getMessage()));
+                    getTimeSlot(), getThreadId(), e), e);
         }
     }
 

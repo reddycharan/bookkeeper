@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 
 import org.apache.bookkeeper.TestScenarioState.ByteArrayWrapper;
 
@@ -73,7 +71,7 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
             if (!expectedExtentsSet.containsAll(actualExtentsSet)) {
                 throw new OperationException(String.format(
                         "Operation at Timeslot: %d in ThreadId: %s has failed because of non-matching extents. "
-                        + "Expected NoOfExtentIds: %d, Actual NoOfExtentIds: %d",
+                                + "Expected NoOfExtentIds: %d, Actual NoOfExtentIds: %d",
                         getTimeSlot(), getThreadId(), expectedNoOfExtents, actualExtentsSet.size()));
             }
         }

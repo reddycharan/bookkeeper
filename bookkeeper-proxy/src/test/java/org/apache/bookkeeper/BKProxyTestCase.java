@@ -11,13 +11,12 @@ import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 public class BKProxyTestCase extends BookKeeperClusterTestCase {
-
-    public BKProxyTestCase() {
-        super(3);
-    }
 
     public static final String SPLITREGEX = "-";
     public static final String NEWLINE = "\n";
@@ -27,12 +26,72 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public static final String NUMOFSLOTS = "NumOfSlots";
     public static final String BKPOPERATION = "BKPOperation";
     public static final int NUMOFSECSTOWAITFORCOMPLETION = 30;
+    private  List<Throwable> currentTestScenarioExceptions;
+
+    public BKProxyTestCase() {
+        super(3);
+    }
+
+    @Rule
+    public TestWatcher testWatcher = new TestWatcher() {
+        @Override
+        protected void starting(final Description description) {
+            String methodName = description.getMethodName();
+            String className = description.getClassName();
+            className = className.substring(className.lastIndexOf('.') + 1);
+            System.out.println("-------------Starting JUnit-test: " + className + " " + methodName + "-------------");
+        }
+
+        @Override
+        protected void finished(final Description description) {
+            String methodName = description.getMethodName();
+            String className = description.getClassName();
+            className = className.substring(className.lastIndexOf('.') + 1);
+            System.out.println("-------------Finished JUnit-test: " + className + " " + methodName + "-------------");
+        }
+
+        @Override
+        protected void succeeded(final Description description) {
+            String methodName = description.getMethodName();
+            String className = description.getClassName();
+            className = className.substring(className.lastIndexOf('.') + 1);
+            System.out.println("-------------Succeeded JUnit-test: " + className + " " + methodName + "-------------");
+        }
+
+        @Override
+        protected void failed(Throwable e, final Description description) {
+            String methodName = description.getMethodName();
+            String className = description.getClassName();
+            className = className.substring(className.lastIndexOf('.') + 1);
+            System.out.println("-------------");
+            System.out.println("Failed JUnit-test: " + className + " " + methodName
+                    + " Following are the stacktraces for the Exceptions -");
+            for (Throwable t : currentTestScenarioExceptions) {
+                t.printStackTrace();
+            }
+            System.out.println("-------------");
+        }
+    };
+
+    private Thread.UncaughtExceptionHandler threadExceptionHandler = new Thread.UncaughtExceptionHandler() {
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            BKPClientThread bkpClientThread = (BKPClientThread) t;
+            Throwable throwable = new Throwable(String.format(
+                    "Operation at Timeslot: %d in ThreadId: %s has failed because of unexpected Exception/Error: %s",
+                    TestScenarioState.getCurrentTestScenarioState().getCurrentTimeSlot(), bkpClientThread.getThreadId(),
+                    e), e);
+            bkpClientThread.setThreadException(throwable);
+            TestScenarioState.getCurrentTestScenarioState().getCurrentTestScenarioThreadCountDownLatch().countDown();
+        }
+    };
 
     @Before
     public void testcaseSetup() throws InterruptedException {
         BKPClientThread.timeoutDurationInSecs = 4;
         TestScenarioState.instantiateCurrentTestScenarioState();
         TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
+        currentTestScenarioExceptions = new ArrayList<Throwable>();
         currentScenario.getCommonBKPConfig().setZkServers(zkUtil.getZooKeeperConnectString());
     }
 
@@ -59,7 +118,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "basicTestWithLedgerCreateAndClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -83,7 +142,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerDeleteAllReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerDeleteAllReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "basicLedgerDeleteAllTest");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -106,7 +165,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext1-\n";
-        executeTestcase(testDefinition, "basicLedgerListGetReqTest");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -127,7 +186,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerReadCloseReq+"-extn-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerReadCloseReq+"-extn-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "basicTestWithLedgerCreateAndNonExistingClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -153,7 +212,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "simpleWriteAndReadLedger");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -175,7 +234,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_InternalError+"\n";
-        executeTestcase(testDefinition, "writeLedgerAfterWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -196,7 +255,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-0-30000-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_InternalError+"\n";
-        executeTestcase(testDefinition, "writeLedgerAfterFragment0");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -228,7 +287,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-9-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "tryWritingOversizedFragment");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -251,7 +310,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n"
                                     +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_ErrorNotFound+"\n"
                                     +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n";
-        executeTestcase(testDefinition, "ledgerDeleteTest");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -272,7 +331,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_ErrorNotFound+"\n";
-        executeTestcase(testDefinition, "ledgerDeleteTestAfterWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -288,7 +347,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   NUMOFSLOTS + "-2\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_ErrorNotFound+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n";
-        executeTestcase(testDefinition, "nonExistingledgerDeleteTest");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -315,7 +374,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-9-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "simpleWriteAndReadLedgerForNonExistingEntries");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -337,8 +396,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-1-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerDeleteAllReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-4-Thread3-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n";;
-        executeTestcase(testDefinition, "concurrentWrites");
+                                    +   BKPOPERATION + "-4-Thread3-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n";
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -366,7 +425,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-6-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "simpleWriteAndConcurrentReads");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -389,7 +448,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-false-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-false-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "outOfOrderWrites");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -425,7 +484,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-9-Thread4-"+BKPConstants.LedgerWriteCloseReq+"-ext2-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-9-Thread3-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext1:ext2-\n";
-        executeTestcase(testDefinition, "concurrentWriteAndReads");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -457,7 +516,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-false-true-ext1-6-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-9-Thread3-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-60\n"
                                     +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "testingLedgerLengthUsingWriteHandle");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -481,7 +540,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-30\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "testingLedgerLengthUsingOpenedReadHandle");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -503,7 +562,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-30\n";
-        executeTestcase(testDefinition, "testingLedgerLengthUsingReadHandle");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -532,7 +591,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-3-Thread6-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext2-3-1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread4-"+BKPConstants.LedgerWriteCloseReq+"-ext2-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "multipleLedgersWrites");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -562,7 +621,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-3-Thread6-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext2-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread4-"+BKPConstants.LedgerWriteCloseReq+"-ext2-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "multipleExtentsWritesUsingMultipleBKProxies");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -607,7 +666,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread1-"+BKPConstants.LedgerDeleteAllReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext2-\n"
                                     +   BKPOPERATION + "-9-Thread4-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext2-\n";
-        executeTestcase(testDefinition, "multipleExtentsWritesAndReadsUsingMultipleBKProxies");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -636,7 +695,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread6-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-6-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "readLedgerBeforeWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -662,7 +721,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "simpleWriteAndReadFragment0");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -686,7 +745,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-400000000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "simpleWriteFragment0AndReadFragment0");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -710,7 +769,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
                                     +   BKPOPERATION + "-6-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_ErrorNotFound+"-30000\n";
-        executeTestcase(testDefinition, "readFragment0WithoutWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -740,7 +799,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     +   BKPOPERATION + "-8-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "tryToOpenRecoveryBeforeWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -770,7 +829,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     // recoveryopened and hence it should fail.
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-300-"+BKPConstants.SF_InternalError+"\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "tryToWriteAfterOpenRecover");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -801,7 +860,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     // since entry 4 is not written, we shouldn't be able to read pending out-of-order
                                     +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
                                     +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "tryToReadOutOfOrderWritesInSameBKProxy");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -837,7 +896,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     // since entry 4 is not written, we shouldn't be able to read pending out-of-order entry even in thread connected to other BKProxy (BKP2)
                                     +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
                                     +   BKPOPERATION + "-9-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "outOfOrderWritesOpenReadInOtherBKProxy");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -862,7 +921,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     // since pending writes (fragment 3 and 4) are discarded after writeclose, now stat should return response 10
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n";
-        executeTestcase(testDefinition, "ledgerstatAfterOutOfOrderWriteClose");
+        executeTestcase(testDefinition);
     }
 
     /**
@@ -899,29 +958,37 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     // since it was RecoveryOpen, out-of-order pending writes should be discarded. So reading entry 5 should fail
                                     +   BKPOPERATION + "-7-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
                                     +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
-        executeTestcase(testDefinition, "outOfOrderWritesGetEntryImplicitOpenRecover");
+        executeTestcase(testDefinition);
     }
 
-    public void executeTestcase(String testDefinition, String testcaseName) throws IOException, InterruptedException {
+    public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         parseTestDefinition(testDefinition);
         Set<String> threadIds = currentTestScenario.getThreadIds();
-        List<Thread> bkpClientThreadInstances = new ArrayList<Thread>();
         for (String threadId : threadIds) {
-            Thread actualThread = new Thread(currentTestScenario.getBKPClientThread(threadId));
-            bkpClientThreadInstances.add(actualThread);
-            actualThread.start();
+            BKPClientThread bkpThread = currentTestScenario.getBKPClientThread(threadId);
+            bkpThread.setUncaughtExceptionHandler(threadExceptionHandler);
+            bkpThread.start();
         }
 
-        boolean areThreadsDone = currentTestScenario.getCurrentTestScenarioThreadCountDownLatch().await(
-                NUMOFSECSTOWAITFORCOMPLETION, TimeUnit.SECONDS);
+        boolean areThreadsDone = currentTestScenario.getCurrentTestScenarioThreadCountDownLatch()
+                .await(NUMOFSECSTOWAITFORCOMPLETION, TimeUnit.SECONDS);
+        for (BKPOperation failedOperation : currentTestScenario.getFailedOperations()) {
+            currentTestScenarioExceptions.add(failedOperation.getOperationException());
+        }
+        for (String bkpThread : currentTestScenario.getThreadIds()) {
+            Throwable threadException = currentTestScenario.getBKPClientThread(bkpThread).getThreadException();
+            if (threadException != null) {
+                currentTestScenarioExceptions.add(threadException);
+            }
+        }
         if (areThreadsDone) {
             if (!currentTestScenario.isScenarioDone()) {
                 if (currentTestScenario.isScenarioFailed()) {
                     String exceptionMessages = "";
                     for (BKPOperation failedOperation : currentTestScenario.getFailedOperations()) {
                         Exception e = failedOperation.getOperationException();
-                        exceptionMessages += e.getMessage() + " ";
+                        exceptionMessages += e.getMessage() + " \n";
                     }
                     Assert.fail(exceptionMessages);
                 } else if (currentTestScenario.getCycBarrier().isBroken()) {
@@ -932,10 +999,17 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                 }
             }
         } else {
+            for (String bkpThread : currentTestScenario.getThreadIds()) {
+                BKPClientThread bkpClientThread = currentTestScenario.getBKPClientThread(bkpThread);
+                if (bkpClientThread.getState() != Thread.State.TERMINATED) {
+                    currentTestScenarioExceptions.add(new OperationException(
+                            String.format("ThreadId: %s has been blocked while doing Operation at Timeslot: %d",
+                                    bkpClientThread.getThreadId(), currentTestScenario.getCurrentTimeSlot())));
+                }
+            }
             Assert.fail("All threads have not exited properly. The current timeslot: "
                     + currentTestScenario.getCurrentTimeSlot());
         }
-        System.out.println("Successfully Completed executing Testcase: " + testcaseName);
     }
 
     public void parseTestDefinition(String testDefinition) throws IOException, NumberFormatException,

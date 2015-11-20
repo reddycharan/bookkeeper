@@ -1,9 +1,5 @@
 package org.apache.bookkeeper;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-
 public class LedgerDeleteAllReqBKPOperation extends BKPOperationExtension {
 
     public LedgerDeleteAllReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,

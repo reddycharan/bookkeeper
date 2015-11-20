@@ -6,11 +6,9 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -100,7 +98,7 @@ public class TestScenarioState {
 
     public void addBKPClientThread(String threadId, String bkpId) throws IOException {
         int bkpPort = bkProxiesMap.get(bkpId).getBookKeeperProxyConfiguraiton().getBKProxyPort();
-        BKPClientThread bkpThread = new BKPClientThread(threadId, cycBarrier, bkpPort);
+        BKPClientThread bkpThread = new BKPClientThread(threadId, cycBarrier, bkpPort, this);
         thisTestScenarioThreads.put(threadId, bkpThread);
     }
 

@@ -1,7 +1,6 @@
 package org.apache.bookkeeper;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class LedgerStatReqBKPOperation extends BKPOperationExtension {

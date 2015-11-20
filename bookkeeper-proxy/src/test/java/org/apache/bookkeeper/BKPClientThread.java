@@ -9,9 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.Test;
-
-public class BKPClientThread implements Runnable {
+public class BKPClientThread extends Thread {
 
     private String threadId;
     private CyclicBarrier cycBarrier;
@@ -19,10 +17,14 @@ public class BKPClientThread implements Runnable {
     private SocketChannel clientSocketChannel;
     private int portNo;
     public static int timeoutDurationInSecs = 4;
+    private Throwable threadException;
+    private TestScenarioState testScenarioState;
 
-    public BKPClientThread(String threadId, CyclicBarrier cycBarrier, int portNo) throws IOException {
+    public BKPClientThread(String threadId, CyclicBarrier cycBarrier, int portNo, TestScenarioState testScenarioState)
+            throws IOException {
         this.threadId = threadId;
         this.cycBarrier = cycBarrier;
+        this.testScenarioState = testScenarioState;
         nextOperationRef = new AtomicReference<BKPOperation>();
         this.portNo = portNo;
         clientSocketChannel = SocketChannel.open();
@@ -53,6 +55,14 @@ public class BKPClientThread implements Runnable {
         return portNo;
     }
 
+    public Throwable getThreadException() {
+        return threadException;
+    }
+
+    public void setThreadException(Throwable threadException) {
+        this.threadException = threadException;
+    }
+
     @Override
     public void run() {
         TestScenarioState currentTestScenarioState = TestScenarioState.getCurrentTestScenarioState();
@@ -68,12 +78,10 @@ public class BKPClientThread implements Runnable {
             // If any of the following exceptions are thrown, then the barrier
             // is broken. In that case for the next iteration, while loop will
             // be exited
-            catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (BrokenBarrierException e) {
-                e.printStackTrace();
-            } catch (TimeoutException e) {
-                e.printStackTrace();
+            catch (InterruptedException | BrokenBarrierException | TimeoutException e) {
+                threadException = new OperationException(String.format(
+                        "Operation at Timeslot: %d in ThreadId: %s has failed because of unexpected Exception: %s",
+                        testScenarioState.getCurrentTimeSlot(), getThreadId(), e), e);
             }
         }
         if (currentTestScenarioState.isScenarioDone()) {
