@@ -47,6 +47,8 @@ import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timeout;
+import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,6 +250,10 @@ public class BookieClient implements PerChannelBookieClientFactory {
         return closed;
     }
 
+    public Timeout scheduleTimeout(TimerTask task, long timeoutSec, TimeUnit timeUnit) {
+        return requestTimer.newTimeout(task, timeoutSec, timeUnit);
+    }
+
     public void close() {
         closeLock.writeLock().lock();
         try {
@@ -318,8 +324,10 @@ public class BookieClient implements PerChannelBookieClientFactory {
                         "BookKeeper-NIOBoss-%d").build()),
                 Executors.newCachedThreadPool(tfb.setNameFormat(
                         "BookKeeper-NIOWorker-%d").build()));
-        OrderedSafeExecutor executor = new OrderedSafeExecutor(1,
-                "BookieClientWorker");
+        OrderedSafeExecutor executor = OrderedSafeExecutor.newBuilder()
+                .name("BookieClientWorker")
+                .numThreads(1)
+                .build();
         BookieClient bc = new BookieClient(new ClientConfiguration(), channelFactory, executor);
         BookieSocketAddress addr = new BookieSocketAddress(args[0], Integer.parseInt(args[1]));
 

@@ -385,8 +385,8 @@ public class BookieWriteLedgerTest extends
                 if (j == numEntriesToWrite/2) {
                     // Start One more bookie and shutdown one from last ensemble at half-way
                     startNewBookie();
-                    ArrayList<BookieSocketAddress> ensemble = lh.getLedgerMetadata().getEnsembles().entrySet().iterator().next()
-                            .getValue();
+                    ArrayList<BookieSocketAddress> ensemble = lh.getLedgerMetadata().getEnsembles().entrySet()
+                            .iterator().next().getValue();
                     killBookie(ensemble.get(0));
                 }
             }

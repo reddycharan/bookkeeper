@@ -378,6 +378,11 @@ public class LedgerHandle {
                                         }
                                     }
                                 }
+
+                                @Override
+                                public String toString() {
+                                    return String.format("ReReadMetadataForClose(%d)", ledgerId);
+                                }
                             });
                         } else if (rc != BKException.Code.OK) {
                             LOG.error("Error update ledger metadata for ledger " + ledgerId + " : " + rc);
@@ -386,10 +391,20 @@ public class LedgerHandle {
                             cb.closeComplete(BKException.Code.OK, LedgerHandle.this, ctx);
                         }
                     }
+
+                    @Override
+                    public String toString() {
+                        return String.format("WriteLedgerConfigForClose(%d)", ledgerId);
+                    }
                 };
 
                 writeLedgerConfig(new CloseCb());
 
+            }
+
+            @Override
+            public String toString() {
+                return String.format("CloseLedgerHandle(%d)", ledgerId);
             }
         });
     }
@@ -460,8 +475,8 @@ public class LedgerHandle {
 
     /**
      * Add entry synchronously to an open ledger. This can be used only with
-     * {@link LedgerHandleAdv()} returned through ledgers created with {@link
-     * CreateLedgerAdv()}.
+     * {@link LedgerHandleAdv} returned through ledgers created with {@link
+     * BookKeeper#createLedgerAdv(int, int, int, DigestType, byte[])}.
      *
      *
      * @param entryId
@@ -471,7 +486,7 @@ public class LedgerHandle {
      * @return the entryId of the new inserted entry
      */
     public long addEntry(final long entryId, byte[] data) throws InterruptedException, BKException {
-        LOG.error("To use this feature Ledger must be created with createLedgerAdv() interface.");
+        LOG.error("To use this feature Ledger must be created with createLedgerAdv interface.");
         throw BKException.create(BKException.Code.IllegalOpException);
     }
 
@@ -506,8 +521,8 @@ public class LedgerHandle {
 
     /**
      * Add entry synchronously to an open ledger. This can be used only with
-     * {@link LedgerHandleAdv()} returned through ledgers created with {@link
-     * CreateLedgerAdv()}.
+     * {@link LedgerHandleAdv} returned through ledgers created with {@link
+     * BookKeeper#createLedgerAdv(int, int, int, DigestType, byte[])}.
      *
      * @param entryId
      *            entryId to be added.
@@ -542,8 +557,8 @@ public class LedgerHandle {
 
     /**
      * Add entry asynchronously to an open ledger. This can be used only with
-     * {@link LedgerHandleAdv()} returned through ledgers created with {@link
-     * CreateLedgerAdv()}.
+     * {@link LedgerHandleAdv} returned through ledgers created with {@link
+     * BookKeeper#createLedgerAdv(int, int, int, DigestType, byte[])}.
      *
      * @param entryId
      *            entryId to be added
@@ -584,8 +599,8 @@ public class LedgerHandle {
 
     /**
      * Add entry asynchronously to an open ledger, using an offset and range.
-     * This can be used only with {@link LedgerHandleAdv()} returned through
-     * ledgers created with {@link CreateLedgerAdv()}.
+     * This can be used only with {@link LedgerHandleAdv} returned through
+     * ledgers created with {@link BookKeeper#createLedgerAdv(int, int, int, DigestType, byte[])}.
      *
      * @param entryId
      *            entryId of the entry to add.
@@ -684,6 +699,10 @@ public class LedgerHandle {
                     ChannelBuffer toSend = macManager.computeDigestAndPackageForSending(
                                                entryId, lastAddConfirmed, currentLength, data, offset, length);
                     op.initiate(toSend, length);
+                }
+                @Override
+                public String toString() {
+                    return String.format("AsyncAddEntry(lid=%d, eid=%d)", ledgerId, entryId);
                 }
             });
         } catch (RejectedExecutionException e) {
@@ -956,6 +975,12 @@ public class LedgerHandle {
     }
 
     void handleBookieFailure(final BookieSocketAddress addr, final int bookieIndex) {
+        // If this is the first failure,
+        // try to submit completed pendingAddOps before this failure. 
+        if (0 == blockAddCompletions.get()) {
+            sendAddSuccessCallbacks(); 
+        }
+
         blockAddCompletions.incrementAndGet();
 
         synchronized (metadata) {
@@ -964,6 +989,12 @@ public class LedgerHandle {
                 LOG.warn("Write did not succeed to {}, bookieIndex {}, but we have already fixed it.",
                          addr, bookieIndex);
                 blockAddCompletions.decrementAndGet();
+
+                // Try to submit completed pendingAddOps, pending by this fix. 
+                if (0 == blockAddCompletions.get()) {
+                    sendAddSuccessCallbacks(); 
+                }
+
                 return;
             }
 
@@ -1032,6 +1063,11 @@ public class LedgerHandle {
             ensembleChangeCounter.inc();
             // the failed bookie has been replaced
             unsetSuccessAndSendWriteRequest(ensembleInfo.bookieIndex);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("ChangeEnsemble(%d)", ledgerId);
         }
     };
 
@@ -1154,6 +1190,10 @@ public class LedgerHandle {
             return true;
         }
 
+        @Override
+        public String toString() {
+            return String.format("ReReadLedgerMetadata(%d)", ledgerId);
+        }
     };
 
     void unsetSuccessAndSendWriteRequest(final int bookieIndex) {
@@ -1214,6 +1254,11 @@ public class LedgerHandle {
                                 recover(cb);
                             }
                         }
+
+                        @Override
+                        public String toString() {
+                            return String.format("ReReadMetadataForRecover(%d)", ledgerId);
+                        }
                     });
                 } else if (rc == BKException.Code.OK) {
                     new LedgerRecoveryOp(LedgerHandle.this, cb).initiate();
@@ -1221,6 +1266,11 @@ public class LedgerHandle {
                     LOG.error("Error writing ledger config " + rc + " of ledger " + ledgerId);
                     cb.operationComplete(rc, null);
                 }
+            }
+
+            @Override
+            public String toString() {
+                return String.format("WriteLedgerConfigForRecover(%d)", ledgerId);
             }
         });
     }

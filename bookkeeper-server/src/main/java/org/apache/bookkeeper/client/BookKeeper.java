@@ -295,8 +295,13 @@ public class BookKeeper {
         this.placementPolicy = initializeEnsemblePlacementPolicy(conf);
 
         // initialize main worker pool
-        this.mainWorkerPool = new OrderedSafeExecutor(conf.getNumWorkerThreads(),
-                "BookKeeperClientWorker");
+        this.mainWorkerPool = OrderedSafeExecutor.newBuilder()
+                .name("BookKeeperClientWorker")
+                .numThreads(conf.getNumWorkerThreads())
+                .statsLogger(statsLogger)
+                .traceTaskExecution(conf.getEnableTaskExecutionStats())
+                .traceTaskWarnTimeMicroSec(conf.getTaskExecutionWarnTimeMicros())
+                .build();
 
         // initialize bookie client
         this.bookieClient = new BookieClient(conf, this.channelFactory, this.mainWorkerPool, statsLogger);
@@ -533,7 +538,7 @@ public class BookKeeper {
 
     /**
      * Synchronous call to create ledger.
-     * Creates a new ledger asynchronously and returns {@link LedgerHandleAdv()} which can accept entryId.
+     * Creates a new ledger asynchronously and returns {@link LedgerHandleAdv} which can accept entryId.
      * Parameters must match those of
      * {@link #asyncCreateLedgerAdv(int, int, int, DigestType, byte[],
      *                           AsyncCallback.CreateCallback, Object)}
@@ -574,7 +579,7 @@ public class BookKeeper {
     }
 
     /**
-     * Creates a new ledger asynchronously and returns {@link LedgerHandleAdv()}
+     * Creates a new ledger asynchronously and returns {@link LedgerHandleAdv}
      * which can accept entryId.  Ledgers created with this call have ability to accept
      * a separate write quorum and ack quorum size. The write quorum must be larger than
      * the ack quorum.
@@ -626,7 +631,7 @@ public class BookKeeper {
 
     /**
      * Synchronously creates a new ledger using the interface which accepts a ledgerId as input.
-     * This method returns {@link LedgerHandleAdv()} which can accept entryId.
+     * This method returns {@link LedgerHandleAdv} which can accept entryId.
      * Parameters must match those of
      * {@link #asyncCreateLedgerAdvWithLedgerId(long, int, int, int, DigestType, byte[],
      *                           AsyncCallback.CreateCallback, Object)}
@@ -673,7 +678,7 @@ public class BookKeeper {
 
     /**
      * Asynchronously creates a new ledger using the interface which accepts a ledgerId as input.
-     * This method returns {@link LedgerHandleAdv()} which can accept entryId.
+     * This method returns {@link LedgerHandleAdv} which can accept entryId.
      * Ledgers created with this call have ability to accept
      * a separate write quorum and ack quorum size. The write quorum must be larger than
      * the ack quorum.
