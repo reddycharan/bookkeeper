@@ -70,8 +70,7 @@ public class LocalBookKeeper {
     static int zkSessionTimeOut = 5000;
     File ZkTmpDir;
 
-    //BookKeeper variables
-    File tmpDirs[];
+    //BookKeeper variables    
     BookieServer bs[];
     ServerConfiguration bsConfs[];
     Integer initialPort = 5000;
@@ -158,29 +157,99 @@ public class LocalBookKeeper {
 
     private void runBookies(ServerConfiguration baseConf, List<File> tempDirs, String dirSuffix)
             throws IOException, KeeperException, InterruptedException, BookieException,
-            UnavailableException, CompatibilityException {
+ UnavailableException, CompatibilityException {
         LOG.info("Starting Bookie(s)");
         // Create Bookie Servers (B1, B2, B3)
 
-        tmpDirs = new File[numberOfBookies];
         bs = new BookieServer[numberOfBookies];
         bsConfs = new ServerConfiguration[numberOfBookies];
 
-        for(int i = 0; i < numberOfBookies; i++) {
-            tmpDirs[i] = File.createTempFile("bookie" + Integer.toString(i), "test");
-            if (!tmpDirs[i].delete() || !tmpDirs[i].mkdir()) {
-                throw new IOException("Couldn't create bookie dir " + tmpDirs[i]);
+        for (int i = 0; i < numberOfBookies; i++) {
+            bsConfs[i] = new ServerConfiguration(baseConf);
+
+            File parentJournalDir = bsConfs[i].getJournalDir();
+            if (parentJournalDir.exists()) {
+                if (parentJournalDir.isFile()) {
+                    throw new IOException("File already exists at " + parentJournalDir.getAbsolutePath()
+                            + ". So Journal Directory couldn't be created as configured");
+                }
+            } else {
+                if (!parentJournalDir.mkdirs()) {
+                    throw new IOException("Failed to create parent directory for Journal directory at "
+                            + parentJournalDir.getAbsolutePath()
+                            + ". So Journal Directory couldn't be created as configured");
+                }
+                tempDirs.add(parentJournalDir);
+            }
+            File journalDir = File.createTempFile("bookiejournal" + Integer.toString(i), "test", parentJournalDir);
+            if (!journalDir.delete() || !journalDir.mkdir()) {
+                throw new IOException("Couldn't create journal dir " + journalDir);
+            }
+            tempDirs.add(journalDir);
+
+            String[] parentLedgerDirNames = bsConfs[i].getLedgerDirNames();
+            String[] ledgerDirNames = new String[parentLedgerDirNames.length];
+            int ledgerDirNameIndex = 0;
+            for (String parentLedgerDirName : parentLedgerDirNames) {
+                File parentLedgerDir = new File(parentLedgerDirName);
+                if (parentLedgerDir.exists()) {
+                    if (parentLedgerDir.isFile()) {
+                        throw new IOException("File already exists at " + parentJournalDir.getAbsolutePath()
+                                + ". So Ledger Directory couldn't be created as configured");
+                    }
+                } else {
+                    if (!parentLedgerDir.mkdirs()) {
+                        throw new IOException("Failed to create parent directory for Ledger directory at "
+                                + parentLedgerDir.getAbsolutePath()
+                                + ". So Ledger Directory couldn't be created as configured");
+                    }
+                    tempDirs.add(parentLedgerDir);
+                }
+                File ledgerDir = File.createTempFile("bookieledger" + Integer.toString(i), "test", parentLedgerDir);
+                if (!ledgerDir.delete() || !ledgerDir.mkdir()) {
+                    throw new IOException("Couldn't create ledger dir " + ledgerDir);
+                }
+                ledgerDirNames[ledgerDirNameIndex++] = ledgerDir.getPath();
+                tempDirs.add(ledgerDir);
             }
 
-            bsConfs[i] = new ServerConfiguration(baseConf);
+            File[] parentIndexDirs = bsConfs[i].getIndexDirs();
+            String[] indexDirNames = null;
+            if (parentIndexDirs != null) {
+                indexDirNames = new String[parentIndexDirs.length];
+                int indexDirNameIndex = 0;
+                for (File parentIndexDir : parentIndexDirs) {
+                    if (parentIndexDir.exists()) {
+                        if (parentIndexDir.isFile()) {
+                            throw new IOException("File already exists at " + parentJournalDir.getAbsolutePath()
+                                    + ". So Index Directory couldn't be created as configured");
+                        }
+                    } else {
+                        if (!parentIndexDir.mkdirs()) {
+                            throw new IOException("Failed to create parent directory for Index directory at "
+                                    + parentIndexDir.getAbsolutePath()
+                                    + ". So Index Directory couldn't be created as configured");
+                        }
+                        tempDirs.add(parentIndexDir);
+                    }
+                    File indexDir = File.createTempFile("bookieindex" + Integer.toString(i), "test", parentIndexDir);
+                    if (!indexDir.delete() || !indexDir.mkdir()) {
+                        throw new IOException("Couldn't create index dir " + indexDir);
+                    }
+                    indexDirNames[indexDirNameIndex++] = indexDir.getPath();
+                    tempDirs.add(indexDir);
+                }
+            }
+
             // override settings
             bsConfs[i].setBookiePort(initialPort + i);
-            bsConfs[i].setZkServers(InetAddress.getLocalHost().getHostAddress() + ":"
-                                  + ZooKeeperDefaultPort);
-            bsConfs[i].setJournalDirName(tmpDirs[i].getPath());
-            bsConfs[i].setLedgerDirNames(new String[] { tmpDirs[i].getPath() });
+            bsConfs[i].setZkServers(InetAddress.getLocalHost().getHostAddress() + ":" + ZooKeeperDefaultPort);
+            bsConfs[i].setJournalDirName(journalDir.getPath());
+            bsConfs[i].setLedgerDirNames(ledgerDirNames);
+            if (indexDirNames != null) {
+                bsConfs[i].setIndexDirName(indexDirNames);
+            }
             bsConfs[i].setAllowLoopback(true);
-
             bs[i] = new BookieServer(bsConfs[i]);
             bs[i].start();
         }
