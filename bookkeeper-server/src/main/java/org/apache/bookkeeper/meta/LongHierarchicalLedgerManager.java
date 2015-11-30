@@ -41,17 +41,18 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * LongHierarchicalLedgerManager splits the generated id into 5 parts (3-4-4-4-4):
- * 
+ *
  * <pre>
- * &lt;level1 (3 digits)&gt;&lt;level2 (4 digits)&gt;&lt;level3 (4 digits)&gt;&lt;level4 (4 digits)&gt;&lt;level5 (4 digits)&gt;
+ * &lt;level1 (3 digits)&gt;&lt;level2 (4 digits)&gt;&lt;level3 (4 digits)&gt;&lt;level4 (4 digits)&gt;
+ * &lt;level5 (4 digits)&gt;
  * </pre>
- * 
+ *
  * These 5 parts are used to form the actual ledger node path used to store ledger metadata:
- * 
+ *
  * <pre>
  * (ledgersRootPath) / level1 / level2 / level3 / level4 / L(level5)
  * </pre>
- * 
+ *
  * E.g Ledger 0000000000000000001 is split into 5 parts <i>000</i>, <i>0000</i>, <i>0000</i>, <i>0000</i>, <i>0001</i>,
  * which is stored in <i>(ledgersRootPath)/000/0000/0000/0000/L0001</i>. So each znode could have at most 10000 ledgers,
  * which avoids errors during garbage collection due to lists of children that are too long.
