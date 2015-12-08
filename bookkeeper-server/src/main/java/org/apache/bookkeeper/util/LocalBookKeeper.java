@@ -165,7 +165,7 @@ public class LocalBookKeeper {
         bsConfs = new ServerConfiguration[numberOfBookies];
 
         for (int i = 0; i < numberOfBookies; i++) {
-            bsConfs[i] = new ServerConfiguration(baseConf);
+            bsConfs[i] = new ServerConfiguration((ServerConfiguration) baseConf.clone());
 
             File parentJournalDir = bsConfs[i].getJournalDir();
             if (parentJournalDir.exists()) {
