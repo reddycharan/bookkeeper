@@ -50,4 +50,5 @@ public interface BKPConstants {
     public static final int READ_REQ_SIZE = 8;
     public static final int WRITE_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
+    public static final byte UnInitialized = -1;
 }
