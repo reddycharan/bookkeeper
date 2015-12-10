@@ -371,7 +371,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-extn-2-1000-"+BKPConstants.SF_ErrorNotFound+"\n"
-                                    +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-9-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
+                                    +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-9-1000-"+BKPConstants.SF_ErrorNotFoundClosed+"-10\n"
                                     +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
@@ -954,9 +954,9 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread5-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
                                     +   BKPOPERATION + "-5-Thread6-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
                                     // entry 4 is never written, so it is supposed to fail
-                                    +   BKPOPERATION + "-6-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    +   BKPOPERATION + "-6-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFoundClosed+"-3\n"
                                     // since it was RecoveryOpen, out-of-order pending writes should be discarded. So reading entry 5 should fail
-                                    +   BKPOPERATION + "-7-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFound+"-3\n"
+                                    +   BKPOPERATION + "-7-Thread4-"+BKPConstants.LedgerReadEntryReq+"-ext1-5-400000000-"+BKPConstants.SF_ErrorNotFoundClosed+"-3\n"
                                     +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }

@@ -42,6 +42,7 @@ public interface BKPConstants {
     public static final byte SF_ShortREAD = 19;
     public static final byte SF_ErrorExist = 20;
     public static final byte SF_OutOfSequenceTimeout = 21;
+    public static final byte SF_ErrorNotFoundClosed = 22;
 
     // Defines
     public static final int EXTENTID_SIZE = 16;

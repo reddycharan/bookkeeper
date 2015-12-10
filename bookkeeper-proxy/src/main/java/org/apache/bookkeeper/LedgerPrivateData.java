@@ -9,7 +9,6 @@ class LedgerPrivateData {
     LedgerHandle wlh = null; // Write Ledger Handle
     LedgerHandle rlh = null; // Read Ledger Handle
     LedgerHandle rrlh = null; // Recovery Read Ledger Handle.
-    volatile long tEntryId = BKPConstants.NO_ENTRY; // Trailer/Last entryId of the ledger
     private Lock ledgerRecoveryOpenLock;
 
     LedgerPrivateData() {
@@ -46,15 +45,6 @@ class LedgerPrivateData {
 
     public synchronized void setNonRecoveryReadLedgerHandle(LedgerHandle rlh) {
         this.rlh = rlh;
-    }
-
-    public long getTrailerId() {
-        return tEntryId;
-    }
-
-    public void setTrailerId(long trailerId) {
-        assert (this.tEntryId == BKPConstants.NO_ENTRY);
-        this.tEntryId = trailerId;
     }
 
     // This returns any of the existing ledger handles in the order of

@@ -6,7 +6,9 @@ import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -305,6 +307,7 @@ class BKProxyWorker implements Runnable {
                 case (BKPConstants.LedgerReadEntryReq): {
                     int fragmentId;
                     int bufSize;
+                    byte errorCode = BKPConstants.SF_OK;
                     ByteBuffer ledgerEntry = null;
 
                     erreq.clear();
@@ -320,10 +323,26 @@ class BKProxyWorker implements Runnable {
                     resp.put(respId);
 
                     // Now get the fragment/entry
-                    ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
+                    try {
+                        ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
+                    } catch (BKException bke) {
+                        if (bke.getCode() == Code.LedgerClosedException) {
+                            errorCode = BKPConstants.SF_ErrorNotFoundClosed;
+                        } else if (bke.getCode() != Code.ReadException) {
+                            // SDB tries to find the end of the Extent by reading until it gets an error.
+                            // Current readEntries() returns BKReadException in this case.
+                            // Since it is valid error for us, skip printing error for this error.
+                            LOG.error(bke.toString());
+                            bke.printStackTrace();
+                        }
+                        ledgerEntry = null;
+                    }
 
                     if (ledgerEntry == null) {
-                        resp.put(BKPConstants.SF_ErrorNotFound);
+                        if (errorCode == BKPConstants.SF_OK) {
+                            errorCode = BKPConstants.SF_ErrorNotFound;
+                        }
+                        resp.put(errorCode);
                         resp.flip();
 
                         clientChannelWrite(resp);

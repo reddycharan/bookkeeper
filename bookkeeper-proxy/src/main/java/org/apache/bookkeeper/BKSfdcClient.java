@@ -92,7 +92,7 @@ public class BKSfdcClient {
             // The ledger must have closed or this is a crash recovery.
             // In either case we should not have write ledger handle.
             if (lpd.getWriteLedgerHandle() != null) {
-                LOG.error("Opening ExtentId: {} in recovery mode while write open is active.", extentId.asHexString());
+                LOG.info("Opening ExtentId: {} in recovery mode while write open is active.", extentId.asHexString());
                 return BKPConstants.SF_ErrorBadRequest;
             }
         }
@@ -330,11 +330,6 @@ public class BKSfdcClient {
 
             // Handle Trailer
             if (fragmentId == 0) {
-                if (lpd.getTrailerId() != BKPConstants.NO_ENTRY) {
-                    LOG.error("Trying to re-set trailer for the ledger {}", extentId);
-                    return BKPConstants.SF_ErrorBadRequest;
-                }
-                lpd.setTrailerId(entryId);
                 // Close the ledger
                 ledgerWriteClose(extentId);
             }
@@ -345,8 +340,8 @@ public class BKSfdcClient {
         return BKPConstants.SF_OK;
     }
 
-    public ByteBuffer ledgerGetEntry(BKExtentId extentId, int fragmentId, int size) {
-        int entryId = fragmentId;
+    public ByteBuffer ledgerGetEntry(BKExtentId extentId, int fragmentId, int size) throws BKException {
+        long entryId = fragmentId;
         byte[] data;
 
         try {
@@ -372,26 +367,21 @@ public class BKSfdcClient {
 
             if (fragmentId == 0) {
                 // Trailer
-                entryId = (int) lpd.getTrailerId();
-                if (entryId == BKPConstants.NO_ENTRY) {
-                    if (!lh.isClosed()) {
-                        // Trying to read the trailer of an non closed ledger.
-                        // TODO: Throw an exception?
-                        LOG.info("Trying to read the trailer of Extent: {} before closing", extentId);
-                        return null;
-                    }
-                    // This is a closed entry. We need to get last entry through
-                    // protocol
-                    // and update our local cache.
-                    lpd.setTrailerId(lh.getLastAddConfirmed());
-                    entryId = (int) lpd.getTrailerId();
-                }
-            } else { // It is not a trailer
-                entryId = fragmentId - 1;
-                if (entryId == lpd.getTrailerId()) {
-                    // user can't refer trailer with fragmentId. return NULL
+                if (!lh.isClosed()) {
+                    // Trying to read the trailer of an non closed ledger.
+                    LOG.info("Trying to read the trailer of Extent: {} before closing", extentId.asHexString());
                     return null;
                 }
+                // This is a closed entry. We need to get last entry
+                entryId = lh.getLastAddConfirmed();
+            } else { // It is not a trailer
+                entryId = fragmentId - 1;
+            }
+
+            // Sanity check before trying to read
+            if (lh.isClosed() && entryId > lh.getLastAddConfirmed()) {
+                LOG.info("Trying to read beyond LAC on a closed ledger: {}", extentId.asHexString());
+                throw BKException.create(Code.LedgerClosedException);
             }
 
             entries = lh.readEntries(entryId, entryId);
@@ -403,15 +393,6 @@ public class BKSfdcClient {
         } catch (InterruptedException ie) {
             LOG.error(ie.toString());
             ie.printStackTrace();
-            return null;
-        } catch (BKException bke) {
-            if (bke.getCode() != Code.ReadException) {
-                // SDB tries to find the end of the Extent by reading until it gets an error.
-                // Current readEntries() returns BKReadException in this case.
-                // Since it is valid error for us, skip printing error for this error.
-                LOG.error(bke.toString());
-                bke.printStackTrace();
-            }
             return null;
         }
         return cByteBuffer;
