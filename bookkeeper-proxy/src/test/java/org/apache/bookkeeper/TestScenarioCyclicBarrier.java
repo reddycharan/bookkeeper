@@ -21,13 +21,13 @@ public class TestScenarioCyclicBarrier extends CyclicBarrier {
             int currentTimeSlot = testScenarioState.getCurrentTimeSlot();
             boolean isFailed = false;
             if (currentTimeSlot != -1) {
-                List<BKPOperation> currentTimeSlotOperations = testScenarioState.getBKPOperations(currentTimeSlot);
+                List<Operation> currentTimeSlotOperations = testScenarioState.getOperations(currentTimeSlot);
                 if (currentTimeSlotOperations != null) {
-                    for (BKPOperation currentTimeSlotOperation : currentTimeSlotOperations) {
+                    for (Operation currentTimeSlotOperation : currentTimeSlotOperations) {
                         if (currentTimeSlotOperation.isOperationFailed()) {
                             isFailed = true;
                             testScenarioState.setScenarioFailed(true);
-                            testScenarioState.addFailedoperation(currentTimeSlotOperation);
+                            testScenarioState.addFailedOperation(currentTimeSlotOperation);
                         }
                     }
                 }
@@ -42,12 +42,14 @@ public class TestScenarioCyclicBarrier extends CyclicBarrier {
                 if (nextTimeSlot == (numberOfTimeSlots)) {
                     testScenarioState.setScenarioDone(true);
                 } else {
-                    List<BKPOperation> nextTimeSlotOperations = testScenarioState.getBKPOperations(nextTimeSlot);
+                    List<Operation> nextTimeSlotOperations = testScenarioState.getOperations(nextTimeSlot);
                     if (nextTimeSlotOperations != null) {
-                        for (BKPOperation bkpOperation : nextTimeSlotOperations) {
-                            String threadId = bkpOperation.getThreadId();
+                        testScenarioState.setAdditionalTimeoutWaitTime(0);
+                        for (Operation operation : nextTimeSlotOperations) {
+                            String threadId = operation.getThreadId();
                             BKPClientThread clientThread = testScenarioState.getBKPClientThread(threadId);
-                            clientThread.setNextOperation(bkpOperation);
+                            clientThread.setNextOperation(operation);
+                            operation.preSetup(testScenarioState);
                         }
                     }
                     testScenarioState.setCurrentTimeSlot(nextTimeSlot);

@@ -960,7 +960,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-8-Thread4-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
-
+    
     public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         parseTestDefinition(testDefinition);
@@ -973,7 +973,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
         boolean areThreadsDone = currentTestScenario.getCurrentTestScenarioThreadCountDownLatch()
                 .await(NUMOFSECSTOWAITFORCOMPLETION, TimeUnit.SECONDS);
-        for (BKPOperation failedOperation : currentTestScenario.getFailedOperations()) {
+        for (Operation failedOperation : currentTestScenario.getFailedOperations()) {
             currentTestScenarioExceptions.add(failedOperation.getOperationException());
         }
         for (String bkpThread : currentTestScenario.getThreadIds()) {
@@ -986,7 +986,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
             if (!currentTestScenario.isScenarioDone()) {
                 if (currentTestScenario.isScenarioFailed()) {
                     String exceptionMessages = "";
-                    for (BKPOperation failedOperation : currentTestScenario.getFailedOperations()) {
+                    for (Operation failedOperation : currentTestScenario.getFailedOperations()) {
                         Exception e = failedOperation.getOperationException();
                         exceptionMessages += e.getMessage() + " \n";
                     }
@@ -1032,10 +1032,10 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                 currentTestScenario.setNumberOfTimeSlots(Integer.valueOf(metadataDetails[1]));
                 break;
             case BKPOPERATION:
-                String bkpOperationDefinition = testDefinitionDetails[i].substring(testDefinitionDetails[i]
+                String operationDefinition = testDefinitionDetails[i].substring(testDefinitionDetails[i]
                         .indexOf(SPLITREGEX) + 1);
-                BKPOperation bkpOperation = BKPOperation.build(bkpOperationDefinition);
-                currentTestScenario.addBKPOperation(bkpOperation.getTimeSlot(), bkpOperation);
+                Operation operation = AbstractOperation.build(operationDefinition);
+                currentTestScenario.addOperation(operation.getTimeSlot(), operation);
                 break;
             }
         }

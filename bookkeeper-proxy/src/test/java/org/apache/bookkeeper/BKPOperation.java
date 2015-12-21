@@ -6,19 +6,14 @@ import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
-public abstract class BKPOperation {
+public abstract class BKPOperation extends AbstractOperation {
 
-    private int timeSlot;
-    private String threadId;
     private byte requestType;
     private byte responseType;
     private byte expectedReturnStatus;
-    private byte[] extentId;
-    public static final String SPLITREGEX = "-";
+    private byte[] extentId;    
     public static final byte[] pad = new byte[7];
-    private boolean isOperationFailed = false;
-    private Exception operationException;
-
+    
     public BKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId, byte responseType,
             byte expectedReturnStatus) {
         this.timeSlot = timeSlot;
@@ -31,14 +26,6 @@ public abstract class BKPOperation {
         this.extentId = extentId;
         this.responseType = responseType;
         this.expectedReturnStatus = expectedReturnStatus;
-    }
-
-    public int getTimeSlot() {
-        return timeSlot;
-    }
-
-    public String getThreadId() {
-        return threadId;
     }
 
     public byte getRequestType() {
@@ -55,14 +42,6 @@ public abstract class BKPOperation {
 
     public byte[] getExtentId() {
         return extentId;
-    }
-
-    public boolean isOperationFailed() {
-        return isOperationFailed;
-    }
-
-    public Exception getOperationException() {
-        return operationException;
     }
 
     public static BKPOperation build(String operationDefinition) {
@@ -148,9 +127,11 @@ public abstract class BKPOperation {
             throws OperationException, IOException;
 
     public abstract void catalogBookKeeping();
-
-    public void perform(SocketChannel clientSocketChannel) {
+    
+    @Override
+    public void perform(Object ctx) {
         try {
+            SocketChannel clientSocketChannel = (SocketChannel) ctx;
             sendRequest(clientSocketChannel);
             sendPayload(clientSocketChannel);
             receiveResponseAndVerify(clientSocketChannel);

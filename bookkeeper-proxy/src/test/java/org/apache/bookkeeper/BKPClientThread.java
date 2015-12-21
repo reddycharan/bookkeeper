@@ -13,7 +13,7 @@ public class BKPClientThread extends Thread {
 
     private String threadId;
     private CyclicBarrier cycBarrier;
-    private AtomicReference<BKPOperation> nextOperationRef;
+    private AtomicReference<Operation> nextOperationRef;
     private SocketChannel clientSocketChannel;
     private int portNo;
     public static int timeoutDurationInSecs = 4;
@@ -25,7 +25,7 @@ public class BKPClientThread extends Thread {
         this.threadId = threadId;
         this.cycBarrier = cycBarrier;
         this.testScenarioState = testScenarioState;
-        nextOperationRef = new AtomicReference<BKPOperation>();
+        nextOperationRef = new AtomicReference<Operation>();
         this.portNo = portNo;
         clientSocketChannel = SocketChannel.open();
         clientSocketChannel.connect(new InetSocketAddress("localhost", portNo));
@@ -39,12 +39,12 @@ public class BKPClientThread extends Thread {
         return cycBarrier;
     }
 
-    public BKPOperation getNextOperation() {
+    public Operation getNextOperation() {
         return nextOperationRef.get();
     }
 
-    public void setNextOperation(BKPOperation bkpOperation) {
-        nextOperationRef.set(bkpOperation);
+    public void setNextOperation(Operation operation) {
+        nextOperationRef.set(operation);
     }
 
     public SocketChannel getClientSocketChannel() {
@@ -69,8 +69,9 @@ public class BKPClientThread extends Thread {
         while ((!currentTestScenarioState.isScenarioDone()) && (!currentTestScenarioState.isScenarioFailed())
                 && (!cycBarrier.isBroken())) {
             try {
-                cycBarrier.await(timeoutDurationInSecs, TimeUnit.SECONDS);
-                BKPOperation nextoperation = getNextOperation();
+                cycBarrier.await((timeoutDurationInSecs * 1000) + testScenarioState.getAdditionalTimeoutWaitTime(),
+                        TimeUnit.MILLISECONDS);
+                Operation nextoperation = getNextOperation();
                 if (nextoperation != null) {
                     nextoperation.perform(clientSocketChannel);
                 }

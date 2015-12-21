@@ -29,15 +29,16 @@ public class TestScenarioState {
     private ConcurrentHashMap<ByteArrayWrapper, AtomicReferenceArray<byte[]>> inFlightFragmentsOfExtents;
     private AtomicBoolean scenarioDone;
     private AtomicBoolean scenarioFailed;
-    private Vector<BKPOperation> failedOperations;
+    private Vector<Operation> failedOperations;
     private int numberOfTimeSlots;
     private AtomicInteger currentTimeSlot;
-    private ArrayList<BKPOperation>[] bkpOperations;
+    private ArrayList<Operation>[] operations;
     private HashMap<String, BKPClientThread> thisTestScenarioThreads;
     private TestScenarioCyclicBarrier cycBarrier;
     private CountDownLatch currentTestScenarioThreadCountDownLatch;
     private Random rand;
     private BookKeeperProxyConfiguraiton commonBKPConfig;
+    private long additionalTimeoutWaitTime = 0;
 
     private TestScenarioState() {
         this.extentIdMap = new HashMap<String, Long>();
@@ -48,7 +49,7 @@ public class TestScenarioState {
         bkProxiesMap = new HashMap<String, BKProxyMain>();
         thisTestScenarioThreads = new HashMap<String, BKPClientThread>();
         currentTimeSlot = new AtomicInteger(-1);
-        failedOperations = new Vector<BKPOperation>();
+        failedOperations = new Vector<Operation>();
         rand = new Random();
         commonBKPConfig = new BookKeeperProxyConfiguraiton();
     }
@@ -133,7 +134,7 @@ public class TestScenarioState {
     @SuppressWarnings("unchecked")
     public void setNumberOfTimeSlots(int n) {
         numberOfTimeSlots = n;
-        bkpOperations = (ArrayList<BKPOperation>[]) new ArrayList[numberOfTimeSlots];
+        operations = (ArrayList<Operation>[]) new ArrayList[numberOfTimeSlots];
     }
 
     public int getCurrentTimeSlot() {
@@ -144,15 +145,15 @@ public class TestScenarioState {
         currentTimeSlot.set(timeSlot);
     }
 
-    public void addBKPOperation(int timeSlot, BKPOperation bkpOperation) {
-        if (bkpOperations[timeSlot] == null) {
-            bkpOperations[timeSlot] = new ArrayList<BKPOperation>();
+    public void addOperation(int timeSlot, Operation operation) {
+        if (operations[timeSlot] == null) {
+            operations[timeSlot] = new ArrayList<Operation>();
         }
-        bkpOperations[timeSlot].add(bkpOperation);
+        operations[timeSlot].add(operation);
     }
 
-    public List<BKPOperation> getBKPOperations(int timeSlot) {
-        return bkpOperations[timeSlot];
+    public List<Operation> getOperations(int timeSlot) {
+        return operations[timeSlot];
     }
 
     public void newExtentCreated(byte[] extentId) {
@@ -219,16 +220,24 @@ public class TestScenarioState {
         this.scenarioFailed.set(scenarioFailed);
     }
 
-    public void addFailedoperation(BKPOperation bkpOperation) {
-        failedOperations.add(bkpOperation);
+    public void addFailedOperation(Operation operation) {
+        failedOperations.add(operation);
     }
 
-    public Vector<BKPOperation> getFailedOperations() {
+    public Vector<Operation> getFailedOperations() {
         return failedOperations;
     }
 
     public BookKeeperProxyConfiguraiton getCommonBKPConfig() {
         return commonBKPConfig;
+    }
+
+    public long getAdditionalTimeoutWaitTime() {
+        return additionalTimeoutWaitTime;
+    }
+
+    public void setAdditionalTimeoutWaitTime(long additionalTimeoutWaitTime) {
+        this.additionalTimeoutWaitTime = additionalTimeoutWaitTime;
     }
 
     public Long getExtentLong(String extentId) {
