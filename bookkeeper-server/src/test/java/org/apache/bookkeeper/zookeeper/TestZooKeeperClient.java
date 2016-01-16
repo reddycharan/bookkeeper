@@ -22,14 +22,18 @@ package org.apache.bookkeeper.zookeeper;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.test.ZooKeeperUtil;
+import org.apache.zookeeper.AsyncCallback;
+import org.apache.zookeeper.AsyncCallback.ACLCallback;
 import org.apache.zookeeper.AsyncCallback.Children2Callback;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
 import org.apache.zookeeper.AsyncCallback.StatCallback;
@@ -43,6 +47,7 @@ import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.junit.After;
 import org.junit.Before;
@@ -227,6 +232,529 @@ public class TestZooKeeperClient extends TestCase {
         expireZooKeeperSession(client, timeout);
         client.delete(path + "/children", -1);
         logger.info("Delete children from znode " + path);
+    }
+
+    @Test(timeout = 60000)
+    public void testSyncAfterSessionExpiry() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        String path = "/testSyncAfterSessionExpiry";
+        byte[] data = "test".getBytes();
+
+        // create a node
+        logger.info("Create znode " + path);
+        List<ACL> setACLList = new ArrayList<ACL>();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        client.create(path, data, setACLList, CreateMode.PERSISTENT);
+
+        // expire the ZKClient session
+        expireZooKeeperSession(client, timeout);
+
+        // the current Client connection should be in connected state even after the session expiry
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        // even after the previous session expiry client should be able to sync
+        CountDownLatch latch = new CountDownLatch(1);
+        final int[] rcArray = { 0 };
+        client.sync(path, new VoidCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                cdLatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Sync failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+
+        // delete the node
+        client.delete(path, -1);
+    }
+
+    @Test(timeout = 60000)
+    public void testACLSetAndGet() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        String path = "/testACLSetAndGet";
+        byte[] data = "test".getBytes();
+
+        // create a node and call getACL to verify the received ACL
+        logger.info("Create znode " + path);
+        List<ACL> setACLList = new ArrayList<ACL>();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        client.create(path, data, setACLList, CreateMode.PERSISTENT);
+        Stat status = new Stat();
+        List<ACL> receivedACLList = client.getACL(path, status);
+        Assert.assertTrue("Test1 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        // update node's ACL and call getACL to verify the received ACL
+        setACLList.clear();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        setACLList.addAll(Ids.READ_ACL_UNSAFE);
+        status = client.setACL(path, setACLList, status.getAversion());
+        receivedACLList = client.getACL(path, status);
+        Assert.assertTrue("Test2 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        // update node's ACL by calling async setACL and call async getACL to verify the received ACL
+        setACLList.clear();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        CountDownLatch latch = new CountDownLatch(1);
+        final Stat[] statArray = { null };
+        final int[] rcArray = { 0 };
+        client.setACL(path, setACLList, status.getAversion(), new StatCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                cdLatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test3 - SetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        status = statArray[0];
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        statArray[0] = null;
+        final List[] aclListArray = { null };
+        client.getACL(path, status, new ACLCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<ACL> acl, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                aclListArray[0] = acl;
+                cdLatch.countDown();
+            }
+
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test4 - GetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        status = statArray[0];
+        receivedACLList = aclListArray[0];
+        Assert.assertTrue("Test5 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        // delete the node
+        client.delete(path, status.getVersion());
+    }
+
+    @Test(timeout = 60000)
+    public void testACLSetAndGetAfterSessionExpiry() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        String path = "/testACLSetAndGetAfterSessionExpiry";
+        byte[] data = "test".getBytes();
+
+        // create a node
+        logger.info("Create znode " + path);
+        List<ACL> setACLList = new ArrayList<ACL>();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        client.create(path, data, setACLList, CreateMode.PERSISTENT);
+
+        // expire the ZKClient session
+        expireZooKeeperSession(client, timeout);
+
+        // call getACL and verify if it returns the previously set ACL
+        Stat status = new Stat();
+        List<ACL> receivedACLList = client.getACL(path, status);
+        Assert.assertTrue("Test1 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        // update ACL of that node
+        setACLList.clear();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        setACLList.addAll(Ids.READ_ACL_UNSAFE);
+        status = client.setACL(path, setACLList, status.getAversion());
+
+        // expire the ZKClient session
+        expireZooKeeperSession(client, timeout);
+
+        // call getACL and verify if it returns the previously set ACL
+        receivedACLList = client.getACL(path, status);
+        Assert.assertTrue("Test2 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        // update the ACL of node by calling async setACL
+        setACLList.clear();
+        setACLList.addAll(Ids.OPEN_ACL_UNSAFE);
+        CountDownLatch latch = new CountDownLatch(1);
+        final Stat[] statArray = { null };
+        final int[] rcArray = { 0 };
+        client.setACL(path, setACLList, status.getAversion(), new StatCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                cdLatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test3 - SetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        status = statArray[0];
+
+        // expire the ZKClient session
+        expireZooKeeperSession(client, timeout);
+
+        // call async getACL and verify if it returns the previously set ACL
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        statArray[0] = null;
+        final List[] aclListArray = { null };
+        client.getACL(path, status, new ACLCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<ACL> acl, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                aclListArray[0] = acl;
+                cdLatch.countDown();
+            }
+
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test4 - GetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        status = statArray[0];
+        receivedACLList = aclListArray[0];
+        Assert.assertTrue("Test5 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
+
+        client.delete(path, status.getVersion());
+    }
+
+    public static boolean compareLists(List<ACL> list1, List<ACL> list2) {
+        if (list1 == null && list2 == null)
+            return true;
+        if (list1 != null && list2 != null) {
+            if (list1.size() == list2.size()) {
+                if (list1.containsAll(list2) && list2.containsAll(list1)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    @Test(timeout = 60000)
+    public void testZnodeExists() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        String path = "/testZnodeExists";
+        byte[] data = "test".getBytes();
+
+        // create a node
+        logger.info("Create znode " + path);
+        client.create(path, data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        // expire the ZKClient session and then call exists method for the path
+        expireZooKeeperSession(client, timeout);
+        final AtomicBoolean isDeleted = new AtomicBoolean(false);
+        final CountDownLatch latch = new CountDownLatch(1);
+        Stat stat = client.exists(path, new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
+                    isDeleted.set(true);
+                    latch.countDown();
+                }
+            }
+        });
+        Assert.assertNotNull("node with path " + path + " should exists", stat);
+
+        // now delete the znode and verify if the Watcher is called
+        client.delete(path, stat.getVersion());
+        latch.await(5000, TimeUnit.MILLISECONDS);
+        Assert.assertTrue("The watcher on the node should have been called", isDeleted.get());
+
+        // calling async exists method and verifying the return values
+        CountDownLatch latch2 = new CountDownLatch(1);
+        final int[] rcArray = { 0 };
+        final boolean[] statIsnull = { false };
+        client.exists(path, null, new StatCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statIsnull[0] = (stat == null);
+                cdlatch.countDown();
+            }
+        }, latch2);
+        latch2.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.NONODE.intValue()) {
+            Assert.fail("exists call is supposed to return NONODE rcvalue, but it returned - "
+                    + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("exists is supposed to return null for Stat, since the node is already deleted", statIsnull[0]);
+    }
+
+    @Test(timeout = 60000)
+    public void testGetSetData() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        String path = "/testGetSetData";
+        byte[] data = "test".getBytes();
+
+        // create a node and call async getData method and verify its return value
+        logger.info("Create znode " + path);
+        client.create(path, data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        CountDownLatch latch = new CountDownLatch(1);
+        final Stat[] statArray = { null };
+        final int[] rcArray = { 0 };
+        final byte[][] dataArray = { {} };
+        client.getData(path, true, new DataCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                dataArray[0] = data;
+                cdLatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test1 - getData call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("Test1 - getData is expected to return 'test' as the output, but actually it returned - "
+                + new String(dataArray[0]), Arrays.equals(data, dataArray[0]));
+        Stat stat = statArray[0];
+
+        // expire the ZKClient session and then call async setData with new data
+        expireZooKeeperSession(client, timeout);
+        latch = new CountDownLatch(1);
+        data = "newtest".getBytes();
+        client.setData(path, data, stat.getVersion(), new StatCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                cdlatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test2 - setData call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        stat = statArray[0];
+
+        // call getData
+        byte[] getDataRet = client.getData(path, null, stat);
+        Assert.assertTrue("Test3 - getData is expected to return 'newtest' as the output, but actually it returned - "
+                + new String(dataArray[0]), Arrays.equals(data, getDataRet));
+
+        // call setdata and then async getData call
+        data = "newesttest".getBytes();
+        stat = client.setData(path, data, stat.getVersion());
+        latch = new CountDownLatch(1);
+        client.getData(path, null, new DataCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat) {
+                CountDownLatch cdLatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                statArray[0] = stat;
+                dataArray[0] = data;
+                cdLatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test4 - getData call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue(
+                "Test4 - getData is expected to return 'newesttest' as the output, but actually it returned - "
+                        + new String(dataArray[0]),
+                Arrays.equals(data, dataArray[0]));
+        stat = statArray[0];
+
+        client.delete(path, stat.getVersion());
+    }
+
+    @Test(timeout = 60000)
+    public void testGetChildren() throws Exception {
+        final int timeout = 2000;
+        ZooKeeperClient client = ZooKeeperClient.createConnectedZooKeeperClient(zkUtil.getZooKeeperConnectString(),
+                timeout, new HashSet<Watcher>(),
+                new BoundExponentialBackoffRetryPolicy(timeout, timeout, Integer.MAX_VALUE));
+        Assert.assertTrue("Client failed to connect an alive ZooKeeper.", client.getState().isConnected());
+
+        // create a root node
+        String root = "/testGetChildren";
+        byte[] rootData = "root".getBytes();
+        logger.info("Create znode " + root);
+        client.create(root, rootData, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        // create a child1 node
+        String child1 = root + "/" + "child1";
+        logger.info("Create znode " + child1);
+        byte[] child1Data = "child1".getBytes();
+        client.create(child1, child1Data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        // create a child2 node
+        String child2 = root + "/" + "child2";
+        logger.info("Create znode " + child2);
+        byte[] child2Data = "child2".getBytes();
+        client.create(child2, child2Data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        // call getChildren method and verify its return value
+        Stat rootStat = new Stat();
+        List<String> children = client.getChildren(root, null, rootStat);
+        Assert.assertTrue("Test1 - children size is expected to be 2, but its actual size is " + children.size(),
+                children.size() == 2);
+
+        // create a child3 node
+        String child3 = root + "/" + "child3";
+        logger.info("Create znode " + child3);
+        byte[] child3Data = "child3".getBytes();
+        client.create(child3, child3Data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        // call getChildren method and verify its return value
+        children = client.getChildren(root, true, rootStat);
+        Assert.assertTrue("Test2 - children size is expected to be 3, but its actual size is " + children.size(),
+                children.size() == 3);
+
+        // call async getChildren method and verify its return value
+        CountDownLatch latch = new CountDownLatch(1);
+        final Stat[] statArray = { null };
+        final int[] rcArray = { 0 };
+        final int[] childrenCount = { 0 };
+        client.getChildren(root, null, new Children2Callback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<String> children, Stat stat) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                childrenCount[0] = children.size();
+                statArray[0] = stat;
+                cdlatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail(
+                    "Test3 - getChildren call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("Test3 - children size is expected to be 3, but its actual size is " + childrenCount[0],
+                childrenCount[0] == 3);
+        rootStat = statArray[0];
+
+        // call async getChildren method and verify its return value
+        latch = new CountDownLatch(1);
+        client.getChildren(root, true, new Children2Callback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<String> children, Stat stat) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                childrenCount[0] = children.size();
+                statArray[0] = stat;
+                cdlatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail(
+                    "Test4 - getChildren call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("Test4 - children size is expected to be 3, but its actual size is " + childrenCount[0],
+                childrenCount[0] == 3);
+        rootStat = statArray[0];
+
+        // expire the ZKClient session and then call async setData with new data
+        expireZooKeeperSession(client, timeout);
+
+        // this is after previous session expiry. call getChildren method and verify its return value
+        children = client.getChildren(root, null, rootStat);
+        Assert.assertTrue("Test5 - children size is expected to be 3, but its actual size is " + children.size(),
+                children.size() == 3);
+
+        // create a child4 node
+        String child4 = root + "/" + "child4";
+        logger.info("Create znode " + child4);
+        byte[] child4Data = "child4".getBytes();
+        client.create(child4, child4Data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        // call async getChildren method and verify its return value
+        latch = new CountDownLatch(1);
+        client.getChildren(root, null, new Children2Callback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<String> children, Stat stat) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                childrenCount[0] = children.size();
+                statArray[0] = stat;
+                cdlatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail(
+                    "Test6 - getChildren call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("Test6 - children size is expected to be 3, but its actual size is " + childrenCount[0],
+                childrenCount[0] == 4);
+        rootStat = statArray[0];
+
+        // expire the ZKClient session and then call async setData with new data
+        expireZooKeeperSession(client, timeout);
+
+        // call getChildren method and verify its return value
+        children = client.getChildren(root, null);
+        Assert.assertTrue("Test7 - children size is expected to be 4, but its actual size is " + children.size(),
+                children.size() == 4);
+
+        // call getChildren method and verify its return value
+        children = client.getChildren(root, true);
+        Assert.assertTrue("Test8 - children size is expected to be 4, but its actual size is " + children.size(),
+                children.size() == 4);
+
+        // call async getChildren method and verify its return value
+        latch = new CountDownLatch(1);
+        client.getChildren(root, true, new AsyncCallback.ChildrenCallback() {
+
+            @Override
+            public void processResult(int rc, String path, Object ctx, List<String> children) {
+                CountDownLatch cdlatch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                childrenCount[0] = children.size();
+                cdlatch.countDown();
+            }
+        }, latch);
+        latch.await(3000, TimeUnit.MILLISECONDS);
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail(
+                    "Test9 - getChildren call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+        Assert.assertTrue("Test9 - children size is expected to be 4, but its actual size is " + childrenCount[0],
+                childrenCount[0] == 4);
     }
 
     @Test(timeout=60000)
