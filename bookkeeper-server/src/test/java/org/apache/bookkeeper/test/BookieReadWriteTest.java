@@ -33,9 +33,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
+import org.apache.bookkeeper.client.AsyncCallback.CloseCallback;
+import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.AsyncCallback.ReadLastConfirmedCallback;
 import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BKException.BKIllegalOpException;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -43,6 +46,7 @@ import org.apache.bookkeeper.streaming.LedgerInputStream;
 import org.apache.bookkeeper.streaming.LedgerOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.junit.Assert;
@@ -747,7 +751,7 @@ public class BookieReadWriteTest extends MultiLedgerManagerMultiDigestTestCase
         lh.addEntry(entry.array());
         return lh.getLastAddConfirmed();
     }
-
+    
     @Test(timeout=60000)
     public void testReadFromOpenLedger() throws Exception {
         try {
@@ -951,13 +955,139 @@ public class BookieReadWriteTest extends MultiLedgerManagerMultiDigestTestCase
         }
     }
 
+    @Test(timeout = 60000)
+    public void testWriteUsingReadOnlyHandle() throws Exception {
+        // Create a ledger
+        lh = bkc.createLedger(digestType, ledgerPassword);
+        ledgerId = lh.getId();
+        LOG.info("Ledger ID: " + lh.getId());
+
+        long lac = writeNEntriesLastWriteSync(lh, numEntriesToWrite);
+        LedgerHandle lhOpen = bkc.openLedgerNoRecovery(ledgerId, digestType, ledgerPassword);
+
+        // addEntry on ReadOnlyHandle should fail 
+        CountDownLatch latch = new CountDownLatch(1);
+        final int[] rcArray = { 0 };
+        lhOpen.asyncAddEntry("".getBytes(), new AddCallback() {
+            @Override
+            public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        if (rcArray[0] != BKException.Code.IllegalOpException) {
+            Assert.fail("Test1 - asyncAddOperation is supposed to be failed, but it got following rc - "
+                    + KeeperException.Code.get(rcArray[0]));
+        }
+
+        // addEntry on ReadOnlyHandle should fail 
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        lhOpen.asyncAddEntry("".getBytes(), 0, 0, new AddCallback() {
+            @Override
+            public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        if (rcArray[0] != BKException.Code.IllegalOpException) {
+            Assert.fail(
+                    "Test2 - asyncAddOperation is supposed to fail with IllegalOpException, but it got following rc - "
+                            + KeeperException.Code.get(rcArray[0]));
+        }
+
+        // close readonlyhandle
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        lhOpen.asyncClose(new CloseCallback() {
+            @Override
+            public void closeComplete(int rc, LedgerHandle lh, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        if (rcArray[0] != KeeperException.Code.OK.intValue()) {
+            Assert.fail("Test3 - asyncClose failed because of exception - " + KeeperException.Code.get(rcArray[0]));
+        }
+
+        // close of readonlyhandle should not affect the writehandle
+        writeNEntriesLastWriteSync(lh, 5);
+        lh.close();
+    }
+
+    @Test(timeout = 60000)
+    public void testLedgerHandle() throws Exception {
+        // Create a ledger
+        lh = bkc.createLedger(digestType, ledgerPassword);
+        ledgerId = lh.getId();
+        LOG.info("Ledger ID: " + lh.getId());
+
+        long lac = writeNEntriesLastWriteSync(lh, 5);
+
+        // addEntry on ReadOnlyHandle should fail
+        CountDownLatch latch = new CountDownLatch(1);
+        final int[] rcArray = { 0 };
+        lh.asyncAddEntry(lac + 1, "".getBytes(), new AddCallback() {
+            @Override
+            public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        if (rcArray[0] != BKException.Code.IllegalOpException) {
+            Assert.fail(
+                    "Test1 - addEntry with EntryID is expected to fail with IllegalOpException, but it got following rc - "
+                            + KeeperException.Code.get(rcArray[0]));
+        }
+
+        // addEntry on ReadOnlyHandle should fail
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        lh.asyncAddEntry(lac + 1, "".getBytes(), 0, 0, new AddCallback() {
+            @Override
+            public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        if (rcArray[0] != BKException.Code.IllegalOpException) {
+            Assert.fail(
+                    "Test2 - addEntry with EntryID is expected to fail with IllegalOpException, but it got following rc - "
+                            + KeeperException.Code.get(rcArray[0]));
+        }
+        
+        // addEntry on ReadOnlyHandle should fail
+        try {
+            lh.addEntry(lac + 1, "".getBytes());
+            Assert.fail("Test3 - addEntry with EntryID is expected to fail");
+        } catch (BKIllegalOpException E) {
+        }
+        
+        // addEntry on ReadOnlyHandle should fail
+        try {
+            lh.addEntry(lac + 1, "".getBytes(), 0, 0);
+            Assert.fail("Test4 - addEntry with EntryID is expected to fail");
+        } catch (BKIllegalOpException E) {
+        }
+        
+        lh.close();
+    }
 
     @Test(timeout=60000)
     public void testLastConfirmedAdd() throws Exception {
         try {
             // Create a ledger
             lh = bkc.createLedger(digestType, ledgerPassword);
-            // bkc.initMessageDigest("SHA1");
             ledgerId = lh.getId();
             LOG.info("Ledger ID: " + lh.getId());
 
@@ -1003,7 +1133,81 @@ public class BookieReadWriteTest extends MultiLedgerManagerMultiDigestTestCase
         }
     }
 
+    @Test(timeout=60000)
+    public void testReadLastConfirmed() throws Exception {
+        // Create a ledger and add entries
+        lh = bkc.createLedger(digestType, ledgerPassword);
+        // bkc.initMessageDigest("SHA1");
+        ledgerId = lh.getId();
+        LOG.info("Ledger ID: " + lh.getId());
+        long previousLAC = writeNEntriesLastWriteSync(lh, 5);
+        
+        // add more entries after opening ReadonlyLedgerHandle  
+        LedgerHandle lhOpen = bkc.openLedgerNoRecovery(ledgerId, digestType, ledgerPassword);
+        long currentLAC = writeNEntriesLastWriteSync(lh, 5);
 
+        // get LAC instance variable of ReadHandle and verify if it is equal to (previousLAC - 1)
+        long readLAC = lhOpen.getLastAddConfirmed();
+        Assert.assertTrue(
+                String.format("Test1 - For ReadHandle Expected LAC: {0} Actual LAC: {1}", (previousLAC - 1), readLAC),
+                readLAC == (previousLAC - 1));
+        
+        // close the write LedgerHandle and sleep for 500 msec to make sure all close watchers are called
+        lh.close();
+        Thread.sleep(500);
+
+        // again get LAC instance variable of ReadHandle and verify if it is equal to (previousLAC - 1)
+        readLAC = lhOpen.getLastAddConfirmed();
+        Assert.assertTrue(
+                String.format("Test2 - For ReadHandle Expected LAC: {0} Actual LAC: {1}", (previousLAC - 1), readLAC),
+                readLAC == (previousLAC - 1));
+
+        // now call asyncReadLastConfirmed and verify if it is equal to currentLAC
+        CountDownLatch latch = new CountDownLatch(1);
+        final int[] rcArray = { 0 };
+        final long[] lastConfirmedArray = { 0 };
+        lhOpen.asyncReadLastConfirmed(new ReadLastConfirmedCallback() {
+            @Override
+            public void readLastConfirmedComplete(int rc, long lastConfirmed, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                lastConfirmedArray[0] = lastConfirmed;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        Assert.assertTrue("Test3 - asyncReadLastConfirmed failed because of the exception - "
+                + KeeperException.Code.get(rcArray[0]), rcArray[0] == KeeperException.Code.OK.intValue());
+        Assert.assertTrue(
+                String.format("Test3 - Expected ReadLAC : {0} Actual ReadLAC: {1}", currentLAC, lastConfirmedArray[0]),
+                lastConfirmedArray[0] == currentLAC);
+
+        // similarly try calling asyncTryReadLastConfirmed and verify if it is equal to currentLAC
+        latch = new CountDownLatch(1);
+        rcArray[0] = 0;
+        lastConfirmedArray[0] = 0;
+        lhOpen.asyncTryReadLastConfirmed(new ReadLastConfirmedCallback() {
+            @Override
+            public void readLastConfirmedComplete(int rc, long lastConfirmed, Object ctx) {
+                CountDownLatch latch = (CountDownLatch) ctx;
+                rcArray[0] = rc;
+                lastConfirmedArray[0] = lastConfirmed;
+                latch.countDown();
+            }
+        }, latch);
+        latch.await();
+        Assert.assertTrue("Test4 - asyncTryReadLastConfirmed failed because of the exception - "
+                + KeeperException.Code.get(rcArray[0]), rcArray[0] == KeeperException.Code.OK.intValue());
+        Assert.assertTrue(
+                String.format("Test4 - Expected ReadLAC : {0} Actual ReadLAC: {1}", currentLAC, lastConfirmedArray[0]),
+                lastConfirmedArray[0] == currentLAC);
+
+        // similarly try calling tryReadLastConfirmed and verify if it is equal to currentLAC
+        long tryReadLAC = lhOpen.tryReadLastConfirmed();
+        Assert.assertTrue(String.format("Test5 - Expected ReadLAC : {0} Actual ReadLAC: {1}", currentLAC, tryReadLAC),
+                tryReadLAC == currentLAC);
+    }
+    
     @Override
     public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
         SyncObj sync = (SyncObj) ctx;
