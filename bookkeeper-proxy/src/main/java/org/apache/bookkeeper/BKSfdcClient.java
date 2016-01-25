@@ -162,26 +162,29 @@ public class BKSfdcClient {
         return elm.extentMapExists(extentId);
     }
 
-    public long ledgerStat(BKExtentId extentId) {
-        long ledgerSize;
+    public long ledgerStat(BKExtentId extentId) throws BKException, InterruptedException {
+        LedgerHandle lh = null;
+        long lSize = 0;
+
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
-        // Check if we have write ledger handle open.
-        LedgerHandle lh = lpd.getAnyLedgerHandle();
-
-        if (lh == null) {
-            byte ret;
-            // Don't have ledger opened, open it for read.
-            ret = ledgerNonRecoveryOpenRead(extentId);
-            if (ret != BKPConstants.SF_OK) {
-                return 0;
-            }
+        if (lpd != null) {
+            // Check if we have write ledger handle open.
             lh = lpd.getAnyLedgerHandle();
         }
 
-        // We have a ledger handle.
-        ledgerSize = lh.getLength();
-        return ledgerSize;
+        if (lh != null) {
+            lSize = lh.getLength();
+            return lSize;
+        }
+
+        // No ledger cached locally.
+        // Just open/get size and close the extent.
+        lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
+        lSize = lh.getLength();
+        lh.close();
+
+        return lSize;
     }
 
     public void ledgerDeleteAll() {

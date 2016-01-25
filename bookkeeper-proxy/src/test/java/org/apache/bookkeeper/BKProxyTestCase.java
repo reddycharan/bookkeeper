@@ -926,6 +926,29 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         executeTestcase(testDefinition);
     }
 
+    /*
+     * Create two proxys, BKP1 and BKP2
+     * BKP1 creates an extent ext1, writes, and close it. Makes sure it can stat it
+     *
+     * BKP2 makes sure it can stat ext1.
+     */
+    @Test
+    public void statAtClusterLevel() throws IOException, InterruptedException {
+
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP2\n"
+                                    +   NUMOFSLOTS + "-5\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n";
+        executeTestcase(testDefinition);
+    }
+
     /**
      * In this testcase, in threads connected to other BKProxy, LedgerReadEntryReq is called without explicitly opening Ledger for Read. It is supposed to
      * open Ledger for Read with Recovery and function normally
@@ -965,7 +988,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
     /*
      * Create two proxys, BKP1 and BKP2
-     * BKP1 writes writes 4 entries and doesn't close the extent ext1.
+     * BKP1 writes 4 entries and doesn't close the extent ext1.
      * BKP2 opens ext1 in readNoRecovery mode, successfully reads first 3 entries, and fails to read 4th entry.
      *      After waiting 10 secs it can successfully read 4th entry because explicitLAC should kick-in on the BKP1 context
      *      So BKP2 can read it after wait.

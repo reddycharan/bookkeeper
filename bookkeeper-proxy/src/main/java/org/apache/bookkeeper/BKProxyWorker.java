@@ -105,12 +105,21 @@ class BKProxyWorker implements Runnable {
                     respId = BKPConstants.LedgerStatResp;
                     resp.put(respId);
 
-                    // Check if the extent exists
-                    if (!bksc.ledgerMapExists(extentId)) {
-                        resp.put(BKPConstants.SF_ErrorNotFound);
-                    } else {
-                        long lSize = bksc.ledgerStat(extentId);
-                        resp.put(BKPConstants.SF_OK);
+                    long lSize = 0;
+                    byte error = BKPConstants.SF_OK;
+                    try {
+                        lSize = bksc.ledgerStat(extentId);
+                    } catch (InterruptedException | BKException e) {
+                        if ((e instanceof BKException)
+                                && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
+                            error = BKPConstants.SF_ErrorNotFound;
+                        } else {
+                            LOG.error(e.toString());
+                            error = BKPConstants.SF_InternalError;
+                        }
+                    }
+                    resp.put(error);
+                    if (error == BKPConstants.SF_OK) {
                         resp.putLong(lSize);
                     }
                     resp.flip();
@@ -126,7 +135,6 @@ class BKProxyWorker implements Runnable {
                     for (@SuppressWarnings("unused") Long lId : iterable) {
                         listCount++;
                     }
-
                     respId = BKPConstants.LedgerListGetResp;
                     resp.put(respId);
                     resp.put(BKPConstants.SF_OK);
