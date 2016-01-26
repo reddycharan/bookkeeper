@@ -80,14 +80,14 @@ class RoundRobinDistributionSchedule implements DistributionSchedule {
 
             // now check if there are any write quorums, with |ackQuorum| nodes available
             for (int i = 0; i < ensembleSize; i++) {
-                int nodesNotCovered = 0;
+                int nodesCovered = 0;
                 for (int j = 0; j < writeQuorumSize; j++) {
                     int nodeIndex = (i + j) % ensembleSize;
-                    if (!covered[nodeIndex]) {
-                        nodesNotCovered++;
+                    if (covered[nodeIndex]) {
+                        nodesCovered++;
                     }
                 }
-                if (nodesNotCovered >= ackQuorumSize) {
+                if (nodesCovered < ackQuorumSize) {
                     return false;
                 }
             }
