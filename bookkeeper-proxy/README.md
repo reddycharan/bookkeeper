@@ -1,5 +1,5 @@
 bookkeeper-proxy
-=======
+================
 
 The bookkeeper-proxy is responsible for accepting requests and communicating 
 with bookkeeper through the client APIs.
