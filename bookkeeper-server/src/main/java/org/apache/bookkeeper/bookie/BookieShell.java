@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
@@ -38,6 +39,7 @@ import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
+import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerMetadata;
@@ -62,6 +64,8 @@ import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 
 import com.google.common.util.concurrent.AbstractFuture;
+import com.google.protobuf.ByteString;
+
 import static com.google.common.base.Charsets.UTF_8;
 
 import org.apache.commons.configuration.Configuration;
@@ -99,6 +103,7 @@ public class BookieShell implements Tool {
     static final String CMD_SIMPLETEST = "simpletest";
     static final String CMD_READLOG = "readlog";
     static final String CMD_READJOURNAL = "readjournal";
+    static final String CMD_READLEDGERENTRY = "readledgerentry";
     static final String CMD_LASTMARK = "lastmark";
     static final String CMD_AUTORECOVERY = "autorecovery";
     static final String CMD_LISTBOOKIES = "listbookies";
@@ -806,6 +811,82 @@ public class BookieShell implements Tool {
     }
 
     /**
+     * Command to read entry of a ledger
+     */
+    class ReadLedgerEntryCmd extends MyCommand {
+        Options rleOpts = new Options();
+
+        ReadLedgerEntryCmd() {
+            super(CMD_READLEDGERENTRY);
+            rleOpts.addOption("m", "msg", false, "Print message body");
+            rleOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            rleOpts.addOption("fe", "firstEntryId", true, "First EntryID");
+            rleOpts.addOption("le", "lastEntryId", true, "Last EntryID");
+        }
+
+        @Override
+        public int runCmd(CommandLine cmdLine) throws Exception {
+            final long lid = getOptionLongValue(cmdLine, "ledgerid", -1);
+            if (lid == -1) {
+                System.err.println("Must specify a ledger id");
+                return -1;
+            }
+
+            final long feid = getOptionLongValue(cmdLine, "firstEntryId", -1);
+            if (feid == -1) {
+                System.err.println("Must specify first entry id");
+                return -1;
+            }
+
+            final long leid = getOptionLongValue(cmdLine, "lastEntryId", -1);
+            if (leid == -1) {
+                System.err.println("Must specify last entry id");
+                return -1;
+            }
+
+            boolean printMsg = cmdLine.hasOption("m");
+
+            ClientConfiguration adminConf = new ClientConfiguration(bkConf);
+            BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
+            LedgerHandle lh = null;
+            try {
+                lh = admin.openLedgerNoRecovery(lid);
+                Enumeration<LedgerEntry> entries = lh.readEntries(feid, leid);
+                while (entries.hasMoreElements()) {
+                    formatEntry(entries.nextElement(), printMsg);
+                }
+            } finally {
+                if (lh != null) {
+                    try {
+                        lh.close();
+                    } catch (BKException bke) {
+                        LOG.warn("Couldn't close ledger " + lid, bke);
+                    } catch (InterruptedException ie) {
+                        LOG.warn("Interrupted closing ledger " + lid, ie);
+                    }
+                }
+                admin.close();
+            }
+            return 0;
+        }
+
+        @Override
+        String getDescription() {
+            return "Print the Entries content";
+        }
+
+        @Override
+        String getUsage() {
+            return "readledgerentry     [-msg] -ledgerid <ledgerid> -firstEntryId <firstEntryId> -lastEntryId <lastEntryId> ";
+        }
+
+        @Override
+        Options getOptions() {
+            return rleOpts;
+        }
+    }
+    
+    /**
      * Command to print last log mark
      */
     class LastMarkCmd extends MyCommand {
@@ -1340,6 +1421,7 @@ public class BookieShell implements Tool {
         commands.put(CMD_SIMPLETEST, new SimpleTestCmd());
         commands.put(CMD_READLOG, new ReadLogCmd());
         commands.put(CMD_READJOURNAL, new ReadJournalCmd());
+        commands.put(CMD_READLEDGERENTRY, new ReadLedgerEntryCmd());
         commands.put(CMD_LASTMARK, new LastMarkCmd());
         commands.put(CMD_AUTORECOVERY, new AutoRecoveryCmd());
         commands.put(CMD_LISTBOOKIES, new ListBookiesCmd());
@@ -1634,6 +1716,25 @@ public class BookieShell implements Tool {
         System.out.println("LastLogMark: Journal Id - " + lastLogMark.getLogFileId() + "("
                 + Long.toHexString(lastLogMark.getLogFileId()) + ".txn), Pos - "
                 + lastLogMark.getLogFileOffset());
+    }
+
+    /**
+     * Format the entry into a readable format.
+     * 
+     * @param entry 
+     *          ledgerentry to print
+     * @param printMsg 
+     *          Whether printing the message body
+     */
+    private void formatEntry(LedgerEntry entry, boolean printMsg) {
+        long ledgerId = entry.getLedgerId();
+        long entryId = entry.getEntryId();
+        long entrySize = entry.getLength();
+        System.out
+                .println("--------- Lid=" + ledgerId + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
+        if (printMsg) {
+            formatter.formatEntry(entry.getEntry());
+        }
     }
 
     /**
