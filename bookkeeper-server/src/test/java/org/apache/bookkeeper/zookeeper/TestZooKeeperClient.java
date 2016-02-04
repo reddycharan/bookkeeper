@@ -328,14 +328,14 @@ public class TestZooKeeperClient extends TestCase {
         latch = new CountDownLatch(1);
         rcArray[0] = 0;
         statArray[0] = null;
-        final List[] aclListArray = { null };
+        final List<List<ACL>> aclListArray = new ArrayList<List<ACL>>(1);
         client.getACL(path, status, new ACLCallback() {
             @Override
             public void processResult(int rc, String path, Object ctx, List<ACL> acl, Stat stat) {
                 CountDownLatch cdLatch = (CountDownLatch) ctx;
                 rcArray[0] = rc;
                 statArray[0] = stat;
-                aclListArray[0] = acl;
+                aclListArray.add(acl);
                 cdLatch.countDown();
             }
 
@@ -345,7 +345,7 @@ public class TestZooKeeperClient extends TestCase {
             Assert.fail("Test4 - GetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
         }
         status = statArray[0];
-        receivedACLList = aclListArray[0];
+        receivedACLList = aclListArray.get(0);
         Assert.assertTrue("Test5 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
 
         // delete the node
@@ -418,14 +418,14 @@ public class TestZooKeeperClient extends TestCase {
         latch = new CountDownLatch(1);
         rcArray[0] = 0;
         statArray[0] = null;
-        final List[] aclListArray = { null };
+        final List<List<ACL>> aclListArray = new ArrayList<List<ACL>>(1);
         client.getACL(path, status, new ACLCallback() {
             @Override
             public void processResult(int rc, String path, Object ctx, List<ACL> acl, Stat stat) {
                 CountDownLatch cdLatch = (CountDownLatch) ctx;
                 rcArray[0] = rc;
                 statArray[0] = stat;
-                aclListArray[0] = acl;
+                aclListArray.add(acl);
                 cdLatch.countDown();
             }
 
@@ -435,7 +435,7 @@ public class TestZooKeeperClient extends TestCase {
             Assert.fail("Test4 - GetACL call failed because of exception - " + KeeperException.Code.get(rcArray[0]));
         }
         status = statArray[0];
-        receivedACLList = aclListArray[0];
+        receivedACLList = aclListArray.get(0);
         Assert.assertTrue("Test5 - ACLs are expected to match", compareLists(setACLList, receivedACLList));
 
         client.delete(path, status.getVersion());
