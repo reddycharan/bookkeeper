@@ -79,9 +79,7 @@
             <exclude>**/TestZooKeeperClient.java</exclude>
             <exclude>**/TestBackwardCompat.java</exclude>
             <exclude>**/TestFencing.java</exclude>
-            <exclude>**/BookieWriteLedgerTest.java</exclude>
             <exclude>**/BookieRecoveryTest.java</exclude>
-            <exclude>**/TestZeroBuffer.java</exclude>
           </excludes>
         </configuration>
       </plugin>
