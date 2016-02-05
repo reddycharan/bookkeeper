@@ -96,6 +96,7 @@ class PendingReadLacOp implements ReadLacCallback {
                 if (lac > maxLac) {
                     maxLac = lac;
                 }
+
                 // Extract lac from last entry on the disk
                 RecoveryData recoveryData = lh.macManager.verifyDigestAndReturnLastConfirmed(lastEntryBuffer);
                 if (recoveryData.lastAddConfirmed > maxLac) {
@@ -137,7 +138,7 @@ class PendingReadLacOp implements ReadLacCallback {
         }
 
         if (numResponsesPending == 0 && !completed) {
-            LOG.error("While readLac ledger: " + ledgerId + "did not hear success responses from all of ensemble");
+            LOG.info("While readLac ledger: " + ledgerId + " did not hear success responses from all of ensemble");
             cb.getLacComplete(lastSeenError, maxLac);
         }
     }

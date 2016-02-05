@@ -47,6 +47,7 @@ class PendingWriteLacOp implements WriteLacCallback {
     long lac;
     Object ctx;
     Set<Integer> writeSet;
+    Set<Integer> receivedResponseSet;
 
     DistributionSchedule.AckSet ackSet;
     boolean completed = false;
@@ -65,7 +66,8 @@ class PendingWriteLacOp implements WriteLacCallback {
 
     void setLac(long lac) {
         this.lac = lac;
-        writeSet = new HashSet<Integer>(lh.distributionSchedule.getWriteSet(lac));
+        this.writeSet = new HashSet<Integer>(lh.distributionSchedule.getWriteSet(lac));
+        this.receivedResponseSet = new HashSet<Integer>(writeSet);
     }
 
     void sendWriteLacRequest(int bookieIndex) {
@@ -89,11 +91,11 @@ class PendingWriteLacOp implements WriteLacCallback {
         }
 
         // We got response.
-        writeSet.remove(bookieIndex);
+        receivedResponseSet.remove(bookieIndex);
 
         if (rc != BKException.Code.OK) {
             LOG.warn("WriteLac did not succeed: Ledger {} on {}", new Object [] {ledgerId, addr });
-            if (writeSet.isEmpty()) {
+            if (receivedResponseSet.isEmpty()) {
                 // We have heard back from all bookies and is not had success from
                 // at least AckQuorum number of bookies. So it is considered a failure.
                 completed = true;

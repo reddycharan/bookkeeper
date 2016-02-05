@@ -102,11 +102,24 @@ class FileInfo {
 
     public ByteBuffer getLastAddConfirmed() {
         LOG.debug("fileInfo:GetLac: {}", lastAddConfirmed);
-        return lastAddConfirmed;
+        ByteBuffer retLac = null;
+        synchronized(this) {
+            if (lastAddConfirmed != null) {
+                lastAddConfirmed.rewind();
+                retLac = ByteBuffer.wrap(lastAddConfirmed.array());
+            }
+        }
+        return retLac;
     }
 
     public void setLastAddConfirmed(ByteBuffer lac) {
-        this.lastAddConfirmed = lac;
+        synchronized(this) {
+            if (lastAddConfirmed == null) {
+                lastAddConfirmed = ByteBuffer.allocate(lac.capacity());
+            }
+            lastAddConfirmed.put(lac);
+            lastAddConfirmed.rewind();
+        }
         LOG.debug("fileInfo:SetLac: {}", lastAddConfirmed);
     }
 

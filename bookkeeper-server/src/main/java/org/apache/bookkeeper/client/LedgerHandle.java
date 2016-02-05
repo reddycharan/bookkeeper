@@ -497,7 +497,7 @@ public class LedgerHandle {
                 readLac();
             } catch (BKException | InterruptedException e) {
                 // This is optional and if we can't read LAC that is fine.
-                LOG.info("ReadLac failed exception : {}", e);
+                LOG.info("Attempted to Read LAC, but nothing found");
             }
         }
 
@@ -1071,17 +1071,19 @@ public class LedgerHandle {
             @Override
             public void run() {
                 if (lh.getExplicitLastAddConfirmed() < lh.getPiggyBackedLastAddConfirmed()) {
+                    LOG.debug("ledgerid: {}", lh.getId() );
                     LOG.debug("explicitLac:{} piggybackLac:{}", lh.getExplicitLastAddConfirmed(), lh.getPiggyBackedLastAddConfirmed() );
                     lh.setExplicitLastAddConfirmed(lh.getPiggyBackedLastAddConfirmed());
                     return;
                 }
+
                 // explicitLastAddConfirmed >= piggybackedLastAddConfirmed
                 if (lh.getLastAddConfirmed() > lh.getExplicitLastAddConfirmed()) {
                     // Send Explicit LAC
+                    LOG.debug("ledgerid: {}", lh.getId() );
                     asyncLastAddConfirmedUpdate(lh.getLastAddConfirmed());
                     lh.setExplicitLastAddConfirmed(lh.getLastAddConfirmed());
                     LOG.debug("After sending explict LAC lac: {}  explicitLac:{}", lh.getLastAddConfirmed(), lh.getExplicitLastAddConfirmed());
-
                 }
             }
         };
@@ -1444,8 +1446,6 @@ public class LedgerHandle {
         public void addLacComplete(int rc, LedgerHandle lh, Object ctx) {
             if (rc != BKException.Code.OK) {
                 LOG.warn("LastAddConfirmedUpdate failed: " + BKException.getMessage(rc));
-                // Reset the explicitLAC so we start from the beginning.
-                lh.setExplicitLastAddConfirmed(INVALID_ENTRY_ID);
             } else {
                 LOG.debug("Callback LAC Updated for: {} ", lh.getId());
             }

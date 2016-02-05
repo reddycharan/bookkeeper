@@ -58,7 +58,7 @@ class ReadLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
             return readLacResponse.build();
         }
 
-        logger.info("Received ReadLac request: {}", request);
+        logger.debug("Received ReadLac request: {}", request);
         StatusCode status = StatusCode.EOK;
         ByteBuffer lastEntry;
         ByteBuffer lac;
