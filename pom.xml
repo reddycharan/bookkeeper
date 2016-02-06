@@ -66,7 +66,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.9</version>
         <configuration>
-          <argLine>-Xmx2G -Djava.net.preferIPv4Stack=true</argLine>
+          <argLine>-Xmx4G -Djava.net.preferIPv4Stack=true</argLine>
 	  <redirectTestOutputToFile>true</redirectTestOutputToFile>
 	  <forkMode>always</forkMode>
 	  <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
@@ -232,6 +232,11 @@
     </profile>
 
     <profile>
+<!--  Clover profile defition use the following command to run code coverage
+
+      mvn clean clover:setup package clover:aggregate clover:clover -PCloverProfile -Dmaven.test.failure.ignore=true -Dmaven.clover.licenseLocation=clover.license
+
+-->
       <id>CloverProfile</id>
       <build>
 	<plugins>
