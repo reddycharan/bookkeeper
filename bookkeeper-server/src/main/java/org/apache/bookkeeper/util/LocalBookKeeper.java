@@ -295,7 +295,7 @@ public class LocalBookKeeper {
 		boolean localLogsEnabled = containsAndIsVal("enableLocalStats", "true", conf); 
 		boolean runLocalLogs = statsEnabled && localLogsEnabled;
 		if (runLocalLogs) {
-			System.out.println("Running local logs...");
+			System.out.println("Collecting local stats...");
 			try {
 				statsProviderClass = conf.getStatsProviderClass();
 			} catch (ConfigurationException e) {
