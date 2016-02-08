@@ -250,7 +250,14 @@ public class LocalBookKeeper {
                 bsConfs[i].setIndexDirName(indexDirNames);
             }
             bsConfs[i].setAllowLoopback(true);
-            bs[i] = new BookieServer(bsConfs[i]);
+
+            if (sl != null) {
+            	bs[i] = new BookieServer(bsConfs[i], sl);
+            }
+            else {
+            	bs[i] = new BookieServer(bsConfs[i]);
+            }
+
             bs[i].start();
         }
     }
@@ -277,13 +284,44 @@ public class LocalBookKeeper {
         }
 
         lb.runZookeeper(1000);
-        lb.initializeZookeper();
-        List<File> tmpDirs = lb.runBookies(conf, "test");
+        List<File> tmpDirs = null;
+        lb.initializeZookeper();        
+        
+        Class<? extends StatsProvider> statsProviderClass = null;
+        StatsProvider statsProvider = null;
+		
+		List<File> tmpDirs = null;
+		boolean statsEnabled = containsAndIsVal("enableStatistics", "true", conf);
+		boolean localLogsEnabled = containsAndIsVal("enableLocalStats", "true", conf); 
+		boolean runLocalLogs = statsEnabled && localLogsEnabled;
+		if (runLocalLogs) {
+			System.out.println("Running local logs...");
+			try {
+				statsProviderClass = conf.getStatsProviderClass();
+			} catch (ConfigurationException e) {
+				LOG.warn("Failed to instantiate stats providre class: " + e.getStackTrace());
+				LOG.debug("Failed to instantiate stats providre class: ", e);
+			}
+			statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+	        statsProvider.start(conf);	       
+		}
+		
+		//If statsProvider isn't null, that means we have local logging enabled and a logging class instantiated. 
+		if (statsProvider != null) {
+			tmpDirs = lb.runBookies(conf, "test", statsProvider.getStatsLogger(conf.getString("codahaleStatsPrefix")));
+		}
+		else {
+			tmpDirs = lb.runBookies(conf, "test", null);
+		}
+        
         try {
             while (true) {
                 Thread.sleep(5000);
             }
         } catch (InterruptedException ie) {
+            if (runLocalLogs) {
+                statsProvider.stop();
+            }
             cleanupDirectories(tmpDirs);
             throw ie;
         }
