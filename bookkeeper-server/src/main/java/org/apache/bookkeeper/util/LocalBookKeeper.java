@@ -29,12 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.FileUtils;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.stats.StatsProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.CreateMode;
@@ -127,12 +130,12 @@ public class LocalBookKeeper {
         }
     }
 
-    private List<File> runBookies(ServerConfiguration baseConf, String dirSuffix)
+    private List<File> runBookies(ServerConfiguration baseConf, String dirSuffix, StatsLogger sl)
             throws IOException, KeeperException, InterruptedException, BookieException,
             UnavailableException, CompatibilityException {
         List<File> tempDirs = new ArrayList<File>();
         try {
-            runBookies(baseConf, tempDirs, dirSuffix);
+            runBookies(baseConf, tempDirs, dirSuffix, sl);
             return tempDirs;
         } catch (IOException ioe) {
             cleanupDirectories(tempDirs);
@@ -155,7 +158,7 @@ public class LocalBookKeeper {
         }
     }
 
-    private void runBookies(ServerConfiguration baseConf, List<File> tempDirs, String dirSuffix)
+    private void runBookies(ServerConfiguration baseConf, List<File> tempDirs, String dirSuffix, StatsLogger sl)
             throws IOException, KeeperException, InterruptedException, BookieException,
  UnavailableException, CompatibilityException {
         LOG.info("Starting Bookie(s)");
@@ -284,7 +287,6 @@ public class LocalBookKeeper {
         }
 
         lb.runZookeeper(1000);
-        List<File> tmpDirs = null;
         lb.initializeZookeper();        
         
         Class<? extends StatsProvider> statsProviderClass = null;
@@ -325,6 +327,10 @@ public class LocalBookKeeper {
             cleanupDirectories(tmpDirs);
             throw ie;
         }
+    }
+    
+    private static boolean containsAndIsVal(String key, String val, ServerConfiguration config) {
+    	return config.containsKey(key) && config.getString(key).equals(val);
     }
 
     private static void usage() {
