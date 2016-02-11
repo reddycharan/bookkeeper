@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 
 public class TestScenarioState {
 
@@ -37,7 +37,7 @@ public class TestScenarioState {
     private TestScenarioCyclicBarrier cycBarrier;
     private CountDownLatch currentTestScenarioThreadCountDownLatch;
     private Random rand;
-    private BookKeeperProxyConfiguraiton commonBKPConfig;
+    private BookKeeperProxyConfiguration commonBKPConfig;
     private long additionalTimeoutWaitTime = 0;
 
     private TestScenarioState() {
@@ -51,11 +51,11 @@ public class TestScenarioState {
         currentTimeSlot = new AtomicInteger(-1);
         failedOperations = new Vector<Operation>();
         rand = new Random();
-        commonBKPConfig = new BookKeeperProxyConfiguraiton();
+        commonBKPConfig = new BookKeeperProxyConfiguration();
     }
 
     public void addAndStartBKP(String bkProxyName, int bkProxyPort) throws InterruptedException {
-        BookKeeperProxyConfiguraiton thisBKPConfig = new BookKeeperProxyConfiguraiton(commonBKPConfig);
+        BookKeeperProxyConfiguration thisBKPConfig = new BookKeeperProxyConfiguration(commonBKPConfig);
         thisBKPConfig.setBKProxyPort(bkProxyPort);
         BKProxyMain bkProxy = new BKProxyMain(thisBKPConfig);
         Thread bkProxyThread = new Thread(bkProxy);
@@ -98,7 +98,7 @@ public class TestScenarioState {
     }
 
     public void addBKPClientThread(String threadId, String bkpId) throws IOException {
-        int bkpPort = bkProxiesMap.get(bkpId).getBookKeeperProxyConfiguraiton().getBKProxyPort();
+        int bkpPort = bkProxiesMap.get(bkpId).getBookKeeperProxyConfiguration().getBKProxyPort();
         BKPClientThread bkpThread = new BKPClientThread(threadId, cycBarrier, bkpPort, this);
         thisTestScenarioThreads.put(threadId, bkpThread);
     }
@@ -228,7 +228,7 @@ public class TestScenarioState {
         return failedOperations;
     }
 
-    public BookKeeperProxyConfiguraiton getCommonBKPConfig() {
+    public BookKeeperProxyConfiguration getCommonBKPConfig() {
         return commonBKPConfig;
     }
 

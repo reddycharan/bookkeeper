@@ -9,7 +9,7 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.zookeeper.KeeperException;
@@ -30,13 +30,13 @@ public class BKProxyMain implements Runnable {
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyMain.class);
 
     private ServerSocketChannel serverChannel;
-    private final BookKeeperProxyConfiguraiton bkpConf;
+    private final BookKeeperProxyConfiguration bkpConf;
 
-    public BKProxyMain(BookKeeperProxyConfiguraiton bkpConf) {
+    public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
     }
 
-    public BookKeeperProxyConfiguraiton getBookKeeperProxyConfiguraiton() {
+    public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
         return bkpConf;
     }
 
@@ -92,7 +92,7 @@ public class BKProxyMain implements Runnable {
     }
 
     public static void main(String args[]) throws Exception {
-        BookKeeperProxyConfiguraiton bkpConfig = new BookKeeperProxyConfiguraiton();
+        BookKeeperProxyConfiguration bkpConfig = new BookKeeperProxyConfiguration();
         loadConfFile(bkpConfig, CONFIG_FILE);
         BKProxyMain bkMain = new BKProxyMain(bkpConfig);
         Thread bkMainThread = new Thread(bkMain);

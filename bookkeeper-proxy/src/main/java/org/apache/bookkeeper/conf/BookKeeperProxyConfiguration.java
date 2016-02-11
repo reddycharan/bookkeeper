@@ -4,8 +4,8 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
-    private static final Logger logger = LoggerFactory.getLogger(BookKeeperProxyConfiguraiton.class);
+public class BookKeeperProxyConfiguration extends ClientConfiguration {
+    private static final Logger logger = LoggerFactory.getLogger(BookKeeperProxyConfiguration.class);
 
     protected static final String BKPROXY_PORT = "bkProxyPort";
     protected static final String SERVERCHANNEL_RECEIVE_BUFFER_SIZE = "serverChannelReceiveBufferSize";
@@ -23,11 +23,11 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
     private static final String MAC = "MAC";
     private static final String CRC32 = "CRC32";
 
-    public BookKeeperProxyConfiguraiton() {
+    public BookKeeperProxyConfiguration() {
         super();
     }
 
-    public BookKeeperProxyConfiguraiton(AbstractConfiguration conf) {
+    public BookKeeperProxyConfiguration(AbstractConfiguration conf) {
         super();
         loadConf(conf);
     }
@@ -36,7 +36,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(BKPROXY_PORT, 5555);
     }
 
-    public BookKeeperProxyConfiguraiton setBKProxyPort(int bkProxyPort) {
+    public BookKeeperProxyConfiguration setBKProxyPort(int bkProxyPort) {
         setProperty(BKPROXY_PORT, Integer.toString(bkProxyPort));
         return this;
     }
@@ -45,7 +45,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(SERVERCHANNEL_RECEIVE_BUFFER_SIZE, 65536);
     }
 
-    public BookKeeperProxyConfiguraiton setServerChannelReceiveBufferSize(int serverChannelReceiveBufferSize) {
+    public BookKeeperProxyConfiguration setServerChannelReceiveBufferSize(int serverChannelReceiveBufferSize) {
         setProperty(SERVERCHANNEL_RECEIVE_BUFFER_SIZE, serverChannelReceiveBufferSize);
         return this;
     }
@@ -54,7 +54,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(CLIENTCHANNEL_RECEIVE_BUFFER_SIZE, 65536);
     }
 
-    public BookKeeperProxyConfiguraiton setClientChannelReceiveBufferSize(int clientChannelReceiveBufferSize) {
+    public BookKeeperProxyConfiguration setClientChannelReceiveBufferSize(int clientChannelReceiveBufferSize) {
         setProperty(CLIENTCHANNEL_RECEIVE_BUFFER_SIZE, clientChannelReceiveBufferSize);
         return this;
     }
@@ -63,7 +63,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(CLIENTCHANNEL_SEND_BUFFER_SIZE, 65536);
     }
 
-    public BookKeeperProxyConfiguraiton setClientChannelSendBufferSize(int clientChannelSendBufferSize) {
+    public BookKeeperProxyConfiguration setClientChannelSendBufferSize(int clientChannelSendBufferSize) {
         setProperty(CLIENTCHANNEL_SEND_BUFFER_SIZE, clientChannelSendBufferSize);
         return this;
     }
@@ -72,7 +72,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(WORKER_THREAD_LIMIT, 1000);
     }
 
-    public BookKeeperProxyConfiguraiton setWorkerThreadLimit(int workerThreadLimit) {
+    public BookKeeperProxyConfiguration setWorkerThreadLimit(int workerThreadLimit) {
         setProperty(WORKER_THREAD_LIMIT, workerThreadLimit);
         return this;
     }
@@ -81,7 +81,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(MAX_FRAG_SIZE, 1048576);
     }
 
-    public BookKeeperProxyConfiguraiton setMaxFragSize(int maxFragSize) {
+    public BookKeeperProxyConfiguration setMaxFragSize(int maxFragSize) {
         setProperty(MAX_FRAG_SIZE, maxFragSize);
         return this;
     }
@@ -90,7 +90,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getBoolean(TCP_NODELAY, true);
     }
 
-    public BookKeeperProxyConfiguraiton setTCPNoDelay(boolean tcpNoDelay) {
+    public BookKeeperProxyConfiguration setTCPNoDelay(boolean tcpNoDelay) {
         setProperty(TCP_NODELAY, Boolean.toString(tcpNoDelay));
         return this;
     }
@@ -99,7 +99,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getString(PASSWORD, "foo");
     }
 
-    public BookKeeperProxyConfiguraiton setPassword(String password) {
+    public BookKeeperProxyConfiguration setPassword(String password) {
         setProperty(PASSWORD, password);
         return this;
     }
@@ -108,7 +108,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(ENSEMBLE_SIZE, 3);
     }
 
-    public BookKeeperProxyConfiguraiton setEnsembleSize(int ensembleSize) {
+    public BookKeeperProxyConfiguration setEnsembleSize(int ensembleSize) {
         setProperty(ENSEMBLE_SIZE, ensembleSize);
         return this;
     }
@@ -117,7 +117,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(WRITE_QUORUM_SIZE, 3);
     }
 
-    public BookKeeperProxyConfiguraiton setWriteQuorumSize(int writeQuorumSize) {
+    public BookKeeperProxyConfiguration setWriteQuorumSize(int writeQuorumSize) {
         setProperty(WRITE_QUORUM_SIZE, writeQuorumSize);
         return this;
     }
@@ -126,7 +126,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         return getInt(ACK_QUORUM_SIZE, 2);
     }
 
-    public BookKeeperProxyConfiguraiton setAckQuorumSize(int ackQuorumSize) {
+    public BookKeeperProxyConfiguration setAckQuorumSize(int ackQuorumSize) {
         setProperty(ACK_QUORUM_SIZE, ackQuorumSize);
         return this;
     }
@@ -140,7 +140,7 @@ public class BookKeeperProxyConfiguraiton extends ClientConfiguration {
         }
     }
 
-    public BookKeeperProxyConfiguraiton setDigestType(DigestType digestType) {
+    public BookKeeperProxyConfiguration setDigestType(DigestType digestType) {
         if (digestType == DigestType.MAC) {
             setProperty(DIGEST_TYPE, MAC);
         } else {

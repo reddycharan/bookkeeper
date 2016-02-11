@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.After;
 import org.junit.Assert;
@@ -267,7 +267,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void tryWritingOversizedFragment() throws IOException, InterruptedException {
         TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
-        BookKeeperProxyConfiguraiton commonBKPConfig = currentScenario.getCommonBKPConfig();
+        BookKeeperProxyConfiguration commonBKPConfig = currentScenario.getCommonBKPConfig();
 
         //Increasing TimeoutDuration because it might take longer time to create and send fragment of size BKPConstants.MAX_FRAG_SIZE
         BKPClientThread.timeoutDurationInSecs = 8;

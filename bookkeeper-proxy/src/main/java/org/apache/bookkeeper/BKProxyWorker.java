@@ -9,12 +9,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BKException.Code;
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class BKProxyWorker implements Runnable {
-    private final BookKeeperProxyConfiguraiton bkpConfig;
+    private final BookKeeperProxyConfiguration bkpConfig;
     SocketChannel clientChannel;
     BKSfdcClient bksc;
     AtomicInteger globalThreadId;    
@@ -23,7 +23,7 @@ class BKProxyWorker implements Runnable {
     BKExtentId extentId = new BKExtentIdByteArray();
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
 
-    public BKProxyWorker(BookKeeperProxyConfiguraiton bkpConfig, AtomicInteger threadId, SocketChannel sSock,
+    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, AtomicInteger threadId, SocketChannel sSock,
             BookKeeper bk, BKExtentLedgerMap elm) {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;

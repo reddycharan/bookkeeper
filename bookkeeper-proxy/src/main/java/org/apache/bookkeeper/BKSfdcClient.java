@@ -12,12 +12,12 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguraiton;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BKSfdcClient {
-    private final BookKeeperProxyConfiguraiton bkpConfig;
+    private final BookKeeperProxyConfiguration bkpConfig;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
@@ -32,7 +32,7 @@ public class BKSfdcClient {
     private String password;
     private DigestType digestType;
 
-    public BKSfdcClient(BookKeeperProxyConfiguraiton bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
+    public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
