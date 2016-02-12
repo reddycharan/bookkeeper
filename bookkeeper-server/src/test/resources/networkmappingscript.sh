@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # This script is used as NetworkTopology Mapping Script in TestRackawareEnsemblePlacementPolicyUsingScript.java TestSuite
 # It just maps HostAddress to rack depending on the last character of the HostAddress string
 # for eg. 
