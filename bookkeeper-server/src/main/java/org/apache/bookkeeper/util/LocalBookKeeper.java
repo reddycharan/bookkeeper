@@ -22,15 +22,19 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.FileUtils;
+import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
@@ -159,13 +163,24 @@ public class LocalBookKeeper {
     }
 
     private void runBookies(ServerConfiguration baseConf, List<File> tempDirs, String dirSuffix, StatsLogger sl)
-            throws IOException, KeeperException, InterruptedException, BookieException,
- UnavailableException, CompatibilityException {
+            throws IOException, KeeperException, InterruptedException, BookieException, UnavailableException,
+            CompatibilityException {
         LOG.info("Starting Bookie(s)");
         // Create Bookie Servers (B1, B2, B3)
 
         bs = new BookieServer[numberOfBookies];
         bsConfs = new ServerConfiguration[numberOfBookies];
+
+        File localBookiesConfigDir = new File(baseConf.getLocalBookiesConfigDirName());
+        if (localBookiesConfigDir.exists() && localBookiesConfigDir.isFile()) {
+            throw new IOException("Unable to create LocalBookiesConfigDir, since there is a file at "
+                    + localBookiesConfigDir.getAbsolutePath());
+        }
+        if (!localBookiesConfigDir.exists() && !localBookiesConfigDir.mkdirs()) {
+            throw new IOException(
+                    "Unable to create LocalBookiesConfigDir - " + localBookiesConfigDir.getAbsolutePath());
+        }
+        tempDirs.add(localBookiesConfigDir);
 
         for (int i = 0; i < numberOfBookies; i++) {
             bsConfs[i] = new ServerConfiguration((ServerConfiguration) baseConf.clone());
@@ -255,13 +270,62 @@ public class LocalBookKeeper {
             bsConfs[i].setAllowLoopback(true);
 
             if (sl != null) {
-            	bs[i] = new BookieServer(bsConfs[i], sl);
+                bs[i] = new BookieServer(bsConfs[i], sl);
+            } else {
+                bs[i] = new BookieServer(bsConfs[i]);
             }
-            else {
-            	bs[i] = new BookieServer(bsConfs[i]);
-            }
-
             bs[i].start();
+            String fileName = Bookie.getBookieAddress(bsConfs[i]).toString() + ".conf";
+            serializeLocalBookieConfig(bsConfs[i], fileName);
+        }
+        // baseconf.conf is needed because for executing any BookieShell command of Metadata/Zookeeper Operation nature
+        // we need a valid conf file having correct zk details and this could be used for running any such bookieshell
+        // commands if bookieid is not provided as parameter to bookkeeper shell operation. for eg:
+        // "./bookkeeper shell localbookie listbookies -rw". But for execution shell command of bookie Operation nature
+        // we need to provide bookieid, for eg "./bookkeeper shell localbookie -10.3.27.190:5000 lastmark", so this shell
+        // command would use '10.3.27.190:5000.conf' file
+        ServerConfiguration baseConfWithCorrectZKServers = new ServerConfiguration(
+                (ServerConfiguration) baseConf.clone());
+        baseConfWithCorrectZKServers
+                .setZkServers(InetAddress.getLocalHost().getHostAddress() + ":" + ZooKeeperDefaultPort);
+        serializeLocalBookieConfig(baseConfWithCorrectZKServers, "baseconf.conf");
+    }
+
+    /**
+     * 
+     * Serializes the config object to the specified file in localBookiesConfigDir
+     * 
+     * @param localBookieConfig
+     *         config object which has to be serialized
+     * @param fileName
+     *         name of the file 
+     * @throws IOException
+     */
+    private void serializeLocalBookieConfig(ServerConfiguration localBookieConfig, String fileName) throws IOException {
+        File localBookiesConfigDir = new File(localBookieConfig.getLocalBookiesConfigDirName());
+        File localBookieConfFile = new File(localBookiesConfigDir, fileName);
+        if (localBookieConfFile.exists() && !localBookieConfFile.delete()) {
+            throw new IOException(
+                    "Unable to delete the existing LocalBookieConfigFile - " + localBookieConfFile.getAbsolutePath());
+        }
+        if (!localBookieConfFile.createNewFile()) {
+            throw new IOException("Unable to create new File - " + localBookieConfFile.getAbsolutePath());
+        }
+        PrintWriter writer = new PrintWriter(localBookieConfFile);
+        Iterator keys = localBookieConfig.getKeys();
+        try {
+            while (keys.hasNext()) {
+                String key = keys.next().toString();
+                String[] values = localBookieConfig.getStringArray(key);
+                StringBuilder concatenatedValue = new StringBuilder(values[0]);
+                for (int i = 1; i < values.length; i++) {
+                    concatenatedValue.append("," + values[i]);
+                }
+                writer.println(key + "=" + concatenatedValue.toString());
+            }
+        } finally {
+            writer.flush();
+            writer.close();
         }
     }
 

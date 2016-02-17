@@ -79,6 +79,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String JOURNAL_DIR = "journalDirectory";
     protected final static String LEDGER_DIRS = "ledgerDirectories";
     protected final static String INDEX_DIRS = "indexDirectories";
+    protected final static String LOCALBOOKIES_CONFIG_DIR = "localBookiesConfigDirectory";
     // NIO Parameters
     protected final static String SERVER_TCP_NODELAY = "serverTcpNoDelay";
     // Zookeeper Parameters
@@ -470,6 +471,26 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setAllowLoopback(boolean allow) {
         this.setProperty(ALLOW_LOOPBACK, allow);
+        return this;
+    }
+
+    /**
+     * Get dir name to store config files of bookies which are started as part of LocalBookKeeper cluster
+     *
+     * @return LocalBookies Config Dir Name
+     */
+    public String getLocalBookiesConfigDirName() {
+        return this.getString(LOCALBOOKIES_CONFIG_DIR, "/tmp/localbookies-config");
+    }
+
+    /**
+     * Set dir name to store config files of bookies which are started as part of LocalBookKeeper cluster
+     * 
+     * @param localBookiesConfigDirName 
+     * @return server configuration
+     */
+    public ServerConfiguration setLocalBookiesConfigDirName(String localBookiesConfigDirName) {
+        this.setProperty(LOCALBOOKIES_CONFIG_DIR, localBookiesConfigDirName);
         return this;
     }
 
