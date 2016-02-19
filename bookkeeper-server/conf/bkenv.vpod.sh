@@ -35,9 +35,9 @@
 # BOOKIE_LOG_DIR=
 
 # Extra options to be passed to the jvm
-# In our VPOD setups, we presume 64GB of RAM
+# In our VPOD setups, we presume 32GB of RAM
 # BOOKIE_EXTRA_OPTS=
-BOOKIE_EXTRA_OPTS="-Xms6G -Xmx16G -XX:PermSize=2G -XX:MaxPermSize=16G -XX:InitialCodeCacheSize=128m -XX:ReservedCodeCacheSize=128m -Xss512k -XX:NewSize=4G -XX:MaxNewSize=4G -XX:+UseParNewGC -XX:MaxTenuringThreshold=2 -XX:+UnlockDiagnosticVMOptions -XX:+UseConcMarkSweepGC -XX:+UseCMSInitiatingOccupancyOnly -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:ParGCCardsPerStrideChunk=32768 -XX:CMSInitiatingPermOccupancyFraction=80 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways -XX:+ParallelRefProcEnabled -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseTLAB -XX:+UseCompressedOops -XX:+UseLinuxPosixThreadCPUClocks -XX:+DisableExplicitGC -XX:-UseBiasedLocking -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003"
+BOOKIE_EXTRA_OPTS="-Xms16G -Xmx16G -Xmn8G -XX:PermSize=256M -XX:MaxPermSize=512M -Duser.timezone=UTC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:+CMSParallelInitialMarkEnabled -XX:+ParallelRefProcEnabled -XX:+UnlockDiagnosticVMOptions -XX:+CMSEdenChunksRecordAlways -XX:ParGCCardsPerStrideChunk=4096 -XX:StringTableSize=1000003 -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:-OmitStackTraceInFastThrow -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics "
 
 # Add extra paths to the bookkeeper classpath
 # BOOKIE_EXTRA_CLASSPATH=
