@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.junit.After;
 import org.junit.Assert;
@@ -30,6 +31,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
     public BKProxyTestCase() {
         super(3);
+        baseConf.setLedgerManagerFactoryClass(LongHierarchicalLedgerManagerFactory.class);
+        baseClientConf.setLedgerManagerFactoryClass(LongHierarchicalLedgerManagerFactory.class);
     }
 
     @Rule
