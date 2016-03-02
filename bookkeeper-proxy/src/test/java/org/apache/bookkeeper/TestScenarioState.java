@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 
 public class TestScenarioState {
@@ -69,7 +70,7 @@ public class TestScenarioState {
             BKProxyMain bkProxy = bkProxiesMap.get(bkProxyName);
             try {
                 bkProxy.shutdown();
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException | BKException e) {
                 e.printStackTrace();
             }
         }

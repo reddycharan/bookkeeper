@@ -8,6 +8,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -31,6 +32,7 @@ public class BKProxyMain implements Runnable {
 
     private ServerSocketChannel serverChannel;
     private final BookKeeperProxyConfiguration bkpConf;
+    private BookKeeper bk = null;
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
@@ -50,8 +52,7 @@ public class BKProxyMain implements Runnable {
             serverChannel.socket().bind(new InetSocketAddress(bkpConf.getBKProxyPort()));
             SocketChannel sock = null;
 
-            // Global structures
-            BookKeeper bk = null;
+            // Global structures            
             BKExtentLedgerMap elm = new BKExtentLedgerMap();
 
             try {
@@ -84,10 +85,14 @@ public class BKProxyMain implements Runnable {
         }
     }
 
-    public void shutdown() throws IOException {
+    public void shutdown() throws IOException, InterruptedException, BKException {
         if (serverChannel != null) {
             System.out.println("Stopping proxy...");
             serverChannel.close();
+        }
+        if (bk != null){
+            LOG.info("Closing BookKeeper...");
+            bk.close();
         }
     }
 
