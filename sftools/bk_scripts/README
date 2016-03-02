@@ -1,0 +1,36 @@
+all_bk_stats.sh: retrieve all bookie stats that reside in /sfs/sfslogs/stats,
+  stores the files in a timestamped directory and host ip named sub directory.
+
+check_bookie.sh: Valdiates the bookkeeper process is running on each bookie
+  node and it has successfully registered with zookeeper.
+
+free_sp.sh: prints out the sfs 'df' output from each bookie node.
+
+get_bookie_log.sh: retrieve all bookie logs (and JVM GC files) and store 
+  these files into a timestamped directory and host ip named sub directory.
+
+get_io.sh: retrieve iostats output files from bookie nodes, stores these 
+  files into a timestamped directory and host ip named sub directory.  The
+  sdb latency output files (keystone stats) will be collected also if the
+  appropriate script has been started on the sdb nodes.
+
+get_os_metrics.sh: retrieve the os_metrics collected on each bookie and 
+  zookeeper node.  These are the metrics collected by Jyothi's scripts. The
+  data is stored in a timestamped directory and host ip named sub directory.
+
+hosts:  File to manually define the zookeeper, bookkeeper, sdb nodes.
+
+io_trends.sh: This script will loop forever collecting the latest bookie
+  and zookeeper node's iostats every 5 minutes.  The data is aggregated
+  and written to a summary file.  All the files are stored under a timestamp
+  directory.
+
+start_io.sh: kick off iostat on each bookie and zookeeper node, collection is
+  once a minute.
+
+stop_io.sh: terminate (kill) the iostat process on each bookie and 
+   zookeeper node.
+
+total_io.sh: Run this script from the directory created above from io_trends.sh
+  script.  The reads and writes are summed and reported for Ledger and 
+  Journal across all bookie and zookeeper nodes.
