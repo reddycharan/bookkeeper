@@ -107,6 +107,7 @@ Environment variables:
    BOOKIE_EXTRA_OPTS      Extra options to be passed to the jvm
    BOOKIE_EXTRA_CLASSPATH Add extra paths to the bookkeeper classpath
    ENTRY_FORMATTER_CLASS  Entry formatter class to format entries.
+   LEDGERID_FORMATTER_CLASS  LedgerId formatter class to format ledgerId
    BOOKIE_PID_DIR         Folder where the Bookie server PID file should be stored
    BOOKIE_STOP_TIMEOUT    Wait time before forcefully kill the Bookie server instance, if the stop is not successful
 
@@ -161,6 +162,25 @@ if [ $COMMAND == "shell" ]; then
             shift
         fi
     fi
+#if ledgeridformat is provided as argument to shell command then it should be effective irrespective of config value
+    if [[ $1 == "ledgeridformat"  ]]; then
+        if [[ $2 == -* ]]; 
+        then
+            if [[ $2 == "-hex" ]]; then
+	        LEDGERID_FORMATTER_CLASS="org.apache.bookkeeper.util.LedgerIdFormatter\$HexLedgerIdFormatter"
+            elif [[ $2 == "-long" ]]; then
+	        LEDGERID_FORMATTER_CLASS="org.apache.bookkeeper.util.LedgerIdFormatter\$LongLedgerIdFormatter"
+            elif [[ $2 == "-uuid" ]]; then
+	        LEDGERID_FORMATTER_CLASS="org.apache.bookkeeper.util.LedgerIdFormatter\$UUIDLedgerIdFormatter"
+            else
+	        echo "specified unexpected ledgeridformat ${2}, so default LedgerIdFormatter is used"	        
+            fi
+            shift 2
+        else
+	    echo "ledgeridformat is not specified, so default LedgerIdFormatter is used"
+            shift
+        fi
+    fi
 fi
 
 if [ -z "$BOOKIE_CONF" ]; then
@@ -206,7 +226,8 @@ elif [ $COMMAND == "upgrade" ]; then
     exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "shell" ]; then
     ENTRY_FORMATTER_ARG="-DentryFormatterClass=${ENTRY_FORMATTER_CLASS:-org.apache.bookkeeper.util.HexDumpEntryFormatter}"
-    exec $JAVA $OPTS $ENTRY_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
+    LEDGERID_FORMATTER_ARG="-DledgerIdFormatterClass=${LEDGERID_FORMATTER_CLASS:-org.apache.bookkeeper.util.LedgerIdFormatter\$LongLedgerIdFormatter}"
+    exec $JAVA $OPTS $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 else

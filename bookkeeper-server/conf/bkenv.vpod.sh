@@ -50,3 +50,6 @@ BOOKIE_EXTRA_OPTS="-Xms16G -Xmx16G -Xmn8G -XX:PermSize=256M -XX:MaxPermSize=512M
 
 #Entry formatter class to format entries.
 #ENTRY_FORMATTER_CLASS=
+
+#LedgerId formatter class to format ledgerids.
+LEDGERID_FORMATTER_CLASS=org.apache.bookkeeper.util.LedgerIdFormatter\$UUIDLedgerIdFormatter

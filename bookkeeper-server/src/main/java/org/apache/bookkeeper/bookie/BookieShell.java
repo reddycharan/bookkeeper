@@ -60,6 +60,7 @@ import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.util.EntryFormatter;
+import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.Tool;
 import org.apache.bookkeeper.util.ZkUtils;
@@ -99,6 +100,7 @@ public class BookieShell implements Tool {
     static final Logger LOG = LoggerFactory.getLogger(BookieShell.class);
 
     static final String ENTRY_FORMATTER_CLASS = "entryFormatterClass";
+    static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
 
     static final String CMD_METAFORMAT = "metaformat";
     static final String CMD_BOOKIEFORMAT = "bookieformat";
@@ -129,6 +131,7 @@ public class BookieShell implements Tool {
     EntryLogger entryLogger = null;
     Journal journal = null;
     EntryFormatter formatter;
+    LedgerIdFormatter ledgerIdFormatter;
 
     int pageSize;
     int entriesPerPage;
@@ -376,8 +379,8 @@ public class BookieShell implements Tool {
             }
             long ledgerId;
             try {
-                ledgerId = Long.parseLong(leftArgs[0]);
-            } catch (NumberFormatException nfe) {
+                ledgerId = ledgerIdFormatter.readLedgerId(leftArgs[0]);
+            } catch (IllegalArgumentException iae) {
                 System.err.println("ERROR: invalid ledger id " + leftArgs[0]);
                 printUsage();
                 return -1;
@@ -444,7 +447,7 @@ public class BookieShell implements Tool {
                 LedgerUnderreplicationManager underreplicationManager = mFactory.newLedgerUnderreplicationManager();
                 Iterator<Long> iter = underreplicationManager.listLedgersToRereplicate();
                 while (iter.hasNext()) {
-                    System.out.println(iter.next());
+                    System.out.println(ledgerIdFormatter.formatLedgerId(iter.next()));
                 }
             } finally {
                 if (zk != null) {
@@ -507,7 +510,7 @@ public class BookieShell implements Tool {
                     while (iter.hasNext()) {
                         LedgerRange r = iter.next();
                         for (Long lid : r.getLedgers()) {
-                            System.out.println(Long.toString(lid));
+                            System.out.println(ledgerIdFormatter.formatLedgerId(lid));
                         }
                     }
                 }
@@ -544,9 +547,9 @@ public class BookieShell implements Tool {
         }
     }
 
-    static void printLedgerMetadata(ReadMetadataCallback cb) throws Exception {
+    void printLedgerMetadata(ReadMetadataCallback cb) throws Exception {
         LedgerMetadata md = cb.get();
-        System.out.println("ledgerID: " + cb.getLedgerId());
+        System.out.println("ledgerID: " + ledgerIdFormatter.formatLedgerId(cb.getLedgerId()));
         System.out.println(new String(md.serialize(), UTF_8));
     }
 
@@ -584,7 +587,7 @@ public class BookieShell implements Tool {
 
         @Override
         public int runCmd(CommandLine cmdLine) throws Exception {
-            final long lid = getOptionLongValue(cmdLine, "ledgerid", -1);
+            final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             if (lid == -1) {
                 System.err.println("Must specify a ledger id");
                 return -1;
@@ -924,7 +927,7 @@ public class BookieShell implements Tool {
 
         @Override
         public int runCmd(CommandLine cmdLine) throws Exception {
-            final long lid = getOptionLongValue(cmdLine, "ledgerid", -1);
+            final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             if (lid == -1) {
                 System.err.println("Must specify a ledger id");
                 return -1;
@@ -1609,6 +1612,7 @@ public class BookieShell implements Tool {
             indexDirectories = Bookie.getCurrentDirectories(bkConf.getIndexDirs());
         }
         formatter = EntryFormatter.newEntryFormatter(bkConf, ENTRY_FORMATTER_CLASS);
+        ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkConf, LEDGERID_FORMATTER_CLASS);
         LOG.debug("Using entry formatter {}", formatter.getClass().getName());
         pageSize = bkConf.getPageSize();
         entriesPerPage = pageSize / 8;
@@ -1813,7 +1817,7 @@ public class BookieShell implements Tool {
      *          Ledger Id
      */
     protected void readLedgerMeta(long ledgerId) throws Exception {
-        System.out.println("===== LEDGER: " + ledgerId + " =====");
+        System.out.println("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
         FileInfo fi = getFileInfo(ledgerId);
         byte[] masterKey = fi.getMasterKey();
         if (null == masterKey) {
@@ -1839,7 +1843,7 @@ public class BookieShell implements Tool {
      * @throws IOException
      */
     protected void readLedgerIndexEntries(long ledgerId) throws IOException {
-        System.out.println("===== LEDGER: " + ledgerId + " =====");
+        System.out.println("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
         FileInfo fi = getFileInfo(ledgerId);
         long size = fi.size();
         System.out.println("size        : " + size);
@@ -1946,7 +1950,7 @@ public class BookieShell implements Tool {
         long entryId = entry.getEntryId();
         long entrySize = entry.getLength();
         System.out
-                .println("--------- Lid=" + ledgerId + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
+                .println("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
         if (printMsg) {
             formatter.formatEntry(entry.getEntry());
         }
@@ -1967,7 +1971,7 @@ public class BookieShell implements Tool {
         long entryId = recBuff.getLong();
         int entrySize = recBuff.limit();
 
-        System.out.println("--------- Lid=" + ledgerId + ", Eid=" + entryId
+        System.out.println("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId
                          + ", ByteOffset=" + pos + ", EntrySize=" + entrySize + " ---------");
         if (entryId == Bookie.METAENTRY_ID_LEDGER_KEY) {
             int masterKeyLen = recBuff.getInt();
@@ -2042,6 +2046,19 @@ public class BookieShell implements Tool {
         return defaultVal;
     }
 
+    private long getOptionLedgerIdValue(CommandLine cmdLine, String option, long defaultVal) {
+        if (cmdLine.hasOption(option)) {
+            String val = cmdLine.getOptionValue(option);
+            try {
+                return ledgerIdFormatter.readLedgerId(val);
+            } catch (IllegalArgumentException iae) {
+                System.err.println("ERROR: invalid value for option " + option + " : " + val);
+                return defaultVal;
+            }
+        }
+        return defaultVal;
+    }
+    
     private static boolean getOptionBooleanValue(CommandLine cmdLine, String option, boolean defaultVal) {
         if (cmdLine.hasOption(option)) {
             String val = cmdLine.getOptionValue(option);
