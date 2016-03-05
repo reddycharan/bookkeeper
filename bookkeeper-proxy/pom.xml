@@ -15,6 +15,8 @@
   <properties>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
+    <build.unknown>UNKNOWN</build.unknown>
+    <build.number>${build.unknown}</build.number>
   </properties>
 
 	<dependencies>
@@ -54,9 +56,46 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>	
-	
 	<build>
 		<plugins>
+			<plugin>
+			  <groupId>pl.project13.maven</groupId>
+			  <artifactId>git-commit-id-plugin</artifactId>
+			  <version>2.1.9</version>
+			  <executions>
+				<execution>
+					<id>git-commit-id</id>
+					<goals>
+					  <goal>revision</goal>
+					</goals>
+					<phase>validate</phase>
+					<configuration>
+					  <prefix>git-commit-id</prefix>
+					  <skipPoms>false</skipPoms>
+					  <gitDescribe>
+						<skip>false</skip>
+					  </gitDescribe>
+					</configuration>
+				</execution>
+			  </executions>
+			</plugin>
+			<plugin>
+			  <groupId>org.apache.maven.plugins</groupId>
+			  <artifactId>maven-jar-plugin</artifactId>
+			  <version>2.2</version>
+			  <configuration>
+				<archive>
+				  <manifestSection>
+					<name>Build Details</name>
+					<manifestEntries>
+					  <Build-Number>${build.number}</Build-Number>
+					  <SCM-Revision>${git-commit-id.commit.id}</SCM-Revision>
+					  <SCM-Time>${git-commit-id.commit.time}</SCM-Time>
+					</manifestEntries>
+				  </manifestSection>
+				</archive>
+			  </configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -68,6 +107,14 @@
 							<addClasspath>true</addClasspath>
 							<mainClass>org.apache.bookkeeper.BKProxyMain</mainClass>
 						</manifest>
+						<manifestSection>
+						  <name>Build Details</name>
+						  <manifestEntries>
+							<Build-Number>${build.number}</Build-Number>
+							<SCM-Revision>${git-commit-id.commit.id}</SCM-Revision>
+							<SCM-Time>${git-commit-id.commit.time}</SCM-Time>
+						  </manifestEntries>
+						</manifestSection>
 					</archive>
 					<descriptors>
             			<descriptor>../src/assemble/bin.xml</descriptor>

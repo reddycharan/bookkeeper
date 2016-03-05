@@ -30,6 +30,8 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.libdir>${basedir}/lib</project.libdir>
+    <build.unknown>UNKNOWN</build.unknown>
+    <build.number>${build.unknown}</build.number>
   </properties>
   <dependencies>
     <dependency>
@@ -177,6 +179,27 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>2.1.9</version>
+        <executions>
+          <execution>
+            <id>git-commit-id</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>validate</phase>
+            <configuration>
+              <prefix>git-commit-id</prefix>
+              <skipPoms>false</skipPoms>
+              <gitDescribe>
+                <skip>false</skip>
+              </gitDescribe>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.1</version>
@@ -236,6 +259,18 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <version>2.2</version>
+        <configuration>
+          <archive>
+              <manifestSection>
+                <name>Build Details</name>
+                <manifestEntries>
+                  <SCM-Revision>${git-commit-id.commit.id}</SCM-Revision>
+                  <SCM-Time>${git-commit-id.commit.time}</SCM-Time>
+                  <Build-Number>${build.number}</Build-Number>
+                </manifestEntries>
+              </manifestSection>
+          </archive>
+        </configuration>
         <executions>
           <execution>
             <goals>
