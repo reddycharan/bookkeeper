@@ -290,6 +290,7 @@ class FileInfo {
         }
         if (useCount.get() == 0 && fc != null) {
             fc.close();
+            fc = null;
         }
     }
 
