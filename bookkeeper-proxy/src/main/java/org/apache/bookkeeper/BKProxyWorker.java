@@ -14,51 +14,70 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class BKProxyWorker implements Runnable {
+    private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
+
     private final BookKeeperProxyConfiguration bkpConfig;
     SocketChannel clientChannel;
     BKSfdcClient bksc;
-    AtomicInteger globalThreadId;    
+    AtomicInteger globalThreadId;
     byte reqId = BKPConstants.UnInitialized;
     byte respId = BKPConstants.UnInitialized;
     BKExtentId extentId = new BKExtentIdByteArray();
-    private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
 
     public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, AtomicInteger threadId, SocketChannel sSock,
-            BookKeeper bk, BKExtentLedgerMap elm) {
+            BookKeeper bk, BKExtentLedgerMap elm) throws IOException {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
-        this.globalThreadId = threadId;       
+        this.globalThreadId = threadId;
+
         try {
             // To facilitate Data Extents,
             // Set both send-buffer and receive-buffer limits of the socket to 64k.
             this.clientChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
-                    bkpConfig.getClientChannelReceiveBufferSize());
+                    this.bkpConfig.getClientChannelReceiveBufferSize());
             this.clientChannel.setOption(java.net.StandardSocketOptions.SO_SNDBUF,
-                    bkpConfig.getClientChannelSendBufferSize());
+                    this.bkpConfig.getClientChannelSendBufferSize());
             this.clientChannel.setOption(java.net.StandardSocketOptions.TCP_NODELAY, bkpConfig.getTCPNoDelay());
         } catch (IOException e) {
-            // TODO Auto-generated catch block
+            LOG.error("Exception creating worker: ", e);
             globalThreadId.decrementAndGet();
-            e.printStackTrace();
+            throw e;
         }
         this.bksc = new BKSfdcClient(bkpConfig, bk, elm);
     }
 
-
     private int clientChannelRead(ByteBuffer buf) throws IOException {
-        int bytesRead = clientChannel.read(buf);
-        LOG.info("clientChannelRead - Read bytes: " + bytesRead + " ThreadId: " + Thread.currentThread().getId() + " req: "
-                 + reqRespToString(reqId) + " respId: " + reqRespToString(respId) + " ledgerId: " + extentId.asHexString());
+        int bytesRead = 0;
+        try {
+            bytesRead = clientChannel.read(buf);
+        } catch (IOException e) {
+            LOG.error("Exception in read. ThreadId: " + Thread.currentThread().getId() + " req: " +
+                    BKPConstants.getReqRespString(reqId) + " respId: " + BKPConstants.getReqRespString(respId)
+                    + " ledgerId: " + extentId.asHexString(), e);
+            throw e;
+        }
+        LOG.info("clientChannelRead - Read bytes: " + bytesRead + " ThreadId: " + Thread.currentThread().getId()
+                + " req: " + BKPConstants.getReqRespString(reqId) + " respId: " + BKPConstants.getReqRespString(respId)
+                 + " ledgerId: " + extentId.asHexString());
         return bytesRead;
     }
 
     private void clientChannelWrite(ByteBuffer buf) throws IOException {
-        LOG.info("clientChannelWrite writing bytes:" + buf.remaining() + " ThreadId: " + Thread.currentThread().getId() + " req: "
-                 + reqRespToString(reqId) + " respId: " + reqRespToString(respId) + " ledgerId: " + extentId.asHexString());
-        while (buf.hasRemaining()) {
-            clientChannel.write(buf);
+        LOG.info("clientChannelWrite writing bytes:" + buf.remaining() + " ThreadId: " + Thread.currentThread().getId()
+                + " req: " + BKPConstants.getReqRespString(reqId) + " respId: " + BKPConstants.getReqRespString(respId)
+                + " ledgerId: " + extentId.asHexString());
+        try {
+            while (buf.hasRemaining()) {
+                clientChannel.write(buf);
+            }
+        } catch (IOException e) {
+            LOG.error("Exception in write. ThreadId: " + Thread.currentThread().getId() + " req: " +
+                    BKPConstants.getReqRespString(reqId) + " respId: " + BKPConstants.getReqRespString(respId)
+                    + " ledgerId: " + extentId.asHexString(), e);
+            throw e;
         }
     }
+
     public void run() {
         ByteBuffer req = ByteBuffer.allocate(BKPConstants.GENERIC_REQ_SIZE);
         ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
@@ -72,11 +91,12 @@ class BKProxyWorker implements Runnable {
         erreq.order(ByteOrder.nativeOrder());
 
         int bytesRead;
-
         try {
-            LOG.info("Starting thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
+            LOG.info("Starting thread - " + Thread.currentThread().getId() + " No. of Active Threads - "
+                    + globalThreadId.get());
 
             while (true) {
+                byte errorCode = BKPConstants.SF_OK;
                 req.clear();
                 resp.clear();
                 bytesRead = 0;
@@ -88,7 +108,8 @@ class BKProxyWorker implements Runnable {
                 }
 
                 if (bytesRead < 0) {
-                    LOG.info("Exiting Thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
+                    LOG.info("Exiting Thread - " + Thread.currentThread().getId() + " No. of Active Threads - "
+                            + globalThreadId.get());
                     break;
                 }
 
@@ -96,30 +117,32 @@ class BKProxyWorker implements Runnable {
                 reqId = req.get();
                 req.get(extentId.asByteArray());
 
-                LOG.info("Request: {} for extentId: {}", reqRespToString(reqId), extentId.asHexString());
+                LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId.asHexString());
 
                 switch (reqId) {
 
                 case (BKPConstants.LedgerStatReq): {
-
+                    errorCode = BKPConstants.SF_OK;
                     respId = BKPConstants.LedgerStatResp;
                     resp.put(respId);
 
                     long lSize = 0;
-                    byte error = BKPConstants.SF_OK;
                     try {
                         lSize = bksc.ledgerStat(extentId);
-                    } catch (InterruptedException | BKException e) {
-                        if ((e instanceof BKException)
-                                && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
-                            error = BKPConstants.SF_ErrorNotFound;
+                    } catch (BKException e) {
+                        if (e.getCode() == Code.NoSuchLedgerExistsException) {
+                            errorCode = BKPConstants.SF_ErrorNotFound;
                         } else {
-                            LOG.error(e.toString());
-                            error = BKPConstants.SF_InternalError;
+                            LOG.error("Exception when getting statistics for extent {}", extentId.asHexString(), e);
+                            errorCode = BKPConstants.SF_InternalError;
                         }
+                    } catch (Exception e) {
+                        LOG.error("Exception when getting statistics for extent {}", extentId.asHexString(), e);
+                        errorCode = BKPConstants.SF_InternalError;
                     }
-                    resp.put(error);
-                    if (error == BKPConstants.SF_OK) {
+
+                    resp.put(errorCode);
+                    if (errorCode == BKPConstants.SF_OK) {
                         resp.putLong(lSize);
                     }
                     resp.flip();
@@ -128,6 +151,7 @@ class BKProxyWorker implements Runnable {
                 }
 
                 case (BKPConstants.LedgerListGetReq): {
+                    errorCode = BKPConstants.SF_OK;
                     Iterable<Long> iterable = bksc.ledgerList();
 
                     // Count number of elements in the list.
@@ -137,7 +161,7 @@ class BKProxyWorker implements Runnable {
                     }
                     respId = BKPConstants.LedgerListGetResp;
                     resp.put(respId);
-                    resp.put(BKPConstants.SF_OK);
+                    resp.put(errorCode);
                     resp.putInt(listCount);
                     resp.flip();
                     // Write the response back to client.
@@ -153,7 +177,7 @@ class BKProxyWorker implements Runnable {
                     // is expected to read listCount*BKPConstants.EXTENTID_SIZE bytes.
                     // Hence we are adopting the following logic:
                     // - If extents were added after taking the listCount, we send at the most
-                    // listCunt number of extents.
+                    // listCount number of extents.
                     // - If extents were deleted after taking the listCount, we send extent#0s.
 
                     ByteBuffer bExtentId = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
@@ -181,62 +205,82 @@ class BKProxyWorker implements Runnable {
                 }
 
                 case (BKPConstants.LedgerWriteCloseReq): {
-                    byte ret = bksc.ledgerWriteClose(extentId);
+                    errorCode = bksc.ledgerWriteUnsafeClose(extentId);
                     respId = BKPConstants.LedgerWriteCloseResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
+                    resp.flip();
+                    clientChannelWrite(resp);
+                    break;
+                }
+
+                case (BKPConstants.LedgerWriteSafeCloseReq): {
+                    errorCode = bksc.ledgerWriteSafeClose(extentId);
+                    respId = BKPConstants.LedgerWriteSafeCloseResp;
+                    resp.put(respId);
+                    resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                     break;
                 }
 
                 case (BKPConstants.LedgerOpenReadReq): {
-                    byte ret = bksc.ledgerNonRecoveryOpenRead(extentId);
+                    errorCode = bksc.ledgerNonRecoveryOpenRead(extentId);
                     respId = BKPConstants.LedgerOpenReadResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                     break;
                 }
 
                 case (BKPConstants.LedgerOpenRecoverReq): {
-                    byte ret = bksc.ledgerRecoveryOpenRead(extentId);
+                    errorCode = bksc.ledgerRecoveryOpenRead(extentId);
                     respId = BKPConstants.LedgerOpenRecoverResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                     break;
                 }
 
                 case (BKPConstants.LedgerReadCloseReq): {
-                    byte ret = bksc.ledgerReadClose(extentId);
+                    errorCode = bksc.ledgerReadUnsafeClose(extentId);
                     respId = BKPConstants.LedgerReadCloseResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
+                    resp.flip();
+                    clientChannelWrite(resp);
+                    break;
+                }
+
+                case (BKPConstants.LedgerReadSafeCloseReq): {
+                    errorCode = bksc.ledgerReadSafeClose(extentId);
+                    respId = BKPConstants.LedgerReadSafeCloseResp;
+                    resp.put(respId);
+                    resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                     break;
                 }
 
                 case (BKPConstants.LedgerDeleteReq): {
-                    byte ret = bksc.ledgerDelete(extentId);
+                    errorCode = bksc.ledgerDelete(extentId);
                     respId = BKPConstants.LedgerDeleteResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                     break;
                 }
 
                 case (BKPConstants.LedgerDeleteAllReq): {
-
+                    errorCode = BKPConstants.SF_OK;
                     bksc.ledgerDeleteAll();
 
                     respId = BKPConstants.LedgerDeleteAllResp;
                     resp.put(respId);
-                    resp.put(BKPConstants.SF_OK);
+                    resp.put(errorCode);
                     resp.flip();
 
                     clientChannelWrite(resp);
@@ -245,11 +289,11 @@ class BKProxyWorker implements Runnable {
 
                 case (BKPConstants.LedgerCreateReq): {
 
-                    byte ret = bksc.ledgerCreate(extentId);
+                    errorCode = bksc.ledgerCreate(extentId);
 
                     respId = BKPConstants.LedgerCreateResp;
                     resp.put(respId);
-                    resp.put(ret);
+                    resp.put(errorCode);
                     resp.flip();
 
                     clientChannelWrite(resp);
@@ -257,6 +301,7 @@ class BKProxyWorker implements Runnable {
                     break;
                 }
 
+                //AMK: todo
                 case (BKPConstants.LedgerWriteEntryReq): {
                     int fragmentId;
                     int wSize;
@@ -275,6 +320,7 @@ class BKProxyWorker implements Runnable {
                     fragmentId = ewreq.getInt();
                     wSize = ewreq.getInt();
                     if (wSize > cByteBuf.capacity()) {
+                        errorCode = BKPConstants.SF_ErrorBadRequest;
                         LOG.error("Write message size:{} bigger than allowed:{}", wSize, cByteBuf.capacity());
                         // #W-2763423 it is required to read the oversized
                         // fragment and empty out the clientsocketchannel,
@@ -289,7 +335,7 @@ class BKProxyWorker implements Runnable {
                         }
                         cByteBuf.clear();
                         // TODO: Throw Exception.
-                        resp.put(BKPConstants.SF_ErrorBadRequest);
+                        resp.put(errorCode);
                         resp.flip();
                         clientChannelWrite(resp);
                         break;
@@ -303,19 +349,19 @@ class BKProxyWorker implements Runnable {
 
                     cByteBuf.flip();
 
-                    byte ret = bksc.ledgerPutEntry(extentId, fragmentId, cByteBuf);
+                    errorCode = bksc.ledgerPutEntry(extentId, fragmentId, cByteBuf);
 
-                    resp.put(ret);
+                    resp.put(errorCode);
                     resp.flip();
 
                     clientChannelWrite(resp);
                     break;
                 }
 
+                // AMK: todo
                 case (BKPConstants.LedgerReadEntryReq): {
                     int fragmentId;
                     int bufSize;
-                    byte errorCode = BKPConstants.SF_OK;
                     ByteBuffer ledgerEntry = null;
 
                     erreq.clear();
@@ -331,17 +377,18 @@ class BKProxyWorker implements Runnable {
                     resp.put(respId);
 
                     // Now get the fragment/entry
+                    errorCode = BKPConstants.SF_OK;
                     try {
                         ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
                     } catch (BKException bke) {
                         if (bke.getCode() == Code.LedgerClosedException) {
+                            LOG.error("Found closed ledger when reading ledger entry for extentId {}", extentId.asHexString(), bke);
                             errorCode = BKPConstants.SF_ErrorNotFoundClosed;
                         } else if (bke.getCode() != Code.ReadException) {
                             // SDB tries to find the end of the Extent by reading until it gets an error.
                             // Current readEntries() returns BKReadException in this case.
                             // Since it is valid error for us, skip printing error for this error.
-                            LOG.error(bke.toString());
-                            bke.printStackTrace();
+                            LOG.error("Read Exception when reading ledger entry for extentId {}", extentId.asHexString(), bke);
                         }
                         ledgerEntry = null;
                     }
@@ -356,11 +403,13 @@ class BKProxyWorker implements Runnable {
                         clientChannelWrite(resp);
 
                     } else if (bufSize < ledgerEntry.position()) {
-                        resp.put(BKPConstants.SF_ShortREAD);
+                        errorCode = BKPConstants.SF_ShortREAD;
+                        resp.put(errorCode);
                         resp.flip();
                         clientChannelWrite(resp);
                     } else {
-                        resp.put(BKPConstants.SF_OK);
+                        errorCode = BKPConstants.SF_OK;
+                        resp.put(errorCode);
                         resp.putInt(ledgerEntry.position());
                         resp.flip();
 
@@ -372,99 +421,28 @@ class BKProxyWorker implements Runnable {
                     }
                     break;
                 }
-                default:
-                    System.out.println("Invalid command = " + reqId);
-                }
-            }
-            clientChannel.close();
-            LOG.info("Ending thread - " + Thread.currentThread().getId() + " No. of Active Threads - " + globalThreadId.get());
-            globalThreadId.decrementAndGet();
-        } catch (IOException e) {
-            System.out.println(e);
-        }
-    }
 
-    static String reqRespToString(byte req) {
-        String lstr;
-        switch (req) {
-        case (BKPConstants.UnInitialized):
-            lstr = "== UNINITIALIZED ==";
-            break;
-        case (BKPConstants.LedgerStatReq):
-            lstr = "LedgerStatReq";
-            break;
-        case (BKPConstants.LedgerStatResp):
-            lstr = "LedgerStatResp";
-            break;
-        case (BKPConstants.LedgerDeleteReq):
-            lstr = "LedgerDeleteReq";
-            break;
-        case (BKPConstants.LedgerDeleteResp):
-            lstr = "LedgerDeleteResp";
-            break;
-        case (BKPConstants.LedgerCreateReq):
-            lstr = "LedgerCreateReq";
-            break;
-        case (BKPConstants.LedgerCreateResp):
-            lstr = "LedgerCreateResp";
-            break;
-        case (BKPConstants.LedgerWriteCloseReq):
-            lstr = "LedgerWriteCloseReq";
-            break;
-        case (BKPConstants.LedgerWriteCloseResp):
-            lstr = "LedgerWriteCloseResp";
-            break;
-        case (BKPConstants.LedgerOpenRecoverReq):
-            lstr = "LedgerOpenRecoverReq";
-            break;
-        case (BKPConstants.LedgerOpenRecoverResp):
-            lstr = "LedgerOpenRecoverResp";
-            break;
-        case (BKPConstants.LedgerOpenReadReq):
-            lstr = "LedgerOpenReadReq";
-            break;
-        case (BKPConstants.LedgerOpenReadResp):
-            lstr = "LedgerOpenReadResp";
-            break;
-        case (BKPConstants.LedgerWriteEntryReq):
-            lstr = "LedgerWriteEntryReq";
-            break;
-        case (BKPConstants.LedgerWriteEntryResp):
-            lstr = "LedgerWriteEntryResp";
-            break;
-        case (BKPConstants.LedgerReadEntryReq):
-            lstr = "LedgerReadEntryReq";
-            break;
-        case (BKPConstants.LedgerReadEntryResp):
-            lstr = "LedgerReadEntryResp";
-            break;
-        case (BKPConstants.ReservedForFutureReq):
-            lstr = "ReservedForFutureReq";
-            break;
-        case (BKPConstants.ReservedForFutureResp):
-            lstr = "ReservedForFutureResp";
-            break;
-        case (BKPConstants.LedgerReadCloseReq):
-            lstr = "LedgerReadCloseReq";
-            break;
-        case (BKPConstants.LedgerReadCloseResp):
-            lstr = "LedgerReadCloseResp";
-            break;
-        case (BKPConstants.LedgerListGetReq):
-            lstr = "LedgerListGetReq";
-            break;
-        case (BKPConstants.LedgerListGetResp):
-            lstr = "LedgerListGetResp";
-            break;
-        case (BKPConstants.LedgerDeleteAllReq):
-            lstr = "LedgerDeleteAllReq";
-            break;
-        case (BKPConstants.LedgerDeleteAllResp):
-            lstr = "LedgerDeleteAllResp";
-            break;
-        default:
-            lstr = "UnKnownRequest/UnknowResponse";
+                default:
+                    errorCode = BKPConstants.SF_ErrorBadRequest;
+                    LOG.error("Invalid command: " + reqId);
+                }
+
+                LOG.info("Request: " + BKPConstants.getReqRespString(reqId) + "Response: " + 
+                        BKPConstants.getReqRespString(errorCode) + "for extentId: {}", extentId.asHexString());
+            }
+
+            LOG.info("Ending thread - " + Thread.currentThread().getId() + ". Num of Active Threads - " + globalThreadId.get());
+
+
+        } catch (IOException e) {
+            LOG.error("Exception in worker processing:", e);
+        } finally {
+            try {
+                clientChannel.close();
+            } catch (IOException e) {
+                LOG.error("Exception while closing client channel:", e);
+            }
+            globalThreadId.decrementAndGet();
         }
-        return lstr;
     }
 }
