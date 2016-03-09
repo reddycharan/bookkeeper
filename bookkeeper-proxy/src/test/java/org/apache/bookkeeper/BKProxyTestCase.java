@@ -26,7 +26,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public static final String THREADDETAILS = "ThreadDetails";
     public static final String NUMOFSLOTS = "NumOfSlots";
     public static final String BKPOPERATION = "BKPOperation";
-    public static final int NUMOFSECSTOWAITFORCOMPLETION = 300;
+    public static final int NUMOFSECSTOWAITFORCOMPLETION = 30;
     private  List<Throwable> currentTestScenarioExceptions;
 
     public BKProxyTestCase() {
@@ -91,7 +91,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
     @Before
     public void testcaseSetup() throws InterruptedException {
-        BKPClientThread.timeoutDurationInSecs = 400;
+        BKPClientThread.timeoutDurationInSecs = 4;
         TestScenarioState.instantiateCurrentTestScenarioState();
         TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
         currentTestScenarioExceptions = new ArrayList<Throwable>();

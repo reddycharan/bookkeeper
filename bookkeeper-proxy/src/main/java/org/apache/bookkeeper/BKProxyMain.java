@@ -8,10 +8,12 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +32,7 @@ public class BKProxyMain implements Runnable {
 
     private ServerSocketChannel serverChannel;
     private final BookKeeperProxyConfiguration bkpConf;
+    private BookKeeper bk = null;
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
@@ -37,19 +40,6 @@ public class BKProxyMain implements Runnable {
 
     public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
         return bkpConf;
-    }
-
-    /*
-     *  Get a thread slot even if there are multiple threads reading the value of threadNum at the same time.
-     */
-    private int getThreadSlot(int workerThreadLimit) {
-        int numThreads = 0;
-        while ((numThreads = threadNum.get()) < workerThreadLimit) {
-            if (threadNum.compareAndSet(numThreads, numThreads + 1)) {
-                return (numThreads + 1);
-            }
-        }
-        return -1;
     }
 
     @Override
@@ -60,95 +50,74 @@ public class BKProxyMain implements Runnable {
             serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
                     bkpConf.getServerChannelReceiveBufferSize());
             serverChannel.socket().bind(new InetSocketAddress(bkpConf.getBKProxyPort()));
+            SocketChannel sock = null;
 
-            // Global structures
-            BookKeeper bk = null;
+            // Global structures            
             BKExtentLedgerMap elm = new BKExtentLedgerMap();
 
             try {
                 bk = new BookKeeper(bkpConf);
-            } catch (Exception e) {
-                LOG.error("Exception while creating a new Bookkeeper:", e);
-                throw e;
+            } catch (InterruptedException ie) {
+                // ignore
+            } catch (KeeperException | IOException e) {
+                LOG.error(e.toString());
+                System.exit(1);
             }
 
             int workerThreadLimit = bkpConf.getWorkerThreadLimit();
             while (true) {
-                LOG.debug("SFStore BK-Proxy: Waiting for connection... ");
+                System.out.println("SFStore BK-Proxy: Waiting for connection... ");
+                sock = serverChannel.accept();
 
-                SocketChannel sock = null;
-                try {
-                    sock = serverChannel.accept();
-
-                    int threadSlot = getThreadSlot(workerThreadLimit);
-                    if (threadSlot == -1) { // max connections
-                        LOG.warn("Maximum Connections Reached: " + workerThreadLimit
-                                + ". Hence not accepting a new connection!");
-                        continue;
-                    }
-
-                    // Worker thread to handle each backend's write requests
-                    try {
-                        Thread worker = new Thread(new BKProxyWorker(bkpConf, threadNum, sock, bk, elm));
-                        sock = null;
-                        worker.start();
-                    } catch (Exception e) {
-                        LOG.error("Exception in constructing new proxy worker:", e);
-                        // worker decrements count even on failed construction
-                    }
-                } finally {
-                    if (sock != null) {
-                        sock.close();
-                        sock = null;
-                    }
+                if (threadNum.get() == workerThreadLimit) { // max connections
+                    System.out.println("Bailing out!! Maximum Connections Reached: " + workerThreadLimit);
+                    break;
                 }
+
+                // Worker thread to handle each backend's write requests
+                new Thread(new BKProxyWorker(bkpConf, threadNum, sock, bk, elm)).start();
+
+                threadNum.incrementAndGet();
             }
-        } catch (Exception e) {
-            LOG.error("Exception in starting a new bookkeeper proxy thread:", e);
-            return;
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
         }
     }
 
-    public void shutdown() throws IOException {
-        if (serverChannel == null) {
-            return;
+    public void shutdown() throws IOException, InterruptedException, BKException {
+        if (serverChannel != null) {
+            System.out.println("Stopping proxy...");
+            serverChannel.close();
         }
-
-        LOG.info("Stopping proxy...");
-        serverChannel.close();
+        if (bk != null){
+            LOG.info("Closing BookKeeper...");
+            bk.close();
+        }
     }
 
     public static void main(String args[]) throws Exception {
         BookKeeperProxyConfiguration bkpConfig = new BookKeeperProxyConfiguration();
-        try {
-            loadConfFile(bkpConfig, CONFIG_FILE);
-            BKProxyMain bkMain = new BKProxyMain(bkpConfig);
-            Thread bkWorkerThreadController = new Thread(bkMain);
-            bkWorkerThreadController.start();
-            bkWorkerThreadController.join();
-        } catch (Exception e) {
-            LOG.error("Exception in main thread:", e);
-            throw e;
-        }
+        loadConfFile(bkpConfig, CONFIG_FILE);
+        BKProxyMain bkMain = new BKProxyMain(bkpConfig);
+        Thread bkMainThread = new Thread(bkMain);
+        bkMainThread.start();
+        bkMainThread.join();
     }
 
     /*
      * load configurations from file.
      */
-    private static void loadConfFile(ClientConfiguration conf, String confFile) throws Exception {
+    private static void loadConfFile(ClientConfiguration conf, String confFile) throws IllegalArgumentException {
         try {
             conf.loadConf(new File(confFile).toURI().toURL());
         } catch (MalformedURLException e) {
             LOG.error("Malformed configuration file: " + confFile, e);
-            throw e;
+            throw new IllegalArgumentException();
         } catch (ConfigurationException e) {
             LOG.error("Could not open configuration file: " + confFile, e);
-            throw e;
-        } catch (Exception e) {
-            LOG.error("Exception while loading configuration file:", e);
-            throw e;
+            throw new IllegalArgumentException();
         }
-
         LOG.info("Using configuration file " + confFile);
     }
 }
