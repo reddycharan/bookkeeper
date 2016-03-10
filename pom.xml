@@ -275,7 +275,15 @@
               <target>1.7</target>
               <jdk>1.7</jdk>
               <flushPolicy>threaded</flushPolicy>
-              <flushInterval>5000</flushInterval>              
+              <flushInterval>5000</flushInterval>
+              <methodContexts>
+                <main>(.* )?public static void main\(.*\).*</main>
+              </methodContexts>
+              <contextFilters>main</contextFilters>
+              <excludes>
+                <exclude>**/BookkeeperProtocol.java</exclude>
+                <exclude>**/DataFormats.java</exclude>
+              </excludes>
             </configuration>
           </plugin>
 	</plugins>
