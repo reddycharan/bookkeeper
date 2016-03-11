@@ -74,7 +74,7 @@ public class LocalBookKeeper {
     ZooKeeperServer zks;
     ZooKeeper zkc;
     int ZooKeeperDefaultPort = 2181;
-    static int zkSessionTimeOut = 5000;
+    static int zkSessionTimeOut = 60 * 1000; // 60s in ms
     File ZkTmpDir;
 
     //BookKeeper variables    
@@ -94,7 +94,7 @@ public class LocalBookKeeper {
         ZkTmpDir = IOUtils.createTempDir("zookeeper", "localbookkeeper");
 
         try {
-            zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, ZooKeeperDefaultPort);
+            zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, ZooKeeperServer.DEFAULT_TICK_TIME);
             serverFactory =  new NIOServerCnxnFactory();
             serverFactory.configure(new InetSocketAddress(ZooKeeperDefaultPort), maxCC);
             serverFactory.startup(zks);
