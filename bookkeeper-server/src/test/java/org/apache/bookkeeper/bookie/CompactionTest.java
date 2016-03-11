@@ -457,6 +457,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
         ledgers.add(4l);
         storage.setMasterKey(4, KEY);
         storage.addEntry(genEntry(4, 1, ENTRY_SIZE)); // force ledger 1 page to flush
+        storage.shutdown();
 
         storage = new InterleavedLedgerStorage(conf, manager, dirs, checkpointSource);
         storage.getEntry(1, 1); // entry should exist
