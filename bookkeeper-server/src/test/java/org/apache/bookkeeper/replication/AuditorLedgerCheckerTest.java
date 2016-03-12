@@ -218,7 +218,7 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         LOG.debug("Created following ledgers : " + ledgerList);
 
         // failing another bookie
-        CountDownLatch urReplicaLatch = registerUrLedgerWatcher(ledgerList
+        final CountDownLatch urReplicaLatch = registerUrLedgerWatcher(ledgerList
                 .size());
 
         // disabling ledger replication
@@ -289,8 +289,7 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         ledgerList.add(ledgerId);
         LOG.debug("Created following ledgers : " + ledgerList);
 
-        int count = ledgerList.size();
-        final CountDownLatch underReplicaLatch = registerUrLedgerWatcher(count);
+        final CountDownLatch underReplicaLatch = registerUrLedgerWatcher(ledgerList.size());
 
         int bkIndex = bs.size() - 1;
         ServerConfiguration bookieConf = bsConfs.get(bkIndex);

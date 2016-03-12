@@ -401,5 +401,14 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         @Override
         public void flushEntriesLocationsIndex() throws IOException {
         }
+
+        @Override
+        public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+        }
+
+        @Override
+        public ByteBuffer getLastAddConfirmed(long ledgerId) {
+            return null;
+        }
     }
 }
