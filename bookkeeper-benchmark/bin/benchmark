@@ -52,6 +52,7 @@ Usage: $0 <command>
 where command is one of:
     writes              Benchmark throughput and latency for writes
     reads               Benchmark throughput and latency for reads
+    random              Benchmark latency for random reads
     bookie              Benchmark an individual bookie
     help                This help message
 
@@ -121,6 +122,8 @@ if [ $COMMAND == "writes" ]; then
     exec java $OPTS org.apache.bookkeeper.benchmark.BenchThroughputLatency $@
 elif [ $COMMAND == "reads" ]; then
     exec java $OPTS org.apache.bookkeeper.benchmark.BenchReadThroughputLatency $@
+elif [ $COMMAND == "random" ]; then
+    exec java $OPTS org.apache.bookkeeper.benchmark.BenchRandomReadLatency $@
 elif [ $COMMAND == "bookie" ]; then
     exec java $OPTS org.apache.bookkeeper.benchmark.BenchBookie $@
 elif [ $COMMAND == "help" ]; then
