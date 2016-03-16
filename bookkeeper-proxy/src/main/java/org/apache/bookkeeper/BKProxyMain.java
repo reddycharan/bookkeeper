@@ -1,21 +1,29 @@
 package org.apache.bookkeeper;
 
+import org.apache.bookkeeper.client.BKException;
+import org.apache.bookkeeper.client.BookKeeper;
+import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
-import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.zookeeper.KeeperException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /*
  * BKProxyMain implements runnable method and when Thread is spawned it starts ServerSocketChannel on the provided bkProxyPort.
@@ -26,7 +34,15 @@ import org.slf4j.LoggerFactory;
  */
 public class BKProxyMain implements Runnable {
 
-    private static final String CONFIG_FILE = "conf/bk_client_proxy.conf";
+    private static final String DEFAULT_CONFIG_FILE = "conf/bk_client_proxy.conf";
+
+    private static final String OPT_HELP_FLAG        = "h";
+    private static final String OPT_ZK_SERVERS       = "z";
+    private static final String OPT_CONFIG_FILE      = "c";
+
+    private static String  configFile;
+    private static Options options;
+
     private AtomicInteger threadNum = new AtomicInteger();
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyMain.class);
 
@@ -48,7 +64,7 @@ public class BKProxyMain implements Runnable {
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
-                    bkpConf.getServerChannelReceiveBufferSize());
+                                    bkpConf.getServerChannelReceiveBufferSize());
             serverChannel.socket().bind(new InetSocketAddress(bkpConf.getBKProxyPort()));
             SocketChannel sock = null;
 
@@ -97,12 +113,22 @@ public class BKProxyMain implements Runnable {
     }
 
     public static void main(String args[]) throws Exception {
-        BookKeeperProxyConfiguration bkpConfig = new BookKeeperProxyConfiguration();
-        loadConfFile(bkpConfig, CONFIG_FILE);
-        BKProxyMain bkMain = new BKProxyMain(bkpConfig);
-        Thread bkMainThread = new Thread(bkMain);
-        bkMainThread.start();
-        bkMainThread.join();
+        BookKeeperProxyConfiguration bkConfig = new BookKeeperProxyConfiguration();
+        BookKeeperProxyConfiguration cmdLineConfig = new BookKeeperProxyConfiguration();
+        BookKeeperProxyConfiguration fileConfig = new BookKeeperProxyConfiguration();
+
+        if (parseArgs(args, cmdLineConfig)) {
+            loadConfFile(fileConfig, configFile);
+
+            // Compose the configuration files such that cmd line has precedence over the config file
+            bkConfig.addConfiguration(cmdLineConfig);
+            bkConfig.addConfiguration(fileConfig);
+
+            BKProxyMain bkMain = new BKProxyMain(bkConfig);
+            Thread bkMainThread = new Thread(bkMain);
+            bkMainThread.start();
+            bkMainThread.join();
+        }
     }
 
     /*
@@ -120,4 +146,55 @@ public class BKProxyMain implements Runnable {
         }
         LOG.info("Using configuration file " + confFile);
     }
+
+
+    @SuppressWarnings("static-access")
+    private static boolean parseArgs(String[] args, BookKeeperProxyConfiguration cmdLineConfig) {
+        options = new Options();
+
+        options.addOption(OPT_HELP_FLAG, "help", false, "print usage message");
+        options.addOption(OPT_ZK_SERVERS, "zk-servers", true, "list of Zookeeper servers");
+        options.addOption(OPT_CONFIG_FILE, "config-file", true, "path to configuration file");
+
+        try {
+            CommandLineParser parser  = new GnuParser();
+            CommandLine       cmdLine = parser.parse(options, args);
+            boolean           helpFlag;
+
+            helpFlag = cmdLine.hasOption(OPT_HELP_FLAG);
+            if (helpFlag) {
+                usage();
+                return false;
+            }
+
+            if (cmdLine.hasOption(OPT_ZK_SERVERS)) {
+                cmdLineConfig.setZkServers(cmdLine.getOptionValue(OPT_ZK_SERVERS));
+            }
+
+            configFile = cmdLine.getOptionValue(OPT_CONFIG_FILE, DEFAULT_CONFIG_FILE);
+
+            return true;
+
+        } catch (ParseException exc) {
+            LOG.error("Command line error: {}", exc.getMessage());
+            usage();
+            return false;
+        }
+
+    }
+
+    static void usage() {
+        HelpFormatter formatter = new HelpFormatter();
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        PrintWriter pw = new PrintWriter(os);
+        try {
+            formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, "BKProxy", null, options,
+                                HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
+            pw.flush();
+            LOG.error("\n{}", os.toString());
+        } finally {
+            pw.close();
+        }
+    }
 }
+
