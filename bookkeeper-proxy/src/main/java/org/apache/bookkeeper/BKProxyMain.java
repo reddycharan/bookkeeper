@@ -25,6 +25,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 /*
  * BKProxyMain implements runnable method and when Thread is spawned it starts ServerSocketChannel on the provided bkProxyPort.
  * Clients connect to bkProxyPort and the client channel is created on accept()
@@ -39,6 +40,8 @@ public class BKProxyMain implements Runnable {
     private static final String OPT_HELP_FLAG        = "h";
     private static final String OPT_ZK_SERVERS       = "z";
     private static final String OPT_CONFIG_FILE      = "c";
+    private static final String OPT_HOSTNAME         = "H";
+    private static final String OPT_PORT             = "p";
 
     private static String  configFile;
     private static Options options;
@@ -65,7 +68,9 @@ public class BKProxyMain implements Runnable {
             serverChannel = ServerSocketChannel.open();
             serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
                                     bkpConf.getServerChannelReceiveBufferSize());
-            serverChannel.socket().bind(new InetSocketAddress(bkpConf.getBKProxyPort()));
+            String hostname = bkpConf.getBKProxyHostname();
+            int port = bkpConf.getBKProxyPort();
+            serverChannel.socket().bind(new InetSocketAddress(hostname, port));
             SocketChannel sock = null;
 
             // Global structures            
@@ -153,7 +158,9 @@ public class BKProxyMain implements Runnable {
         options = new Options();
 
         options.addOption(OPT_HELP_FLAG, "help", false, "print usage message");
-        options.addOption(OPT_ZK_SERVERS, "zk-servers", true, "list of Zookeeper servers");
+        options.addOption(OPT_HOSTNAME, "hostname", true, "hostname/IP address to listen on");
+        options.addOption(OPT_PORT, "port", true, "port to listen on");
+        options.addOption(OPT_ZK_SERVERS, "zk-servers", true, "comma separated list of Zookeeper servers <hostname:port>");
         options.addOption(OPT_CONFIG_FILE, "config-file", true, "path to configuration file");
 
         try {
@@ -165,6 +172,14 @@ public class BKProxyMain implements Runnable {
             if (helpFlag) {
                 usage();
                 return false;
+            }
+
+            if (cmdLine.hasOption(OPT_HOSTNAME)) {
+                cmdLineConfig.setBKProxyHostname(cmdLine.getOptionValue(OPT_HOSTNAME));
+            }
+
+            if (cmdLine.hasOption(OPT_PORT)) {
+                cmdLineConfig.setBKProxyHostname(cmdLine.getOptionValue(OPT_PORT));
             }
 
             if (cmdLine.hasOption(OPT_ZK_SERVERS)) {
@@ -183,7 +198,7 @@ public class BKProxyMain implements Runnable {
 
     }
 
-    static void usage() {
+    private static void usage() {
         HelpFormatter formatter = new HelpFormatter();
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(os);

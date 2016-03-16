@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 public class BookKeeperProxyConfiguration extends ClientConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(BookKeeperProxyConfiguration.class);
 
+    protected static final String BKPROXY_HOSTNAME = "bkProxyHostname";
     protected static final String BKPROXY_PORT = "bkProxyPort";
     protected static final String SERVERCHANNEL_RECEIVE_BUFFER_SIZE = "serverChannelReceiveBufferSize";
     protected static final String CLIENTCHANNEL_RECEIVE_BUFFER_SIZE = "clientChannelReceiveBufferSize";
@@ -30,6 +31,15 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     public BookKeeperProxyConfiguration(AbstractConfiguration conf) {
         super();
         loadConf(conf);
+    }
+
+    public String getBKProxyHostname() {
+        return getString(BKPROXY_HOSTNAME, "localhost");
+    }
+
+    public BookKeeperProxyConfiguration setBKProxyHostname(String bkProxyHostname) {
+        setProperty(BKPROXY_HOSTNAME, bkProxyHostname);
+        return this;
     }
 
     public int getBKProxyPort() {
