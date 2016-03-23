@@ -97,6 +97,8 @@ public class BKProxyMain implements Runnable {
             int workerThreadLimit = bkpConf.getWorkerThreadLimit();
             while (true) {
                 LOG.info("SFStore BK-Proxy: Waiting for connection... ");
+                // Let jenkins know that we are up.
+                System.out.println("SFStore BK-Proxy: Waiting for connection... ");
 
                 SocketChannel sock = null;
                 try {
