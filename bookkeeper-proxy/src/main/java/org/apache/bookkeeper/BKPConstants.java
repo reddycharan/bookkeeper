@@ -1,6 +1,9 @@
 package org.apache.bookkeeper;
 
-public interface BKPConstants {
+import java.util.HashMap;
+import java.util.Map;
+
+public final class BKPConstants {
     // Requests
     public static final byte LedgerStatReq = 1;
     public static final byte LedgerDeleteReq = 2;
@@ -52,4 +55,41 @@ public interface BKPConstants {
     public static final int WRITE_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
+
+    private static Map<Byte, String> ReqRespStringMap = new HashMap<Byte, String>();
+    static {
+        ReqRespStringMap.put(UnInitialized, "== UNINITIALIZED ==");
+        ReqRespStringMap.put(LedgerStatReq, "LedgerStatReq");
+        ReqRespStringMap.put(LedgerStatResp, "LedgerStatResp");
+        ReqRespStringMap.put(LedgerDeleteReq, "LedgerDeleteReq");
+        ReqRespStringMap.put(LedgerDeleteResp, "LedgerDeleteResp");
+        ReqRespStringMap.put(LedgerCreateReq, "LedgerCreateReq");
+        ReqRespStringMap.put(LedgerCreateResp, "LedgerCreateResp");
+        ReqRespStringMap.put(LedgerWriteCloseReq, "LedgerWriteCloseReq");
+        ReqRespStringMap.put(LedgerWriteCloseResp, "LedgerWriteCloseResp");
+        ReqRespStringMap.put(LedgerOpenRecoverReq, "LedgerOpenRecoverReq");
+        ReqRespStringMap.put(LedgerOpenRecoverResp, "LedgerOpenRecoverResp");
+        ReqRespStringMap.put(LedgerOpenReadReq, "LedgerOpenReadReq");
+        ReqRespStringMap.put(LedgerOpenReadResp, "LedgerOpenReadResp");
+        ReqRespStringMap.put(LedgerWriteEntryReq, "LedgerWriteEntryReq");
+        ReqRespStringMap.put(LedgerWriteEntryResp, "LedgerWriteEntryResp");
+        ReqRespStringMap.put(LedgerReadEntryReq, "LedgerReadEntryReq");
+        ReqRespStringMap.put(LedgerReadEntryResp, "LedgerReadEntryResp");
+        ReqRespStringMap.put(ReservedForFutureReq, "ReservedForFutureReq");
+        ReqRespStringMap.put(ReservedForFutureResp, "ReservedForFutureResp");
+        ReqRespStringMap.put(LedgerReadCloseReq, "LedgerReadCloseReq");
+        ReqRespStringMap.put(LedgerReadCloseResp, "LedgerReadCloseResp");
+        ReqRespStringMap.put(LedgerListGetReq, "LedgerListGetReq");
+        ReqRespStringMap.put(LedgerListGetResp, "LedgerListGetResp");
+        ReqRespStringMap.put(LedgerDeleteAllReq, "LedgerDeleteAllReq");
+        ReqRespStringMap.put(LedgerDeleteAllResp, "LedgerDeleteAllResp");
+    };
+
+    public static String getReqRespString(byte req) {
+        String lstr = ReqRespStringMap.get(req);
+        if (lstr == null) {
+            return "UnKnownRequest/UnknowResponse";
+        }
+        return lstr;
+    }
 }

@@ -3,8 +3,6 @@ package org.apache.bookkeeper;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
-import java.util.concurrent.locks.Lock;
-
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -13,35 +11,43 @@ import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.util.LedgerIdFormatter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BKSfdcClient {
+    private final static Logger LOG = LoggerFactory.getLogger(BKSfdcClient.class);
     private final BookKeeperProxyConfiguration bkpConfig;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
-    LedgerHandle lh = null;
     LedgerEntry ledgerEntry = null;
     Object ledgerObj = null;
     ByteBuffer cByteBuffer;
-    private final static Logger LOG = LoggerFactory.getLogger(BKSfdcClient.class);
     private int ensembleSize;
     private int writeQuorumSize;
     private int ackQuorumSize;
     private String password;
     private DigestType digestType;
+    private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
+    private final LedgerIdFormatter ledgerIdFormatter;
 
     public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
+        this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
+        initBookkeeperConfiguration();
+    }
+
+    private void initBookkeeperConfiguration() {
         cByteBuffer = ByteBuffer.allocate(bkpConfig.getMaxFragSize());
-        this.ensembleSize = bkpConfig.getEnsembleSize();
-        this.writeQuorumSize = bkpConfig.getWriteQuorumSize();
-        this.ackQuorumSize = bkpConfig.getAckQuorumSize();
-        this.password = bkpConfig.getPassword();
-        this.digestType = bkpConfig.getDigestType();
+        ensembleSize = bkpConfig.getEnsembleSize();
+        writeQuorumSize = bkpConfig.getWriteQuorumSize();
+        ackQuorumSize = bkpConfig.getAckQuorumSize();
+        password = bkpConfig.getPassword();
+        digestType = bkpConfig.getDigestType();
     }
 
     public byte ledgerCreate(BKExtentId extentId) {
@@ -49,17 +55,19 @@ public class BKSfdcClient {
             if (elm.extentMapExists(extentId))
                 return BKPConstants.SF_ErrorExist;
 
-            lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize, digestType,
+            LedgerHandle lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize, digestType,
                     password.getBytes());
-            elm.createLedgerMap(extentId).setWriteLedgerHandle(lh);
+            LedgerPrivateData lpd = elm.createLedgerMap(extentId);
+            lpd.setWriteLedgerHandle(lh);
         } catch (BKException e) {
-            LOG.error(e.toString());
+            LOG.error("Exception in creating extentId {}", ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
             if (e.getCode() == Code.LedgerExistException) {
                 return BKPConstants.SF_ErrorExist;
             }
             return BKPConstants.SF_InternalError;
         } catch (InterruptedException e) {
-            LOG.error(e.toString());
+            LOG.error("Operation interrupted when creating extentId {}",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
             return BKPConstants.SF_InternalError;
         }
 
@@ -70,16 +78,19 @@ public class BKSfdcClient {
      * Opens an inactive ledger. i.e no more writes are going in. If this mode is attempted on an active ledger, it will
      * stop accepting any more writes after this operation.
      */
+
     public byte ledgerRecoveryOpenRead(BKExtentId extentId) {
 
         LedgerHandle lh;
-
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
         if (lpd == null) {
             // No local mapping, create it
             lpd = elm.createLedgerMap(extentId);
-        } else {
+        }
+
+        try {
+            lpd.acquireLedgerRecoveryOpenLock();
             lh = lpd.getRecoveryReadLedgerHandle();
             if (lh != null) {
                 // The ledger is already opened for read.
@@ -91,31 +102,38 @@ public class BKSfdcClient {
             // The ledger must have closed or this is a crash recovery.
             // In either case we should not have write ledger handle.
             if (lpd.getWriteLedgerHandle() != null) {
-                LOG.info("Opening ExtentId: {} in recovery mode while write open is active.",
-                        extentId.asHexString());
+                LOG.info("Opening ExtentId: {} in recovery mode while write handle is active.",
+                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                 return BKPConstants.SF_ErrorBadRequest;
             }
-        }
-        
-        lpd.acquireLedgerRecoveryOpenLock();
-        try {
+
             if (lpd.getRecoveryReadLedgerHandle() == null) {
                 // Let us try to open the ledger for read
                 try {
                     lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
-                } catch (InterruptedException | BKException e) {
-                    if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
+                } catch (BKException e) {
+                    if (e.getCode() == Code.NoSuchLedgerExistsException) {
                         elm.deleteLedgerPrivate(extentId);
+                        LOG.error("Ledger for extentId: {} does not exist.",
+                                ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
                         return BKPConstants.SF_ErrorNotFound;
                     }
-                    LOG.error(e.toString());
+
+                    LOG.error("Unable to open ledger for extentId: {}",
+                            ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                        return BKPConstants.SF_InternalError;
+                } catch (InterruptedException e) {
+                    LOG.error("Unable to open ledger for extentId: {}",
+                        ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
                     return BKPConstants.SF_InternalError;
                 }
 
                 lpd.setRecoveryReadLedgerHandle(lh);
             }
         } finally {
-            lpd.releaseLedgerRecoveryOpenLock();
+            if (lpd != null) {
+                lpd.releaseLedgerRecoveryOpenLock();
+            }
         }
         return BKPConstants.SF_OK;
     }
@@ -145,12 +163,20 @@ public class BKSfdcClient {
         // Let us try to open the ledger for read
         try {
             rlh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-        } catch (InterruptedException | BKException e) {
-            if ((e instanceof BKException) && ((BKException) e).getCode() == Code.NoSuchLedgerExistsException) {
+        } catch (BKException e) {
+            if (e.getCode() == Code.NoSuchLedgerExistsException) {
                 elm.deleteLedgerPrivate(extentId);
+                LOG.error("Ledger for extentId: {} does not exist.",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
                 return BKPConstants.SF_ErrorNotFound;
             }
-            LOG.error(e.toString());
+
+            LOG.error("Exception in opening ledger for recovery for extentID {}",
+                ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+            return BKPConstants.SF_InternalError;
+        } catch (InterruptedException ie) {
+            LOG.error("Exception in opening ledger for recovery for extentID {}",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()), ie);
             return BKPConstants.SF_InternalError;
         }
 
@@ -167,24 +193,28 @@ public class BKSfdcClient {
         long lSize = 0;
 
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-
         if (lpd != null) {
             // Check if we have write ledger handle open.
             lh = lpd.getAnyLedgerHandle();
-        }
-
-        if (lh != null) {
-            lSize = lh.getLength();
-            return lSize;
+            if (lh != null) {
+                lSize = lh.getLength();
+                return lSize;
+            }
         }
 
         // No ledger cached locally.
         // Just open/get size and close the extent.
         lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-        lSize = lh.getLength();
-        lh.close();
+        if (lh != null) {
+            lSize = lh.getLength();
+            lh.close();
 
-        return lSize;
+            return lSize;
+        }
+
+        LOG.error("Ledger for extentId: {} does not exist.",
+                ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+        return -1;
     }
 
     public void ledgerDeleteAll() {
@@ -192,7 +222,6 @@ public class BKSfdcClient {
         for (int i = 0; i < ledgerIdList.length; i++) {
             this.ledgerDelete(ledgerIdList[i]);
         }
-        elm.deleteAllLedgerHandles();
     }
 
     public Iterable<Long> ledgerList() throws IOException {
@@ -202,86 +231,85 @@ public class BKSfdcClient {
 
     public byte ledgerWriteClose(BKExtentId extentId) {
 
-        if (!elm.extentMapExists(extentId)) {
+        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+        if (lpd == null) {
             // No Extent just return OK
             return BKPConstants.SF_OK;
         }
 
-        lh = elm.getLedgerPrivate(extentId).getWriteLedgerHandle();
-
-        if (lh == null)
-            return BKPConstants.SF_OK;
-
         try {
-            lh.close();
-            // Reset Ledger Handle
-            elm.getLedgerPrivate(extentId).setWriteLedgerHandle(null);
-        } catch (InterruptedException | BKException e) {
-            LOG.error(e.toString());
-            e.printStackTrace();
+            LedgerHandle wlh = lpd.getWriteLedgerHandle();
+            if (wlh != null) {
+                wlh.close();
+                lpd.setWriteLedgerHandle(null);
+            }
+        } catch (Exception e) {
+            LOG.error("Exception while closing bookkeeper write handle for extentId {}",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
             return BKPConstants.SF_InternalError;
         }
+
         return BKPConstants.SF_OK;
     }
 
     public byte ledgerReadClose(BKExtentId extentId) {
+        byte retCode = BKPConstants.SF_OK;
 
-        LedgerHandle nrrlh, rrlh;
-        if (!elm.extentMapExists(extentId)) {
+        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+        if (lpd == null) {
             // No Extent just return OK
             return BKPConstants.SF_OK;
         }
-        // Close all read ledger handles.
 
-        nrrlh = elm.getLedgerPrivate(extentId).getNonRecoveryReadLedgerHandle();
-        rrlh = elm.getLedgerPrivate(extentId).getRecoveryReadLedgerHandle();
-
-        // If we have no ledger handle opened for read, return success.
-        if ((nrrlh == null) && (rrlh == null))
-            return BKPConstants.SF_OK;
-
-        // Take care of non-recovery ledger handle.
-        if (nrrlh != null) {
-            try {
-                nrrlh.close();
-                // Reset the Ledger Handle
-                elm.getLedgerPrivate(extentId).setNonRecoveryReadLedgerHandle(null);
-            } catch (InterruptedException | BKException e) {
-                LOG.error(e.toString());
-                e.printStackTrace();
-                return BKPConstants.SF_InternalError;
-            }
-        }
-
-        // Take care of recovery ledger handle.
-        if (rrlh != null)
-        {
+        LedgerHandle rrlh = lpd.getRecoveryReadLedgerHandle();
+        LedgerHandle rlh = lpd.getNonRecoveryReadLedgerHandle();
+        if (rrlh != null) {
             try {
                 rrlh.close();
-                // Reset the Ledger Handle
-                elm.getLedgerPrivate(extentId).setRecoveryReadLedgerHandle(null);
-            } catch (InterruptedException | BKException e) {
-                LOG.error(e.toString());
-                e.printStackTrace();
-                return BKPConstants.SF_InternalError;
+                lpd.setRecoveryReadLedgerHandle(null);
+            } catch (Exception e) {
+                LOG.error("Exception while closing recovery-read handle for extentId {}",
+                        ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                retCode = BKPConstants.SF_InternalError;
             }
         }
-        return BKPConstants.SF_OK;
+        if (rlh != null) {
+            try {
+                rlh.close();
+                lpd.setNonRecoveryReadLedgerHandle(null);
+            } catch (Exception e) {
+                LOG.error("Exception while closing non-recovery-read handle for extentId {}",
+                        ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                retCode = BKPConstants.SF_InternalError;
+            }
+        }
+
+        return retCode;
     }
 
-    public byte ledgerDelete(BKExtentId ledgerIdList) {
+    public byte ledgerDelete(BKExtentId ledgerId) {
+
         try {
-            bk.deleteLedger(ledgerIdList.asLong());
-            elm.deleteLedgerPrivate(ledgerIdList);
+            bk.deleteLedger(ledgerId.asLong());
         } catch (BKException e) {
             if (e.getCode() == Code.NoSuchLedgerExistsException) {
+                LOG.warn("Unable to find extentId {}",
+                    ledgerIdFormatter.formatLedgerId(ledgerId.asLong()), e);
                 return BKPConstants.SF_ErrorNotFound;
             }
-            LOG.error(e.toString());
+
+            LOG.error("Error while deleting extentId {}",
+                    ledgerIdFormatter.formatLedgerId(ledgerId.asLong()), e);
             return BKPConstants.SF_InternalError;
         } catch (InterruptedException e) {
-            LOG.error(e.toString());
+            LOG.error("Error while deleting extentId {}",
+                    ledgerIdFormatter.formatLedgerId(ledgerId.asLong()), e);
             return BKPConstants.SF_InternalError;
+        }
+
+        LedgerPrivateData lpd = elm.getLedgerPrivate(ledgerId);
+        if (lpd != null) {
+            elm.deleteLedgerPrivate(ledgerId);
         }
 
         return BKPConstants.SF_OK;
@@ -291,14 +319,17 @@ public class BKSfdcClient {
         long entryId;
 
         try {
-            if (!elm.extentMapExists(extentId)) {
+            LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+            if (lpd == null) {
+                LOG.error("Unable to find extentId {}",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                 return BKPConstants.SF_ErrorNotFound;
             }
 
-            LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-
-            lh = lpd.getWriteLedgerHandle();
+            LedgerHandle lh = lpd.getWriteLedgerHandle();
             if (lh == null) {
+                LOG.error("Unable to get write handle for extentId {}",
+                    ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                 return BKPConstants.SF_InternalError;
             }
 
@@ -325,7 +356,7 @@ public class BKSfdcClient {
                 // SDB guarantees that all entries were acked/responded back
                 // before sending fragment 0. So no need to worry about any
                 // race condition here.
-                tmpEntryId = lpd.getWriteLedgerHandle().getLastAddConfirmed() + 1;
+                tmpEntryId = lh.getLastAddConfirmed() + 1;
             }
             entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
             assert(entryId == tmpEntryId);
@@ -335,8 +366,10 @@ public class BKSfdcClient {
                 // Close the ledger
                 ledgerWriteClose(extentId);
             }
-        } catch (InterruptedException | BKException e) {
-            LOG.error(e.toString());
+
+        } catch (Exception e) {
+            LOG.error("Exception in putting an entry into extentId {}",
+                ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
             return BKPConstants.SF_InternalError;
         }
         return BKPConstants.SF_OK;
@@ -347,31 +380,37 @@ public class BKSfdcClient {
         byte[] data;
 
         try {
-            if (!elm.extentMapExists(extentId)) {
-                if (ledgerRecoveryOpenRead(extentId) != BKPConstants.SF_OK)
-                    return null;
-            }
-        
             LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+            if (lpd == null) {
+                if (ledgerRecoveryOpenRead(extentId) != BKPConstants.SF_OK) {
+                    LOG.error("Unable to get recovery-read handle for extentId {}",
+                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                    return null;
+                }
+                lpd = elm.getLedgerPrivate(extentId);
+            }
+
             // If we are the writer, we will have write ledger handle
             // and it will have the most recent information.
-            lh = lpd.getAnyLedgerHandle();
+            LedgerHandle lh = lpd.getAnyLedgerHandle();
             if (lh == null) {
                 // Let us open the ledger for read in recovery mode.
                 // All reads without prior opens will be performed
                 // through opening the ledger in recovery mode.
-                if (ledgerRecoveryOpenRead(extentId)  != BKPConstants.SF_OK)
+                if (ledgerRecoveryOpenRead(extentId)  != BKPConstants.SF_OK) {
+                    LOG.error("Unable to get recovery-read handle for extentId {}",
+                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                     return null;
+                }
                 lh = lpd.getRecoveryReadLedgerHandle();
             }
-
-            Enumeration<LedgerEntry> entries = null;
 
             if (fragmentId == 0) {
                 // Trailer
                 if (!lh.isClosed()) {
                     // Trying to read the trailer of an non closed ledger.
-                    LOG.info("Trying to read the trailer of Extent: {} before closing", extentId.asHexString());
+                    LOG.error("Trying to read the trailer of extentId {} before closing.",
+                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                     return null;
                 }
                 // This is a closed entry. We need to get last entry
@@ -382,21 +421,22 @@ public class BKSfdcClient {
 
             // Sanity check before trying to read
             if (lh.isClosed() && entryId > lh.getLastAddConfirmed()) {
-                LOG.info("Trying to read beyond LAC on a closed ledger: {}", extentId.asHexString());
+                LOG.error("Trying to read entry {} which is beyond LAC on a closed extentId {}",
+                        entryId, ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                 throw BKException.create(Code.LedgerClosedException);
             }
 
-            entries = lh.readEntries(entryId, entryId);
+            Enumeration<LedgerEntry> entries = lh.readEntries(entryId, entryId);
             LedgerEntry e = entries.nextElement();
-
             data = e.getEntry();
             cByteBuffer.clear();
             cByteBuffer.put(data, 0, Math.min(data.length, cByteBuffer.remaining()));
-        } catch (InterruptedException ie) {
-            LOG.error(ie.toString());
-            ie.printStackTrace();
+        } catch (InterruptedException e) {
+            LOG.error("Exception while getting entry: " + entryId
+                + " from extentId {}", ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
             return null;
         }
+
         return cByteBuffer;
     }
 }

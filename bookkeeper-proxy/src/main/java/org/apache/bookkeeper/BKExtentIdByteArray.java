@@ -17,7 +17,7 @@ public class BKExtentIdByteArray implements BKExtentId {
         System.arraycopy(extentId, 0, cExtentId.extentId, 0, extentId.length);
         return cExtentId;
     }
-    
+
     @Override
     public byte[] asByteArray() {
         return extentId;
@@ -37,6 +37,7 @@ public class BKExtentIdByteArray implements BKExtentId {
     public int size() {
         return extentId.length;
     }
+
     @Override
     public String asHexString() {
         return Hex.encodeHexString(extentId);
