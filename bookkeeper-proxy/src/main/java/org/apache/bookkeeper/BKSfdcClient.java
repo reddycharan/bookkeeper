@@ -316,7 +316,7 @@ public class BKSfdcClient {
     }
 
     public byte ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata) {
-        long entryId;
+        long entryId = 0;
 
         try {
             LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
@@ -328,8 +328,10 @@ public class BKSfdcClient {
 
             LedgerHandle lh = lpd.getWriteLedgerHandle();
             if (lh == null) {
-                LOG.error("Unable to get write handle for extentId {}",
-                    ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                LOG.error("Found extent " + ledgerIdFormatter.formatLedgerId(extentId.asLong()) +
+                          " in extentId map; but no write handle found; fragmentId=" + fragmentId +
+                          "; nonRecHandle=" + (lpd.getNonRecoveryReadLedgerHandle() != null ? "Open" : "Closed") +
+                          "; recHandle=" + (lpd.getRecoveryReadLedgerHandle() != null ? "Open" : "Closed"));
                 return BKPConstants.SF_InternalError;
             }
 
@@ -368,8 +370,8 @@ public class BKSfdcClient {
             }
 
         } catch (Exception e) {
-            LOG.error("Exception in putting an entry into extentId {}",
-                ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+            LOG.error("Exception while writing extent=" + ledgerIdFormatter.formatLedgerId(extentId.asLong()) +
+                      ", fragmentId=" + fragmentId + ", entryId=" + entryId + "; " + "Exception: ", e); 
             return BKPConstants.SF_InternalError;
         }
         return BKPConstants.SF_OK;

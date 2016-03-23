@@ -230,7 +230,7 @@ public class BKProxyMain implements Runnable {
             }
 
             if (cmdLine.hasOption(OPT_PORT)) {
-                cmdLineConfig.setBKProxyHostname(cmdLine.getOptionValue(OPT_PORT));
+                cmdLineConfig.setBKProxyPort(Integer.parseInt(cmdLine.getOptionValue(OPT_PORT)));
             }
 
             if (cmdLine.hasOption(OPT_ZK_SERVERS)) {
