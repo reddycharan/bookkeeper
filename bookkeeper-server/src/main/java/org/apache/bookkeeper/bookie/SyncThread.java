@@ -30,6 +30,7 @@ import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.jmx.BKMBeanInfo;
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,6 +120,27 @@ class SyncThread {
             LOG.error("Exception marking checkpoint as complete", e);
             dirsListener.allDisksFull();
         }
+    }
+
+    private class SyncThreadBean implements SyncThreadMXBean, BKMBeanInfo{
+        @Override
+        public boolean isHidden() {
+            return false;
+        }
+        
+        @Override
+        public String getName() {
+            return "SyncThread";
+        }
+        
+        @Override
+        public void flushBookie() {
+            flush();
+        }
+    }
+    
+    public BKMBeanInfo getSyncThreadBean() {
+        return new SyncThreadBean();
     }
 
     @VisibleForTesting

@@ -140,6 +140,7 @@ public class Bookie extends BookieCriticalThread {
     // jmx related beans
     BookieBean jmxBookieBean;
     BKMBeanInfo jmxLedgerStorageBean;
+    BKMBeanInfo jmxSyncThreadBean;
 
     final ConcurrentMap<Long, byte[]> masterKeyCache = new ConcurrentHashMap<Long, byte[]>();
 
@@ -715,6 +716,16 @@ public class Bookie extends BookieCriticalThread {
                 LOG.warn("Failed to register with JMX for ledger cache", e);
                 jmxLedgerStorageBean = null;
             }
+            
+            try {
+                jmxSyncThreadBean = this.syncThread.getSyncThreadBean();
+                if (jmxSyncThreadBean != null) {
+                    BKMBeanRegistry.getInstance().register(jmxSyncThreadBean, jmxBookieBean);
+                }
+            } catch (Exception e) {
+                LOG.warn("Failed to register with JMX for SyncThread", e);
+                jmxSyncThreadBean = null;
+            }
         } catch (Exception e) {
             LOG.warn("Failed to register with JMX", e);
             jmxBookieBean = null;
@@ -728,6 +739,13 @@ public class Bookie extends BookieCriticalThread {
         try {
             if (jmxLedgerStorageBean != null) {
                 BKMBeanRegistry.getInstance().unregister(jmxLedgerStorageBean);
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to unregister with JMX", e);
+        }
+        try {
+            if (jmxSyncThreadBean != null) {
+                BKMBeanRegistry.getInstance().unregister(jmxSyncThreadBean);
             }
         } catch (Exception e) {
             LOG.warn("Failed to unregister with JMX", e);
