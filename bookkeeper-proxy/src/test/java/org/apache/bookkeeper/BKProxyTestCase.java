@@ -237,7 +237,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_InternalError+"\n";
+                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_ErrorBadRequest+"\n";
         executeTestcase(testDefinition);
     }
 
@@ -258,7 +258,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-0-30000-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_InternalError+"\n";
+                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_ErrorBadRequest+"\n";
         executeTestcase(testDefinition);
     }
 
@@ -309,7 +309,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   NUMOFSLOTS + "-7\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread3-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_ErrorNotFound+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_ErrorBadRequest+"\n"
                                     +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-:-\n"
                                     +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_ErrorNotFound+"\n"
@@ -369,7 +369,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   NUMOFSLOTS + "-11\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-extn-2-10-"+BKPConstants.SF_ErrorNotFound+"\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-extn-2-10-"+BKPConstants.SF_ErrorBadRequest+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
@@ -773,7 +773,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
                                     +   BKPOPERATION + "-6-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
-                                    +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_ErrorNotFound+"-30000\n";
+                                    +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-0-400000000-"+BKPConstants.SF_ErrorBadRequest+"-30000\n";
         executeTestcase(testDefinition);
     }
 
@@ -832,7 +832,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread4-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     // here we are trying to write a fragment in a thread connected to the former BKProxy (BKP1) though it was already
                                     // recoveryopened and hence it should fail.
-                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-300-"+BKPConstants.SF_InternalError+"\n"
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-300-"+BKPConstants.SF_ErrorReadOnly+"\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
@@ -1083,6 +1083,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-10\n"
                                     +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    // Exetnt is not closed yet.
                                     +   BKPOPERATION + "-9-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_ErrorNotFound+"-10\n"
                                     +   BKPOPERATION + "-10-Thread2-"+Operation.SleepReq+"-5000\n"
                                     +   BKPOPERATION + "-11-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-1000-"+BKPConstants.SF_OK+"-10\n"
