@@ -68,11 +68,7 @@ public class TestScenarioState {
     public void shutDownAllBkProxies() {
         for (String bkProxyName : bkProxiesMap.keySet()) {
             BKProxyMain bkProxy = bkProxiesMap.get(bkProxyName);
-            try {
-                bkProxy.shutdown();
-            } catch (IOException | InterruptedException | BKException e) {
-                e.printStackTrace();
-            }
+            bkProxy.shutdown();
         }
     }
 

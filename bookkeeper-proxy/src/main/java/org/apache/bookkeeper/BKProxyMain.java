@@ -8,7 +8,13 @@ import java.net.MalformedURLException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -22,7 +28,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,39 +49,31 @@ public class BKProxyMain implements Runnable {
     private static final String OPT_CONFIG_FILE      = "c";
     private static final String OPT_HOSTNAME         = "H";
     private static final String OPT_PORT             = "p";
+    // ThreadpoolExecutor termination await period in millisecs
+    private static final long TERMINATION_TIMEOUT_PERIOD = 3000;
 
     private static String  configFile;
     private static Options options;
 
-    private AtomicInteger threadNum = new AtomicInteger();
+    private AtomicBoolean isShutdownExecuted = new AtomicBoolean();
+    private AtomicLong bkProxyWorkerNo = new AtomicLong();
     private ServerSocketChannel serverChannel;
     private final BookKeeperProxyConfiguration bkpConf;
     private BookKeeper bk = null;
+    private ThreadPoolExecutor proxyWorkerExecutor;
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
+        proxyWorkerExecutor = new ThreadPoolExecutor(bkpConf.getCorePoolSize(), bkpConf.getWorkerThreadLimit(),
+                bkpConf.getCorePoolKeepAliveTime(), TimeUnit.MILLISECONDS, new SynchronousQueue<Runnable>());
     }
 
     public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
         return bkpConf;
     }
-
-    /*
-     *  Get a thread slot even if there are multiple threads reading the value of threadNum at the same time.
-     */
-    private int getThreadSlot(int workerThreadLimit) {
-        int numThreads = 0;
-        while ((numThreads = threadNum.get()) < workerThreadLimit) {
-            if (threadNum.compareAndSet(numThreads, numThreads + 1)) {
-                return (numThreads + 1);
-            }
-        }
-        return -1;
-    }
-
+    
     @Override
     public void run() {
-        threadNum.set(0);
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
@@ -87,15 +85,10 @@ public class BKProxyMain implements Runnable {
             // Global structures
             BKExtentLedgerMap elm = new BKExtentLedgerMap();
 
-            try {
-                bk = new BookKeeper(bkpConf);
-            } catch (Exception e) {
-                LOG.error("Exception while creating a new Bookkeeper:", e);
-                throw e;
-            }
+            bk = new BookKeeper(bkpConf);
 
             int workerThreadLimit = bkpConf.getWorkerThreadLimit();
-            while (true) {
+            while (!proxyWorkerExecutor.isShutdown()) {
                 LOG.info("SFStore BK-Proxy: Waiting for connection... ");
                 // Let jenkins know that we are up.
                 System.out.println("SFStore BK-Proxy: Waiting for connection... ");
@@ -117,25 +110,17 @@ public class BKProxyMain implements Runnable {
                         LOG.error("Exception trying to get client address", e);
                     }
 
-                    int threadSlot = getThreadSlot(workerThreadLimit);
-                    if (threadSlot == -1) { // max connections
-                        LOG.warn("Maximum Connections Reached: " + workerThreadLimit
-                                + ". Hence not accepting a new connection from {}!",
-                                remoteAddress);
+                    try {
+                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf, sock, bk, elm, bkProxyWorkerNo.getAndIncrement()));
+                    } catch (RejectedExecutionException rejException) {
+                        LOG.error(
+                                "ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
+                                        + proxyWorkerExecutor.getActiveCount() + " RemoteAddress: " + remoteAddress,
+                                rejException);
                         continue;
                     }
-                    String proxyIdentifier = "BKProxyWorker:[" + remoteAddress + "]:" + threadSlot;
+                    sock = null;
 
-                    // Worker thread to handle each backend's write requests
-                    try {
-                        Thread worker = new Thread(new BKProxyWorker(bkpConf, threadNum, sock, bk, elm),
-                                            proxyIdentifier);
-                        sock = null; // worker takes over handle and handles close
-                        worker.start();
-                    } catch (Exception e) {
-                        LOG.error("Exception in constructing new proxy worker: {} ", proxyIdentifier, e);
-                        // worker decrements count even on failed construction
-                    }
                 } finally {
                     if (sock != null) {
                         sock.close();
@@ -143,25 +128,47 @@ public class BKProxyMain implements Runnable {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException | KeeperException e) {
             LOG.error("Exception in starting a new bookkeeper proxy thread:", e);
             return;
         }
     }
 
-    public void shutdown() throws IOException, InterruptedException, BKException {
-        if (serverChannel != null) {
-            System.out.println("Stopping proxy...");
-            serverChannel.close();
-        }
-        if (bk != null){
-            LOG.info("Closing BookKeeper...");
-            bk.close();
+    public void shutdown() {
+        if (isShutdownExecuted.compareAndSet(false, true)) {
+            LOG.info("Shutting down ProxyWorkerExecutor...");
+            proxyWorkerExecutor.shutdownNow();
+            try {
+                LOG.info("Awaiting termination of BKProxyWorkers...");
+                if (!proxyWorkerExecutor.awaitTermination(TERMINATION_TIMEOUT_PERIOD, TimeUnit.MILLISECONDS)) {
+                    LOG.warn("All BKProxyWorkerThreads are not terminated even after " + TERMINATION_TIMEOUT_PERIOD
+                            + "milliSecs. But still we are proceeding with shutdown process");
+                }
+            } catch (InterruptedException e) {
+                LOG.warn("Got interrupted while waiting for termination of ProxyWorkers", e);
+            }
+            if (serverChannel != null) {
+                LOG.info("Closing ServerSocketChannel...");
+                try {
+                    serverChannel.close();
+                } catch (IOException e) {
+                    LOG.warn("Got IOException while closing the ServerSocketChannel", e);
+                }
+            }
+            if (bk != null) {
+                LOG.info("Closing BookKeeper...");
+                try {
+                    bk.close();
+                } catch (InterruptedException | BKException e) {
+                    LOG.warn("Got Exception while closing the BK Client", e);
+                }
+            }
         }
     }
 
     public static void main(String args[]) throws Exception {
         BookKeeperProxyConfiguration bkConfig = new BookKeeperProxyConfiguration();
+        final AtomicReference<BKProxyMain> bkMainReference = new AtomicReference<BKProxyMain>();
         try {
             BookKeeperProxyConfiguration cmdLineConfig = new BookKeeperProxyConfiguration();
             BookKeeperProxyConfiguration fileConfig = new BookKeeperProxyConfiguration();
@@ -173,14 +180,26 @@ public class BKProxyMain implements Runnable {
                 bkConfig.addConfiguration(cmdLineConfig);
                 bkConfig.addConfiguration(fileConfig);
 
-                BKProxyMain bkMain = new BKProxyMain(bkConfig);
-                Thread bkWorkerThreadController = new Thread(bkMain, "BKProxyMain");
+                bkMainReference.set(new BKProxyMain(bkConfig));
+                Thread bkWorkerThreadController = new Thread(bkMainReference.get(), "BKProxyMain");
                 bkWorkerThreadController.start();
-                bkWorkerThreadController.join();
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    @Override
+                    public void run() {
+                        bkMainReference.get().shutdown();
+                        LOG.debug("Shutdown hook of BKProxyMain ran successfully");
+                    }
+                });
+                LOG.debug("Registered the shutdown hook successfully");
+                bkWorkerThreadController.join();  
             }
         } catch (Exception e) {
             LOG.error("Exception in main thread:", e);
             throw e;
+        } finally {
+            if (bkMainReference.get() != null) {
+                bkMainReference.get().shutdown();
+            }
         }
     }
 

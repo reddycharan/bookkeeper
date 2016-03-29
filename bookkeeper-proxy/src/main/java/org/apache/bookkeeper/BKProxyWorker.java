@@ -4,13 +4,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
-import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
 
@@ -20,20 +18,19 @@ class BKProxyWorker implements Runnable {
     private final BookKeeperProxyConfiguration bkpConfig;
     SocketChannel clientChannel;
     BKSfdcClient bksc;
-    AtomicInteger globalThreadId;
     byte reqId = BKPConstants.UnInitialized;
     byte respId = BKPConstants.UnInitialized;
     byte errorCode = BKPConstants.SF_OK;
-    BKExtentId extentId = new BKExtentIdByteArray();
-    private final long currThreadId = Thread.currentThread().getId();
+    BKExtentId extentId = new BKExtentIdByteArray();    
+    private final long bkProxyWorkerId; 
     private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
 
-    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, AtomicInteger threadId, SocketChannel sSock,
-            BookKeeper bk, BKExtentLedgerMap elm) throws IOException {
+    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock,
+            BookKeeper bk, BKExtentLedgerMap elm, long bkProxyWorkerId) throws IOException {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
-        this.globalThreadId = threadId;
+        this.bkProxyWorkerId = bkProxyWorkerId;
         this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
 
         try {
@@ -51,8 +48,6 @@ class BKProxyWorker implements Runnable {
             } catch (IOException ioe) {
                 LOG.error("Exception while closing client channel:", ioe);
             }
-
-            globalThreadId.decrementAndGet();
             throw e;
         }
         this.bksc = new BKSfdcClient(bkpConfig, bk, elm);
@@ -63,8 +58,8 @@ class BKProxyWorker implements Runnable {
         try {
             bytesRead = clientChannel.read(buf);
         } catch (IOException e) {
-            LOG.error("Exception in read. ThreadId: "
-                    + currThreadId
+            LOG.error("Exception in read. BKProxyWorker: "
+                    + bkProxyWorkerId
                     + " req: " + BKPConstants.getReqRespString(reqId)
                     + " respId: " + BKPConstants.getReqRespString(respId)
                     + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
@@ -72,7 +67,7 @@ class BKProxyWorker implements Runnable {
         }
 
         LOG.debug("clientChannelRead - Read bytes: " + bytesRead
-                + " ThreadId: " + currThreadId
+                + " BKProxyWorker: " + bkProxyWorkerId
                 + " req: " + BKPConstants.getReqRespString(reqId)
                 + " respId: " + BKPConstants.getReqRespString(respId)
                 + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()));
@@ -86,7 +81,7 @@ class BKProxyWorker implements Runnable {
                 clientChannel.write(buf);
             }
         } catch (IOException e) {
-            LOG.error("Exception in write. ThreadId: " + currThreadId
+            LOG.error("Exception in write. BKProxyWorker: " + bkProxyWorkerId
                     + " bytes remaining: " + buf.remaining()
                     + " bytes written: " + (bytesToWrite - buf.remaining())
                     + " req: " + BKPConstants.getReqRespString(reqId)
@@ -96,13 +91,14 @@ class BKProxyWorker implements Runnable {
         }
 
         LOG.debug("clientChannelWrite wrote bytes:" + bytesToWrite
-        + " ThreadId: " + currThreadId
+        + " BKProxyWorker: " + bkProxyWorkerId
         + " req: " + BKPConstants.getReqRespString(reqId)
         + " respId: " + BKPConstants.getReqRespString(respId)
         + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()));
     }
 
     public void run() {
+        
         ByteBuffer req = ByteBuffer.allocate(BKPConstants.GENERIC_REQ_SIZE);
         ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
         ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
@@ -116,10 +112,11 @@ class BKProxyWorker implements Runnable {
 
         int bytesRead;
         try {
-            LOG.debug("Starting thread - " + currThreadId + " No. of Active Threads - "
-                + globalThreadId.get());
+            Thread.currentThread().setName(
+                    "BKProxyWorker" + bkProxyWorkerId + ":[" + this.clientChannel.getRemoteAddress().toString() + "]:");
+            LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
 
-            while (true) {
+            while (!Thread.interrupted()) {
                 try {
                     req.clear();
                     resp.clear();
@@ -128,12 +125,12 @@ class BKProxyWorker implements Runnable {
                     respId = BKPConstants.UnInitialized;
 
                     while (bytesRead >= 0 && bytesRead < req.capacity()) {
-                        bytesRead = clientChannelRead(req); // read into buffer.
+                        bytesRead += clientChannelRead(req); // read into buffer.
                     }
 
                     if (bytesRead < 0) {
-                        LOG.error("Exiting Thread: {}. Socket must have closed (bytes read: {})",
-                                  currThreadId, bytesRead);
+                        LOG.error("Exiting BKProxyWorker: {}. Socket must have closed (bytes read: {})",
+                                bkProxyWorkerId, bytesRead);
                         break;
                     }
 
@@ -455,8 +452,7 @@ class BKProxyWorker implements Runnable {
             } catch (IOException e) {
                 LOG.error("Exception while closing client channel:", e);
             }
-            globalThreadId.decrementAndGet();
-            LOG.info("Ending thread - " + currThreadId + ". Num of Active Threads - " + globalThreadId.get());
+            LOG.info("Ending BKProxyWorkerID - "+ bkProxyWorkerId);
         }
     }
 }

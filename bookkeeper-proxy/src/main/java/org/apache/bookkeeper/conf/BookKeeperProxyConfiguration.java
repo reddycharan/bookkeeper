@@ -53,6 +53,12 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     protected static final String DIGEST_TYPE_STR = "digestType";
     protected static final String DIGEST_TYPE_DEF = MAC;
 
+    protected static final String CORE_POOL_SIZE_STR = "corePoolSize";
+    protected static final int CORE_POOL_SIZE_DEF = 10;
+    
+    protected static final String CORE_POOL_KEEP_ALIVE_TIME_STR = "corePoolKeepAliveTime";
+    protected static final long CORE_POOL_KEEP_ALIVE_TIME_DEF = 5000;
+    
     public BookKeeperProxyConfiguration() {
         super();
     }
@@ -61,7 +67,7 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
         super();
         loadConf(conf);
     }
-
+    
     public String getBKProxyHostname() {
         return getString(BKPROXY_HOSTNAME_STR, BKPROXY_HOSTNAME_DEF);
     }
@@ -185,6 +191,24 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
         } else {
             setProperty(DIGEST_TYPE_STR, CRC32);
         }
+        return this;
+    }
+
+    public int getCorePoolSize() {
+        return getInt(CORE_POOL_SIZE_STR, CORE_POOL_SIZE_DEF);
+    }
+
+    public BookKeeperProxyConfiguration setCorePoolSize(int corePoolSize) {
+        setProperty(CORE_POOL_SIZE_STR, corePoolSize);
+        return this;
+    }
+
+    public long getCorePoolKeepAliveTime() {
+        return getLong(CORE_POOL_KEEP_ALIVE_TIME_STR, CORE_POOL_KEEP_ALIVE_TIME_DEF);
+    }
+
+    public BookKeeperProxyConfiguration setCorePoolKeepAliveTime(long corePoolKeepAliveTime) {
+        setProperty(CORE_POOL_KEEP_ALIVE_TIME_STR, corePoolKeepAliveTime);
         return this;
     }
 }
