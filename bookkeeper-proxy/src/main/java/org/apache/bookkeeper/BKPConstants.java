@@ -3,8 +3,6 @@ package org.apache.bookkeeper;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.bookkeeper.client.BKException.Code;
-
 public final class BKPConstants {
     // Requests
     public static final byte LedgerStatReq = 1;
@@ -19,7 +17,6 @@ public final class BKPConstants {
     public static final byte LedgerReadCloseReq = 10;
     public static final byte LedgerListGetReq = 11;
     public static final byte LedgerDeleteAllReq = 12;
-    public static final byte InvalidReq = 25;
 
     // Responses
     public static final byte LedgerStatResp = 101;
@@ -34,28 +31,21 @@ public final class BKPConstants {
     public static final byte LedgerReadCloseResp = 110;
     public static final byte LedgerListGetResp = 111;
     public static final byte LedgerDeleteAllResp = 112;
-    public static final byte InvalidResp = 125;
 
     // Error Codes
     public static final byte SF_OK = 0;
-    public static final byte SF_Error = 10;
-    public static final byte SF_ServerInternalError = 11;
+    public static final byte SF_InternalError = 11;
     public static final byte SF_OutOfMemory = 12;
-    public static final byte SF_ErrorChecksum = 13;
-    public static final byte SF_ErrorReadOnly = 14;
+    public static final byte SF_ConnectionFailed = 13;
+    public static final byte SF_ErrorPermanentRedirect = 14;
     public static final byte SF_ErrorBadRequest = 15;
     public static final byte SF_ErrorNotFound = 16;
-    public static final byte SF_ErrorWrite = 17;
-    public static final byte SF_ErrorRead = 18;
+    public static final byte SF_FailedIOerror = 17;
+    public static final byte SF_PartialIO = 18;
     public static final byte SF_ShortREAD = 19;
     public static final byte SF_ErrorExist = 20;
-    public static final byte SF_ServerTimeout = 21;
-    public static final byte SF_ErrorExtentClosed = 22;
-    public static final byte SF_ErrorAuth = 23;
-    public static final byte SF_ErrorServerInterrupt = 24;
-    public static final byte SF_ErrorMetaDataServer = 25;
-    public static final byte SF_ErrorServerQuorum = 26;
-    public static final byte SF_ErrorNotFoundClosed = 27;
+    public static final byte SF_OutOfSequenceTimeout = 21;
+    public static final byte SF_ErrorNotFoundClosed = 22;
 
     // Defines
     public static final int EXTENTID_SIZE = 16;
@@ -65,45 +55,6 @@ public final class BKPConstants {
     public static final int WRITE_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
-
-    public static final byte convertBKtoSFerror(int BKerror) {
-        switch (BKerror) {
-        case Code.ReadException:
-            return BKPConstants.SF_ErrorRead;
-        case Code.QuorumException:
-        case Code.NotEnoughBookiesException:
-            return BKPConstants.SF_ErrorServerQuorum;
-        case Code.ZKException:
-        case Code.MetaStoreException:
-            return BKPConstants.SF_ErrorMetaDataServer;
-        case Code.LedgerClosedException:
-            return BKPConstants.SF_ErrorExtentClosed;
-        case Code.WriteException:
-            return BKPConstants.SF_ErrorWrite;
-        case Code.NoSuchEntryException:
-        case Code.NoSuchLedgerExistsException:
-            return BKPConstants.SF_ErrorNotFound;
-        case Code.LedgerClosedNoSuchEntryException:
-            return BKPConstants.SF_ErrorNotFoundClosed;
-        case Code.IncorrectParameterException:
-        case Code.IllegalOpException:
-            return BKPConstants.SF_ErrorBadRequest;
-        case Code.InterruptedException:
-            return BKPConstants.SF_ErrorServerInterrupt;
-        case Code.LedgerFencedException:
-        case Code.WriteOnReadOnlyBookieException:
-            return BKPConstants.SF_ErrorReadOnly;
-        case Code.UnauthorizedAccessException:
-            return BKPConstants.SF_ErrorAuth;
-        case Code.AddEntryQuorumTimeoutException:
-            return BKPConstants.SF_ServerTimeout;
-        case Code.LedgerExistException:
-        case Code.DuplicateEntryIdException:
-            return BKPConstants.SF_ErrorExist;
-        default:
-            return BKPConstants.SF_ServerInternalError;
-        }
-    }
 
     private static Map<Byte, String> ReqRespStringMap = new HashMap<Byte, String>();
     static {
@@ -132,8 +83,6 @@ public final class BKPConstants {
         ReqRespStringMap.put(LedgerListGetResp, "LedgerListGetResp");
         ReqRespStringMap.put(LedgerDeleteAllReq, "LedgerDeleteAllReq");
         ReqRespStringMap.put(LedgerDeleteAllResp, "LedgerDeleteAllResp");
-        ReqRespStringMap.put(InvalidReq, "InvalidReq");
-        ReqRespStringMap.put(InvalidResp, "InvalidResp");
     };
 
     public static String getReqRespString(byte req) {
