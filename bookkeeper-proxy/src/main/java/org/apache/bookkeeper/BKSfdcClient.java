@@ -315,12 +315,7 @@ public class BKSfdcClient {
             entryId = fragmentId - 1;
         }
 
-        // Sanity check before trying to read; Get the latest LAC.
-        if (!lh.isClosed() && (entryId > lh.getLastAddConfirmed())) {
-            // Get the latest Lac.
-            lh.readLac();
-        }
-
+        // Sanity check before trying to read
         if ((entryId > lh.getLastAddConfirmed()) || (entryId == BKPConstants.NO_ENTRY)) {
             if (lh.isClosed()) {
                 LOG.info("Trying to read beyond LAC on a closed extentId {}",
