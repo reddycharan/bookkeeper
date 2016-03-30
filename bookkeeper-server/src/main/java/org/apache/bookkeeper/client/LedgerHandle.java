@@ -168,12 +168,6 @@ public class LedgerHandle {
      * @return the last confirmed entry id or {@link #INVALID_ENTRY_ID INVALID_ENTRY_ID} if no entry has been confirmed
      */
     public long getLastAddConfirmed() {
-        try {
-            readLac();
-        } catch (BKException | InterruptedException e) {
-            // This is optional and if we can't read LAC that is fine.
-            LOG.info("Attempted to Read LAC, but nothing found", e);
-        }
         return lastAddConfirmed;
     }
 
