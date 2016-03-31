@@ -116,11 +116,13 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
                                     +   NUMOFTHREADS + "-1\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
-                                    +   NUMOFSLOTS + "-4\n"
+                                    +   NUMOFSLOTS + "-5\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+                                    // trying to create a new Extent/Ledger with the same id should fail
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorExist+"\n"
+                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
 
@@ -205,7 +207,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
                                     +   THREADDETAILS + "-Thread3-BKP1\n"
-                                    +   NUMOFSLOTS + "-10\n"
+                                    +   NUMOFSLOTS + "-11\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
@@ -214,8 +216,10 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
-                                    +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
-                                    +   BKPOPERATION + "-9-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+                                    // this operation would fail because the actual entry size is 30000 but we are expecting only 1000 
+                                    +   BKPOPERATION + "-8-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-1000-"+BKPConstants.SF_ShortREAD+"-0\n"
+                                    +   BKPOPERATION + "-9-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    +   BKPOPERATION + "-10-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
 
@@ -509,6 +513,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-1-Thread3-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-0\n"
                                     +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n"
+                                    // here we are trying to get stat of non-existing extent, which should fail with ErrorNotFound error
+                                    +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerStatReq+"-extn-"+BKPConstants.SF_ErrorNotFound+"-0\n"
                                     +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-30\n"
@@ -619,6 +625,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-0-Thread4-"+BKPConstants.LedgerCreateReq+"-ext2-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread4-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext2-1-10-"+BKPConstants.SF_OK+"\n"
+                                    // trying to create a new Extent/Ledger with the already existing id (though it is created by other BKProxy instance) should fail
+                                    +   BKPOPERATION + "-1-Thread5-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorExist+"\n"
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread5-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext2-2-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-10-"+BKPConstants.SF_OK+"\n"
