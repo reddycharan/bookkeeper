@@ -72,6 +72,8 @@ public abstract class BKException extends Exception {
             return new BKWriteException();
         case Code.NoSuchEntryException:
             return new BKNoSuchEntryException();
+        case Code.LedgerClosedNoSuchEntryException:
+            return new BKLedgerClosedNoSuchEntryException();
         case Code.IncorrectParameterException:
             return new BKIncorrectParameterException();
         case Code.InterruptedException:
@@ -100,6 +102,8 @@ public abstract class BKException extends Exception {
             return new BKDuplicateEntryIdException();
         case Code.TimeoutException:
             return new BKTimeoutException();
+        case Code.LedgerExistException:
+            return new BKLedgerExistException();
         default:
             return new BKUnexpectedConditionException();
         }
@@ -134,6 +138,7 @@ public abstract class BKException extends Exception {
         int AddEntryQuorumTimeoutException = -21;
         int DuplicateEntryIdException = -22;
         int TimeoutException = -23;
+        int LedgerClosedNoSuchEntryException = -24;
 
         int IllegalOpException = -100;
         int LedgerFencedException = -101;
@@ -190,6 +195,8 @@ public abstract class BKException extends Exception {
             return "Write failed on bookie";
         case Code.NoSuchEntryException:
             return "No such entry";
+        case Code.LedgerClosedNoSuchEntryException:
+            return "Ledger Closed and No such Entry";
         case Code.IncorrectParameterException:
             return "Incorrect parameter input";
         case Code.InterruptedException:
@@ -232,6 +239,12 @@ public abstract class BKException extends Exception {
     public static class BKNoSuchEntryException extends BKException {
         public BKNoSuchEntryException() {
             super(Code.NoSuchEntryException);
+        }
+    }
+
+    public static class BKLedgerClosedNoSuchEntryException extends BKException {
+        public BKLedgerClosedNoSuchEntryException() {
+            super(Code.LedgerClosedNoSuchEntryException);
         }
     }
 
