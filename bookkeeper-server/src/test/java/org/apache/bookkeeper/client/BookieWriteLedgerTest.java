@@ -77,6 +77,9 @@ public class BookieWriteLedgerTest extends
     @Override
     @Before
     public void setUp() throws Exception {
+    	// 512K to speed up testLedgerCreateAdvWithLedgerIdInLoop2
+    	baseConf.setSkipListSizeLimit(512 * 1024);
+    	
         super.setUp();
         rng = new Random(System.currentTimeMillis()); // Initialize the Random
         // Number Generator
@@ -309,10 +312,10 @@ public class BookieWriteLedgerTest extends
      *
      * @throws Exception
      */
-    @Test(timeout = 180000)
+    @Test(timeout = 60000)
     public void testLedgerCreateAdvWithLedgerIdInLoop() throws Exception {
         long ledgerId;
-        int ledgerCount = 40;
+        int ledgerCount = 10;
 
         List<List<byte[]>> entryList = new ArrayList<List<byte[]>>();
         LedgerHandle[] lhArray = new LedgerHandle[ledgerCount];
@@ -366,7 +369,7 @@ public class BookieWriteLedgerTest extends
      *
      * @throws Exception
      */
-    @Test(timeout = 180000)
+    @Test(timeout = 60000)
     public void testLedgerCreateAdvWithLedgerIdInLoop2() throws Exception {
 
         assertTrue("Here we are expecting Bookies are configured to use SortedLedgerStorage",
