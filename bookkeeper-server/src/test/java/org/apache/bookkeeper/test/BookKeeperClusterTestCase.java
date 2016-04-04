@@ -24,6 +24,7 @@ package org.apache.bookkeeper.test;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,6 +47,7 @@ import org.apache.bookkeeper.replication.AutoRecoveryMain;
 import org.apache.bookkeeper.replication.Auditor;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
+import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.zookeeper.KeeperException;
@@ -502,6 +504,40 @@ public abstract class BookKeeperClusterTestCase {
             LOG.error("Exception while starting AutoRecovery!", ue);
         }
         return server;
+    }
+
+    /**
+     * wait for zk to get updated (async) as bookie transitions to read-only
+     * 
+     * @param bkIndex
+     *              index of bookie in the bsConfs list
+     * @throws KeeperException
+     * @throws InterruptedException
+     * @throws UnknownHostException
+     */
+    public void waitForBookieTransitionToReadOnly(int bkIndex)
+            throws KeeperException, InterruptedException, UnknownHostException {
+        while (zkc.exists(baseConf.getZkAvailableBookiesPath() + "/" + BookKeeperConstants.READONLY + "/"
+                + Bookie.getBookieAddress(bsConfs.get(bkIndex)).toString(), false) == null) {
+            Thread.sleep(100);
+        }
+    }
+    
+    /**
+     * wait for zk to get updated (async) as bookie transitions to writable
+     * 
+     * @param bkIndex
+     *              index of bookie in the bsConfs list
+     * @throws KeeperException
+     * @throws InterruptedException
+     * @throws UnknownHostException
+     */
+    public void waitForBookieTransitionToWritable(int bkIndex)
+            throws KeeperException, InterruptedException, UnknownHostException {
+        while (zkc.exists(baseConf.getZkAvailableBookiesPath() + "/"
+                + Bookie.getBookieAddress(bsConfs.get(bkIndex)).toString(), false) == null) {
+            Thread.sleep(100);
+        }
     }
 
     public void setMetastoreImplClass(AbstractConfiguration conf) {

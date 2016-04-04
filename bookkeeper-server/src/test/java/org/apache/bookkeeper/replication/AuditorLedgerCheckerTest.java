@@ -269,10 +269,12 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         int count = ledgerList.size();
         final CountDownLatch underReplicaLatch = registerUrLedgerWatcher(count);
 
-        ServerConfiguration bookieConf = bsConfs.get(2);
-        BookieServer bk = bs.get(2);
+        final int bkIndex = 2;
+        ServerConfiguration bookieConf = bsConfs.get(bkIndex);
+        BookieServer bk = bs.get(bkIndex);
         bookieConf.setReadOnlyModeEnabled(true);
         bk.getBookie().doTransitionToReadOnlyMode();
+        waitForBookieTransitionToReadOnly(bkIndex);
 
         // grace period for publishing the bk-ledger
         LOG.debug("Waiting for Auditor to finish ledger check.");
@@ -296,6 +298,7 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         BookieServer bk = bs.get(bkIndex);
         bookieConf.setReadOnlyModeEnabled(true);
         bk.getBookie().doTransitionToReadOnlyMode();
+        waitForBookieTransitionToReadOnly(bkIndex);
 
         // grace period for publishing the bk-ledger
         LOG.debug("Waiting for Auditor to finish ledger check.");
