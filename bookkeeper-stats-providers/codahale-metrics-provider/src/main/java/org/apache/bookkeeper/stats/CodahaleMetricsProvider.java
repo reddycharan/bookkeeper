@@ -26,25 +26,21 @@ import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.JmxReporter;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
-
 import static com.codahale.metrics.MetricRegistry.name;
-
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
-import com.codahale.metrics.servlets.MetricsServlet;
 
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.commons.configuration.Configuration;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
+
 import java.io.File;
 
 import org.slf4j.Logger;
@@ -57,14 +53,12 @@ public class CodahaleMetricsProvider implements StatsProvider {
     MetricRegistry metrics = null;
     List<ScheduledReporter> reporters = new ArrayList<ScheduledReporter>();
     JmxReporter jmx = null;
-    private Server jettyServer;
 
     synchronized void initIfNecessary() {
         if (metrics == null) {
             metrics = new MetricRegistry();
-            metrics.register(name("jvm", "gc"), new GarbageCollectorMetricSet());
-            metrics.register(name("jvm", "memory"), new MemoryUsageGaugeSet());
-            metrics.register(name("jvm", "system"), new JvmSystemMetricSet());
+            metrics.registerAll(new MemoryUsageGaugeSet());
+            metrics.registerAll(new GarbageCollectorMetricSet());
         }
     }
 
@@ -82,28 +76,7 @@ public class CodahaleMetricsProvider implements StatsProvider {
         String csvDir = conf.getString("codahaleStatsCSVEndpoint");
         String slf4jCat = conf.getString("codahaleStatsSlf4jEndpoint");
         String jmxDomain = conf.getString("codahaleStatsJmxEndpoint");
-        String servletPort = conf.getString("statsServletPort");        
-        
-        if (!Strings.isNullOrEmpty(servletPort)) {
-        	//Get the context and endpoint. If none specified, set to "/" and "metrics.json", respectively, as default. 
-        	String contextPath = conf.getString("servletContextPath") != null ? conf.getString("servletContextPath") : "/";
-        	String endpoint = conf.getString("servletEndpoint") != null ? conf.getString("servletEndpoint") : "/metrics.json";
-        	int port = Integer.valueOf(servletPort);
-        	LOG.info("Configuring stats on port: " + servletPort);
-        	try {
-            	this.jettyServer = new Server(port);
-                ServletContextHandler context = new ServletContextHandler();
-                context.setContextPath(contextPath);
-                context.setAttribute("show-jvm-metrics", "true");
-                MetricsServlet metricServlet = new MetricsServlet(this.getMetrics());
-                context.addServlet(new ServletHolder(metricServlet), endpoint);
-                jettyServer.setHandler(context);
-                jettyServer.start();
-			} catch (Exception e) {
-				LOG.error("Failed to start logging servlet!\n" + e.getMessage(), e);
-			}       	
-        }
-        
+
         if (!Strings.isNullOrEmpty(graphiteHost)) {
             LOG.info("Configuring stats with graphite");
             HostAndPort addr = HostAndPort.fromString(graphiteHost);
@@ -149,6 +122,7 @@ public class CodahaleMetricsProvider implements StatsProvider {
                 .build();
             jmx.start();
         }
+
         for (ScheduledReporter r : reporters) {
             r.start(metricsOutputFrequency, TimeUnit.SECONDS);
         }
