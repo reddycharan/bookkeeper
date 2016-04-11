@@ -419,7 +419,7 @@ class BKProxyWorker implements Runnable {
                     }
 
                     LOG.info("Request: " + BKPConstants.getReqRespString(reqId)
-                        + "Response: " + BKPConstants.getReqRespString(respId)
+                        + "Response: " + BKPConstants.getReqRespString(errorCode)
                         + "for extentId: {}", ledgerIdFormatter.formatLedgerId(extentId.asLong()));
                 } catch (BKException e) {
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
