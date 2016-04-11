@@ -430,6 +430,16 @@ public abstract class BookKeeperClusterTestCase {
         return conf.getBookiePort();
     }
 
+    protected InetAddress getLocalHostSafe() {
+        try {
+            return InetAddress.getLocalHost();
+        } catch (UnknownHostException uhe) {
+            LOG.warn("Using loopback since getLocalHost API failed");
+            LOG.debug("Exception from getLocalHost", uhe);
+            return InetAddress.getLoopbackAddress();
+        }
+    }
+
     /**
      * Helper method to startup a bookie server using a configuration object.
      * Also, starts the auto recovery process if isAutoRecoveryEnabled is true.
@@ -444,11 +454,11 @@ public abstract class BookKeeperClusterTestCase {
         server.start();
 
         int port = conf.getBookiePort();
-        String host = InetAddress.getLocalHost().getHostAddress();
+        String host = this.getLocalHostSafe().getHostAddress();
         if (conf.getUseHostNameAsBookieID()) {
-            host = InetAddress.getLocalHost().getCanonicalHostName();
+            host = this.getLocalHostSafe().getCanonicalHostName();
         }
-        
+
         while ( (!conf.isForceReadOnlyBookie() && (bkc.getZkHandle().exists(
                     "/ledgers/available/" + host + ":" + port, false) == null)) ||
                 ( conf.isForceReadOnlyBookie() && ((bkc.getZkHandle().exists(
@@ -485,9 +495,9 @@ public abstract class BookKeeperClusterTestCase {
         server.start();
 
         int port = conf.getBookiePort();
-        String host = InetAddress.getLocalHost().getHostAddress();
+        String host = this.getLocalHostSafe().getHostAddress();
         if (conf.getUseHostNameAsBookieID()) {
-            host = InetAddress.getLocalHost().getCanonicalHostName();
+            host = this.getLocalHostSafe().getCanonicalHostName();
         }
         while (bkc.getZkHandle().exists(
                 "/ledgers/available/" + host + ":" + port, false) == null) {
