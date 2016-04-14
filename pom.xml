@@ -227,8 +227,6 @@
                 <exclude>**/BookieRecoveryTest.java</exclude>
                 <!-- The following test is tracked by W-2961416 -->
                 <exclude>**/AuditorPeriodicCheckTest.java</exclude>
-                <!-- W-2999244 -->
-                <exclude>**/AuditorLedgerCheckerTest.java</exclude>
               </excludes>
             </configuration>
 	  </plugin>
