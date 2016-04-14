@@ -45,6 +45,10 @@ import com.codahale.metrics.servlets.MetricsServlet;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.stats.StatsProvider;
+
+
 public class CodahaleMetricsProvider implements StatsProvider {
 
     static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);
