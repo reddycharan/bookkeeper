@@ -32,7 +32,8 @@ public interface BKProxyStats {
     public final static String PXY_LEDGER_WRITE_CLOSE_TIME = "PXY_LEDGER_WRITE_CLOSE_TIME";
     public final static String PXY_LEDGER_READ_CLOSE_TIME = "PXY_LEDGER_READ_CLOSE_TIME";
     public final static String PXY_LEDGER_DELETE_TIME = "PXY_LEDGER_DELETE_TIME";
-    public final static String PXY_LEDGER_PUT_FRAGMENT_TIME = "PXY_LEDGER_PUT_FRAGMENT_TIME";
+    public final static String PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME = "PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME";
+    public final static String PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME = "PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME";
     public final static String PXY_LEDGER_GET_FRAGMENT_TIME = "PXY_LEDGER_GET_FRAGMENT_TIME";
     public final static String PXY_WORKER_POOL_COUNT = "PXY_WORKER_POOL_COUNT";
     public final static String PXY_BYTES_GET_FRAGMENT_HIST = "PXY_BYTES_GET_FRAGMENT_HIST";

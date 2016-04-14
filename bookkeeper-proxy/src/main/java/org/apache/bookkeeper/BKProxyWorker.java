@@ -26,7 +26,8 @@ import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_ALL_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_GET_FRAGMENT_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_NON_RECOVERY_READ_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_PUT_FRAGMENT_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_READ_CLOSE_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_RECOVERY_READ_TIME;
 import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_STAT_TIME;
@@ -114,7 +115,8 @@ class BKProxyWorker implements Runnable {
     private final OpStatsLogger ledgerWriteCloseTimer;
     private final OpStatsLogger ledgerReadCloseTimer;
     private final OpStatsLogger ledgerDeletionTimer;
-    private final OpStatsLogger ledgerPutTimer;
+    private final OpStatsLogger ledgerSyncPutTimer;
+    private final OpStatsLogger ledgerAsyncPutTimer;
     private final OpStatsLogger ledgerGetTimer;
     private final OpStatsLogger ledgerReadHist;
     private final OpStatsLogger ledgerWriteHist;
@@ -137,7 +139,8 @@ class BKProxyWorker implements Runnable {
         this.ledgerWriteCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_WRITE_CLOSE_TIME);
         this.ledgerReadCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_READ_CLOSE_TIME);
         this.ledgerDeletionTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_TIME);
-        this.ledgerPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_PUT_FRAGMENT_TIME);
+        this.ledgerSyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME);
+        this.ledgerAsyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME);
         this.ledgerGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_GET_FRAGMENT_TIME);
         this.ledgerReadHist = statsLogger.getOpStatsLogger(PXY_BYTES_GET_FRAGMENT_HIST);
         this.ledgerWriteHist = statsLogger.getOpStatsLogger(PXY_BYTES_PUT_FRAGMENT_HIST);
@@ -225,11 +228,14 @@ class BKProxyWorker implements Runnable {
         ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
         ByteBuffer erreq = ByteBuffer.allocate(BKPConstants.READ_REQ_SIZE);
         ByteBuffer cByteBuf = ByteBuffer.allocate(bkpConfig.getMaxFragSize());
+        ByteBuffer asreq = ByteBuffer.allocate(BKPConstants.ASYNC_STAT_REQ_SIZE);
+        ByteBuffer extentBbuf = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
 
         req.order(ByteOrder.nativeOrder());
         resp.order(ByteOrder.nativeOrder());
         ewreq.order(ByteOrder.nativeOrder());
         erreq.order(ByteOrder.nativeOrder());
+        asreq.order(ByteOrder.nativeOrder());
 
         String clientConn = "";
         try {
@@ -266,9 +272,9 @@ class BKProxyWorker implements Runnable {
 
                     req.flip();
                     reqId = req.get();
-                    ByteBuffer bb = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
-                    req.get(bb.array());
-                    this.extentId = new BKExtentIdByteArrayFactory().build(bb, this.ledgerIdFormatter);
+                    extentBbuf.clear();
+                    req.get(extentBbuf.array());
+                    this.extentId = new BKExtentIdByteArrayFactory().build(extentBbuf, this.ledgerIdFormatter);
 
                     LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId),
                         extentId);
@@ -446,8 +452,31 @@ class BKProxyWorker implements Runnable {
                         break;
                     }
 
+                    case (BKPConstants.LedgerAsyncWriteStatusReq): {
+                        respId = BKPConstants.LedgerAsyncWriteStatusResp;
+                        resp.put(respId);
+                        asreq.clear();
+                        bytesRead = 0;
+                        int fragmentId;
+                        int timeout;
+
+                        while (bytesRead >= 0 && bytesRead < asreq.capacity()) {
+                            bytesRead += clientChannelRead(asreq);
+                        }
+                        asreq.flip();
+                        fragmentId = asreq.getInt();
+                        timeout = asreq.getInt(); // msecs
+                        errorCode = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
+                        resp.put(errorCode);
+                        resp.flip();
+                        clientChannelWrite(resp);
+                        break;
+                    }
+
                     case (BKPConstants.LedgerWriteEntryReq): {
+                        ByteBuffer wcByteBuf = cByteBuf;
                         respId = BKPConstants.LedgerWriteEntryResp;
+
                         errorCode = BKPConstants.SF_OK;
                         int fragmentId;
                         int wSize;
@@ -463,41 +492,103 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
-                        if (wSize > cByteBuf.capacity()) {
+
+                        if (wSize > bkpConfig.getMaxFragSize()) {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
                             LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
-                                      " is bigger than allowed:" + cByteBuf.capacity());
+                                      " is bigger than allowed:" + wcByteBuf.capacity());
                             // #W-2763423 it is required to read the oversized
                             // fragment and empty out the clientsocketchannel,
                             // otherwise it would corrupt the clientsocketchannel
                             bytesRead = 0;
-                            cByteBuf.clear();
+                            wcByteBuf.clear();
                             while (bytesRead < wSize) {
-                                bytesRead += clientChannelRead(cByteBuf);
-                                if (!cByteBuf.hasRemaining()) {
-                                    cByteBuf.clear();
+                                bytesRead += clientChannelRead(wcByteBuf);
+                                if (!wcByteBuf.hasRemaining()) {
+                                    wcByteBuf.clear();
                                 }
                             }
-                            cByteBuf.clear();
+                            wcByteBuf.clear();
                             resp.put(errorCode);
                             resp.flip();
                             clientChannelWrite(resp);
                             break;
                         }
-
                         bytesRead = 0;
-                        cByteBuf.clear();
+                        wcByteBuf.clear();
                         while (bytesRead >= 0 && bytesRead < wSize) {
-                            bytesRead += clientChannelRead(cByteBuf);
+                            bytesRead += clientChannelRead(wcByteBuf);
                         }
 
-                        cByteBuf.flip();
+                        wcByteBuf.flip();
                         //Exclude channel reads above
                         startTime = MathUtils.nowInNano();
-                        opStatQueue.add(new OpStatEntryTimer(ledgerPutTimer, startTime));
-                        opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) cByteBuf.limit()));
+                        opStatQueue.add(new OpStatEntryTimer(ledgerSyncPutTimer, startTime));
+                        opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, false); // false -> sync write
 
-						bksc.ledgerPutEntry(extentId, fragmentId, cByteBuf);
+                        resp.put(errorCode);
+                        resp.flip();
+
+                        clientChannelWrite(resp);
+                        break;
+                    }
+
+                    case (BKPConstants.LedgerAsyncWriteEntryReq):{
+                        ByteBuffer wcByteBuf;
+                        respId = BKPConstants.LedgerAsyncWriteEntryResp;
+
+                        errorCode = BKPConstants.SF_OK;
+                        int fragmentId;
+                        int wSize;
+
+                        resp.put(respId);
+
+                        ewreq.clear();
+                        bytesRead = 0;
+                        while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
+                            bytesRead += clientChannelRead(ewreq);
+                        }
+                        ewreq.flip();
+
+                        fragmentId = ewreq.getInt();
+                        wSize = ewreq.getInt();
+                        // allocate buffer to read
+                        wcByteBuf = ByteBuffer.allocate(Math.min(wSize, bkpConfig.getMaxFragSize()));
+
+                        if (wSize > bkpConfig.getMaxFragSize()) {
+                            errorCode = BKPConstants.SF_ErrorBadRequest;
+                            LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
+                                      " is bigger than allowed:" + wcByteBuf.capacity());
+                            // #W-2763423 it is required to read the oversized
+                            // fragment and empty out the clientsocketchannel,
+                            // otherwise it would corrupt the clientsocketchannel
+                            bytesRead = 0;
+                            wcByteBuf.clear();
+                            while (bytesRead < wSize) {
+                                bytesRead += clientChannelRead(wcByteBuf);
+                                if (!wcByteBuf.hasRemaining()) {
+                                    wcByteBuf.clear();
+                                }
+                            }
+                            wcByteBuf.clear();
+                            resp.put(errorCode);
+                            resp.flip();
+                            clientChannelWrite(resp);
+                            break;
+                        }
+                        bytesRead = 0;
+                        wcByteBuf.clear();
+                        while (bytesRead >= 0 && bytesRead < wSize) {
+                            bytesRead += clientChannelRead(wcByteBuf);
+                        }
+
+                        wcByteBuf.flip();
+                        //Exclude channel reads above
+                        startTime = MathUtils.nowInNano();
+                        opStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutTimer, startTime));
+                        opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, true); // true -> Async write.
 
                         resp.put(errorCode);
                         resp.flip();
@@ -586,6 +677,9 @@ class BKProxyWorker implements Runnable {
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
                             extentId);
                     LOG.error("Exception: ", e);
+                    resp.put(BKPConstants.SF_ServerInternalError);
+                    resp.flip();
+                    clientChannelWrite(resp);
                 }
                 finally {
 					markStats(exceptionOccurred);

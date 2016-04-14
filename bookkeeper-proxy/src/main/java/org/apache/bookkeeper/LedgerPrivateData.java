@@ -1,5 +1,7 @@
 package org.apache.bookkeeper;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -10,9 +12,36 @@ class LedgerPrivateData {
     LedgerHandle rlh = null; // Read Ledger Handle
     LedgerHandle rrlh = null; // Recovery Read Ledger Handle.
     private Lock ledgerRecoveryOpenLock;
+    private ConcurrentMap<Integer, LedgerAsyncWriteStatus> asyncWriteStatus;
+
+    public LedgerAsyncWriteStatus getLedgerAsyncWriteStatus(int fragmentId) {
+        return asyncWriteStatus.get(fragmentId);
+    }
+
+    public void deleteLedgerAsyncWriteStatus(int fragmentId) {
+        asyncWriteStatus.remove(fragmentId);
+    }
+
+    // Return TRUE if writes are waiting either for
+    // Bookie response or writes that were not called
+    // LedgerAsyncWriteStatusReq from SDB.
+    // If no pending writes, return FALSE.
+    public boolean anyAsyncWritesPending() {
+        if (asyncWriteStatus.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+    public LedgerAsyncWriteStatus createLedgerAsyncWriteStatus(int fragmentId, long entryId) {
+        LedgerAsyncWriteStatus laws = new LedgerAsyncWriteStatus(fragmentId, entryId);
+        asyncWriteStatus.putIfAbsent(fragmentId, laws);
+        return asyncWriteStatus.get(fragmentId);
+    }
 
     LedgerPrivateData() {
-        ledgerRecoveryOpenLock = new ReentrantLock();
+        this.ledgerRecoveryOpenLock = new ReentrantLock();
+        this.asyncWriteStatus = new ConcurrentHashMap<Integer, LedgerAsyncWriteStatus>();
+
     }
 
     public void acquireLedgerRecoveryOpenLock(){

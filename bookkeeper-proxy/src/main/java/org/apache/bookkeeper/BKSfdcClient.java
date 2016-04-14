@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 
+import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -271,7 +272,48 @@ public class BKSfdcClient {
         }
     }
 
-    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata) throws BKException, InterruptedException {
+    public byte ledgerAsyncWriteStatus(BKExtentId extentId, int fragmentId, int timeout) throws BKException, InterruptedException {
+        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+        LedgerAsyncWriteStatus laws;
+        byte errorCode = BKPConstants.SF_OK;
+        if (lpd == null) {
+            LOG.error("LedgerPrivateData is missing: Attempt to get async write status extentId : {} and fragmentId: {}",
+                    extentId, fragmentId);
+            throw BKException.create(Code.IllegalOpException);
+        }
+
+        laws = lpd.getLedgerAsyncWriteStatus(fragmentId);
+        if (laws == null) {
+            LOG.error("No LedgerAsyncWriteStatus : Attempt to get async write status extentId : {} and fragmentId: {}",
+                    extentId, fragmentId);
+            throw BKException.create(Code.IllegalOpException);
+        }
+
+        errorCode = laws.getResult();
+        if ((timeout != 0) && (errorCode == BKPConstants.SF_ErrorInProgress)) {
+            laws.waitForResult(timeout);
+            errorCode = laws.getResult();
+        }
+
+        if (errorCode != BKPConstants.SF_ErrorInProgress) {
+            // IO Finished.
+            if (errorCode == BKPConstants.SF_OK) {
+                // Success; Do some sanity check.
+                long actualEntryId = laws.getActualEntryId();
+                long expectedEntryId = laws.getExpectedEntryId();
+                if (actualEntryId != expectedEntryId) {
+                    LOG.error("expecting entryId: " + expectedEntryId + "but bk returned entryId: " + actualEntryId +
+                              " On ledger: " + extentId);
+                    lpd.deleteLedgerAsyncWriteStatus(fragmentId);
+                    throw BKException.create(Code.UnexpectedConditionException);
+                }
+            }
+            lpd.deleteLedgerAsyncWriteStatus(fragmentId);
+        }
+        return errorCode;
+    }
+
+    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, boolean async) throws BKException, InterruptedException {
 
         long entryId;
 
@@ -296,8 +338,7 @@ public class BKSfdcClient {
         // entryId 1 is the second entry for BK as it starts entryId with 0.
         //
         // Rules:
-        // 1. FragmentId = entryId + 1; first entryId is 0 and first FragmentId
-        // = 1
+        // 1. FragmentId = entryId + 1; first entryId is 0 and first FragmentId is 1
         // 2. TrailerId(FragmentId 0) = Last entryId of the Ledger.
 
         // entryId and FragmentId are off by one.
@@ -309,19 +350,38 @@ public class BKSfdcClient {
             // SDB guarantees that all entries were acked/responded back
             // before sending fragment 0. So no need to worry about any
             // race condition here.
+            if (lpd.anyAsyncWritesPending()) {
+                // SDB trying to seal/close extent before it got responses
+                // back from sfstore or before it even called LedgerAsyncWriteStatusReq
+                // on pending async writes. As per contract it must not happen.
+                // Flag a warning, and SDB may expect errors of subsequent writes.
+                LOG.error("SDB is trying to close exetent: {} with pending writes", extentId);
+            }
             tmpEntryId = lh.getLastAddConfirmed() + 1;
         }
-        // Try to catch out of sequence addEntry.
-        // Condition below is to check and reduce number of log messages for sequential addEntrys through this worker thread.
-        // If multiple threads are adding entries simultaneously, we may log the debug message anyway.
-        // This is temporary debug message to catch out of order writes.
-        long tmpLac = lh.getLastAddConfirmed();
-        if ((tmpLac + 1) != tmpEntryId) {
-            LOG.info("Sending non-sequential addEntry. LedgerId:{} currentEntryId:{}, LAC:{}",
+        if (async) {
+            LedgerAsyncWriteStatus laws;
+            ProxyAddCallback callback = new ProxyAddCallback();
+            // Create LedgerAsyncWaitStatus object.
+            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId);
+            lh.asyncAddEntry(tmpEntryId, bdata.array(), 0, bdata.limit(), callback, laws);
+        } else {
+            // Try to catch out of sequence addEntry.
+            // Condition below is to check and reduce number of log messages for sequential addEntrys through this worker thread.
+            // If multiple threads are adding entries simultaneously, we may log the debug message anyway.
+            // This is temporary debug message to catch out of order writes.
+            long tmpLac = lh.getLastAddConfirmed();
+            if ((tmpLac + 1) != tmpEntryId) {
+                LOG.info("Sending non-sequential addEntry. LedgerId:{} currentEntryId:{}, LAC:{}",
                     new Object[] {extentId, tmpEntryId, tmpLac});
+            }
+            entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
+            if (entryId != tmpEntryId) {
+                LOG.info("expecting entryId: " + tmpEntryId + "but bk returned entryId: " + entryId +
+                        " On ledger: " + extentId);
+                throw BKException.create(Code.UnexpectedConditionException);
+            }
         }
-        entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
-        assert (entryId == tmpEntryId);
 
         // Handle Trailer
         if (fragmentId == 0) {
@@ -388,4 +448,25 @@ public class BKSfdcClient {
         return cByteBuffer;
     }
 
+    static class ProxyAddCallback implements AddCallback {
+        long entryId = -1;
+
+        /**
+         * Implementation of callback interface for synchronous write method.
+         *
+         * @param rc
+         *          return code
+         * @param leder
+         *          ledger identifier
+         * @param entry
+         *          entry identifier
+         * @param ctx
+         *          control object
+         */
+        @Override
+        public void addComplete(int rc, LedgerHandle lh, long entry, Object ctx) {
+            LedgerAsyncWriteStatus asyncStatus = (LedgerAsyncWriteStatus) ctx;
+            asyncStatus.setComplete(rc, entry);
+        }
+    }
 }

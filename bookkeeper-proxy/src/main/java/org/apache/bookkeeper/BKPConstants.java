@@ -19,7 +19,9 @@ public final class BKPConstants {
     public static final byte LedgerReadCloseReq = 10;
     public static final byte LedgerListGetReq = 11;
     public static final byte LedgerDeleteAllReq = 12;
-    public static final byte LedgerFirstUnusedReq = 13; // first unused request; please keep it up to date.
+    public static final byte LedgerAsyncWriteEntryReq = 13;
+    public static final byte LedgerAsyncWriteStatusReq = 14;
+    public static final byte LedgerFirstUnusedReq = 15; // first unused request; please keep it up to date.
     public static final byte InvalidReq = 25;
 
     // Responses
@@ -35,6 +37,8 @@ public final class BKPConstants {
     public static final byte LedgerReadCloseResp = 110;
     public static final byte LedgerListGetResp = 111;
     public static final byte LedgerDeleteAllResp = 112;
+    public static final byte LedgerAsyncWriteEntryResp = 113;
+    public static final byte LedgerAsyncWriteStatusResp = 114;
     public static final byte InvalidResp = 125;
 
     // Error Codes
@@ -57,6 +61,7 @@ public final class BKPConstants {
     public static final byte SF_ErrorMetaDataServer = 25;
     public static final byte SF_ErrorServerQuorum = 26;
     public static final byte SF_ErrorNotFoundClosed = 27;
+    public static final byte SF_ErrorInProgress = 28;
 
     // Defines
     public static final int EXTENTID_SIZE = 16;
@@ -64,11 +69,14 @@ public final class BKPConstants {
     public static final int RESP_SIZE = 10;
     public static final int READ_REQ_SIZE = 8;
     public static final int WRITE_REQ_SIZE = 8;
+    public static final int ASYNC_STAT_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
 
     public static final byte convertBKtoSFerror(int BKerror) {
         switch (BKerror) {
+        case Code.OK:
+            return BKPConstants.SF_OK;
         case Code.ReadException:
             return BKPConstants.SF_ErrorRead;
         case Code.QuorumException:
@@ -133,6 +141,10 @@ public final class BKPConstants {
         ReqRespStringMap.put(LedgerListGetResp, "LedgerListGetResp");
         ReqRespStringMap.put(LedgerDeleteAllReq, "LedgerDeleteAllReq");
         ReqRespStringMap.put(LedgerDeleteAllResp, "LedgerDeleteAllResp");
+        ReqRespStringMap.put(LedgerAsyncWriteEntryReq, "LedgerAsyncWriteEntryReq");
+        ReqRespStringMap.put(LedgerAsyncWriteEntryResp, "LedgerAsyncWriteEntryResp");
+        ReqRespStringMap.put(LedgerAsyncWriteStatusReq, "LedgerAsyncWriteStatusReq");
+        ReqRespStringMap.put(LedgerAsyncWriteStatusResp, "LedgerAsyncWriteStatusResp");
         ReqRespStringMap.put(InvalidReq, "InvalidReq");
         ReqRespStringMap.put(InvalidResp, "InvalidResp");
     };
