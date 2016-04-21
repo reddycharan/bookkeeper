@@ -28,6 +28,9 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -88,13 +91,20 @@ public class LocalBookKeeper {
      * @param args
      */
 
-    private void runZookeeper(int maxCC) throws IOException {
+    private void runZookeeper(int maxCC, String zkDataDir) throws IOException {
         // create a ZooKeeper server(dataDir, dataLogDir, port)
         LOG.info("Starting ZK server");
         //ServerStats.registerAsConcrete();
         //ClientBase.setupTestEnv();
-        ZkTmpDir = IOUtils.createTempDir("zookeeper", "localbookkeeper");
-
+        
+        if(null == zkDataDir) {
+        	ZkTmpDir = IOUtils.createTempDir("zookeeper", "localbookkeeper");
+        } else {
+        	ZkTmpDir = Files.createTempDirectory(Paths.get(zkDataDir), 
+        			"zookeeper_localbookkeeper", new FileAttribute[0]).toFile();
+        }
+        ZkTmpDir.deleteOnExit();
+        
         InetAddress loopbackIP = InetAddress.getLoopbackAddress();
         try {
             zks = new ZooKeeperServer(ZkTmpDir, ZkTmpDir, ZooKeeperServer.DEFAULT_TICK_TIME);
@@ -375,7 +385,12 @@ public class LocalBookKeeper {
             }
         }
 
-        lb.runZookeeper(1000);
+        String zkPath = null;
+        if(args.length > 2) {
+        	zkPath = args[2];
+        }
+
+        lb.runZookeeper(1000, zkPath);
         lb.initializeZookeper();        
         
         Class<? extends StatsProvider> statsProviderClass = null;
@@ -423,7 +438,7 @@ public class LocalBookKeeper {
     }
 
     private static void usage() {
-        System.err.println("Usage: LocalBookKeeper number-of-bookies");
+        System.err.println("Usage: LocalBookKeeper number-of-bookies [path to bookie config] [path to create ZK data directory at]");
     }
 
     public static boolean waitForServerUp(String hp, long timeout) {
