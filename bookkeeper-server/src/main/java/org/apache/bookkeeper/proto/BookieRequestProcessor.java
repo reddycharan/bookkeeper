@@ -21,6 +21,7 @@
 package org.apache.bookkeeper.proto;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,6 +30,7 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.logging.Log;
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,9 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_LAC;
 public class BookieRequestProcessor implements RequestProcessor {
 
     private final static Logger LOG = LoggerFactory.getLogger(BookieRequestProcessor.class);
+    private final static String auditTag = "AUDIT";
+    private volatile static String localAddress;
+    
     /**
      * The server configuration. We use this for getting the number of add and read
      * worker threads.
@@ -123,6 +128,12 @@ public class BookieRequestProcessor implements RequestProcessor {
         if (msg instanceof BookkeeperProtocol.Request) {
             BookkeeperProtocol.Request r = (BookkeeperProtocol.Request) msg;
             BookkeeperProtocol.BKPacketHeader header = r.getHeader();
+
+            //Log Audit Message of incoming request
+			LOG.info(auditTag + "Remote address: {}\tOperation: {}\tLocal Address: {}", 
+					new Object[] { c.getRemoteAddress(), header.getOperation(), getLocalAddress(c) });
+
+
             switch (header.getOperation()) {
                 case ADD_ENTRY:
                     processAddRequestV3(r, c);
@@ -219,6 +230,13 @@ public class BookieRequestProcessor implements RequestProcessor {
         } else {
             readThreadPool.submit(read);
         }
+    }
+    
+    private String getLocalAddress(Channel c) {
+    	if (localAddress == null || localAddress.length() == 0) {
+    		localAddress = c.getLocalAddress().toString();
+    	}
+    	return localAddress;
     }
 
 }
