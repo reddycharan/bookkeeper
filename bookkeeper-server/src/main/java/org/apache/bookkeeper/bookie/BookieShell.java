@@ -65,6 +65,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.replication.AuditorElector;
 import org.apache.bookkeeper.util.EntryFormatter;
+import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.Tool;
@@ -124,6 +125,7 @@ public class BookieShell implements Tool {
     static final String CMD_LISTFILESONDISC = "listfilesondisc";
     static final String CMD_UPDATECOOKIE = "updatecookie";
     static final String CMD_UPDATELEDGER = "updateledgers";
+    static final String CMD_DELETELEDGER = "deleteledger";
     static final String CMD_HELP = "help";
 
     final ServerConfiguration bkConf = new ServerConfiguration();
@@ -1678,6 +1680,60 @@ public class BookieShell implements Tool {
     }
 
     /**
+     * Command to delete a given ledger.
+     */
+    class DeleteLedgerCmd extends MyCommand {
+        Options lOpts = new Options();
+
+        DeleteLedgerCmd() {
+            super(CMD_DELETELEDGER);
+            lOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            lOpts.addOption("f", "force", false, "Whether to force delete the Ledger without prompt..?");
+        }
+
+        @Override
+        public int runCmd(CommandLine cmdLine) throws Exception {
+            final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
+            if (lid == -1) {
+                System.err.println("Must specify a ledger id");
+                return -1;
+            }
+
+            boolean force = cmdLine.hasOption("f");
+            boolean confirm = false;
+            if (!force) {
+                confirm = IOUtils.confirmPrompt(
+                        "Are you sure to delete Ledger : " + ledgerIdFormatter.formatLedgerId(lid) + "?");
+            }
+
+            if (force || confirm) {
+                ClientConfiguration conf = new ClientConfiguration();
+                conf.addConfiguration(bkConf);
+                BookKeeper bk = new BookKeeper(conf);
+                bk.deleteLedger(lid);
+                bk.close();
+            }
+
+            return 0;
+        }
+
+        @Override
+        String getDescription() {
+            return "Delete a ledger";
+        }
+
+        @Override
+        String getUsage() {
+            return "deleteledger -ledgerid <ledgerid> [-force]";
+        }
+
+        @Override
+        Options getOptions() {
+            return lOpts;
+        }
+    }
+
+    /**
      * A facility for reporting update ledger progress.
      */
     public interface UpdateLedgerNotifier {
@@ -1706,6 +1762,7 @@ public class BookieShell implements Tool {
         commands.put(CMD_LISTFILESONDISC, new ListDiskFilesCmd());
         commands.put(CMD_UPDATECOOKIE, new UpdateCookieCmd());
         commands.put(CMD_UPDATELEDGER, new UpdateLedgerCmd());
+        commands.put(CMD_DELETELEDGER, new DeleteLedgerCmd());
         commands.put(CMD_HELP, new HelpCmd());
     }
 
@@ -1727,7 +1784,8 @@ public class BookieShell implements Tool {
     }
 
     private void printShellUsage() {
-        System.err.println("Usage: BookieShell [-conf configuration] <command>");
+        System.err.println(
+                "Usage: BookieShell [localbookie -<localbookieAddress>] [ledgeridformat -<hex/long/uuid>] [-conf configuration] <command>");
         System.err.println();
         List<String> commandNames = new ArrayList<String>();
         for (MyCommand c : commands.values()) {
