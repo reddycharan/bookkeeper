@@ -130,7 +130,7 @@ public class BookieRequestProcessor implements RequestProcessor {
             BookkeeperProtocol.BKPacketHeader header = r.getHeader();
 
             //Log Audit Message of incoming request
-			LOG.info(auditTag + "Remote address: {}\tOperation: {}\tLocal Address: {}", 
+			LOG.debug(auditTag + " - Remote address: {}\tOperation: {}\tLocal Address: {}",
 					new Object[] { c.getRemoteAddress(), header.getOperation(), getLocalAddress(c) });
 
 
