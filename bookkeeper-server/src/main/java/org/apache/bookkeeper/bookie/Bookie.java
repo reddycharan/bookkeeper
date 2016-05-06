@@ -141,6 +141,7 @@ public class Bookie extends BookieCriticalThread {
     BookieBean jmxBookieBean;
     BKMBeanInfo jmxLedgerStorageBean;
     BKMBeanInfo jmxSyncThreadBean;
+    BKMBeanInfo jmxCompactionBean;
 
     final ConcurrentMap<Long, byte[]> masterKeyCache = new ConcurrentHashMap<Long, byte[]>();
 
@@ -726,6 +727,19 @@ public class Bookie extends BookieCriticalThread {
                 LOG.warn("Failed to register with JMX for SyncThread", e);
                 jmxSyncThreadBean = null;
             }
+            
+            try {
+                if (this.ledgerStorage instanceof InterleavedLedgerStorage) {
+                    jmxCompactionBean = ((InterleavedLedgerStorage) (this.ledgerStorage)).gcThread.getCompactionBean();
+                }
+                if (jmxCompactionBean != null) {
+                    BKMBeanRegistry.getInstance().register(jmxCompactionBean, jmxBookieBean);
+                }
+            } catch (Exception e) {
+                LOG.warn("Failed to register with JMX for Compaction/GarbageCollection", e);
+                jmxCompactionBean = null;
+            }
+
         } catch (Exception e) {
             LOG.warn("Failed to register with JMX", e);
             jmxBookieBean = null;
@@ -748,7 +762,14 @@ public class Bookie extends BookieCriticalThread {
                 BKMBeanRegistry.getInstance().unregister(jmxSyncThreadBean);
             }
         } catch (Exception e) {
-            LOG.warn("Failed to unregister with JMX", e);
+            LOG.warn("Failed to unregister jmxSyncThreadBean with JMX", e);
+        }
+        try {
+            if (jmxCompactionBean != null) {
+                BKMBeanRegistry.getInstance().unregister(jmxCompactionBean);
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to unregister jmxCompactionBean with JMX", e);
         }
         try {
             if (jmxBookieBean != null) {

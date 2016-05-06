@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.GarbageCollector.GarbageCleaner;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.jmx.BKMBeanInfo;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.Gauge;
@@ -690,5 +691,46 @@ public class GarbageCollectorThread extends BookieThread {
             }
         }
         return entryLogMetaMap;
+    }
+
+    private class CompactionBean implements CompactionMXBean, BKMBeanInfo {
+        @Override
+        public boolean isHidden() {
+            return false;
+        }
+
+        @Override
+        public String getName() {
+            return "Compaction-GarbageCollector";
+        }
+
+        @Override
+        public void forceCompaction() {
+            GarbageCollectorThread.this.enableForceGC();
+        }
+
+        @Override
+        public void suspendMajorGC() {
+            GarbageCollectorThread.this.suspendMajorGC();           
+        }
+
+        @Override
+        public void resumeMajorGC() {            
+            GarbageCollectorThread.this.resumeMajorGC();
+        }
+
+        @Override
+        public void suspendMinorGC() {
+            GarbageCollectorThread.this.suspendMinorGC();
+        }
+
+        @Override
+        public void resumeMinorGC() {
+            GarbageCollectorThread.this.resumeMinorGC();
+        }
+    }
+
+    public BKMBeanInfo getCompactionBean() {
+        return new CompactionBean();
     }
 }
