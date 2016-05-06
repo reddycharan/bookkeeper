@@ -3,33 +3,34 @@ package org.apache.bookkeeper;
 import java.nio.ByteBuffer;
 
 public interface BKExtentId {
-    /**
-     * Read the extentId out of the supplied buffer. Buffer should have
-     * enough readable bytes for an extentId.
-     *
-     * @param buffer the buffer containing the marshaled extentId
-     */
-    void read(ByteBuffer buffer);
 
     /**
      * Write the extentId into supplied buffer. Buffer should have
      * enough space for an extentId.
      *
-     * @param buffer the buffer where the extentId is to be marshaled
+     * @param dst the buffer where the extentId is to be marshaled
      */
-    void write(ByteBuffer buffer);
-    
+    void write(ByteBuffer dst);
+
     /**
      * Get the extentId as a byte array.
      *
      * @return extentId in byte array
      */
     byte[] asByteArray();
-    
+
     /**
-     * Get the size of the extentId
+     * Get the extentId as a ByteBuffer.
      *
-     * @return the size
+     * @return extentId in ByteBuffer
+     */
+    ByteBuffer asByteBuffer();
+
+    /**
+     * Get the number of bytes in the extentId when returned as
+     * a byte array.
+     *
+     * @return the number of bytes
      */
     int size();
 
@@ -53,12 +54,5 @@ public interface BKExtentId {
      * @return the extentId as a long
      */
     long asLong();
-
-    /**
-     * Copy and return a new instance
-     *
-     * @return same object.
-     */
-    BKExtentId copy();
 
 }

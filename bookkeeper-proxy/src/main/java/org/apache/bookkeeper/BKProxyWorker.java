@@ -21,7 +21,7 @@ class BKProxyWorker implements Runnable {
     byte reqId = BKPConstants.UnInitialized;
     byte respId = BKPConstants.UnInitialized;
     byte errorCode = BKPConstants.SF_OK;
-    BKExtentId extentId = new BKExtentIdByteArray();    
+    private BKExtentId extentId;
     private final long bkProxyWorkerId; 
     private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
@@ -62,7 +62,7 @@ class BKProxyWorker implements Runnable {
                     + bkProxyWorkerId
                     + " req: " + BKPConstants.getReqRespString(reqId)
                     + " respId: " + BKPConstants.getReqRespString(respId)
-                    + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                    + " ledgerId: " + extentId, e);
             throw e;
         }
 
@@ -70,7 +70,7 @@ class BKProxyWorker implements Runnable {
                 + " BKProxyWorker: " + bkProxyWorkerId
                 + " req: " + BKPConstants.getReqRespString(reqId)
                 + " respId: " + BKPConstants.getReqRespString(respId)
-                + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                + " ledgerId: " + extentId);
         return bytesRead;
     }
 
@@ -86,7 +86,7 @@ class BKProxyWorker implements Runnable {
                     + " bytes written: " + (bytesToWrite - buf.remaining())
                     + " req: " + BKPConstants.getReqRespString(reqId)
                     + " respId: " + BKPConstants.getReqRespString(respId)
-                    + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                    + " ledgerId: " + extentId, e);
             throw e;
         }
 
@@ -94,7 +94,7 @@ class BKProxyWorker implements Runnable {
         + " BKProxyWorker: " + bkProxyWorkerId
         + " req: " + BKPConstants.getReqRespString(reqId)
         + " respId: " + BKPConstants.getReqRespString(respId)
-        + " ledgerId: " + ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+        + " ledgerId: " + extentId);
     }
 
     public void run() {
@@ -110,10 +110,17 @@ class BKProxyWorker implements Runnable {
         ewreq.order(ByteOrder.nativeOrder());
         erreq.order(ByteOrder.nativeOrder());
 
+        String clientConn = "";
+        try {
+            clientConn = this.clientChannel.getRemoteAddress().toString();
+        } catch(Exception e) {
+            LOG.warn("Exception while trying to get client address: ", e);
+        }
+
         int bytesRead;
         try {
             Thread.currentThread().setName(
-                    "BKProxyWorker" + bkProxyWorkerId + ":[" + this.clientChannel.getRemoteAddress().toString() + "]:");
+                    "BKProxyWorker" + bkProxyWorkerId + ":[" + clientConn + "]:");
             LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
 
             while (!Thread.interrupted()) {
@@ -136,10 +143,12 @@ class BKProxyWorker implements Runnable {
 
                     req.flip();
                     reqId = req.get();
-                    req.get(extentId.asByteArray());
+                    ByteBuffer bb = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
+                    req.get(bb.array());
+                    this.extentId = new BKExtentIdByteArrayFactory().build(bb, this.ledgerIdFormatter);
 
                     LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId),
-                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                        extentId);
 
                     errorCode = BKPConstants.SF_OK;
                     switch (reqId) {
@@ -153,11 +162,11 @@ class BKProxyWorker implements Runnable {
                             lSize = bksc.ledgerStat(extentId);
                         } catch (BKException e) {
                             LOG.error("Exception when getting stats for extent {}",
-                                       ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                                       extentId, e);
                             errorCode = BKPConstants.convertBKtoSFerror(e.getCode());
                         } catch (Exception e) {
                             LOG.error("Exception when getting stats for extent {}",
-                                ledgerIdFormatter.formatLedgerId(extentId.asLong()), e);
+                                extentId, e);
                             errorCode = BKPConstants.SF_ServerInternalError;
                         }
 
@@ -200,26 +209,20 @@ class BKProxyWorker implements Runnable {
                         // listCount number of extents.
                         // - If extents were deleted after taking the listCount, we send extent#0s.
 
-                        ByteBuffer bExtentId = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
                         iterable = bksc.ledgerList();
                         for (Long pId : iterable) {
-                            bExtentId.clear();
-                            bExtentId.putLong(0L);
-                            bExtentId.putLong(pId.longValue());
-                            bExtentId.flip();
-                            clientChannelWrite(bExtentId);
+                            BKExtentId bExtentId = new BKExtentIdByteArrayFactory().build(
+                                    pId, this.ledgerIdFormatter);
+                            clientChannelWrite(bExtentId.asByteBuffer());
                             listCount--;
                             if (listCount == 0)
                                 break;
                         }
 
                         // Handle the case where extents got deleted after taking listCount.
+                        BKExtentId bExtentId = new BKExtentIdByteArrayFactory().build(0L, this.ledgerIdFormatter);
                         for (int i = 0; i < listCount; i++) {
-                            bExtentId.clear();
-                            bExtentId.putLong(0L);
-                            bExtentId.putLong(0L);
-                            bExtentId.flip();
-                            clientChannelWrite(bExtentId);
+                            clientChannelWrite(bExtentId.asByteBuffer());
                         }
                         break;
                     }
@@ -331,7 +334,7 @@ class BKProxyWorker implements Runnable {
                         wSize = ewreq.getInt();
                         if (wSize > cByteBuf.capacity()) {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
-                            LOG.error("Write message size:" + wSize + " on Extent:" + ledgerIdFormatter.formatLedgerId(extentId.asLong()) +
+                            LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
                                       " is bigger than allowed:" + cByteBuf.capacity());
                             // #W-2763423 it is required to read the oversized
                             // fragment and empty out the clientsocketchannel,
@@ -411,7 +414,7 @@ class BKProxyWorker implements Runnable {
 
                     default:
                         errorCode = BKPConstants.SF_ErrorBadRequest;
-                        LOG.error("Invalid command: " + reqId + " On Extent:" + ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                        LOG.error("Invalid command: " + reqId + " On Extent:" + extentId);
                         resp.put(BKPConstants.InvalidResp);
                         resp.put(errorCode);
                         resp.flip();
@@ -420,10 +423,10 @@ class BKProxyWorker implements Runnable {
 
                     LOG.info("Request: " + BKPConstants.getReqRespString(reqId)
                         + "Response: " + BKPConstants.getReqRespString(respId)
-                        + "for extentId: {}", ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                        + "for extentId: {}", extentId);
                 } catch (BKException e) {
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                            extentId);
                     LOG.error("Exception: ", e);
                     errorCode = BKPConstants.convertBKtoSFerror(((BKException)e).getCode());
                     resp.put(errorCode);
@@ -431,7 +434,7 @@ class BKProxyWorker implements Runnable {
                     clientChannelWrite(resp);
                 } catch (InterruptedException e) {
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                            extentId);
                     LOG.error("Exception: ", e);
                     errorCode = BKPConstants.SF_ErrorServerInterrupt;
                     resp.put(errorCode);
@@ -439,7 +442,7 @@ class BKProxyWorker implements Runnable {
                     clientChannelWrite(resp);
                 } catch (Exception e) {
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                            extentId);
                     LOG.error("Exception: ", e);
                 }
             }

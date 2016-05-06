@@ -20,7 +20,7 @@ public class BKExtentLedgerMap {
 
     public LedgerPrivateData createLedgerMap(BKExtentId extentId) {
         LedgerPrivateData lpd = new LedgerPrivateData();
-        extentToLedgerMap.putIfAbsent(extentId.copy(), lpd);
+        extentToLedgerMap.putIfAbsent(extentId, lpd);
         return extentToLedgerMap.get(extentId);
     }
 

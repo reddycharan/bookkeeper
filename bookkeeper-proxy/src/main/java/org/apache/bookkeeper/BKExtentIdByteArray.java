@@ -2,30 +2,57 @@ package org.apache.bookkeeper;
 
 import java.nio.ByteBuffer;
 
+import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.apache.commons.codec.binary.Hex;
 
 public class BKExtentIdByteArray implements BKExtentId {
 
-    private final byte[] extentId;
+    private final byte[] extentId = new byte[BKPConstants.EXTENTID_SIZE];
+    private final LedgerIdFormatter ledgerIdFormatter;
+    private final int hashCode;
 
-    public BKExtentIdByteArray() {
-        extentId = new byte[BKPConstants.EXTENTID_SIZE];
+    public BKExtentIdByteArray(ByteBuffer src, LedgerIdFormatter formatter) {
+        src.get(extentId);
+        this.ledgerIdFormatter = formatter;
+        this.hashCode = this.getHashCode();
     }
 
-    public BKExtentIdByteArray copy() {
-        BKExtentIdByteArray cExtentId = new BKExtentIdByteArray();
-        System.arraycopy(extentId, 0, cExtentId.extentId, 0, extentId.length);
-        return cExtentId;
+    public BKExtentIdByteArray(ByteBuffer src) {
+        this(src, LedgerIdFormatter.LONG_LEDGERID_FORMATTER);
+    }
+
+    public BKExtentIdByteArray(long src, LedgerIdFormatter formatter) {
+        ByteBuffer buf = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
+        buf.clear();
+        buf.putLong(0L);
+        buf.putLong(src);
+        buf.flip();
+        buf.get(extentId);
+        this.ledgerIdFormatter = formatter;
+        this.hashCode = this.getHashCode();
+    }
+
+    public BKExtentIdByteArray(long src) {
+        this(src, LedgerIdFormatter.LONG_LEDGERID_FORMATTER);
+    }
+
+    private int getHashCode() {
+        return new Long(asLong()).hashCode();
+    }
+
+    @Override
+    public int hashCode() {
+        return this.hashCode;
     }
 
     @Override
     public byte[] asByteArray() {
-        return extentId;
+        return ByteBuffer.wrap(extentId).asReadOnlyBuffer().array();
     }
 
     @Override
-    public void read(ByteBuffer buffer) {
-        buffer.get(extentId);
+    public ByteBuffer asByteBuffer() {
+        return ByteBuffer.wrap(extentId).asReadOnlyBuffer();
     }
 
     @Override
@@ -45,23 +72,23 @@ public class BKExtentIdByteArray implements BKExtentId {
 
     @Override
     public String asString() {
-        return new String(extentId, 0, extentId.length - 1);
+        return ledgerIdFormatter.formatLedgerId(this.asLong());
     }
-    
+
+    @Override
+    public String toString() {
+        return this.asString();
+    }
+
     @Override
     public long asLong() {
         return ByteBuffer.wrap(extentId, BKPConstants.EXTENTID_SIZE/2, 8).getLong();
     }
-    
-    @Override
-    public int hashCode() {
-        return new Long(asLong()).hashCode();
-    }
-    
+
     @Override
     public boolean equals(Object obj) {
         return (obj instanceof BKExtentIdByteArray) &&
-                new Long(this.asLong()).equals(((BKExtentIdByteArray)obj).asLong());
+                (this.asLong() == ((BKExtentIdByteArray)obj).asLong());
     }
 
 }

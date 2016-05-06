@@ -93,7 +93,7 @@ public class BKSfdcClient {
             // In either case we should not have write ledger handle.
             if (lpd.getWriteLedgerHandle() != null) {
                 LOG.info("Opening ExtentId: {} in recovery mode while write handle is active.",
-                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                        extentId);
                 throw BKException.create(Code.IllegalOpException);
             }
 
@@ -165,8 +165,7 @@ public class BKSfdcClient {
             return lSize;
         }
 
-        LOG.error("Ledger for extentId: {} does not exist.",
-                ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+        LOG.error("Ledger for extentId: {} does not exist.", extentId);
         return -1;
     }
 
@@ -233,15 +232,13 @@ public class BKSfdcClient {
 
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
         if (lpd == null) {
-            LOG.error("Attempt to write to extentId : {} with no ledger private data.",
-                    ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+            LOG.error("Attempt to write to extentId : {} with no ledger private data.", extentId);
             throw BKException.create(Code.IllegalOpException);
         }
 
         LedgerHandle lh = lpd.getWriteLedgerHandle();
         if (lh == null) {
-            LOG.error("Attempt to write to extentId : {} with no write ledger handle",
-                    ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+            LOG.error("Attempt to write to extentId : {} with no write ledger handle", extentId);
             throw BKException.create(Code.IllegalOpException);
         }
 
@@ -305,8 +302,7 @@ public class BKSfdcClient {
             // Trailer
             if (!lh.isClosed()) {
                 // Trying to read the trailer of an non closed ledger.
-                LOG.info("Trying to read the trailer of extentId {} before closing",
-                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                LOG.info("Trying to read the trailer of extentId {} before closing", extentId);
                 throw BKException.create(Code.NoSuchEntryException);
             }
             // This is a closed entry. We need to get last entry
@@ -323,12 +319,10 @@ public class BKSfdcClient {
 
         if ((entryId > lh.getLastAddConfirmed()) || (entryId == BKPConstants.NO_ENTRY)) {
             if (lh.isClosed()) {
-                LOG.info("Trying to read beyond LAC on a closed extentId {}",
-                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                LOG.info("Trying to read beyond LAC on a closed extentId {}", extentId);
                 throw BKException.create(Code.LedgerClosedNoSuchEntryException);
             } else {
-                LOG.info("Trying to read beyond LAC on extentId {}",
-                        ledgerIdFormatter.formatLedgerId(extentId.asLong()));
+                LOG.info("Trying to read beyond LAC on extentId {}", extentId);
                 throw BKException.create(Code.NoSuchEntryException);
             }
         }
