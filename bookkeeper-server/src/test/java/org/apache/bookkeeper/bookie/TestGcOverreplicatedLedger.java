@@ -45,6 +45,7 @@ import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.util.SnapshotMap;
 import org.junit.Assert;
 import org.junit.Before;
@@ -104,7 +105,7 @@ public class TestGcOverreplicatedLedger extends LedgerManagerTestCase {
 
         final CompactableLedgerStorage mockLedgerStorage = new MockLedgerStorage();
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(ledgerManager, mockLedgerStorage,
-                bkConf);
+                bkConf, NullStatsLogger.INSTANCE);
         Thread.sleep(bkConf.getGcOverreplicatedLedgerWaitTimeMillis() + 1);
         garbageCollector.gc(new GarbageCleaner() {
 
@@ -155,7 +156,7 @@ public class TestGcOverreplicatedLedger extends LedgerManagerTestCase {
 
         final CompactableLedgerStorage mockLedgerStorage = new MockLedgerStorage();
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(ledgerManager, mockLedgerStorage,
-                bkConf);
+                bkConf, NullStatsLogger.INSTANCE);
         Thread.sleep(bkConf.getGcOverreplicatedLedgerWaitTimeMillis() + 1);
         garbageCollector.gc(new GarbageCleaner() {
 
@@ -205,7 +206,7 @@ public class TestGcOverreplicatedLedger extends LedgerManagerTestCase {
 
         final CompactableLedgerStorage mockLedgerStorage = new MockLedgerStorage();
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(ledgerManager, mockLedgerStorage,
-                bkConf);
+                bkConf, NullStatsLogger.INSTANCE);
         Thread.sleep(bkConf.getGcOverreplicatedLedgerWaitTimeMillis() + 1);
         garbageCollector.gc(new GarbageCleaner() {
 

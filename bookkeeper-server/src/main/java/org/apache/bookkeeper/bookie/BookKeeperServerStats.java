@@ -92,4 +92,16 @@ public interface BookKeeperServerStats {
     public final static String LD_INDEX_SCOPE = "index";
     public final static String LD_WRITABLE_DIRS = "writable_dirs";
 
+    // Garbage collection
+    public final static String GC_MINOR_COMPACTION_COUNT = "GC_MINOR_COMPACTION_COUNT";
+    public final static String GC_MAJOR_COMPACTION_COUNT = "GC_MAJOR_COMPACTION_COUNT";
+    public final static String GC_THREAD_RUNTIME = "GC_THREAD_RUNTIME";
+    public final static String GC_RECLAIMED_ENTRY_LOG_SPACE_BYTES = "GC_RECLAIMED_ENTRY_LOG_SPACE_BYTES";
+    public final static String GC_ACTIVE_LEDGERS_COUNT = "GC_NUM_ACTIVE_LEDGERS";
+    public final static String GC_RECLAIMED_COMPACTION_SPACE_BYTES = "GC_RECLAIMED_COMPACTION_SPACE_BYTES";
+    public final static String GC_DELETED_LEDGER_COUNT = "GC_DELETED_LEDGER_COUNT";
+    public final static String GC_ACTIVE_ENTRY_LOG_COUNT = "GC_ACTIVE_ENTRY_LOG_COUNT";
+    public final static String GC_ACTIVE_ENTRY_LOG_SPACE_BYTES = "GC_ACTIVE_ENTRY_LOG_SPACE_BYTES";
+    public final static String GC_TOTAL_RECLAIMED_SPACE = "GC_TOTAL_RECLAIMED_SPACE";
+
 }

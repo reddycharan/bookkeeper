@@ -54,6 +54,7 @@ import org.apache.bookkeeper.bookie.EntryLogger;
 import org.apache.bookkeeper.bookie.GarbageCollector;
 import org.apache.bookkeeper.bookie.LedgerDirsManager;
 import org.apache.bookkeeper.bookie.ScanAndCompareGarbageCollector;
+import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -179,7 +180,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         final CountDownLatch endLatch = new CountDownLatch(2);
         final CompactableLedgerStorage mockLedgerStorage = new MockLedgerStorage();
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                mockLedgerStorage, baseConf);
+                mockLedgerStorage, baseConf, NullStatsLogger.INSTANCE);
         Thread gcThread = new Thread() {
             @Override
             public void run() {
@@ -250,7 +251,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         createLedgers(numLedgers, createdLedgers);
 
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                new MockLedgerStorage(), baseConf);
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
         GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
                 @Override
                 public void clean(long ledgerId) {
@@ -286,7 +287,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         createLedgers(numLedgers, createdLedgers);
 
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                new MockLedgerStorage(), baseConf);
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
         GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
                 @Override
                 public void clean(long ledgerId) {

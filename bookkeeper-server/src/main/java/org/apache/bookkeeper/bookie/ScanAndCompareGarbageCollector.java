@@ -22,6 +22,7 @@
 package org.apache.bookkeeper.bookie;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -42,6 +43,16 @@ import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_DELETED_LEDGER_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_ACTIVE_LEDGERS_COUNT;
+
+import org.apache.bookkeeper.meta.LedgerManager;
+import org.apache.bookkeeper.meta.LedgerManager.LedgerRange;
+import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
+import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.Gauge;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,10 +86,12 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
     private final long gcOverReplicatedLedgerIntervalMillis;
     private long lastOverReplicatedLedgerGcTimeMillis;
     private final String zkLedgersRootPath;
+    private int activeLedgerCounter;
+    private Counter deletedLedgerCounter;
 
     public ScanAndCompareGarbageCollector(LedgerManager ledgerManager, CompactableLedgerStorage ledgerStorage,
-            ServerConfiguration conf) throws IOException {
-        this.ledgerManager = ledgerManager;
+            ServerConfiguration conf, StatsLogger statsLogger) throws IOException {
+    	this.ledgerManager = ledgerManager;
         this.ledgerStorage = ledgerStorage;
         this.conf = conf;
         this.selfBookieAddress = Bookie.getBookieAddress(conf);
@@ -90,13 +103,30 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
         this.zkLedgersRootPath = conf.getZkLedgersRootPath();
         LOG.info("Over Replicated Ledger Deletion : enabled=" + enableGcOverReplicatedLedger + ", interval="
                 + gcOverReplicatedLedgerIntervalMillis);
-    }
+        this.activeLedgerCounter = 0;
+        this.deletedLedgerCounter = statsLogger.getCounter(GC_DELETED_LEDGER_COUNT);
 
+        statsLogger.registerGauge(GC_ACTIVE_LEDGERS_COUNT, new Gauge<Integer>() {
+
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return activeLedgerCounter;
+            }
+
+        });
+    }
+    
     @Override
     public void gc(GarbageCleaner garbageCleaner) {
         try {
             // Get a set of all ledgers on the bookie
             NavigableSet<Long> bkActiveLedgers = Sets.newTreeSet(ledgerStorage.getActiveLedgersInRange(0, Long.MAX_VALUE));
+            this.activeLedgerCounter = bkActiveLedgers.size();
 
             // Iterate over all the ledger on the metadata store
             LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges();
@@ -104,6 +134,7 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
             if (!ledgerRangeIterator.hasNext()) {
                 // Empty global active ledgers, need to remove all local active ledgers.
                 for (long ledgerId : bkActiveLedgers) {
+                    deletedLedgerCounter.inc();
                     garbageCleaner.clean(ledgerId);
                 }
             }
@@ -143,6 +174,7 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                 }
                 for (Long bkLid : subBkActiveLedgers) {
                     if (!ledgersInMetadata.contains(bkLid)) {
+                        deletedLedgerCounter.inc();
                         garbageCleaner.clean(bkLid);
                     }
                 }
