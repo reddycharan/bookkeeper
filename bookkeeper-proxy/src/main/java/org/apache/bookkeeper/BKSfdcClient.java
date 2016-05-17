@@ -69,9 +69,9 @@ public class BKSfdcClient {
      * stop accepting any more writes after this operation.
      */
 
-    public void ledgerRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
+    public LedgerHandle ledgerRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
 
-        LedgerHandle lh;
+        LedgerHandle lh = null;
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
 
         if (lpd == null) {
@@ -85,7 +85,7 @@ public class BKSfdcClient {
             if (lh != null) {
                 // The ledger is already opened for read.
                 // Nothing to do
-                return;
+                return lh;
             }
 
             // Opening for recovery.
@@ -101,12 +101,15 @@ public class BKSfdcClient {
                 // Let us try to open the ledger for read
                 lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
                 lpd.setRecoveryReadLedgerHandle(lh);
+                return lh;
             }
         } finally {
             if (lpd != null) {
                 lpd.releaseLedgerRecoveryOpenLock();
             }
         }
+
+        return null;
     }
 
     /*
@@ -114,7 +117,7 @@ public class BKSfdcClient {
      * In this mode, ledger is changing hence one may not get the latest and
      * greatest state and entries of the ledger.
      */
-    public void ledgerNonRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
+    public LedgerHandle ledgerNonRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
 
         LedgerHandle rlh;
 
@@ -127,14 +130,15 @@ public class BKSfdcClient {
             if (rlh != null) {
                 // The ledger is already opened for read.
                 // Nothing to do
-                return;
+                return rlh;
             }
         }
 
         // Let us try to open the ledger for read
         rlh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-
         lpd.setNonRecoveryReadLedgerHandle(rlh);
+
+        return rlh;
     }
 
     public boolean ledgerMapExists(BKExtentId extentId) {
@@ -280,22 +284,20 @@ public class BKSfdcClient {
         long entryId = fragmentId;
         byte[] data;
 
+        LedgerHandle lh = null;
         LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd == null) {
-            ledgerRecoveryOpenRead(extentId);
-            lpd = elm.getLedgerPrivate(extentId);
+        if (lpd != null) {
+            // If we are the writer, we will have write ledger handle
+            // and it will have the most recent information.
+            lh = lpd.getAnyLedgerHandle();
         }
 
-        // If we are the writer, we will have write ledger handle
-        // and it will have the most recent information.
-        LedgerHandle lh = lpd.getAnyLedgerHandle();
         if (lh == null) {
             // Let us open the ledger for read in recovery mode.
             // All reads without prior opens will be performed
             // through opening the ledger in recovery mode.
 
-            ledgerRecoveryOpenRead(extentId);
-            lh = lpd.getRecoveryReadLedgerHandle();
+            lh = ledgerRecoveryOpenRead(extentId);
         }
 
         if (fragmentId == 0) {
