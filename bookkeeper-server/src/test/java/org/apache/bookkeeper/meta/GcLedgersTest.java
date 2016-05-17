@@ -21,6 +21,12 @@
 
 package org.apache.bookkeeper.meta;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -61,8 +67,6 @@ import org.apache.bookkeeper.versioning.Version;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.*;
 
 /**
  * Test garbage collection ledgers in ledger manager
@@ -175,7 +179,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         final CountDownLatch endLatch = new CountDownLatch(2);
         final CompactableLedgerStorage mockLedgerStorage = new MockLedgerStorage();
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                mockLedgerStorage);
+                mockLedgerStorage, baseConf);
         Thread gcThread = new Thread() {
             @Override
             public void run() {
@@ -246,7 +250,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         createLedgers(numLedgers, createdLedgers);
 
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                new MockLedgerStorage());
+                new MockLedgerStorage(), baseConf);
         GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
                 @Override
                 public void clean(long ledgerId) {
@@ -282,7 +286,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         createLedgers(numLedgers, createdLedgers);
 
         final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
-                new MockLedgerStorage());
+                new MockLedgerStorage(), baseConf);
         GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
                 @Override
                 public void clean(long ledgerId) {

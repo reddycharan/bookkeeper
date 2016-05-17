@@ -73,6 +73,7 @@ public class ReplicationWorker implements Runnable {
     private final ServerConfiguration conf;
     private final ZooKeeper zkc;
     private volatile boolean workerRunning = false;
+    private volatile boolean isInReadOnlyMode = false;
     final private BookKeeperAdmin admin;
     private final LedgerChecker ledgerChecker;
     private final BookieSocketAddress targetBookie;
@@ -156,23 +157,43 @@ public class ReplicationWorker implements Runnable {
             try {
                 rereplicate();
             } catch (InterruptedException e) {
-                shutdown();
-                Thread.currentThread().interrupt();
                 LOG.info("InterruptedException "
                         + "while replicating fragments", e);
+                shutdown();
+                Thread.currentThread().interrupt();
                 return;
             } catch (BKException e) {
-                shutdown();
                 LOG.error("BKException while replicating fragments", e);
-                return;
+                if (e instanceof BKException.BKWriteOnReadOnlyBookieException) {
+                    waitTillTargetBookieIsWritable();
+                } else {
+                    waitBackOffTime();
+                }
             } catch (UnavailableException e) {
-                shutdown();
                 LOG.error("UnavailableException "
                         + "while replicating fragments", e);
-                return;
+                waitBackOffTime();
             }
         }
         LOG.info("ReplicationWorker exited loop!");
+    }
+
+    private static void waitBackOffTime() {
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+        }
+    }
+
+    private void waitTillTargetBookieIsWritable() {
+        LOG.info("Waiting for target bookie {} to be back in read/write mode", targetBookie);
+        while (workerRunning && admin.getReadOnlyBookies().contains(targetBookie)) {
+            isInReadOnlyMode = true;
+            waitBackOffTime();
+        }
+
+        isInReadOnlyMode = false;
+        LOG.info("Target bookie {} is back in read/write mode", targetBookie);
     }
 
     /**
@@ -378,9 +399,9 @@ public class ReplicationWorker implements Runnable {
                             underreplicationManager
                                     .releaseUnderreplicatedLedger(ledgerId);
                         } catch (UnavailableException e) {
-                            shutdown();
                             LOG.error("UnavailableException "
                                     + "while replicating fragments", e);
+                            shutdown();
                         }
                     }
                 }
@@ -393,6 +414,8 @@ public class ReplicationWorker implements Runnable {
      * Stop the replication worker service
      */
     public void shutdown() {
+        LOG.info("Shutting down replication worker");
+
         synchronized (this) {
             if (!workerRunning) {
                 return;
@@ -430,6 +453,10 @@ public class ReplicationWorker implements Runnable {
      */
     boolean isRunning() {
         return workerRunning && workerThread.isAlive();
+    }
+
+    boolean isInReadOnlyMode() {
+        return isInReadOnlyMode;
     }
 
     private boolean isTargetBookieExistsInFragmentEnsemble(LedgerHandle lh,

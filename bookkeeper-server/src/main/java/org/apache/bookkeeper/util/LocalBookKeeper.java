@@ -121,7 +121,7 @@ public class LocalBookKeeper {
         LOG.debug("ZooKeeper server up: {}", b);
     }
 
-    private void initializeZookeper() throws IOException {
+    private void initializeZookeeper() throws IOException {
         LOG.info("Instantiate ZK Client");
         //initialize the zk client with values
         try {
@@ -202,6 +202,7 @@ public class LocalBookKeeper {
         bsConfs = new ServerConfiguration[numberOfBookies];
 
         File localBookiesConfigDir = new File(baseConf.getLocalBookiesConfigDirName());
+        String loopbackIPAddr = InetAddress.getLoopbackAddress().getHostAddress();
         if (localBookiesConfigDir.exists() && localBookiesConfigDir.isFile()) {
             throw new IOException("Unable to create LocalBookiesConfigDir, since there is a file at "
                     + localBookiesConfigDir.getAbsolutePath());
@@ -212,7 +213,6 @@ public class LocalBookKeeper {
         }
         tempDirs.add(localBookiesConfigDir);
 
-        String loopbackIPAddr = InetAddress.getLoopbackAddress().getHostAddress();
         String loopbackIfName = this.getLoopbackIfName();
         for (int i = 0; i < numberOfBookies; i++) {
             bsConfs[i] = new ServerConfiguration((ServerConfiguration) baseConf.clone());
@@ -292,6 +292,8 @@ public class LocalBookKeeper {
             }
 
             // override settings
+            LOG.info("Connecting to Zookeeper at " + loopbackIPAddr + " port:" + ZooKeeperDefaultPort);
+            bsConfs[i].setZkServers(loopbackIPAddr + ":" + ZooKeeperDefaultPort);
             bsConfs[i].setAllowLoopback(true);
             bsConfs[i].setListeningInterface(loopbackIfName);
             bsConfs[i].setBookiePort(initialPort + i);
@@ -391,7 +393,7 @@ public class LocalBookKeeper {
         }
 
         lb.runZookeeper(1000, zkPath);
-        lb.initializeZookeper();        
+        lb.initializeZookeeper();        
         
         Class<? extends StatsProvider> statsProviderClass = null;
         StatsProvider statsProvider = null;

@@ -1,4 +1,4 @@
-/*
+/**
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,19 +18,27 @@
  * under the License.
  *
  */
+package org.apache.bookkeeper.proto;
 
-package org.apache.bookkeeper.conf;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.bookkeeper.net.BookieSocketAddress;
 
-public class TestBKConfiguration {
-
-    public static ServerConfiguration newServerConfiguration() {
-        ServerConfiguration confReturn = new ServerConfiguration();
-        confReturn.setJournalFlushWhenQueueEmpty(true);
-        // enable journal format version
-        confReturn.setJournalFormatVersionToWrite(5);
-        confReturn.setAllowLoopback(true);
-        confReturn.setGcWaitTime(1000);
-        return confReturn;
+/**
+ * Local registry for embedded Bookies
+ */
+class LocalBookiesRegistry {
+    
+    private final static ConcurrentHashMap<BookieSocketAddress,Boolean> localBookiesRegistry
+            = new ConcurrentHashMap<>();
+    
+    static void registerLocalBookieAddress(BookieSocketAddress address) {        
+        localBookiesRegistry.put(address,Boolean.TRUE);
     }
-
+    static void unregisterLocalBookieAddress(BookieSocketAddress address) {
+        localBookiesRegistry.remove(address);
+    }
+    static boolean isLocalBookie(BookieSocketAddress address) {        
+        return localBookiesRegistry.containsKey(address);
+    }
+    
 }

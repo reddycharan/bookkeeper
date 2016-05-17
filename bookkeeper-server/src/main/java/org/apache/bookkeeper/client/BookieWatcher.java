@@ -302,7 +302,7 @@ class BookieWatcher implements Watcher, ChildrenCallback {
      */
     public void quarantineBookie(BookieSocketAddress bookie) {
         if (quarantinedBookies.getIfPresent(bookie) == null) {
-            quarantinedBookies.put(bookie, BOOLEAN);
+            quarantinedBookies.put(bookie, Boolean.TRUE);
             logger.warn("Bookie {} has been quarantined because of read/write errors.", bookie);
         }
     }

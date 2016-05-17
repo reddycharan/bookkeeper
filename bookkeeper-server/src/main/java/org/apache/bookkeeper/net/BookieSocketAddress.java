@@ -24,6 +24,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
 import static org.apache.bookkeeper.util.BookKeeperConstants.COLON;
+import org.jboss.netty.channel.local.LocalAddress;
 
 /**
  * This is a data wrapper class that is an InetSocketAddress, it would use the hostname
@@ -75,6 +76,13 @@ public class BookieSocketAddress {
         return socketAddress;
     }
 
+    /**
+     * Maps the socketAddress to a "local" address
+     */
+    public LocalAddress getLocalAddress() {
+        return new LocalAddress(socketAddress.toString());
+    }
+
     // Return the String "serialized" version of this object.
     @Override
     public String toString() {
@@ -83,7 +91,7 @@ public class BookieSocketAddress {
         return sb.toString();
     }
 
-    // Implement an equals method comparing two HedwigSocketAddress objects.
+    // Implement an equals method comparing two BookiSocketAddress objects.
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof BookieSocketAddress))

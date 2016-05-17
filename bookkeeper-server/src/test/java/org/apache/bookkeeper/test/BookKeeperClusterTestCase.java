@@ -197,6 +197,10 @@ public abstract class BookKeeperClusterTestCase {
                                       f, new File[] { f });
     }
 
+    protected ClientConfiguration newClientConfiguration() {
+        return new ClientConfiguration(baseConf);
+    }
+
     protected ServerConfiguration newServerConfiguration(int port, String zkServers, File journalDir, File[] ledgerDirs) {
         ServerConfiguration conf = new ServerConfiguration(baseConf);
         conf.setBookiePort(port);
@@ -219,6 +223,23 @@ public abstract class BookKeeperClusterTestCase {
                                                + " bookies. Asked for " + index);
         }
         return bs.get(index).getLocalAddress();
+    }
+
+    /**
+     * Get bookie configuration for bookie
+     */
+    public ServerConfiguration getBkConf(BookieSocketAddress addr) throws Exception {
+        int bkIndex = 0;
+        for (BookieServer server : bs) {
+            if (server.getLocalAddress().equals(addr)) {
+                break;
+            }
+            ++bkIndex;
+        }
+        if (bkIndex < bs.size()) {
+            return bsConfs.get(bkIndex);
+        }
+        return null;
     }
 
     /**
@@ -291,9 +312,11 @@ public abstract class BookKeeperClusterTestCase {
                         public void run() {
                             try {
                                 bookie.suspendProcessing();
+                                LOG.info("bookie {} is asleep", bookie.getLocalAddress());
                                 l.countDown();
                                 Thread.sleep(seconds*1000);
                                 bookie.resumeProcessing();
+                                LOG.info("bookie {} is awake", bookie.getLocalAddress());
                             } catch (Exception e) {
                                 LOG.error("Error suspending bookie", e);
                             }
@@ -452,6 +475,10 @@ public abstract class BookKeeperClusterTestCase {
             throws Exception {
         BookieServer server = new BookieServer(conf);
         server.start();
+
+        if (bkc == null) {
+            bkc = new BookKeeperTestClient(baseClientConf);
+        }
 
         int port = conf.getBookiePort();
         String host = this.getLocalHostSafe().getHostAddress();

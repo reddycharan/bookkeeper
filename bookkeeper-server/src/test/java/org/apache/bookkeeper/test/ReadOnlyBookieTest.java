@@ -36,6 +36,7 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.junit.Test;
 
 /**
@@ -148,6 +149,11 @@ public class ReadOnlyBookieTest extends BookKeeperClusterTestCase {
 
         waitForBookieTransitionToWritable(bkIndex);
 
+        while (zkc.exists(baseConf.getZkAvailableBookiesPath() + "/"
+                + Bookie.getBookieAddress(bsConfs.get(1)).toString(), false) == null) {
+            Thread.sleep(100);
+        }
+
         LOG.info("bookie is running {}, readonly {}.", bookie.isRunning(), bookie.isReadOnly());
         assertTrue("Bookie should be running and converted back to writable mode", bookie.isRunning()
                 && !bookie.isReadOnly());
@@ -169,6 +175,10 @@ public class ReadOnlyBookieTest extends BookKeeperClusterTestCase {
      */
     @Test(timeout = 60000)
     public void testBookieShutdownIfReadOnlyModeNotEnabled() throws Exception {
+        killBookie(1);
+        baseConf.setReadOnlyModeEnabled(false);
+        startNewBookie();
+
         File[] ledgerDirs = bsConfs.get(1).getLedgerDirs();
         assertEquals("Only one ledger dir should be present", 1,
                 ledgerDirs.length);

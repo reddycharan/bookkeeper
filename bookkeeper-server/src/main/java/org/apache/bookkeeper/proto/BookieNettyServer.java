@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.auth.BookieAuthProvider;
+import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
 import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.zookeeper.KeeperException;
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -48,8 +50,12 @@ import org.jboss.netty.handler.codec.frame.LengthFieldPrepender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.protobuf.ExtensionRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.jboss.netty.channel.local.DefaultLocalServerChannelFactory;
+import org.jboss.netty.channel.local.LocalAddress;
 
 /**
  * Netty server for serving bookie requests
@@ -60,30 +66,48 @@ class BookieNettyServer {
     final static int maxMessageSize = 0xfffff;
     final ServerConfiguration conf;
     final ChannelFactory serverChannelFactory;
+    final ChannelFactory jvmServerChannelFactory;
     final RequestProcessor requestProcessor;
     final ChannelGroup allChannels = new CleanupChannelGroup();
     final AtomicBoolean isRunning = new AtomicBoolean(false);
     Object suspensionLock = new Object();
     boolean suspended = false;
+    final BookieSocketAddress bookieAddress;
+
+    final BookieAuthProvider.Factory authProviderFactory;
+    final BookieProtoEncoding.ResponseEncoder responseEncoder;
+    final BookieProtoEncoding.RequestDecoder requestDecoder;
 
     BookieNettyServer(ServerConfiguration conf, RequestProcessor processor)
             throws IOException, KeeperException, InterruptedException, BookieException  {
         this.conf = conf;
         this.requestProcessor = processor;
 
+        ExtensionRegistry registry = ExtensionRegistry.newInstance();
+        authProviderFactory = AuthProviderFactoryFactory.newBookieAuthProviderFactory(conf, registry);
+
+        responseEncoder = new BookieProtoEncoding.ResponseEncoder(registry);
+        requestDecoder = new BookieProtoEncoding.RequestDecoder(registry);
+
         ThreadFactoryBuilder tfb = new ThreadFactoryBuilder();
         String base = "bookie-" + conf.getBookiePort() + "-netty";
         serverChannelFactory = new NioServerSocketChannelFactory(
                 Executors.newCachedThreadPool(tfb.setNameFormat(base + "-boss-%d").build()),
                 Executors.newCachedThreadPool(tfb.setNameFormat(base + "-worker-%d").build()));
+        if (conf.isEnableLocalTransport()) {
+            jvmServerChannelFactory = new DefaultLocalServerChannelFactory();
+        } else {
+            jvmServerChannelFactory = null;
+        }
+        bookieAddress = Bookie.getBookieAddress(conf);
         InetSocketAddress bindAddress;
         if (conf.getListeningInterface() == null) {
             // listen on all interfaces
             bindAddress = new InetSocketAddress(conf.getBookiePort());
         } else {
-            bindAddress = Bookie.getBookieAddress(conf).getSocketAddress();
+            bindAddress = bookieAddress.getSocketAddress();
         }
-        listenOn(bindAddress);
+        listenOn(bindAddress, bookieAddress);
     }
 
     boolean isRunning() {
@@ -107,7 +131,7 @@ class BookieNettyServer {
         }
     }
 
-    private void listenOn(InetSocketAddress address) {
+    private void listenOn(InetSocketAddress address, BookieSocketAddress bookieAddress) {
         ServerBootstrap bootstrap = new ServerBootstrap(serverChannelFactory);
         bootstrap.setPipelineFactory(new BookiePipelineFactory());
         bootstrap.setOption("child.tcpNoDelay", conf.getServerTcpNoDelay());
@@ -115,6 +139,16 @@ class BookieNettyServer {
 
         Channel listen = bootstrap.bind(address);
         allChannels.add(listen);
+
+        if (conf.isEnableLocalTransport()) {
+            ServerBootstrap jvmbootstrap = new ServerBootstrap(jvmServerChannelFactory);
+            jvmbootstrap.setPipelineFactory(new BookiePipelineFactory());
+
+            // use the same address 'name', so clients can find local Bookie still discovering them using ZK
+            Channel jvmlisten = jvmbootstrap.bind(bookieAddress.getLocalAddress());
+            allChannels.add(jvmlisten);
+            LocalBookiesRegistry.registerLocalBookieAddress(bookieAddress);
+        }
     }
 
     void start() {
@@ -123,9 +157,15 @@ class BookieNettyServer {
 
     void shutdown() {
         LOG.info("Shutting down BookieNettyServer");
+        if (conf.isEnableLocalTransport()) {
+            LocalBookiesRegistry.unregisterLocalBookieAddress(bookieAddress);
+        }
         isRunning.set(false);
         allChannels.close().awaitUninterruptibly();
         serverChannelFactory.releaseExternalResources();
+        if (conf.isEnableLocalTransport()) {
+            jvmServerChannelFactory.releaseExternalResources();
+        }
     }
 
     private class BookiePipelineFactory implements ChannelPipelineFactory {
@@ -140,11 +180,15 @@ class BookieNettyServer {
                              new LengthFieldBasedFrameDecoder(maxMessageSize, 0, 4, 0, 4));
             pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
 
-            pipeline.addLast("bookieProtoDecoder", new BookieProtoEncoding.RequestDecoder());
-            pipeline.addLast("bookieProtoEncoder", new BookieProtoEncoding.ResponseEncoder());
+            pipeline.addLast("bookieProtoDecoder", requestDecoder);
+            pipeline.addLast("bookieProtoEncoder", responseEncoder);
+            pipeline.addLast("bookieAuthHandler",
+                             new AuthHandler.ServerSideHandler(authProviderFactory));
+
             SimpleChannelHandler requestHandler = isRunning.get() ?
                     new BookieRequestHandler(conf, requestProcessor, allChannels)
                     : new RejectRequestHandler();
+
             pipeline.addLast("bookieRequestHandler", requestHandler);
             return pipeline;
         }

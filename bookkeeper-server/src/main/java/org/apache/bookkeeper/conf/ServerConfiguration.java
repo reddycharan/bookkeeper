@@ -19,8 +19,10 @@ package org.apache.bookkeeper.conf;
 
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.Beta;
+
 import org.apache.bookkeeper.stats.NullStatsProvider;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.util.BookKeeperConstants;
@@ -51,6 +53,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     // Gc Parameters
     protected final static String GC_WAIT_TIME = "gcWaitTime";
     protected final static String IS_FORCE_GC_ALLOW_WHEN_NO_SPACE = "isForceGCAllowWhenNoSpace";
+    protected final static String GC_OVERREPLICATED_LEDGER_WAIT_TIME = "gcOverreplicatedLedgerWaitTime";
     // Sync Parameters
     protected final static String FLUSH_INTERVAL = "flushInterval";
     // Bookie death watch interval
@@ -111,6 +114,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     // Whether the bookie should use its hostname or ipaddress for the
     // registration.
     protected final static String USE_HOST_NAME_AS_BOOKIE_ID = "useHostNameAsBookieID";
+    protected final static String ENABLE_LOCAL_TRANSPORT = "enableLocalTransport";
 
     protected final static String SORTED_LEDGER_STORAGE_ENABLED = "sortedLedgerStorageEnabled";
     protected final static String SKIP_LIST_SIZE_LIMIT = "skipListSizeLimit";
@@ -122,6 +126,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String STATS_PROVIDER_CLASS = "statsProviderClass";
 
     protected final static String LEDGER_STORAGE_CLASS = "ledgerStorageClass";
+
+    // Bookie auth provider factory class name
+    protected final static String BOOKIE_AUTH_PROVIDER_FACTORY_CLASS = "bookieAuthProviderFactoryClass";
 
     /**
      * Construct a default configuration object
@@ -147,7 +154,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return entry logger size limitation
      */
     public long getEntryLogSizeLimit() {
-        return this.getLong(ENTRY_LOG_SIZE_LIMIT, 2 * 1024 * 1024 * 1024L);
+        return this.getLong(ENTRY_LOG_SIZE_LIMIT, 1 * 1024 * 1024 * 1024L);
     }
 
     /**
@@ -183,12 +190,15 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get Garbage collection wait time
+     * Get Garbage collection wait time. Default value is 10 minutes.
+     * The guideline is not to set a too low value for this, if using zookeeper based
+     * ledger manager. And it would be nice to align with the average lifecyle time of
+     * ledgers in the system.
      *
      * @return gc wait time
      */
     public long getGcWaitTime() {
-        return this.getLong(GC_WAIT_TIME, 1000);
+        return this.getLong(GC_WAIT_TIME, 600000);
     }
 
     /**
@@ -204,12 +214,41 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get flush interval
-     *
+     * Get wait time in millis for garbage collection of overreplicated ledgers
+     * 
+     * @return gc wait time
+     */
+    public long getGcOverreplicatedLedgerWaitTimeMillis() {
+        return this.getLong(GC_OVERREPLICATED_LEDGER_WAIT_TIME, TimeUnit.DAYS.toMillis(1));
+    }
+
+    /**
+     * Set wait time for garbage collection of overreplicated ledgers. Default: 1 day
+     * 
+     * A ledger can be overreplicated under the following circumstances:
+     * 1. The ledger with few entries has bk1 and bk2 as its ensemble.
+     * 2. bk1 crashes.
+     * 3. bk3 replicates the ledger from bk2 and updates the ensemble to bk2 and bk3.
+     * 4. bk1 comes back up.
+     * 5. Now there are 3 copies of the ledger.
+     *  
+     * @param gcWaitTime
+     * @return server configuration
+     */
+    public ServerConfiguration setGcOverreplicatedLedgerWaitTime(long gcWaitTime, TimeUnit unit) {
+        this.setProperty(GC_OVERREPLICATED_LEDGER_WAIT_TIME, Long.toString(unit.toMillis(gcWaitTime)));
+        return this;
+    }
+
+    /**
+     * Get flush interval. Default value is 10 second. It isn't useful to decrease
+     * this value, since ledger storage only checkpoints when an entry logger file
+     * is rolled.
+     * 
      * @return flush interval
      */
     public int getFlushInterval() {
-        return this.getInt(FLUSH_INTERVAL, 100);
+        return this.getInt(FLUSH_INTERVAL, 10000);
     }
 
     /**
@@ -234,12 +273,12 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get open file limit
+     * Get open file limit. Default value is 20000.
      *
      * @return max number of files to open
      */
     public int getOpenFileLimit() {
-        return this.getInt(OPEN_FILE_LIMIT, 900);
+        return this.getInt(OPEN_FILE_LIMIT, 20000);
     }
 
     /**
@@ -1107,12 +1146,12 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Maximum latency to impose on a journal write to achieve grouping
+     * Maximum latency to impose on a journal write to achieve grouping. Default is 2ms.
      *
      * @return max wait for grouping
      */
     public long getJournalMaxGroupWaitMSec() {
-        return getLong(JOURNAL_MAX_GROUP_WAIT_MSEC, 200);
+        return getLong(JOURNAL_MAX_GROUP_WAIT_MSEC, 2);
     }
 
     /**
@@ -1181,12 +1220,12 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get whether read-only mode is enabled. The default is false.
+     * Get whether read-only mode is enabled. The default is true.
      *
      * @return boolean
      */
     public boolean isReadOnlyModeEnabled() {
-        return getBoolean(READ_ONLY_MODE_ENABLED, false);
+        return getBoolean(READ_ONLY_MODE_ENABLED, true);
     }
 
     /**
@@ -1543,6 +1582,29 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * Get hwhether to use listen for local JVM clients. Defaults to false.
+     *
+     * @return true, then bookie will be listen for local JVM clients
+     */
+    public boolean isEnableLocalTransport() {
+        return getBoolean(ENABLE_LOCAL_TRANSPORT, false);
+    }
+
+    /**
+     * Configure the bookie to listen for BookKeeper clients executed on the local JVM
+     *
+     * @see #getEnableLocalTransport
+     * @param enableLocalTransport
+     *            whether to use listen for local JVM clients
+     * @return server configuration
+     */
+    public ServerConfiguration setEnableLocalTransport(boolean enableLocalTransport) {
+        setProperty(ENABLE_LOCAL_TRANSPORT, enableLocalTransport);
+        return this;
+    }
+
+
+    /**
      * Get the stats provider used by bookie.
      *
      * @return stats provider class
@@ -1587,4 +1649,25 @@ public class ServerConfiguration extends AbstractConfiguration {
         }
     }
 
+    /*
+     * Set the bookie authentication provider factory class name.
+     * If this is not set, no authentication will be used
+     *
+     * @param factoryClass
+     *          the bookie authentication provider factory class name
+     * @return void
+     */
+    public void setBookieAuthProviderFactoryClass(String factoryClass) {
+        setProperty(BOOKIE_AUTH_PROVIDER_FACTORY_CLASS, factoryClass);
+    }
+
+    /**
+     * Get the bookie authentication provider factory class name.
+     * If this returns null, no authentication will take place.
+     *
+     * @return the bookie authentication provider factory class name or null.
+     */
+    public String getBookieAuthProviderFactoryClass() {
+        return getString(BOOKIE_AUTH_PROVIDER_FACTORY_CLASS, null);
+    }
 }

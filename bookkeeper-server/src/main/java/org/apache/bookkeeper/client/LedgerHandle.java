@@ -64,7 +64,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * Ledger handle contains ledger metadata and is used to access the read and
  * write operations to a ledger.
  */
-public class LedgerHandle {
+public class LedgerHandle implements AutoCloseable {
     final static Logger LOG = LoggerFactory.getLogger(LedgerHandle.class);
 
     final byte[] ledgerKey;
@@ -511,6 +511,10 @@ public class LedgerHandle {
             return;
         }
 
+        asyncReadEntriesInternal(firstEntry, lastEntry, cb, ctx);
+    }
+
+    void asyncReadEntriesInternal(long firstEntry, long lastEntry, ReadCallback cb, Object ctx) {
         try {
             new PendingReadOp(this, bk.scheduler,
                               firstEntry, lastEntry, cb, ctx).initiate();
@@ -1459,7 +1463,7 @@ public class LedgerHandle {
         }
     }
 
-    private static class SyncReadCallback implements ReadCallback {
+    static class SyncReadCallback implements ReadCallback {
         /**
          * Implementation of callback interface for synchronous read method.
          *
@@ -1511,7 +1515,7 @@ public class LedgerHandle {
         }
     }
 
-    private static class SyncReadLastConfirmedCallback implements ReadLastConfirmedCallback {
+    static class SyncReadLastConfirmedCallback implements ReadLastConfirmedCallback {
         /**
          * Implementation of  callback interface for synchronous read last confirmed method.
          */
@@ -1527,7 +1531,7 @@ public class LedgerHandle {
         }
     }
 
-    private static class SyncCloseCallback implements CloseCallback {
+    static class SyncCloseCallback implements CloseCallback {
         /**
          * Close callback method
          *
