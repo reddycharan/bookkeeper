@@ -121,6 +121,17 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
         });
     }
     
+    class SyncLedgerMetaObjectDebug {
+        boolean value;
+        int rc;
+        LedgerMetadata meta;
+
+        public SyncLedgerMetaObjectDebug() {
+            value = false;
+            meta = null;
+        }
+    }
+
     @Override
     public void gc(GarbageCleaner garbageCleaner) {
         try {
@@ -133,6 +144,7 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
 
             if (!ledgerRangeIterator.hasNext()) {
                 // Empty global active ledgers, need to remove all local active ledgers.
+                LOG.info("LEDGER DELETE: Empty Global active ledgers, deleting all");
                 for (long ledgerId : bkActiveLedgers) {
                     deletedLedgerCounter.inc();
                     garbageCleaner.clean(ledgerId);
@@ -174,8 +186,37 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                 }
                 for (Long bkLid : subBkActiveLedgers) {
                     if (!ledgersInMetadata.contains(bkLid)) {
-                        deletedLedgerCounter.inc();
-                        garbageCleaner.clean(bkLid);
+                        final SyncLedgerMetaObjectDebug syncObj = new SyncLedgerMetaObjectDebug();
+                        ledgerManager.readLedgerMetadata(bkLid, new GenericCallback<LedgerMetadata>() {
+
+                            @Override
+                            public void operationComplete(int rc, LedgerMetadata result) {
+                                synchronized (syncObj) {
+                                    syncObj.rc = rc;
+                                    syncObj.meta = result;
+                                    syncObj.value = true;
+                                    syncObj.notify();
+                                }
+                            }
+                        });
+
+                        synchronized (syncObj) {
+                            while (syncObj.value == false) {
+                                syncObj.wait();
+                            }
+                        }
+                        if (syncObj.rc == BKException.Code.NoSuchLedgerExistsException) {
+                            deletedLedgerCounter.inc();
+                            garbageCleaner.clean(bkLid);
+                        } else {
+                            LOG.info("LEDGER DELETE: Ledger {} Missing in metadata list read metadata ZK returned rc: {}.", bkLid, syncObj.rc);
+                            StringBuilder listBkActiveLedgers = new StringBuilder();
+                            for (Long dbkLid : subBkActiveLedgers) {
+                                listBkActiveLedgers.append(dbkLid);
+                                listBkActiveLedgers.append(", ");
+                            }
+                            LOG.info("Active in metadata: {}, Active in bookie: {}", ledgersInMetadata, listBkActiveLedgers);
+                        }
                     }
                 }
                 lastEnd = end;
@@ -233,6 +274,7 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                             }
                             // this bookie is not supposed to have this ledger, thus we can delete this ledger now
                             overReplicatedLedgers.add(ledgerId);
+                            LOG.info("Deleting Over Replicated Ledger: {}", ledgerId);
                             garbageCleaner.clean(ledgerId);
                         }
                         release();

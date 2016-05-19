@@ -35,6 +35,7 @@ import java.util.Collection;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.GarbageCollectorThread.CompactionScannerFactory;
+import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerMetadata;
@@ -483,7 +484,7 @@ public class CompactionTest extends BookKeeperClusterTestCase {
                 }
                 @Override
                 public void readLedgerMetadata(long ledgerId, GenericCallback<LedgerMetadata> readCb) {
-                    unsupported();
+                    readCb.operationComplete(BKException.Code.NoSuchLedgerExistsException, null);
                 }
                 @Override
                 public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata,

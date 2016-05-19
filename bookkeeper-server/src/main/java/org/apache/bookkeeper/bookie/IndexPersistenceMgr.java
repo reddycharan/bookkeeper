@@ -257,10 +257,19 @@ public class IndexPersistenceMgr {
 
     private File findIndexFile(long ledgerId) throws IOException {
         String ledgerName = getLedgerName(ledgerId);
-        for (File d : ledgerDirsManager.getAllLedgerDirs()) {
-            File lf = new File(d, ledgerName);
-            if (lf.exists()) {
-                return lf;
+        // It is possible that we may be racing with moveToNewLocation
+        // in {@link FileInfo}. Give two attempts, in pathological scenario
+        // we may still fail to catch the race, where the path is moved
+        // twice during the scan.
+        for (int attempts = 0; attempts < 2; attempts++) {
+            for (File d : ledgerDirsManager.getAllLedgerDirs()) {
+                File lf = new File(d, ledgerName);
+                if (lf.exists()) {
+                    if (attempts > 0) {
+                        LOG.warn("Found the index file for Ledger: {} in the second attempt, a possible race with moveToNewLocation.", ledgerId);
+                    }
+                    return lf;
+                }
             }
         }
         return null;
