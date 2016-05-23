@@ -313,7 +313,7 @@ public class BookKeeper implements AutoCloseable {
 
         // initialize bookie client
         this.bookieClient = new BookieClient(conf, this.channelFactory, this.mainWorkerPool, statsLogger);
-        this.bookieWatcher = new BookieWatcher(conf, this.scheduler, this.placementPolicy, this);
+        this.bookieWatcher = new BookieWatcher(conf, this.scheduler, this.placementPolicy, this, statsLogger);
         this.bookieWatcher.readBookiesBlocking();
 
         // initialize ledger manager

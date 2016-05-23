@@ -12,6 +12,8 @@ import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +33,8 @@ public class BKSfdcClient {
     private String password;
     private DigestType digestType;
 
-    public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
+    public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm,
+		StatsLogger statsLogger) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
@@ -56,8 +59,9 @@ public class BKSfdcClient {
 
         LedgerHandle lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize,
                 digestType, password.getBytes());
-        if (lpd == null)
+        if (lpd == null) {
             lpd = elm.createLedgerMap(extentId);
+        }
         lpd.setWriteLedgerHandle(lh);
     }
 

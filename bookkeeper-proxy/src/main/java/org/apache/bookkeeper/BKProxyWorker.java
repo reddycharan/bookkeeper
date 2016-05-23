@@ -4,15 +4,38 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.OpStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
+import org.apache.bookkeeper.util.MathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static org.apache.bookkeeper.BKProxyStats.PXY_BYTES_GET_FRAGMENT_HIST;
+import static org.apache.bookkeeper.BKProxyStats.PXY_BYTES_PUT_FRAGMENT_HIST;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_CREATION_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_ALL_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_GET_FRAGMENT_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_NON_RECOVERY_READ_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_PUT_FRAGMENT_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_READ_CLOSE_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_RECOVERY_READ_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_STAT_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_WRITE_CLOSE_TIME;
+import static org.apache.bookkeeper.BKProxyStats.PXY_WORKER_POOL_COUNT;
+import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_LIST_GET_TIME;
 
 class BKProxyWorker implements Runnable {
+
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
 
     private final BookKeeperProxyConfiguration bkpConfig;
@@ -26,12 +49,99 @@ class BKProxyWorker implements Runnable {
     private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
 
+	private abstract class OpStatEntry {
+
+		protected OpStatsLogger osl;
+
+		public OpStatEntry(OpStatsLogger osl) {
+			this.osl = osl;
+		}
+
+		abstract void markSuccess();
+
+		abstract void markFailure();
+
+	}
+
+	private class OpStatEntryValue extends OpStatEntry {
+		
+		private long value;
+		
+		public OpStatEntryValue(OpStatsLogger osl, long value) {
+			super(osl);
+			this.value = value;
+		}
+
+		public void markSuccess() {
+			osl.registerSuccessfulValue(value);
+		}
+
+		public void markFailure() {
+			osl.registerFailedValue(value);
+		}
+
+	}
+
+	private class OpStatEntryTimer extends OpStatEntry {
+		
+		private long startTime;
+		
+		public OpStatEntryTimer(OpStatsLogger osl, long startTime) {
+			super(osl);
+			this.startTime = startTime;
+		}
+
+		public void markSuccess() {
+			osl.registerSuccessfulEvent(MathUtils.nowInNano() - this.startTime,
+					TimeUnit.MILLISECONDS);
+		}
+
+		public void markFailure() {
+			osl.registerFailedEvent(MathUtils.nowInNano() - this.startTime,
+					TimeUnit.MILLISECONDS);
+		}
+
+	}
+
+    //Stats
+    private Queue<OpStatEntry> opStatQueue;
+    private final Counter proxyWorkerPoolCounter;
+    private final OpStatsLogger ledgerCreationTimer;
+    private final OpStatsLogger ledgerRecoveryReadTimer;
+    private final OpStatsLogger ledgerNonRecoveryReadTimer;
+    private final OpStatsLogger ledgerStatTimer;
+    private final OpStatsLogger ledgerDeleteAllTimer;
+    private final OpStatsLogger ledgerWriteCloseTimer;
+    private final OpStatsLogger ledgerReadCloseTimer;
+    private final OpStatsLogger ledgerDeletionTimer;
+    private final OpStatsLogger ledgerPutTimer;
+    private final OpStatsLogger ledgerGetTimer;
+    private final OpStatsLogger ledgerReadHist;
+    private final OpStatsLogger ledgerWriteHist;
+    private final OpStatsLogger ledgerListGetTimer;
+
     public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock,
-            BookKeeper bk, BKExtentLedgerMap elm, long bkProxyWorkerId) throws IOException {
+            BookKeeper bk, BKExtentLedgerMap elm, long bkProxyWorkerId, StatsLogger statsLogger)
+                    throws IOException {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
         this.bkProxyWorkerId = bkProxyWorkerId;
         this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
+        this.opStatQueue = new LinkedList<OpStatEntry>();
+        this.proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
+        this.ledgerCreationTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_CREATION_TIME);
+        this.ledgerRecoveryReadTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_RECOVERY_READ_TIME);
+        this.ledgerNonRecoveryReadTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_NON_RECOVERY_READ_TIME);
+        this.ledgerStatTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_STAT_TIME);
+        this.ledgerDeleteAllTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_ALL_TIME);
+        this.ledgerWriteCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_WRITE_CLOSE_TIME);
+        this.ledgerReadCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_READ_CLOSE_TIME);
+        this.ledgerDeletionTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_TIME);
+        this.ledgerPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_PUT_FRAGMENT_TIME);
+        this.ledgerGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_GET_FRAGMENT_TIME);
+        this.ledgerReadHist = statsLogger.getOpStatsLogger(PXY_BYTES_GET_FRAGMENT_HIST);
+        this.ledgerWriteHist = statsLogger.getOpStatsLogger(PXY_BYTES_PUT_FRAGMENT_HIST);
+        this.ledgerListGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_LIST_GET_TIME);
 
         try {
             // To facilitate Data Extents,
@@ -50,7 +160,7 @@ class BKProxyWorker implements Runnable {
             }
             throw e;
         }
-        this.bksc = new BKSfdcClient(bkpConfig, bk, elm);
+        this.bksc = new BKSfdcClient(bkpConfig, bk, elm, statsLogger);
     }
 
     private int clientChannelRead(ByteBuffer buf) throws IOException {
@@ -96,6 +206,17 @@ class BKProxyWorker implements Runnable {
         + " respId: " + BKPConstants.getReqRespString(respId)
         + " ledgerId: " + extentId);
     }
+    
+    private void markStats(boolean isFail) {
+		while (!opStatQueue.isEmpty()) {
+			OpStatEntry osl = opStatQueue.remove();
+			if (isFail) {
+				osl.markFailure();
+			} else {
+				osl.markSuccess();
+			}
+		}
+	}
 
     public void run() {
         
@@ -124,6 +245,8 @@ class BKProxyWorker implements Runnable {
             LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
 
             while (!Thread.interrupted()) {
+				boolean exceptionOccurred = false;
+				long startTime;
                 try {
                     req.clear();
                     resp.clear();
@@ -149,13 +272,14 @@ class BKProxyWorker implements Runnable {
 
                     LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId),
                         extentId);
-
+                    //Set time after client channel read. Do it again below if needed after another read and before a ledger operation
+                    startTime = MathUtils.nowInNano();
                     errorCode = BKPConstants.SF_OK;
                     switch (reqId) {
-
                     case (BKPConstants.LedgerStatReq): {
                         respId = BKPConstants.LedgerStatResp;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerStatTimer, startTime));
 
                         long lSize = 0;
                         try {
@@ -163,8 +287,10 @@ class BKProxyWorker implements Runnable {
                         } catch (BKException e) {
                             LOG.error("Exception when getting stats for extent {}",
                                        extentId, e);
+							exceptionOccurred = true;
                             errorCode = BKPConstants.convertBKtoSFerror(e.getCode());
                         } catch (Exception e) {
+							exceptionOccurred = true;
                             LOG.error("Exception when getting stats for extent {}",
                                 extentId, e);
                             errorCode = BKPConstants.SF_ServerInternalError;
@@ -182,7 +308,7 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerListGetReq): {
                         respId = BKPConstants.LedgerListGetResp;
                         resp.put(respId);
-
+                        opStatQueue.add(new OpStatEntryTimer(ledgerListGetTimer, startTime));
                         Iterable<Long> iterable = bksc.ledgerList();
 
                         // Count number of elements in the list.
@@ -231,6 +357,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerWriteCloseResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerWriteCloseTimer, startTime));
 
                         bksc.ledgerWriteClose(extentId);
                         resp.put(errorCode);
@@ -243,7 +370,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerOpenReadResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
-
+                        opStatQueue.add(new OpStatEntryTimer(ledgerNonRecoveryReadTimer, startTime));
                         bksc.ledgerNonRecoveryOpenRead(extentId);
                         resp.put(errorCode);
                         resp.flip();
@@ -255,6 +382,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerOpenRecoverResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerRecoveryReadTimer, startTime));
 
                         bksc.ledgerRecoveryOpenRead(extentId);
                         resp.put(errorCode);
@@ -267,6 +395,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerReadCloseResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerReadCloseTimer, startTime));
 
                         bksc.ledgerReadClose(extentId);
                         resp.put(errorCode);
@@ -279,6 +408,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerDeleteResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerDeletionTimer, startTime));
 
                         bksc.ledgerDelete(extentId);
                         resp.put(errorCode);
@@ -291,6 +421,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerDeleteAllResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerDeleteAllTimer, startTime));
 
                         bksc.ledgerDeleteAll();
                         resp.put(errorCode);
@@ -304,6 +435,7 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerCreateResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerCreationTimer, startTime));
 
                         bksc.ledgerCreate(extentId);
                         resp.put(errorCode);
@@ -328,7 +460,6 @@ class BKProxyWorker implements Runnable {
                             bytesRead += clientChannelRead(ewreq);
                         }
                         ewreq.flip();
-
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
@@ -361,8 +492,12 @@ class BKProxyWorker implements Runnable {
                         }
 
                         cByteBuf.flip();
+                        //Exclude channel reads above
+                        startTime = MathUtils.nowInNano();
+                        opStatQueue.add(new OpStatEntryTimer(ledgerPutTimer, startTime));
+                        opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) cByteBuf.limit()));
 
-                        bksc.ledgerPutEntry(extentId, fragmentId, cByteBuf);
+						bksc.ledgerPutEntry(extentId, fragmentId, cByteBuf);
 
                         resp.put(errorCode);
                         resp.flip();
@@ -389,8 +524,12 @@ class BKProxyWorker implements Runnable {
                         fragmentId = erreq.getInt();
                         bufSize = erreq.getInt();
 
+                        //Exclude the client reads above
+                        startTime = MathUtils.nowInNano();
                         // Now get the fragment/entry
                         ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
+                        opStatQueue.add(new OpStatEntryTimer(ledgerGetTimer, startTime));
+                        opStatQueue.add(new OpStatEntryValue(ledgerReadHist, (long) ledgerEntry.position()));
 
                         if (bufSize < ledgerEntry.position()) {
                             errorCode = BKPConstants.SF_ShortREAD;
@@ -425,6 +564,7 @@ class BKProxyWorker implements Runnable {
                         + "Response: " + BKPConstants.getReqRespString(respId)
                         + "for extentId: {}", extentId);
                 } catch (BKException e) {
+					exceptionOccurred = true;
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
                             extentId);
                     LOG.error("Exception: ", e);
@@ -433,6 +573,7 @@ class BKProxyWorker implements Runnable {
                     resp.flip();
                     clientChannelWrite(resp);
                 } catch (InterruptedException e) {
+					exceptionOccurred = true;
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
                             extentId);
                     LOG.error("Exception: ", e);
@@ -441,15 +582,20 @@ class BKProxyWorker implements Runnable {
                     resp.flip();
                     clientChannelWrite(resp);
                 } catch (Exception e) {
+					exceptionOccurred = true;
                     LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
                             extentId);
                     LOG.error("Exception: ", e);
+                }
+                finally {
+					markStats(exceptionOccurred);
                 }
             }
 
         } catch (IOException e) {
                 LOG.error("Exception in worker processing:", e);
         } finally {
+			proxyWorkerPoolCounter.dec();
             try {
                 clientChannel.close();
             } catch (IOException e) {
@@ -458,4 +604,5 @@ class BKProxyWorker implements Runnable {
             LOG.info("Ending BKProxyWorkerID - "+ bkProxyWorkerId);
         }
     }
+
 }

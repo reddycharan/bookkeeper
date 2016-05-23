@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
@@ -20,6 +20,11 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.stats.StatsProvider;
+import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -31,6 +36,8 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.bookkeeper.BKProxyStats.PXY_WORKER_POOL_COUNT;
 
 /*
  * BKProxyMain implements runnable method and when Thread is spawned it starts ServerSocketChannel on the provided bkProxyPort.
@@ -61,11 +68,33 @@ public class BKProxyMain implements Runnable {
     private final BookKeeperProxyConfiguration bkpConf;
     private BookKeeper bk = null;
     private ThreadPoolExecutor proxyWorkerExecutor;
+    private StatsProvider statsProvider;
+    private StatsLogger statsLogger;
+    private final Counter proxyWorkerPoolCounter;
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
         proxyWorkerExecutor = new ThreadPoolExecutor(bkpConf.getCorePoolSize(), bkpConf.getWorkerThreadLimit(),
                 bkpConf.getCorePoolKeepAliveTime(), TimeUnit.MILLISECONDS, new SynchronousQueue<Runnable>());
+        Class<? extends StatsProvider> statsProviderClass = null;
+        boolean statsEnabled = bkpConf.getBoolean("enableStatistics", false);
+        if (statsEnabled) {
+            try {
+                statsProviderClass = bkpConf.getStatsProviderClass();
+                statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+                statsProvider.start(bkpConf);
+                statsLogger = statsProvider.getStatsLogger(bkpConf.getString("statsPrefix", "bkProxy"));
+                System.out.println("Running stats...");
+            } catch (ConfigurationException e) {
+				statsLogger = NullStatsLogger.INSTANCE;
+				LOG.error("Failed to instantiate stats provider class: ", e);
+            }
+        }
+        else {
+			// Declare it as null so operations do not log, but also do not throw NPEs
+			statsLogger = NullStatsLogger.INSTANCE;
+        }
+        proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
     }
 
     public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
@@ -84,8 +113,11 @@ public class BKProxyMain implements Runnable {
 
             // Global structures
             BKExtentLedgerMap elm = new BKExtentLedgerMap();
-
-            bk = new BookKeeper(bkpConf);
+            if (statsProvider != null) {
+                bk = BookKeeper.forConfig(bkpConf).setStatsLogger(statsLogger).build();
+            } else {
+                bk = new BookKeeper(bkpConf);
+            }
 
             while (!proxyWorkerExecutor.isShutdown()) {
                 LOG.info("SFStore BK-Proxy: Waiting for connection... ");
@@ -110,11 +142,12 @@ public class BKProxyMain implements Runnable {
                     }
 
                     try {
-                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf, sock, bk, elm, bkProxyWorkerNo.getAndIncrement()));
+						proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
+								bkProxyWorkerNo.getAndIncrement(), statsLogger));
+                        proxyWorkerPoolCounter.inc();
                     } catch (RejectedExecutionException rejException) {
-                        LOG.error(
-                                "ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
-                                        + proxyWorkerExecutor.getActiveCount() + " RemoteAddress: " + remoteAddress,
+                        LOG.error("ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
+                                + proxyWorkerExecutor.getActiveCount() + " RemoteAddress: " + remoteAddress,
                                 rejException);
                         continue;
                     }
@@ -146,6 +179,10 @@ public class BKProxyMain implements Runnable {
             } catch (InterruptedException e) {
                 LOG.warn("Got interrupted while waiting for termination of ProxyWorkers", e);
             }
+			if (statsProvider != null) {
+				LOG.info("Stats provider stopped...");
+				statsProvider.stop();
+			}
             if (serverChannel != null) {
                 LOG.info("Closing ServerSocketChannel...");
                 try {

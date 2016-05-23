@@ -55,6 +55,7 @@ public interface BookKeeperServerStats {
     public final static String JOURNAL_FORCE_WRITE_BATCH_BYTES = "JOURNAL_FORCE_WRITE_BATCH_BYTES";
     public final static String JOURNAL_FLUSH_LATENCY = "JOURNAL_FLUSH_LATENCY";
     public final static String JOURNAL_CREATION_LATENCY = "JOURNAL_CREATION_LATENCY";
+    public final static String JOURNAL_CB_THREAD_POOL_SIZE = "JOURNAL_CB_THREAD_POOL_SIZE";
 
     // Ledger Storage Stats
     public final static String STORAGE_GET_OFFSET = "STORAGE_GET_OFFSET";
@@ -103,5 +104,10 @@ public interface BookKeeperServerStats {
     public final static String GC_ACTIVE_ENTRY_LOG_COUNT = "GC_ACTIVE_ENTRY_LOG_COUNT";
     public final static String GC_ACTIVE_ENTRY_LOG_SPACE_BYTES = "GC_ACTIVE_ENTRY_LOG_SPACE_BYTES";
     public final static String GC_TOTAL_RECLAIMED_SPACE = "GC_TOTAL_RECLAIMED_SPACE";
+
+    //Watcher Operations
+    public final static String WATCHER_GET_BOOKIES_TIME = "WATCHER_GET_BOOKIES_TIME";
+    public final static String WATCHER_NEW_ENSEMBLE_TIME = "WATCHER_NEW_ENSEMBLE_TIME";
+    public final static String WATCHER_REPLACE_BOOKIE_TIME = "WATCHER_REPLACE_BOOKIE_TIME";
 
 }

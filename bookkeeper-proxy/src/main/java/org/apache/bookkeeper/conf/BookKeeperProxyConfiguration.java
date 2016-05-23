@@ -2,8 +2,11 @@ package org.apache.bookkeeper.conf;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
+import org.apache.bookkeeper.stats.NullStatsProvider;
+import org.apache.bookkeeper.stats.StatsProvider;
+import org.apache.bookkeeper.util.ReflectionUtils;
+import org.apache.commons.configuration.ConfigurationException;
 
 public class BookKeeperProxyConfiguration extends ClientConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(BookKeeperProxyConfiguration.class);
@@ -59,6 +62,12 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     protected static final String CORE_POOL_KEEP_ALIVE_TIME_STR = "corePoolKeepAliveTime";
     protected static final long CORE_POOL_KEEP_ALIVE_TIME_DEF = 5000;
     
+    protected static final String STATS_PROVIDER_CLASS = "statsProviderClass";
+    protected static final String CODAHALE_STATS_OUTPUT_FREQUENCY="codahaleStatsOutputFrequency";
+    protected static final String CODAHALE_STATS_CSV_ENDPOINT = "codahaleStatsCSVEndpoint";
+    protected static final String SERVLET_CONTEXT_PATH="servletContextPath";
+    protected static final String SERVLET_ENDPOINT = "servletEndpoint";
+
     public BookKeeperProxyConfiguration() {
         super();
     }
@@ -210,5 +219,12 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     public BookKeeperProxyConfiguration setCorePoolKeepAliveTime(long corePoolKeepAliveTime) {
         setProperty(CORE_POOL_KEEP_ALIVE_TIME_STR, corePoolKeepAliveTime);
         return this;
+    }
+
+    public Class<? extends StatsProvider> getStatsProviderClass()
+        throws ConfigurationException {
+        return ReflectionUtils.getClass(this, STATS_PROVIDER_CLASS,
+                                        NullStatsProvider.class, StatsProvider.class,
+                                        defaultLoader);
     }
 }

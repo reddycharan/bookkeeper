@@ -291,6 +291,7 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Acknowledge Ledger: {}, Entry: {}", ledgerId, entryId);
             }
+            journalCbThreadPoolSize.dec();
             journalAddEntryStats.registerSuccessfulEvent(MathUtils.elapsedNanos(enqueueTime), TimeUnit.NANOSECONDS);
             cb.writeComplete(0, ledgerId, entryId, null, ctx);
         }
@@ -332,9 +333,10 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
                 lastLogMark.setCurLogMark(this.logId, this.lastFlushedPosition);
 
                 // Notify the waiters that the force write succeeded
-                for (QueueEntry e : this.forceWriteWaiters) {
-                    cbThreadPool.submit(e);
-                }
+				for (QueueEntry e : this.forceWriteWaiters) {
+					journalCbThreadPoolSize.inc();
+					cbThreadPool.submit(e);
+				}
 
                 return this.forceWriteWaiters.size();
             }
@@ -526,6 +528,7 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
     private final Counter flushMaxOutstandingBytesCounter;
     private final Counter flushEmptyQueueCounter;
     private final Counter journalWriteBytes;
+    private final Counter journalCbThreadPoolSize;
 
     public Journal(ServerConfiguration conf, LedgerDirsManager ledgerDirsManager) {
         this(conf, ledgerDirsManager, NullStatsLogger.INSTANCE);
@@ -569,6 +572,7 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
         flushMaxOutstandingBytesCounter = statsLogger.getCounter(JOURNAL_NUM_FLUSH_MAX_OUTSTANDING_BYTES);
         flushEmptyQueueCounter = statsLogger.getCounter(JOURNAL_NUM_FLUSH_EMPTY_QUEUE);
         journalWriteBytes = statsLogger.getCounter(JOURNAL_WRITE_BYTES);
+        journalCbThreadPoolSize = statsLogger.getCounter(JOURNAL_CB_THREAD_POOL_SIZE);
     }
 
     LastLogMark getLastLogMark() {
