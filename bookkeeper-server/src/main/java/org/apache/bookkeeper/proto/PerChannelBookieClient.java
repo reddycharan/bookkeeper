@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -814,7 +815,9 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         // in case they get a write failure on the socket. The one who
         // successfully removes the key from the map is the one responsible for
         // calling the application callback.
-        for (CompletionKey key : completionObjects.keySet()) {
+        Enumeration<CompletionKey> keys = completionObjects.keys();
+        while (keys.hasMoreElements()) {
+            CompletionKey key = keys.nextElement();
             switch (key.operationType) {
                 case ADD_ENTRY:
                     errorOutAddKey(key, rc);

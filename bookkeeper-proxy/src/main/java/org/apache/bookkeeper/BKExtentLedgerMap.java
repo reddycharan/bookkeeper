@@ -1,5 +1,7 @@
 package org.apache.bookkeeper;
 
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,7 +27,12 @@ public class BKExtentLedgerMap {
     }
 
     public BKExtentId[] getAllExtentIds() {
-        Set<BKExtentId> idSet = extentToLedgerMap.keySet();
+        Enumeration<BKExtentId> idEnum = extentToLedgerMap.keys();
+        Set<BKExtentId> idSet = new HashSet<BKExtentId>();
+        while (idEnum.hasMoreElements()) {
+            idSet.add(idEnum.nextElement());
+        }
+
         return idSet.toArray(new BKExtentId[idSet.size()]);
     }
 
