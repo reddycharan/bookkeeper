@@ -323,7 +323,7 @@ public class BKSfdcClient {
         }
 
         // Sanity check before trying to read; Get the latest LAC.
-        if (!lh.isClosed() && (entryId > lh.getLastAddConfirmed())) {
+        if (entryId > lh.getLastAddConfirmed()) {
             // Get the latest Lac.
             lh.readLac();
         }
