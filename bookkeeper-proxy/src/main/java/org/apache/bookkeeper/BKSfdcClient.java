@@ -12,7 +12,6 @@ import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
-import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +20,7 @@ public class BKSfdcClient {
     private final BookKeeperProxyConfiguration bkpConfig;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
+    long lastSuccessfulAddEntry = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
     LedgerEntry ledgerEntry = null;
     Object ledgerObj = null;
@@ -30,14 +30,11 @@ public class BKSfdcClient {
     private int ackQuorumSize;
     private String password;
     private DigestType digestType;
-    private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
-    private final LedgerIdFormatter ledgerIdFormatter;
 
     public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
-        this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
         initBookkeeperConfiguration();
     }
 
@@ -270,8 +267,17 @@ public class BKSfdcClient {
             // race condition here.
             tmpEntryId = lh.getLastAddConfirmed() + 1;
         }
+        // Try to catch out of sequence addEntry.
+        // Condition below is to check and reduce number of log messages for sequential addEntrys through this worker thread.
+        // If multiple threads are adding entries simultaneously, we may log the debug message anyway.
+        // This is temporary debug message to catch out of order writes.
+        if ((lastSuccessfulAddEntry + 1) != tmpEntryId) {
+            LOG.info("Sending non-sequential addEntry. lastSuccessfulAddEntry{} currentEntryId: {} LedgerId:{}, lac {}",
+                    new Object[] {lastSuccessfulAddEntry, tmpEntryId, extentId, lh.getLastAddConfirmed()});
+        }
         entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
         assert (entryId == tmpEntryId);
+        lastSuccessfulAddEntry = entryId;
 
         // Handle Trailer
         if (fragmentId == 0) {
