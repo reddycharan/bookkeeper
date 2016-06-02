@@ -1063,7 +1063,7 @@ public class LedgerHandle implements AutoCloseable {
             }
             // Check if it is the next entry in the sequence.
             if (pendingAddOp.entryId != 0 && pendingAddOp.entryId != lastAddConfirmed + 1) {
-                LOG.debug("Head of the queue entryId: {} is not lac: {} + 1", pendingAddOp.entryId, lastAddConfirmed);
+                LOG.info("Head of the queue entryId: {} is not lac: {} + 1", pendingAddOp.entryId, lastAddConfirmed);
                 return;
             }
 
