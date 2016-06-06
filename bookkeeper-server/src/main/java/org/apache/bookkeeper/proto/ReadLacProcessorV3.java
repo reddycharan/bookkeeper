@@ -73,10 +73,10 @@ class ReadLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
             }
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
-            logger.error("No ledger found while performing readLac from ledger: {}", ledgerId);
+            logger.error("No ledger found while performing readLac from ledger: {}", ledgerId, e);
         } catch (IOException e) {
             status = StatusCode.EIO;
-            logger.error("IOException while performing readLac from ledger: {}", ledgerId);
+            logger.error("IOException while performing readLac from ledger: {}", ledgerId, e);
         }
         if (status == StatusCode.EOK) {
             requestProcessor.readLacStats.registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos),

@@ -71,16 +71,16 @@ class WriteLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
             requestProcessor.bookie.lastAddConfirmedUpdate(lacToAdd, channel, masterKey);
             status = StatusCode.EOK;
         } catch (IOException e) {
-            logger.error("Error saving lac for ledger:{}",
+            logger.error("Error saving lac {} for ledger:{}",
                           new Object[] { lac, ledgerId, e });
             status = StatusCode.EIO;
         } catch (BookieException e) {
             logger.error("Unauthorized access to ledger:{} while adding lac:{}",
-                                                  ledgerId, lac);
+                    new Object[] { ledgerId, lac, e });
             status = StatusCode.EUA;
         } catch (Throwable t) {
-            logger.error("Unexpected exception while writing {}@{} : ",
-                    new Object[] { lac, t });
+            logger.error("Unexpected exception while writing lac {} for ledger:{}",
+                    new Object[] { lac, ledgerId, t });
             // some bad request which cause unexpected exception
             status = StatusCode.EBADREQ;
         }
