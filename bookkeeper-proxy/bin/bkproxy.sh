@@ -149,6 +149,7 @@ JAVA_HEAP_MAX="-Xmx${JAVA_HEAP_MAX}m"
 JAVA_OPTS="${BKPROXY_OPTS} ${BKPROXY_GC_OPTS}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.dir=${BKPROXY_LOG_DIR}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.file=${BKPROXY_LOG_DIR}"
+JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
 
 #####################
 # Parse arguments
