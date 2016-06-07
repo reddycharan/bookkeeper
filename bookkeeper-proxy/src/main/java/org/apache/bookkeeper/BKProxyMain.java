@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
@@ -78,9 +79,13 @@ public class BKProxyMain implements Runnable {
             serverChannel = ServerSocketChannel.open();
             serverChannel.setOption(java.net.StandardSocketOptions.SO_RCVBUF,
                     bkpConf.getServerChannelReceiveBufferSize());
+
+            ServerSocket serverSocket = serverChannel.socket();
+            serverSocket.setReuseAddress(false);
+
             String hostname = bkpConf.getBKProxyHostname();
             int port = bkpConf.getBKProxyPort();
-            serverChannel.socket().bind(new InetSocketAddress(hostname, port));
+            serverSocket.bind(new InetSocketAddress(hostname, port));
 
             // Global structures
             BKExtentLedgerMap elm = new BKExtentLedgerMap();
