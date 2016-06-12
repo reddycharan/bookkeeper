@@ -22,7 +22,6 @@ public class BKSfdcClient {
     private final BookKeeperProxyConfiguration bkpConfig;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
-    long lastSuccessfulAddEntry = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
     LedgerEntry ledgerEntry = null;
     Object ledgerObj = null;
@@ -275,13 +274,13 @@ public class BKSfdcClient {
         // Condition below is to check and reduce number of log messages for sequential addEntrys through this worker thread.
         // If multiple threads are adding entries simultaneously, we may log the debug message anyway.
         // This is temporary debug message to catch out of order writes.
-        if ((lastSuccessfulAddEntry + 1) != tmpEntryId) {
-            LOG.info("Sending non-sequential addEntry. lastSuccessfulAddEntry{} currentEntryId: {} LedgerId:{}, lac {}",
-                    new Object[] {lastSuccessfulAddEntry, tmpEntryId, extentId, lh.getLastAddConfirmed()});
+        long tmpLac = lh.getLastAddConfirmed();
+        if ((tmpLac + 1) != tmpEntryId) {
+            LOG.info("Sending non-sequential addEntry. LedgerId:{} currentEntryId:{}, LAC:{}",
+                    new Object[] {extentId, tmpEntryId, tmpLac});
         }
         entryId = lh.addEntry(tmpEntryId, bdata.array(), 0, bdata.limit());
         assert (entryId == tmpEntryId);
-        lastSuccessfulAddEntry = entryId;
 
         // Handle Trailer
         if (fragmentId == 0) {
