@@ -17,6 +17,7 @@
 #   MAVEN_HOME                -- Maven location; only used to run in build tree
 
 START_COMMAND="start"
+VPOD_START_COMMAND="vpod-start"
 CLASSPATH_COMMAND="classpath"
 
 function usage(){
@@ -24,12 +25,18 @@ cat << EOF
 $0 [commamnd] <options> - run the bookkeeper proxy
 
 ${START_COMMAND}:
-  $0 ${START_COMMAND}
+  $0 ${START_COMMAND} <BKProxyMain options>
     Start the bookkeeper proxy.
 
   $0 --help || -h
     Show the help for the bookkeeper proxy
 
+${VPOD_START_COMMAND}:
+  $0 ${VPOD_START_COMMAND} <BKProxyMain options>
+    Start the bookkeeper proxy for vpod environment.
+
+  $0 --help || -h
+    Show the help for the bookkeeper proxy
 ${CLASSPATH_COMMAND}:
   $0 ${CLASSPATH_COMMAND}
     Show the classpath the bookkeeper proxy would run with
@@ -96,6 +103,7 @@ BKPROXY_HOME=${BASEDIR}
 in_dev_env=false
 if [ -d "${BKPROXY_HOME}/target" ]; then
   in_dev_env=true
+  BASEDIR=${BASEDIR}/target
 fi
 
 # Source environment settings
@@ -125,31 +133,32 @@ for FILE in `find ${BASEDIR}/bookkeeper-proxy-*.jar`; do
   CLASSPATH=${CLASSPATH}:${FILE}
 done
 
-# Add the dependencies to classpath
-###################################
-
-for FILE in `find ${BASEDIR}/lib`; do
-  CLASSPATH=${CLASSPATH}:${FILE}
-done
-
 # Add in the suffix
 CLASSPATH=${CLASSPATH}:${BKPROXY_CLASSPATH_SUFFIX}
 
 # Other constants
 ####################
 BKPROXY_LOG_DIR=${BKPROXY_LOG_DIR:-"$BKPROXY_HOME/logs"}
-BKPROXY_LOGFILE=${BKPROXY_LOGFILE:-"bkproxy.log"}
-
-JAVA_HEAP_MAX=${BKPROXY_HEAPSIZE:-"1000"}
-JAVA_HEAP_MAX="-Xmx${JAVA_HEAP_MAX}m"
+BKPROXY_LOG_FILE=${BKPROXY_LOG_FILE:-"bookkeeper-proxy.log"}
+BKPROXY_LOG_LEVEL=${BKPROXY_LOG_LEVEL:-"INFO"}
+BKPROXY_LOG_FILE_SIZE=${BKPROXY_LOG_FILE_SIZE:-"100MB"}
+BKPROXY_LOG_FILE_COUNT=${BKPROXY_LOG_FILE_COUNT:-"10"}
 
 # Setup the generic java options
 #################################
 
 JAVA_OPTS="${BKPROXY_OPTS} ${BKPROXY_GC_OPTS}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.dir=${BKPROXY_LOG_DIR}"
-JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.file=${BKPROXY_LOG_DIR}"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.file=${BKPROXY_LOG_FILE}"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.level=${BKPROXY_LOG_LEVEL}"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filesize=${BKPROXY_LOG_FILE_SIZE}"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filecount=${BKPROXY_LOG_FILE_COUNT}"
+JAVA_OPTS="${JAVA_OPTS} -Djava.net.preferIPv4Stack=true -Duser.timezone=UTC"
 JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
+GC_OPTS="-XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:+DisableExplicitGC -verbose:gc "
+JAVA_OPTS="${JAVA_OPTS} ${GC_OPTS}"
+
+JAVA_VPOD_OPTS=" -XX:PermSize=1024m -XX:MaxPermSize=1024m -XX:ParGCCardsPerStrideChunk=32768 -XX:InitialCodeCacheSize=128m -XX:ReservedCodeCacheSize=128m -Xss296k -XX:NewSize=4G -XX:MaxNewSize=4G -XX:MaxTenuringThreshold=2 -XX:+UnlockDiagnosticVMOptions -XX:+UseCMSInitiatingOccupancyOnly -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:CMSInitiatingPermOccupancyFraction=80 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways -XX:+ParallelRefProcEnabled -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseTLAB -XX:+UseCompressedOops -XX:-UseBiasedLocking -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003" #-XX:+UseLinuxPosixThreadCPUClocks
 
 #####################
 # Parse arguments
@@ -157,6 +166,14 @@ JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
 # Determine command
 case $1 in
    ${START_COMMAND})
+     JAVA_HEAP_MAX=${BKPROXY_HEAPSIZE:-"1000"}
+     JAVA_HEAP_MAX="-Xmx${JAVA_HEAP_MAX}m"
+     MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
+     ;;
+   ${VPOD_START_COMMAND})
+     JAVA_HEAP_MAX=${BKPROXY_HEAPSIZE:-"6000"}
+     JAVA_HEAP_MAX="-Xms${JAVA_HEAP_MAX}m -Xmx${JAVA_HEAP_MAX}m"
+     JAVA_OPTS="${JAVA_OPTS} ${JAVA_VPOD_OPTS}"
      MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
      ;;
    ${CLASSPATH_COMMAND})
