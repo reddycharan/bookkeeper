@@ -274,7 +274,7 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                             }
                             // this bookie is not supposed to have this ledger, thus we can delete this ledger now
                             overReplicatedLedgers.add(ledgerId);
-                            LOG.info("Deleting Over Replicated Ledger: {}", ledgerId);
+                            LOG.info("LEDGER DELETE: Deleting Over Replicated Ledger: {}", ledgerId);
                             garbageCleaner.clean(ledgerId);
                         }
                         release();
