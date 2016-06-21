@@ -786,8 +786,8 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     }
 
     /**
-     * In this testcase LedgerOpenRecoverReq is called before LedgerWriteCloseReq and it is supposed to receive error response.
-     * LedgerOpenRecoverReq after LedgerWriteClose should work normally.
+     * In this testcase LedgerOpenRecoverReq is called before LedgerWriteCloseReq and it should implicitly close the write
+     * handle and fence the ledger for writes.
      * @throws IOException
      * @throws InterruptedException
      */
@@ -803,14 +803,15 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-30000-"+BKPConstants.SF_OK+"\n"
-                                    // here we are trying to do OpenRecover in the same BKProxy and it is supposed to fail since write is not closed
-                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_ErrorBadRequest+"\n"
-                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    // by now write is closed, so openrecover should function normally
-                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // Opening for recovery read will fence ledger and close open write handle
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // Writes will fail
+                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-4-30000-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
                                     +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerReadEntryReq+"-ext1-2-1000-"+BKPConstants.SF_OK+"-20\n"
-                                    +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-3-400000000-"+BKPConstants.SF_OK+"-30000\n"
+                                    // Reading past end of fenced ledger will return ErrorNotFoundClosed, rather than just ErrorNotFound
+                                    +   BKPOPERATION + "-7-Thread3-"+BKPConstants.LedgerReadEntryReq+"-ext1-4-400000000-"+BKPConstants.SF_ErrorNotFoundClosed+"-30000\n"
                                     +   BKPOPERATION + "-8-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }

@@ -95,33 +95,27 @@ public class BKSfdcClient {
             lpd.acquireLedgerRecoveryOpenLock();
             lh = lpd.getRecoveryReadLedgerHandle();
             if (lh != null) {
-                // The ledger is already opened for read.
+                // The ledger is already opened for recovery read.
                 // Nothing to do
                 return lh;
             }
 
-            // Opening for recovery.
-            // The ledger must have closed or this is a crash recovery.
-            // In either case we should not have write ledger handle.
-            if (lpd.getWriteLedgerHandle() != null) {
-                LOG.info("Opening ExtentId: {} in recovery mode while write handle is active.",
-                        extentId);
-                throw BKException.create(Code.IllegalOpException);
+            lh = lpd.getWriteLedgerHandle();
+            if (lh != null) {
+                // The ledger is opened for write -- close it down
+                lh.close();
+                lpd.setWriteLedgerHandle(null);
             }
 
-            if (lpd.getRecoveryReadLedgerHandle() == null) {
-                // Let us try to open the ledger for read
-                lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
-                lpd.setRecoveryReadLedgerHandle(lh);
-                return lh;
-            }
+            // Opening for recovery -- further writes will be fenced
+            lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
+            lpd.setRecoveryReadLedgerHandle(lh);
+            return lh;
         } finally {
             if (lpd != null) {
                 lpd.releaseLedgerRecoveryOpenLock();
             }
         }
-
-        return null;
     }
 
     /*
