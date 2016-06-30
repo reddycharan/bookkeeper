@@ -64,6 +64,18 @@ public class BKSfdcClient {
         lpd.setWriteLedgerHandle(lh);
     }
 
+    // creates new extent ID and creates ledger for it
+    public BKExtentId ledgerCreate() throws BKException, InterruptedException {
+        LedgerHandle lh = bk.createLedgerAdv(ensembleSize, writeQuorumSize, ackQuorumSize,
+                digestType, password.getBytes());
+        
+        final BKExtentId extentId = new BKExtentIdByteArray(lh.getId());
+        LedgerPrivateData lpd = elm.createLedgerMap(extentId);
+        lpd.setWriteLedgerHandle(lh);
+        
+        return extentId;
+    }
+
     /*
      * Opens an inactive ledger. i.e no more writes are going in. If this mode is attempted on an active ledger, it will
      * stop accepting any more writes after this operation.
@@ -173,6 +185,41 @@ public class BKSfdcClient {
         return -1;
     }
 
+    // W-3049495: SDb expects int fragment ids 
+    private int lacToInt(long lac) {
+        if(lac > Integer.MAX_VALUE || lac < 0) {
+            throw new IllegalStateException("LAC is out of the range expected by SDB " + lac);
+        }
+        return (int) lac;
+    }
+    
+    public int ledgerLac(BKExtentId extentId) throws BKException, InterruptedException {
+        LedgerHandle lh = null;
+        long lac = -1;
+
+        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
+        if (lpd != null) {
+            // Check if we have write ledger handle open.
+            lh = lpd.getAnyLedgerHandle();
+            if (lh != null) {
+                lac = lh.getLastAddConfirmed();
+                
+                return lacToInt(lac);
+            }
+        }
+
+        // No ledger cached locally.
+        // Just open/get size and close the extent.
+        lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
+        if (lh != null) {
+            lac = lh.getLastAddConfirmed();
+            lh.close();
+        } else {
+            LOG.error("Ledger for extentId: {} does not exist.", extentId.asLong());
+        }
+        return lacToInt(lac);
+    }
+    
     public void ledgerDeleteAll() throws BKException, InterruptedException {
         BKExtentId[] ledgerIdList = elm.getAllExtentIds();
         for (int i = 0; i < ledgerIdList.length; i++) {
@@ -346,4 +393,5 @@ public class BKSfdcClient {
 
         return cByteBuffer;
     }
+
 }
