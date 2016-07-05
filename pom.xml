@@ -241,8 +241,6 @@
                 <exclude>**/TestBackwardCompat.java</exclude>
                 <exclude>**/TestFencing.java</exclude>
                 <exclude>**/BookieRecoveryTest.java</exclude>
-                <!-- The following test is tracked by W-2961416 -->
-                <exclude>**/AuditorPeriodicCheckTest.java</exclude>
               </excludes>
             </configuration>
 	  </plugin>
