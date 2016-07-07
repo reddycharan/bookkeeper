@@ -218,7 +218,7 @@ BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
 OPTS="$OPTS -Dbookkeeper.root.logger=$BOOKIE_ROOT_LOGGER"
 OPTS="$OPTS -Dbookkeeper.log.dir=$BOOKIE_LOG_DIR"
 OPTS="$OPTS -Dbookkeeper.log.file=$BOOKIE_LOG_FILE"
-OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE"
+OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
 OPTS="$OPTS -Dbookkeeper.log.level=$BOOKIE_LOG_LEVEL"
 OPTS="$OPTS -Dbookkeeper.log.filesize=$BOOKIE_LOG_FILE_SIZE"
 OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"

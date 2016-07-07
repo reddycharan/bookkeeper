@@ -7,7 +7,7 @@
 #   BKPROXY_LOG_FILE          -- name of log file; default: bkproxy.log
 #   BKPROXY_CLASSPATH_PREFIX  -- prepended to CLASSPATH
 #   BKPROXY_CLASSPATH_SUFFIX  -- appended to CLASSPATH
-#   BKPROXY_HEAP_SIZE         -- Java heap max; default: 1000m
+#   BKPROXY_HEAP_SIZE         -- Java heap max; default: 2000m
 #   BKPROXY_OPTS              -- additional Java options
 #   BKPROXY_GC_OPTS           -- Java garbage collection options
 #   BKPROXY_NOEXEC            -- run bkproxy in foreground
@@ -143,6 +143,7 @@ BKPROXY_LOG_FILE=${BKPROXY_LOG_FILE:-"bookkeeper-proxy.log"}
 BKPROXY_LOG_LEVEL=${BKPROXY_LOG_LEVEL:-"INFO"}
 BKPROXY_LOG_FILE_SIZE=${BKPROXY_LOG_FILE_SIZE:-"100MB"}
 BKPROXY_LOG_FILE_COUNT=${BKPROXY_LOG_FILE_COUNT:-"10"}
+BKPROXY_GC_LOGS_FILE="${BKPROXY_LOG_DIR}/proxy-gc-log"
 
 # Setup the generic java options
 #################################
@@ -155,10 +156,10 @@ JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filesize=${BKPROXY_LOG_FILE_SIZE}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filecount=${BKPROXY_LOG_FILE_COUNT}"
 JAVA_OPTS="${JAVA_OPTS} -Djava.net.preferIPv4Stack=true -Duser.timezone=UTC"
 JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
-GC_OPTS="-XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintHeapAtGC -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:+DisableExplicitGC -verbose:gc "
+GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:G1HeapRegionSize=4M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:+PrintGCApplicationStoppedTime -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003 -Xloggc:$BKPROXY_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BKPROXY_LOG_FILE_COUNT -XX:GCLogFileSize=100M" #-XX:+UseLinuxPosixThreadCPUClocks
+DEV_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=75"
+VPOD_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=40"
 JAVA_OPTS="${JAVA_OPTS} ${GC_OPTS}"
-
-JAVA_VPOD_OPTS=" -XX:PermSize=1024m -XX:MaxPermSize=1024m -XX:ParGCCardsPerStrideChunk=32768 -XX:InitialCodeCacheSize=128m -XX:ReservedCodeCacheSize=128m -Xss296k -XX:NewSize=4G -XX:MaxNewSize=4G -XX:MaxTenuringThreshold=2 -XX:+UnlockDiagnosticVMOptions -XX:+UseCMSInitiatingOccupancyOnly -XX:+CMSClassUnloadingEnabled -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:CMSInitiatingPermOccupancyFraction=80 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSEdenChunksRecordAlways -XX:+ParallelRefProcEnabled -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseTLAB -XX:+UseCompressedOops -XX:-UseBiasedLocking -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003" #-XX:+UseLinuxPosixThreadCPUClocks
 
 #####################
 # Parse arguments
@@ -166,14 +167,15 @@ JAVA_VPOD_OPTS=" -XX:PermSize=1024m -XX:MaxPermSize=1024m -XX:ParGCCardsPerStrid
 # Determine command
 case $1 in
    ${START_COMMAND})
-     JAVA_HEAP_MAX=${BKPROXY_HEAPSIZE:-"1000"}
-     JAVA_HEAP_MAX="-Xmx${JAVA_HEAP_MAX}m"
+     JAVA_HEAP_SIZE=${BKPROXY_HEAPSIZE:-"2000"}
+     JAVA_HEAP_MAX="-Xms${JAVA_HEAP_SIZE}m -Xmx${JAVA_HEAP_SIZE}m"
+     JAVA_OPTS="${JAVA_OPTS} ${DEV_SPECIFIC_GC_OPTS}"
      MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
      ;;
    ${VPOD_START_COMMAND})
-     JAVA_HEAP_MAX=${BKPROXY_HEAPSIZE:-"6000"}
-     JAVA_HEAP_MAX="-Xms${JAVA_HEAP_MAX}m -Xmx${JAVA_HEAP_MAX}m"
-     JAVA_OPTS="${JAVA_OPTS} ${JAVA_VPOD_OPTS}"
+     JAVA_HEAP_SIZE=${BKPROXY_HEAPSIZE:-"6000"}
+     JAVA_HEAP_MAX="-Xms${JAVA_HEAP_SIZE}m -Xmx${JAVA_HEAP_SIZE}m"
+     JAVA_OPTS="${JAVA_OPTS} ${VPOD_SPECIFIC_GC_OPTS}"
      MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
      ;;
    ${CLASSPATH_COMMAND})
