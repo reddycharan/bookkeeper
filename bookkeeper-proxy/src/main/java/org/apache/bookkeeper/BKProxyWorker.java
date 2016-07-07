@@ -92,13 +92,13 @@ class BKProxyWorker implements Runnable {
 		}
 
 		public void markSuccess() {
-			osl.registerSuccessfulEvent(MathUtils.nowInNano() - this.startTime,
-					TimeUnit.MILLISECONDS);
+			osl.registerSuccessfulEvent(MathUtils.elapsedNanos(this.startTime),
+					TimeUnit.NANOSECONDS);
 		}
 
 		public void markFailure() {
-			osl.registerFailedEvent(MathUtils.nowInNano() - this.startTime,
-					TimeUnit.MILLISECONDS);
+			osl.registerFailedEvent(MathUtils.elapsedNanos(this.startTime),
+					TimeUnit.NANOSECONDS);
 		}
 
 	}
