@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
-
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BKException.BKLedgerClosedException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -45,6 +44,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * Testing ledger write entry cases
@@ -223,7 +224,7 @@ public class BookieWriteLedgerTest extends
     @Test(timeout = 60000)
     public void testLedgerCreateWithCustomMetadata() throws Exception {
         // Create a ledger
-        long ledgerId = 0x123456;
+        long ledgerId = 123456;
         int maxLedgers = 10;
         for (int i = 0; i < maxLedgers; i++) {
             Map<String, byte[]> inputCustomMetadataMap = new HashMap<String, byte[]>();
@@ -255,7 +256,7 @@ public class BookieWriteLedgerTest extends
             lh.close();
 
             // now reopen the ledger; this should fetch all the metadata stored on zk
-            // and the customData written and read should match
+            // and the customMetadata written and read should match
             lh = bkc.openLedger(ledgerId, digestType, ledgerPassword);
             Map<String, byte[]> outputCustomMetadataMap = lh.getCustomMetadata();
             assertTrue("Can't retrieve proper Custom Data",

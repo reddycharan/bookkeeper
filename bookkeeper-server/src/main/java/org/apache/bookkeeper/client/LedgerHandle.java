@@ -215,9 +215,9 @@ public class LedgerHandle implements AutoCloseable {
     }
 
     /**
-     * Get this ledger's customMetadata.
+     * Get this ledger's customMetadata map.
      *
-     * @return map containing user provided customMetaData.
+     * @return map containing user provided customMetadata.
      */
     public Map<String, byte[]> getCustomMetadata() {
         return metadata.getCustomMetadata();
