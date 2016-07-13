@@ -235,6 +235,7 @@ public class GarbageCollectorThread extends BookieThread {
         this.totalEntryLogSize = 0L;
         this.reclaimedSpaceViaCompaction = 0L;
         this.totalReclaimedSpace = 0L;
+        this.numActiveEntryLogs = 0;
         this.minorCompactionCounter = statsLogger.getCounter(GC_MINOR_COMPACTION_COUNT);
         this.majorCompactionCounter = statsLogger.getCounter(GC_MAJOR_COMPACTION_COUNT);
         this.gcThreadRuntime = statsLogger.getOpStatsLogger(GC_THREAD_RUNTIME);
