@@ -2,13 +2,13 @@ package org.apache.bookkeeper;
 
 public class LedgerOpenReadReqBKPOperation extends BKPOperationExtension {
 
-    public LedgerOpenReadReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
-            byte responseType, byte expectedReturnStatus) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+    public LedgerOpenReadReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType,
+            byte[] extentId, byte responseType, byte expectedReturnStatus) {
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         // TODO Auto-generated constructor stub
     }
 
-    public static LedgerOpenReadReqBKPOperation createLedgerOpenReadReqBKPOperation(String operationDefinition) {
+    public static LedgerOpenReadReqBKPOperation createLedgerOpenReadReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerOpenReadReq) {
@@ -21,7 +21,7 @@ public class LedgerOpenReadReqBKPOperation extends BKPOperationExtension {
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
 
-        LedgerOpenReadReqBKPOperation lorOperation = new LedgerOpenReadReqBKPOperation(timeSlot, threadId, requestType,
+        LedgerOpenReadReqBKPOperation lorOperation = new LedgerOpenReadReqBKPOperation(protocolVersion, timeSlot, threadId, requestType,
                 extentId, BKPConstants.LedgerOpenReadResp, expectedReturnStatus);
         return lorOperation;
     }

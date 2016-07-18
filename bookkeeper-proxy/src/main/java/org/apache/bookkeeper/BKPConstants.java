@@ -62,6 +62,7 @@ public final class BKPConstants {
     public static final byte SF_ErrorServerQuorum = 26;
     public static final byte SF_ErrorNotFoundClosed = 27;
     public static final byte SF_ErrorInProgress = 28;
+    public static final byte SF_ErrorUnknownVersion = 29;
 
     // Defines
     public static final int EXTENTID_SIZE = 16;
@@ -72,6 +73,8 @@ public final class BKPConstants {
     public static final int ASYNC_STAT_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
+    public static final short SFS_CURRENT_VERSION = 1;
+    public static final short LEDGER_LIST_BATCH_SIZE = 100;
 
     // Configuration values
     public static final long INFINITY = -1;
@@ -114,6 +117,42 @@ public final class BKPConstants {
             return BKPConstants.SF_ErrorExist;
         default:
             return BKPConstants.SF_ServerInternalError;
+        }
+    }
+
+    static byte getRespId(byte reqId) {
+        switch (reqId) {
+        case LedgerStatReq:
+            return LedgerStatResp;
+        case LedgerDeleteReq:
+            return LedgerDeleteResp;
+        case LedgerCreateReq:
+            return LedgerCreateResp;
+        case LedgerWriteCloseReq:
+            return LedgerWriteCloseResp;
+        case LedgerOpenRecoverReq:
+            return LedgerOpenRecoverResp;
+        case LedgerOpenReadReq:
+            return LedgerOpenReadResp;
+        case LedgerWriteEntryReq:
+            return LedgerWriteEntryResp;
+        case LedgerReadEntryReq:
+            return LedgerReadEntryResp;
+        case ReservedForFutureReq:
+            return ReservedForFutureResp;
+        case LedgerReadCloseReq:
+            return LedgerReadCloseResp;
+        case LedgerListGetReq:
+            return LedgerListGetResp;
+        case LedgerDeleteAllReq:
+            return LedgerDeleteAllResp;
+        case LedgerAsyncWriteEntryReq:
+            return LedgerAsyncWriteEntryResp;
+        case LedgerAsyncWriteStatusReq:
+            return LedgerAsyncWriteStatusResp;
+        case InvalidReq:
+        default:
+            return InvalidResp;
         }
     }
 

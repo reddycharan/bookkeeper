@@ -9,9 +9,9 @@ public class LedgerReadEntryReqBKPOperation extends BKPOperationExtension {
     private int size;
     private int expectedSize;
 
-    public LedgerReadEntryReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
-            int fragmentID, int size, byte responseType, byte expectedReturnStatus, int expectedSize) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+    public LedgerReadEntryReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType,
+            byte[] extentId, int fragmentID, int size, byte responseType, byte expectedReturnStatus, int expectedSize){
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.fragmentID = fragmentID;
         this.size = size;
         this.expectedSize = expectedSize;
@@ -29,7 +29,7 @@ public class LedgerReadEntryReqBKPOperation extends BKPOperationExtension {
         return expectedSize;
     }
 
-    public static LedgerReadEntryReqBKPOperation createLedgerReadEntryReqBKPOperation(String operationDefinition) {
+    public static LedgerReadEntryReqBKPOperation createLedgerReadEntryReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerReadEntryReq) {
@@ -46,7 +46,8 @@ public class LedgerReadEntryReqBKPOperation extends BKPOperationExtension {
         if (expectedReturnStatus == BKPConstants.SF_OK) {
             expectedSize = Integer.valueOf(operationParameters[7]);
         }
-        LedgerReadEntryReqBKPOperation lreOperation = new LedgerReadEntryReqBKPOperation(timeSlot, threadId,
+
+        LedgerReadEntryReqBKPOperation lreOperation = new LedgerReadEntryReqBKPOperation(protocolVersion, timeSlot, threadId,
                 requestType, extentId, fragmentID, size, BKPConstants.LedgerReadEntryResp, expectedReturnStatus,
                 expectedSize);
         return lreOperation;

@@ -26,10 +26,13 @@ import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Random;
+import java.util.Map;
+import java.util.UUID;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
@@ -212,6 +215,57 @@ public class BookieWriteLedgerTest extends
     }
 
     /**
+     * Verify the functionality of Ledger create which accepts customMetadata as input.
+     * Also verifies that the data written is read back properly.
+     *
+     * @throws Exception
+     */
+    @Test(timeout = 60000)
+    public void testLedgerCreateWithCustomMetadata() throws Exception {
+        // Create a ledger
+        long ledgerId = 0x123456;
+        int maxLedgers = 10;
+        for (int i = 0; i < maxLedgers; i++) {
+            Map<String, byte[]> inputCustomMetadataMap = new HashMap<String, byte[]>();
+            ByteBuffer entry = ByteBuffer.allocate(4);
+            entry.putInt(rng.nextInt(maxInt));
+            entry.position(0);
+
+            // each ledger has different number of key, value pairs.
+            for (int j = 0; j < i; j++) {
+                inputCustomMetadataMap.put("key" + j, UUID.randomUUID().toString().getBytes());
+            }
+
+            if (i < maxLedgers/3) {
+                // 0 to 2 test with createLedger interface
+                lh = bkc.createLedger(5, 3, 2, digestType, ledgerPassword, inputCustomMetadataMap);
+                ledgerId = lh.getId();
+                lh.addEntry(entry.array());
+            } else if (i < 2*(maxLedgers/3)){
+                // 3 to 5 test with createLedgerAdv interface
+                lh = bkc.createLedgerAdv(5, 3, 2, digestType, ledgerPassword, inputCustomMetadataMap);
+                ledgerId = lh.getId();
+                lh.addEntry(0, entry.array());
+            } else {
+                // 6 to 9 test with createLedgerAdv interface that accepts ledgerId
+                ledgerId++;
+                lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword, inputCustomMetadataMap);
+                lh.addEntry(0, entry.array());
+            }
+            lh.close();
+
+            // now reopen the ledger; this should fetch all the metadata stored on zk
+            // and the customData written and read should match
+            lh = bkc.openLedger(ledgerId, digestType, ledgerPassword);
+            Map<String, byte[]> outputCustomMetadataMap = lh.getCustomMetadata();
+            assertTrue("Can't retrieve proper Custom Data",
+                       LedgerMetadata.areByteArrayValMapsEqual(inputCustomMetadataMap, outputCustomMetadataMap));
+            lh.close();
+            bkc.deleteLedger(ledgerId);
+        }
+    }
+
+    /**
      * Verify the functionality of Advanced Ledger which accepts ledgerId as input and returns
      * LedgerHandleAdv. LedgerHandleAdv takes entryId for addEntry, and let
      * user manage entryId allocation.
@@ -222,7 +276,7 @@ public class BookieWriteLedgerTest extends
     public void testLedgerCreateAdvWithLedgerId() throws Exception {
         // Create a ledger
         long ledgerId = 0xABCDEF;
-        lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword);
+        lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword, null);
         for (int i = 0; i < numEntriesToWrite; i++) {
             ByteBuffer entry = ByteBuffer.allocate(4);
             entry.putInt(rng.nextInt(maxInt));
@@ -269,7 +323,7 @@ public class BookieWriteLedgerTest extends
     public void testLedgerHandleAdvFunctionality() throws Exception {
         // Create a ledger
         long ledgerId = 0xABCDEF;
-        lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword);
+        lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword, null);
         numEntriesToWrite = 3;
 
         ByteBuffer entry = ByteBuffer.allocate(4);
@@ -362,7 +416,7 @@ public class BookieWriteLedgerTest extends
             }
 
             LOG.info("Iteration: {}  LedgerId: {}", lc, ledgerId);
-            lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword);
+            lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword, null);
             lhArray[lc] = lh;
 
             for (int i = 0; i < numEntriesToWrite; i++) {
@@ -426,7 +480,7 @@ public class BookieWriteLedgerTest extends
             }
 
             LOG.debug("Iteration: {}  LedgerId: {}", lc, ledgerId);
-            lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword);
+            lh = bkc.createLedgerAdv(ledgerId, 5, 3, 2, digestType, ledgerPassword, null);
             lhArray[lc] = lh;
 
             long ledgerLength = 0;

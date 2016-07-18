@@ -26,6 +26,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public static final String NUMOFTHREADS = "NumOfThreads";
     public static final String THREADDETAILS = "ThreadDetails";
     public static final String NUMOFSLOTS = "NumOfSlots";
+    public static final String VERSION = "Version";
     public static final String BKPOPERATION = "BKPOperation";
     public static final String PREOPSLEEP = "PreOpSleep";
     public static final int NUMOFSECSTOWAITFORCOMPLETION = 30;
@@ -140,6 +141,31 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     }
 
     /**
+     * In this testcase we use lower and higher rev protocol versions and make sure that the proxy server is backward compatible and rejects higher
+     * level requests properly.
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void basicVersionCompatibilityTest() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   NUMOFSLOTS + "-3\n"
+                                    // lower rev version should not be accepted
+                                    +   VERSION + "-" + (BKPConstants.SFS_CURRENT_VERSION - 1) + "\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorUnknownVersion+"\n"
+                                    // current version should be accepted
+                                    +   VERSION + "-" + BKPConstants.SFS_CURRENT_VERSION + "\n"
+                                    +   BKPOPERATION + "-1-Thread2-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // higher version should be rejected
+                                    +   VERSION + "-" + (BKPConstants.SFS_CURRENT_VERSION + 1) + "\n"
+                                    +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorUnknownVersion+"\n";
+        executeTestcase(testDefinition);
+    }
+
+    /**
      * In this testcase Ledger is created, opened and closed for write and read.
      * Then LedgerDeleteAll is called. It is called twice to make sure it is ok
      * to call even though it is already deleted all.
@@ -184,6 +210,46 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext1-\n";
+        executeTestcase(testDefinition);
+    }
+
+    /**
+     * In this test case we create 201 ledgers and close them(so that ledgerMetadata isn't cached).
+     * Then we retrieve the list using creatorId via LedgerListGetReq. It sends the response in batches of 100.
+     * We should get the response in 3 batches: the first 2 containing 100 and the last batch with 1.
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void multiBatchLedgerListGetRespTest() throws IOException, InterruptedException {
+        StringBuilder sb1 = new StringBuilder();
+        StringBuilder sb2 = new StringBuilder();
+        int slot = 0;
+        int numLedgers = 2*BKPConstants.LEDGER_LIST_BATCH_SIZE + 1;
+        for (int i = 0; i < numLedgers; i++) {
+            sb1.append(BKPOPERATION).append("-").append(slot++).append("-Thread1-").append(BKPConstants.LedgerCreateReq)
+                    .append("-ext").append(i).append("-").append(BKPConstants.SF_OK).append("\n");
+            sb1.append(BKPOPERATION).append("-").append(slot++).append("-Thread1-")
+                    .append(BKPConstants.LedgerWriteCloseReq).append("-ext").append(i).append("-")
+                    .append(BKPConstants.SF_OK).append("\n");
+            if (i == 0) {
+                sb2.append("-ext").append(i);
+            } else {
+                sb2.append(":ext").append(i);
+            }
+        }
+        sb2.append("-\n");
+        String opsStrings = sb1.toString();
+        String expectedSet = sb2.toString();
+
+        int numSlots = slot + 1;
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-1\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   NUMOFSLOTS + "-" + numSlots + "\n"
+                                    +   opsStrings
+                                    +   BKPOPERATION + "-" + slot + "-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+ expectedSet;
         executeTestcase(testDefinition);
     }
 
@@ -1283,6 +1349,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public void parseTestDefinition(String testDefinition) throws IOException, NumberFormatException,
             InterruptedException {
         int preOpSleepMSecs = 0;
+        short protocolVersion = BKPConstants.SFS_CURRENT_VERSION;
         String[] testDefinitionDetails = testDefinition.split(NEWLINE);
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         for (int i = 0; i < testDefinitionDetails.length; i++) {
@@ -1303,14 +1370,18 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
             case PREOPSLEEP:
                 preOpSleepMSecs = Integer.valueOf(metadataDetails[1]);
                 break;
+            case VERSION:
+                protocolVersion = Short.valueOf(metadataDetails[1]);
+                break;
             case BKPOPERATION:
                 String operationDefinition = testDefinitionDetails[i].substring(testDefinitionDetails[i]
                         .indexOf(SPLITREGEX) + 1);
-                Operation operation = AbstractOperation.build(operationDefinition, this);
+                Operation operation = AbstractOperation.build(protocolVersion, operationDefinition, this);
                 if (preOpSleepMSecs > 0) {
                     operation.setPrePerformSleepMsecs(preOpSleepMSecs);
                     preOpSleepMSecs = 0;
                 }
+
                 currentTestScenario.addOperation(operation.getTimeSlot(), operation);
                 break;
             }

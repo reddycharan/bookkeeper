@@ -14,9 +14,9 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
     private HashSet<ByteArrayWrapper> expectedExtentsSet;
     private int expectedNoOfExtents;
 
-    public LedgerListGetReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
-            byte responseType, byte expectedReturnStatus, HashSet<ByteArrayWrapper> expectedExtentsSet) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+    public LedgerListGetReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType,
+         byte[] extentId, byte responseType, byte expectedReturnStatus, HashSet<ByteArrayWrapper> expectedExtentsSet) {
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.expectedExtentsSet = expectedExtentsSet;
         expectedNoOfExtents = expectedExtentsSet.size();
     }
@@ -29,7 +29,7 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
         return expectedNoOfExtents;
     }
 
-    public static LedgerListGetReqBKPOperation createLedgerListGetReqBKPOperation(String operationDefinition) {
+    public static LedgerListGetReqBKPOperation createLedgerListGetReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerListGetReq) {
@@ -48,17 +48,28 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
                     TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(expectedExtent)));
         }
 
-        LedgerListGetReqBKPOperation llgOperation = new LedgerListGetReqBKPOperation(timeSlot, threadId, requestType,
+        LedgerListGetReqBKPOperation llgOperation = new LedgerListGetReqBKPOperation(protocolVersion, timeSlot, threadId, requestType,
                 extentId, BKPConstants.LedgerListGetResp, expectedReturnStatus, expectedExtentsSet);
         return llgOperation;
     }
 
     @Override
     public void receivePayloadAndVerify(SocketChannel clientSocketChannel) throws OperationException, IOException {
-        if (getExpectedReturnStatus() == BKPConstants.SF_OK) {
-            getIntFromResponseAndVerify(clientSocketChannel, expectedNoOfExtents, "ExpectedNoOfExtents");
-            HashSet<ByteArrayWrapper> actualExtentsSet = new HashSet<ByteArrayWrapper>();
-            for (int i = 0; i < expectedNoOfExtents; i++) {
+        HashSet<ByteArrayWrapper> actualExtentsSet = new HashSet<ByteArrayWrapper>();
+        int expectedThisBatch = 0, numRemaining = expectedNoOfExtents;
+
+        if (getExpectedReturnStatus() != BKPConstants.SF_OK) {
+            return;
+        }
+
+        while (numRemaining > 0) {
+            if (numRemaining < BKPConstants.LEDGER_LIST_BATCH_SIZE) {
+                expectedThisBatch = numRemaining;
+            } else {
+                expectedThisBatch = BKPConstants.LEDGER_LIST_BATCH_SIZE;
+            }
+            getIntFromResponseAndVerify(clientSocketChannel, expectedThisBatch, "ExpectedNoOfExtents");
+            for (int i = 0; i < expectedThisBatch; i++) {
                 ByteBuffer nextExtent = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
                 nextExtent.order(ByteOrder.nativeOrder());
                 while (nextExtent.hasRemaining()) {
@@ -68,12 +79,21 @@ public class LedgerListGetReqBKPOperation extends BKPOperationExtension {
                 byte[] extentArray = nextExtent.array();
                 actualExtentsSet.add(new ByteArrayWrapper(extentArray));
             }
-            if (!expectedExtentsSet.containsAll(actualExtentsSet)) {
-                throw new OperationException(String.format(
-                        "Operation at Timeslot: %d in ThreadId: %s has failed because of non-matching extents. "
-                                + "Expected NoOfExtentIds: %d, Actual NoOfExtentIds: %d",
-                        getTimeSlot(), getThreadId(), expectedNoOfExtents, actualExtentsSet.size()));
-            }
+            numRemaining -= expectedThisBatch;
+
+            // Receive the next response packet
+            receiveResponseAndVerify(clientSocketChannel);
+        }
+
+        // To indicate the end of transmission the server sends a packet
+        // with 0 entries read that as well
+        getIntFromResponseAndVerify(clientSocketChannel, 0, "ExpectedNoOfExtents");
+
+        if (!expectedExtentsSet.containsAll(actualExtentsSet)) {
+            throw new OperationException(String.format(
+                    "Operation at Timeslot: %d in ThreadId: %s has failed because of non-matching extents. "
+                            + "Expected NoOfExtentIds: %d, Actual NoOfExtentIds: %d",
+                    getTimeSlot(), getThreadId(), expectedNoOfExtents, actualExtentsSet.size()));
         }
     }
 }

@@ -7,15 +7,16 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 public abstract class BKPOperation extends AbstractOperation {
-
+    private short protocolVersion;
     private byte requestType;
     private byte responseType;
     private byte expectedReturnStatus;
     private byte[] extentId;    
-    public static final byte[] pad = new byte[7];
+    public static final byte[] pad = new byte[5];
     
-    public BKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId, byte responseType,
-            byte expectedReturnStatus) {
+    public BKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
+            byte responseType, byte expectedReturnStatus) {
+        this.protocolVersion = protocolVersion;
         this.timeSlot = timeSlot;
         this.threadId = threadId;
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
@@ -44,43 +45,43 @@ public abstract class BKPOperation extends AbstractOperation {
         return extentId;
     }
 
-    public static BKPOperation build(String operationDefinition) {
+    public static BKPOperation build(final short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         BKPOperation bkpOperation = null;
         switch (requestType) {
         case BKPConstants.LedgerStatReq:
-            bkpOperation = LedgerStatReqBKPOperation.createLedgerStatReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerStatReqBKPOperation.createLedgerStatReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerDeleteReq:
-            bkpOperation = LedgerDeleteReqBKPOperation.createLedgerDeleteReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerDeleteReqBKPOperation.createLedgerDeleteReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerCreateReq:
-            bkpOperation = LedgerCreateReqBKPOperation.createLedgerCreateReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerCreateReqBKPOperation.createLedgerCreateReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerWriteCloseReq:
-            bkpOperation = LedgerWriteCloseReqBKPOperation.createLedgerWriteCloseReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerWriteCloseReqBKPOperation.createLedgerWriteCloseReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerOpenRecoverReq:
-            bkpOperation = LedgerOpenRecoverReqBKPOperation.createLedgerOpenRecoverReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerOpenRecoverReqBKPOperation.createLedgerOpenRecoverReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerOpenReadReq:
-            bkpOperation = LedgerOpenReadReqBKPOperation.createLedgerOpenReadReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerOpenReadReqBKPOperation.createLedgerOpenReadReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerWriteEntryReq:
-            bkpOperation = LedgerWriteEntryReqBKPOperation.createLedgerWriteEntryReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerWriteEntryReqBKPOperation.createLedgerWriteEntryReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerReadEntryReq:
-            bkpOperation = LedgerReadEntryReqBKPOperation.createLedgerReadEntryReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerReadEntryReqBKPOperation.createLedgerReadEntryReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerReadCloseReq:
-            bkpOperation = LedgerReadCloseReqBKPOperation.createLedgerReadCloseReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerReadCloseReqBKPOperation.createLedgerReadCloseReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerListGetReq:
-            bkpOperation = LedgerListGetReqBKPOperation.createLedgerListGetReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerListGetReqBKPOperation.createLedgerListGetReqBKPOperation(protocolVersion, operationDefinition);
             break;
         case BKPConstants.LedgerDeleteAllReq:
-            bkpOperation = LedgerDeleteAllReqBKPOperation.createLedgerDeleteAllReqBKPOperation(operationDefinition);
+            bkpOperation = LedgerDeleteAllReqBKPOperation.createLedgerDeleteAllReqBKPOperation(protocolVersion, operationDefinition);
             break;
         }
         return bkpOperation;
@@ -89,6 +90,7 @@ public abstract class BKPOperation extends AbstractOperation {
     public void sendRequest(SocketChannel clientSocketChannel) throws IOException {
         ByteBuffer req = ByteBuffer.allocate(BKPConstants.GENERIC_REQ_SIZE);
         req.order(ByteOrder.nativeOrder());
+        req.putShort(protocolVersion);
         req.put(getRequestType());
         req.put(getExtentId());
         req.put(pad);

@@ -2,13 +2,13 @@ package org.apache.bookkeeper;
 
 public class LedgerDeleteReqBKPOperation extends BKPOperationExtension {
 
-    public LedgerDeleteReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
+    public LedgerDeleteReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
             byte responseType, byte expectedReturnStatus) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         // TODO Auto-generated constructor stub
     }
 
-    public static LedgerDeleteReqBKPOperation createLedgerDeleteReqBKPOperation(String operationDefinition) {
+    public static LedgerDeleteReqBKPOperation createLedgerDeleteReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerDeleteReq) {
@@ -20,8 +20,8 @@ public class LedgerDeleteReqBKPOperation extends BKPOperationExtension {
         byte[] extentId = TestScenarioState.getCurrentTestScenarioState().getExtentIDBytes(operationParameters[3]);
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
-        LedgerDeleteReqBKPOperation ldoperation = new LedgerDeleteReqBKPOperation(timeSlot, threadId, requestType,
-                extentId, BKPConstants.LedgerDeleteResp, expectedReturnStatus);
+        LedgerDeleteReqBKPOperation ldoperation = new LedgerDeleteReqBKPOperation(protocolVersion, timeSlot, threadId, requestType,
+               extentId, BKPConstants.LedgerDeleteResp, expectedReturnStatus);
         return ldoperation;
     }
 

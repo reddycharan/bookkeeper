@@ -5,9 +5,9 @@ import java.nio.channels.SocketChannel;
 
 public abstract class BKPOperationExtension extends BKPOperation {
 
-    public BKPOperationExtension(int timeSlot, String threadId, byte requestType, byte[] extentId, byte responseType,
-            byte expectedReturnStatus) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+    public BKPOperationExtension(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
+            byte responseType, byte expectedReturnStatus) {
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
     }
 
     @Override

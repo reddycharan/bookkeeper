@@ -50,7 +50,7 @@ public abstract class AbstractOperation implements Operation {
         }
     }
 
-    public static Operation build(String operationDefinition, BKProxyTestCase bkProxyTestCase) {
+    public static Operation build(short protocolVersion, String operationDefinition, BKProxyTestCase bkProxyTestCase) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         Operation operation = null;
@@ -62,7 +62,7 @@ public abstract class AbstractOperation implements Operation {
             operation = ZkServerPauseOperation.createZkServerPauseOperation(operationDefinition, bkProxyTestCase);
             break;
         default:
-            operation = BKPOperation.build(operationDefinition);
+            operation = BKPOperation.build(protocolVersion, operationDefinition);
             break;
         }
         return operation;

@@ -14,10 +14,10 @@ public class LedgerWriteEntryReqBKPOperation extends BKPOperationExtension {
     private boolean expectingResponse;
     public static final int WAITTIMEBEFORERESPONSECHECKINSECS = 2;
 
-    public LedgerWriteEntryReqBKPOperation(int timeSlot, String threadId, byte requestType, boolean newRequest,
+    public LedgerWriteEntryReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, boolean newRequest,
             boolean expectingResponse, byte[] extentId, int fragmentID, int size, byte responseType,
             byte expectedReturnStatus) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.newRequest = newRequest;
         this.expectingResponse = expectingResponse;
         this.fragmentID = fragmentID;
@@ -32,7 +32,7 @@ public class LedgerWriteEntryReqBKPOperation extends BKPOperationExtension {
         return size;
     }
 
-    public static LedgerWriteEntryReqBKPOperation createLedgerWriteEntryReqBKPOperation(String operationDefinition) {
+    public static LedgerWriteEntryReqBKPOperation createLedgerWriteEntryReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerWriteEntryReq) {
@@ -49,7 +49,7 @@ public class LedgerWriteEntryReqBKPOperation extends BKPOperationExtension {
         int size = Integer.valueOf(operationParameters[7]);
         byte expectedReturnStatus = Byte.valueOf(operationParameters[8]);
 
-        LedgerWriteEntryReqBKPOperation lweOperation = new LedgerWriteEntryReqBKPOperation(timeSlot, threadId,
+        LedgerWriteEntryReqBKPOperation lweOperation = new LedgerWriteEntryReqBKPOperation(protocolVersion, timeSlot, threadId,
                 requestType, newRequest, expectingResponse, extentId, fragmentID, size,
                 BKPConstants.LedgerWriteEntryResp, expectedReturnStatus);
 

@@ -7,9 +7,9 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
 
     private long expectedSize;
 
-    public LedgerStatReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
+    public LedgerStatReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
             byte responseType, byte expectedReturnStatus, long expectedSize) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.expectedSize = expectedSize;
     }
 
@@ -17,7 +17,7 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
         return expectedSize;
     }
 
-    public static LedgerStatReqBKPOperation createLedgerStatReqBKPOperation(String operationDefinition) {
+    public static LedgerStatReqBKPOperation createLedgerStatReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerStatReq) {
@@ -31,8 +31,8 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
         long expectedSize = Long.valueOf(operationParameters[5]);
 
-        LedgerStatReqBKPOperation lsOperation = new LedgerStatReqBKPOperation(timeSlot, threadId, requestType, extentId,
-                BKPConstants.LedgerStatResp, expectedReturnStatus, expectedSize);
+        LedgerStatReqBKPOperation lsOperation = new LedgerStatReqBKPOperation(protocolVersion, timeSlot, threadId, requestType,
+                extentId, BKPConstants.LedgerStatResp, expectedReturnStatus, expectedSize);
         return lsOperation;
     }
 

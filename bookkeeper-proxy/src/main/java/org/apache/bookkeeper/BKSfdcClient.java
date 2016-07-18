@@ -57,8 +57,7 @@ public class BKSfdcClient {
         }
 
         LedgerHandle lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize,
-                digestType, password.getBytes());
-
+                digestType, password.getBytes(), null);
         final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh);
         elm.addWriteLedger(extentId, lpd);
     }

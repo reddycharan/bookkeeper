@@ -2,12 +2,12 @@ package org.apache.bookkeeper;
 
 public class LedgerCreateReqBKPOperation extends BKPOperationExtension {
 
-    public LedgerCreateReqBKPOperation(int timeSlot, String threadId, byte requestType, byte[] extentId,
+    public LedgerCreateReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
             byte responseType, byte expectedReturnStatus) {
-        super(timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
+        super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
     }
 
-    public static LedgerCreateReqBKPOperation createLedgerCreateReqBKPOperation(String operationDefinition) {
+    public static LedgerCreateReqBKPOperation createLedgerCreateReqBKPOperation(short protocolVersion, String operationDefinition) {
         String[] operationParameters = operationDefinition.split(SPLITREGEX);
         byte requestType = Byte.valueOf(operationParameters[2]);
         if (requestType != BKPConstants.LedgerCreateReq) {
@@ -20,8 +20,8 @@ public class LedgerCreateReqBKPOperation extends BKPOperationExtension {
 
         byte expectedReturnStatus = Byte.valueOf(operationParameters[4]);
 
-        LedgerCreateReqBKPOperation lcrOperation = new LedgerCreateReqBKPOperation(timeSlot, threadId, requestType,
-                extentId, BKPConstants.LedgerCreateResp, expectedReturnStatus);
+        LedgerCreateReqBKPOperation lcrOperation = new LedgerCreateReqBKPOperation(protocolVersion, timeSlot, threadId, requestType,
+                 extentId, BKPConstants.LedgerCreateResp, expectedReturnStatus);
 
         return lcrOperation;
     }

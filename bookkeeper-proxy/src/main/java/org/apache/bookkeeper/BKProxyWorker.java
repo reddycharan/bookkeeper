@@ -7,6 +7,10 @@ import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -51,59 +55,56 @@ class BKProxyWorker implements Runnable {
     private final LedgerIdFormatter ledgerIdFormatter;
     private final BKExtentIdFactory extentIdFactory;
 
-	private abstract class OpStatEntry {
+    private abstract class OpStatEntry {
 
-		protected OpStatsLogger osl;
+        protected OpStatsLogger osl;
 
-		public OpStatEntry(OpStatsLogger osl) {
-			this.osl = osl;
-		}
+        public OpStatEntry(OpStatsLogger osl) {
+            this.osl = osl;
+        }
 
-		abstract void markSuccess();
+        abstract void markSuccess();
 
-		abstract void markFailure();
+        abstract void markFailure();
 
-	}
+    }
 
-	private class OpStatEntryValue extends OpStatEntry {
-		
-		private long value;
-		
-		public OpStatEntryValue(OpStatsLogger osl, long value) {
-			super(osl);
-			this.value = value;
-		}
+    private class OpStatEntryValue extends OpStatEntry {
 
-		public void markSuccess() {
-			osl.registerSuccessfulValue(value);
-		}
+        private long value;
 
-		public void markFailure() {
-			osl.registerFailedValue(value);
-		}
+        public OpStatEntryValue(OpStatsLogger osl, long value) {
+            super(osl);
+            this.value = value;
+        }
 
-	}
+        public void markSuccess() {
+            osl.registerSuccessfulValue(value);
+        }
 
-	private class OpStatEntryTimer extends OpStatEntry {
-		
-		private long startTime;
-		
-		public OpStatEntryTimer(OpStatsLogger osl, long startTime) {
-			super(osl);
-			this.startTime = startTime;
-		}
+        public void markFailure() {
+            osl.registerFailedValue(value);
+        }
 
-		public void markSuccess() {
-			osl.registerSuccessfulEvent(MathUtils.elapsedNanos(this.startTime),
-					TimeUnit.NANOSECONDS);
-		}
+    }
 
-		public void markFailure() {
-			osl.registerFailedEvent(MathUtils.elapsedNanos(this.startTime),
-					TimeUnit.NANOSECONDS);
-		}
+    private class OpStatEntryTimer extends OpStatEntry {
 
-	}
+        private long startTime;
+
+        public OpStatEntryTimer(OpStatsLogger osl, long startTime) {
+            super(osl);
+            this.startTime = startTime;
+        }
+
+        public void markSuccess() {
+            osl.registerSuccessfulEvent(MathUtils.elapsedNanos(this.startTime), TimeUnit.NANOSECONDS);
+        }
+
+        public void markFailure() {
+            osl.registerFailedEvent(MathUtils.elapsedNanos(this.startTime), TimeUnit.NANOSECONDS);
+        }
+    }
 
     //Stats
     private Queue<OpStatEntry> opStatQueue;
@@ -220,17 +221,39 @@ class BKProxyWorker implements Runnable {
         + " respId: " + BKPConstants.getReqRespString(respId)
         + " ledgerId: " + extentId);
     }
-    
+
     private void markStats(boolean isFail) {
-		while (!opStatQueue.isEmpty()) {
-			OpStatEntry osl = opStatQueue.remove();
-			if (isFail) {
-				osl.markFailure();
-			} else {
-				osl.markSuccess();
-			}
-		}
-	}
+        while (!opStatQueue.isEmpty()) {
+            OpStatEntry osl = opStatQueue.remove();
+            if (isFail) {
+                osl.markFailure();
+            } else {
+                osl.markSuccess();
+            }
+        }
+    }
+
+    private void sendExtentIdList(List<Long> extIds, ByteBuffer respBuf, ByteBuffer listBuf) throws IOException {
+        // first send the generic response with the resp type, error code, and length
+        // Client will be ready with a buffer(s) that can hold extIds.size()*BKPConstants.EXTENTID_SIZE bytes.
+        // If the list is empty, we send 0 as the length of the list and the client
+        // will know that it is the end of the list
+        respBuf.clear();
+        respBuf.put(BKPConstants.LedgerListGetResp);
+        respBuf.put(BKPConstants.SF_OK);
+        respBuf.putInt(extIds.size());
+        respBuf.flip();
+        clientChannelWrite(respBuf);
+
+        listBuf.clear();
+        for (Long id : extIds) {
+            listBuf.putLong(0L);
+            listBuf.putLong(id);
+        }
+        listBuf.flip();
+        clientChannelWrite(listBuf);
+        extIds.clear();
+    }
 
     public void run() {
         
@@ -260,18 +283,21 @@ class BKProxyWorker implements Runnable {
                     "BKProxyWorker" + bkProxyWorkerId + ":[" + clientConn + "]:");
             LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
 
+            String reqSpecific = "";
             while (!Thread.interrupted()) {
-				boolean exceptionOccurred = false;
-				long startTime;
+                boolean exceptionOccurred = false;
+                long startTime = MathUtils.nowInNano(); // in case exception happens before reading the request
                 try {
                     req.clear();
                     resp.clear();
                     reqId = BKPConstants.UnInitialized;
                     respId = BKPConstants.UnInitialized;
+                    reqSpecific = "";
 
                     clientChannelRead(req, req.capacity()); // read into buffer.
 
                     req.flip();
+                    short version = req.getShort();
                     reqId = req.get();
                     extentBbuf.clear();
                     req.get(extentBbuf.array());
@@ -279,12 +305,26 @@ class BKProxyWorker implements Runnable {
 
                     LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId),
                         extentId);
+
+                    respId = BKPConstants.getRespId(reqId);
+                    if (version != BKPConstants.SFS_CURRENT_VERSION) {
+                        LOG.error("Exiting BKProxyWorker: " + bkProxyWorkerId
+                                + ". Received request from unsupported client version {}; expecting {}", version,
+                                BKPConstants.SFS_CURRENT_VERSION);
+                        errorCode = BKPConstants.SF_ErrorUnknownVersion;
+                        resp.put(respId);
+                        resp.put(errorCode);
+                        resp.flip();
+                        clientChannelWrite(resp);
+                        break;
+                    }
+
                     //Set time after client channel read. Do it again below if needed after another read and before a ledger operation
                     startTime = MathUtils.nowInNano();
+
                     errorCode = BKPConstants.SF_OK;
                     switch (reqId) {
                     case (BKPConstants.LedgerStatReq): {
-                        respId = BKPConstants.LedgerStatResp;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerStatTimer, startTime));
 
@@ -294,10 +334,10 @@ class BKProxyWorker implements Runnable {
                         } catch (BKException e) {
                             LOG.error("Exception when getting stats for extent {}",
                                        extentId, e);
-							exceptionOccurred = true;
+                            exceptionOccurred = true;
                             errorCode = BKPConstants.convertBKtoSFerror(e.getCode());
                         } catch (Exception e) {
-							exceptionOccurred = true;
+                            exceptionOccurred = true;
                             LOG.error("Exception when getting stats for extent {}",
                                 extentId, e);
                             errorCode = BKPConstants.SF_ServerInternalError;
@@ -313,54 +353,44 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerListGetReq): {
-                        respId = BKPConstants.LedgerListGetResp;
+                        // this response is used only if an exception
+                        // happens in the catch clauses below
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerListGetTimer, startTime));
                         Iterable<Long> iterable = bksc.ledgerList();
+                        List<Long> extentIdList = new ArrayList<Long>();
+                        // To reduce the GC load allocating these here
+                        // instead of inside sendExtentIdList
+                        ByteBuffer respBuf = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
+                        respBuf.order(ByteOrder.nativeOrder());
+                        ByteBuffer listBuf = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE *
+                                                               BKPConstants.LEDGER_LIST_BATCH_SIZE);
 
-                        // Count number of elements in the list.
-                        int listCount = 0;
-                        for (@SuppressWarnings("unused") Long lId : iterable) {
-                            listCount++;
-                        }
-                        resp.put(errorCode);
-                        resp.putInt(listCount);
-                        resp.flip();
-                        // Write the response back to client.
-                        // Client will be ready with a buffer(s)
-                        // that can hold listCount*BKPConstants.EXTENTID_SIZE bytes.
-
-                        clientChannelWrite(resp);
-
-                        // Reiterate through the list to put one extent at a time.
-                        // Please note that we took one snapshot to get the list and
-                        // second snapshot of ZK nodes to actually send it. It is possible
-                        // more extents/ledgers got added or deleted in between and receiver
-                        // is expected to read listCount*BKPConstants.EXTENTID_SIZE bytes.
-                        // Hence we are adopting the following logic:
-                        // - If extents were added after taking the listCount, we send at the most
-                        // listCount number of extents.
-                        // - If extents were deleted after taking the listCount, we send extent#0s.
-
-                        iterable = bksc.ledgerList();
+                        // Iterate over all the ledgers and send them in batches of
+                        // LEDGER_LIST_BATCH_SIZE (100). The last batch may contain
+                        // less than 100. To indicate the end of transmission, send
+                        // a final response with length of 0
+                        int batch = 0;
                         for (Long pId : iterable) {
-                            BKExtentId bExtentId = extentIdFactory.build(pId, this.ledgerIdFormatter);
-                            clientChannelWrite(bExtentId.asByteBuffer());
-                            listCount--;
-                            if (listCount == 0)
-                                break;
+                            if (extentIdList.size() == BKPConstants.LEDGER_LIST_BATCH_SIZE) {
+                                LOG.info(String.format("Sending batch %d of extentIds", batch++));
+                                sendExtentIdList(extentIdList, respBuf, listBuf);
+                            }
+                            extentIdList.add(pId);
+                        }
+                        // send any left over extents in the list
+                        if (extentIdList.size() > 0) {
+                            sendExtentIdList(extentIdList, respBuf, listBuf);
                         }
 
-                        // Handle the case where extents got deleted after taking listCount.
-                        BKExtentId bExtentId = extentIdFactory.build(0L, this.ledgerIdFormatter);
-                        for (int i = 0; i < listCount; i++) {
-                            clientChannelWrite(bExtentId.asByteBuffer());
-                        }
+                        // Since all the data has been sent, send one last
+                        // response packet but indicate that the length is
+                        // 0 (list should be empty now). This indicates end of transmission
+                        sendExtentIdList(extentIdList, respBuf, listBuf);
                         break;
                     }
 
                     case (BKPConstants.LedgerWriteCloseReq): {
-                        respId = BKPConstants.LedgerWriteCloseResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerWriteCloseTimer, startTime));
@@ -373,7 +403,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerOpenReadReq): {
-                        respId = BKPConstants.LedgerOpenReadResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerNonRecoveryReadTimer, startTime));
@@ -385,7 +414,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerOpenRecoverReq): {
-                        respId = BKPConstants.LedgerOpenRecoverResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerRecoveryReadTimer, startTime));
@@ -398,7 +426,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerReadCloseReq): {
-                        respId = BKPConstants.LedgerReadCloseResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerReadCloseTimer, startTime));
@@ -411,7 +438,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerDeleteReq): {
-                        respId = BKPConstants.LedgerDeleteResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerDeletionTimer, startTime));
@@ -424,7 +450,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerDeleteAllReq): {
-                        respId = BKPConstants.LedgerDeleteAllResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerDeleteAllTimer, startTime));
@@ -438,7 +463,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerCreateReq): {
-                        respId = BKPConstants.LedgerCreateResp;
                         errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerCreationTimer, startTime));
@@ -473,8 +497,6 @@ class BKProxyWorker implements Runnable {
 
                     case (BKPConstants.LedgerWriteEntryReq): {
                         ByteBuffer wcByteBuf = cByteBuf;
-                        respId = BKPConstants.LedgerWriteEntryResp;
-
                         errorCode = BKPConstants.SF_OK;
                         int fragmentId;
                         int wSize;
@@ -488,6 +510,7 @@ class BKProxyWorker implements Runnable {
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
 
+                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
                         if (wSize > bkpConfig.getMaxFragSize()) {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
                             LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
@@ -542,6 +565,7 @@ class BKProxyWorker implements Runnable {
                         // allocate buffer to read
                         wcByteBuf = ByteBuffer.allocate(Math.min(wSize, bkpConfig.getMaxFragSize()));
 
+                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
                         if (wSize > bkpConfig.getMaxFragSize()) {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
                             LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
@@ -578,7 +602,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerReadEntryReq): {
-                        respId = BKPConstants.LedgerReadEntryResp;
                         errorCode = BKPConstants.SF_OK;
                         int fragmentId;
                         int bufSize;
@@ -594,6 +617,8 @@ class BKProxyWorker implements Runnable {
 
                         //Exclude the client reads above
                         startTime = MathUtils.nowInNano();
+                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, bufSize);
+
                         // Now get the fragment/entry
                         ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
                         opStatQueue.add(new OpStatEntryTimer(ledgerGetTimer, startTime));
@@ -628,45 +653,56 @@ class BKProxyWorker implements Runnable {
                         clientChannelWrite(resp);
                     }
 
-                    LOG.info("Request: " + BKPConstants.getReqRespString(reqId)
-                        + "Response: " + BKPConstants.getReqRespString(respId)
-                        + "for extentId: {}", extentId);
+                    LOG.info("Req: " + BKPConstants.getReqRespString(reqId)
+                             + reqSpecific
+                             + " Resp: " + BKPConstants.getReqRespString(respId)
+                             + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
+                             + " Error: {} extentId: {}", errorCode, extentId);
                 } catch (BKException e) {
-					exceptionOccurred = true;
-                    LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            extentId);
-                    LOG.error("Exception: ", e);
+                    exceptionOccurred = true;
                     errorCode = BKPConstants.convertBKtoSFerror(((BKException)e).getCode());
+                    LOG.error("Exception on Req: "
+                              + BKPConstants.getReqRespString(reqId)
+                              + reqSpecific
+                              + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
+                              + " Error: {} extentId: {}", errorCode, extentId);
+                    LOG.error("Exception: ", e);
                     resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                 } catch (InterruptedException e) {
-					exceptionOccurred = true;
-                    LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            extentId);
-                    LOG.error("Exception: ", e);
+                    exceptionOccurred = true;
                     errorCode = BKPConstants.SF_ErrorServerInterrupt;
+                    LOG.error("Exception on Req: "
+                              + BKPConstants.getReqRespString(reqId)
+                              + reqSpecific
+                              + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
+                              + " Error: {} extentId: {}", errorCode, extentId);
+                    LOG.error("Exception: ", e);
                     resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
                 } catch (Exception e) {
-					exceptionOccurred = true;
-                    LOG.error("Exception on Request: {}, extentId {}: ", BKPConstants.getReqRespString(reqId),
-                            extentId);
+                    exceptionOccurred = true;
+                    LOG.error("Exception on Req: "
+                            + BKPConstants.getReqRespString(reqId)
+                            + reqSpecific
+                            + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
+                            + " Error: {} extentId: {}", errorCode, extentId);
                     LOG.error("Exception: ", e);
                     resp.put(BKPConstants.SF_ServerInternalError);
                     resp.flip();
                     clientChannelWrite(resp);
                 }
                 finally {
-					markStats(exceptionOccurred);
+                    markStats(exceptionOccurred);
                 }
             }
 
         } catch (IOException e) {
-                LOG.error("Exception in worker processing:", e);
+            LOG.error("Exception in worker processing:", e);
         } finally {
-			proxyWorkerPoolCounter.dec();
+            proxyWorkerPoolCounter.dec();
             try {
                 clientChannel.close();
             } catch (IOException e) {
