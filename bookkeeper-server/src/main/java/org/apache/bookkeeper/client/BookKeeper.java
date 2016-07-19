@@ -258,16 +258,11 @@ public class BookKeeper implements AutoCloseable {
 
         // initialize zookeeper client
         if (zkc == null) {
-            // base time for exponential back-off is set to at least 1sec below; could be higher
-            // if conf.getZkTimeout()/10 > 1sec. If the base back-off time happens to be 1sec, the
-            // retry back-off times will be chosen randomly between 0 to 2secs the first retry,
-            // between 0 to 4sec for the second retry, 0 to 8secs for the third and so on.
             this.zk = ZooKeeperClient.newBuilder()
                     .connectString(conf.getZkServers())
                     .sessionTimeoutMs(conf.getZkTimeout())
-                    .operationRetryPolicy(new BoundExponentialBackoffRetryPolicy(
-                            Math.max(1000, conf.getZkTimeout()/10),
-                            conf.getZkTimeout(), conf.getZkOpRetryCount()))
+                    .operationRetryPolicy(new BoundExponentialBackoffRetryPolicy(conf.getZkTimeout(),
+                            conf.getZkTimeout(), 0))
                     .statsLogger(statsLogger)
                     .build();
             this.ownZKHandle = true;

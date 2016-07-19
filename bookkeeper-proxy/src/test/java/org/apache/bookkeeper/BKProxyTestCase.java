@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
@@ -27,7 +26,6 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     public static final String THREADDETAILS = "ThreadDetails";
     public static final String NUMOFSLOTS = "NumOfSlots";
     public static final String BKPOPERATION = "BKPOperation";
-    public static final String PREOPSLEEP = "PreOpSleep";
     public static final int NUMOFSECSTOWAITFORCOMPLETION = 30;
     private  List<Throwable> currentTestScenarioExceptions;
 
@@ -106,16 +104,6 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         currentScenario.closeAllClientSocketChannels();
         currentScenario.shutDownAllBkProxies();
         TestScenarioState.clearCurrentTestScenarioState();
-    }
-
-    /**
-     * Causes the zk server to sleep for the specified amount of time.
-     * During this time interval zk clients can't communicate with the server.
-     */
-    public void pauseZkServers(int sleepSecs) throws  InterruptedException, IOException {
-        CountDownLatch latch = new CountDownLatch(1);
-        zkUtil.sleepServer(sleepSecs, latch);
-        latch.await();
     }
 
     /**
@@ -1116,55 +1104,6 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
         executeTestcase(testDefinition);
     }
-
-    /**
-     * In this testcase we show how disabling retry of failed zk operations returns SF_ErrorMetaDataServer.
-     * We cause the ledger create op, which talks to zk, to fail by artificially putting the zk server thread to
-     * sleep. Without retires, the ledger create fails.
-     *
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    @Test
-    public void zkClientSessionTimeOutTest() throws IOException, InterruptedException {
-        // with the retries disabled, the ledger create op should fail
-        TestScenarioState.getCurrentTestScenarioState().getCommonBKPConfig().setZkOpRetryCount(0);
-        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   NUMOFTHREADS + "-2\n"
-                                    +   THREADDETAILS + "-Thread1-BKP1\n"
-                                    +   THREADDETAILS + "-Thread2-BKP1\n"
-                                    +   NUMOFSLOTS + "-1\n"
-                                    +   PREOPSLEEP + "-1000\n"
-                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorMetaDataServer+"\n"
-                                    +   BKPOPERATION + "-0-Thread2-"+Operation.ZkServerPauseOpReq+"-10000-"+"\n";
-        executeTestcase(testDefinition);
-    }
-
-    /**
-     * In this testcase we show how enabling retry of failed zk operations is useful. We cause the
-     * ledger create op, which talks to zk, to fail by artificially putting the zk server thread to
-     * sleep.When zk retry is enabled for such operations the ledger create operation succeeds.
-     *
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    @Test
-    public void zkClientSessionTimeOutAndRetryTest() throws IOException, InterruptedException {
-        // with the retries enabled the create op should go through
-        TestScenarioState.getCurrentTestScenarioState().getCommonBKPConfig().setZkOpRetryCount(3);
-        String testDefinition       =   BKPDETAILS + "-BKP1-5555\n"
-                                    +   NUMOFTHREADS + "-2\n"
-                                    +   THREADDETAILS + "-Thread1-BKP1\n"
-                                    +   THREADDETAILS + "-Thread2-BKP1\n"
-                                    +   NUMOFSLOTS + "-3\n"
-                                    +   PREOPSLEEP + "-1000\n"
-                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-0-Thread2-"+Operation.ZkServerPauseOpReq+"-10000-"+"\n"
-                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerListGetReq+"-ext1-"+BKPConstants.SF_OK+"-ext1-\n";
-        executeTestcase(testDefinition);
-    }
-
     public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         parseTestDefinition(testDefinition);
@@ -1218,7 +1157,6 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
 
     public void parseTestDefinition(String testDefinition) throws IOException, NumberFormatException,
             InterruptedException {
-        int preOpSleepMSecs = 0;
         String[] testDefinitionDetails = testDefinition.split(NEWLINE);
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         for (int i = 0; i < testDefinitionDetails.length; i++) {
@@ -1236,17 +1174,10 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
             case NUMOFSLOTS:
                 currentTestScenario.setNumberOfTimeSlots(Integer.valueOf(metadataDetails[1]));
                 break;
-            case PREOPSLEEP:
-                preOpSleepMSecs = Integer.valueOf(metadataDetails[1]);
-                break;
             case BKPOPERATION:
                 String operationDefinition = testDefinitionDetails[i].substring(testDefinitionDetails[i]
                         .indexOf(SPLITREGEX) + 1);
-                Operation operation = AbstractOperation.build(operationDefinition, this);
-                if (preOpSleepMSecs > 0) {
-                    operation.setPrePerformSleepMsecs(preOpSleepMSecs);
-                    preOpSleepMSecs = 0;
-                }
+                Operation operation = AbstractOperation.build(operationDefinition);
                 currentTestScenario.addOperation(operation.getTimeSlot(), operation);
                 break;
             }

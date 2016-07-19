@@ -131,7 +131,6 @@ public abstract class BKPOperation extends AbstractOperation {
     @Override
     public void perform(Object ctx) {
         try {
-            doPrePerformSleep();
             SocketChannel clientSocketChannel = (SocketChannel) ctx;
             sendRequest(clientSocketChannel);
             sendPayload(clientSocketChannel);

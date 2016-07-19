@@ -19,7 +19,6 @@ public final class BKPConstants {
     public static final byte LedgerReadCloseReq = 10;
     public static final byte LedgerListGetReq = 11;
     public static final byte LedgerDeleteAllReq = 12;
-    public static final byte LedgerFirstUnusedReq = 13; // first unused request; please keep it up to date.
     public static final byte InvalidReq = 25;
 
     // Responses
