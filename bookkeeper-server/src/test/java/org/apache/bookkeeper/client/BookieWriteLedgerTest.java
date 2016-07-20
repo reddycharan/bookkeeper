@@ -53,7 +53,7 @@ public class BookieWriteLedgerTest extends
             .getLogger(BookieWriteLedgerTest.class);
 
     byte[] ledgerPassword = "aaa".getBytes();
-    LedgerHandle lh, lh2;
+    LedgerHandle lh, lh2, lh3;
     Enumeration<LedgerEntry> ls;
 
     // test related variables
@@ -137,6 +137,35 @@ public class BookieWriteLedgerTest extends
         }
 
         readEntries(lh, entries1);
+        lh.close();
+    }
+    /**
+     * Verify the functionality Ledgers with different digests
+     *
+     * @throws Exception
+     */
+    @Test(timeout = 60000)
+    public void testLedgerDigestTest() throws Exception {
+        // Create a ledger
+        lh = bkc.createLedger(5, 3, 2, BookKeeper.DigestType.CRC32, ledgerPassword);
+        lh2 = bkc.createLedger(5, 3, 2, BookKeeper.DigestType.MAC, ledgerPassword);
+        lh3 = bkc.createLedger(5, 3, 2, BookKeeper.DigestType.DUMMY, ledgerPassword);
+
+        for (int i = 0; i < numEntriesToWrite; i++) {
+            ByteBuffer entry = ByteBuffer.allocate(4);
+            entry.putInt(rng.nextInt(maxInt));
+            entry.position(0);
+
+            entries1.add(entry.array());
+            lh.addEntry(entry.array());
+            lh2.addEntry(entry.array());
+            lh3.addEntry(entry.array());
+        }
+
+        readEntries(lh, entries1);
+        readEntries(lh2, entries1);
+        readEntries(lh3, entries1);
+
         lh.close();
     }
 

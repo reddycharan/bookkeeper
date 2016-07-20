@@ -50,11 +50,12 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     protected static final String ACK_QUORUM_SIZE_STR = "ackQuorumSize";
     protected static final int ACK_QUORUM_SIZE_DEF = 2;
 
-    private static final String MAC = "MAC";
-    private static final String CRC32 = "CRC32";
+    private static final String DIGEST_MAC = "MAC";
+    private static final String DIGEST_CRC32 = "CRC32";
+    private static final String DIGEST_DUMMY = "DUMMY";
 
     protected static final String DIGEST_TYPE_STR = "digestType";
-    protected static final String DIGEST_TYPE_DEF = CRC32;
+    protected static final String DIGEST_TYPE_DEF = DIGEST_CRC32;
 
     protected static final String CORE_POOL_SIZE_STR = "corePoolSize";
     protected static final int CORE_POOL_SIZE_DEF = 10;
@@ -187,8 +188,10 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
 
     public DigestType getDigestType() {
         String digestTypeStr = getString(DIGEST_TYPE_STR, DIGEST_TYPE_DEF);
-        if (digestTypeStr.equalsIgnoreCase(MAC)) {
+        if (digestTypeStr.equalsIgnoreCase(DIGEST_MAC)) {
             return DigestType.MAC;
+        } else if (digestTypeStr.equalsIgnoreCase(DIGEST_DUMMY)) {
+            return DigestType.DUMMY;
         } else {
             return DigestType.CRC32;
         }
@@ -196,9 +199,11 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
 
     public BookKeeperProxyConfiguration setDigestType(DigestType digestType) {
         if (digestType == DigestType.MAC) {
-            setProperty(DIGEST_TYPE_STR, MAC);
+            setProperty(DIGEST_TYPE_STR, DIGEST_MAC);
+        } else if (digestType == DigestType.DUMMY) {
+            setProperty(DIGEST_TYPE_STR, DIGEST_DUMMY);
         } else {
-            setProperty(DIGEST_TYPE_STR, CRC32);
+            setProperty(DIGEST_TYPE_STR, DIGEST_CRC32);
         }
         return this;
     }

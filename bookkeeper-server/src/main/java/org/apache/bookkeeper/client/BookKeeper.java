@@ -385,14 +385,17 @@ public class BookKeeper implements AutoCloseable {
     }
 
     /**
-     * There are 2 digest types that can be used for verification. The CRC32 is
+     * There are 2 valid digest types that can be used for verification. The CRC32 is
      * cheap to compute but does not protect against byzantine bookies (i.e., a
      * bookie might report fake bytes and a matching CRC32). The MAC code is more
      * expensive to compute, but is protected by a password, i.e., a bookie can't
-     * report fake bytes with a mathching MAC unless it knows the password
+     * report fake bytes with a matching MAC unless it knows the password
+     * If the digest type is set/passed in as DUMMY, a dummy digest is added/checked.
+     * This DUMMY digest is mostly for test purposes or in situations/use-cases
+     * where digest is considered a overhead.
      */
     public enum DigestType {
-        MAC, CRC32
+        MAC, CRC32, DUMMY
     }
 
     ZooKeeper getZkHandle() {
