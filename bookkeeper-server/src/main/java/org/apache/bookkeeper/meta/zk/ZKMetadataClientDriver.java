@@ -59,9 +59,9 @@ public class ZKMetadataClientDriver
             conf,
             statsLogger,
             new BoundExponentialBackoffRetryPolicy(
-                conf.getZkTimeout(),
-                conf.getZkTimeout(),
-                0),
+                conf.getZkRetryBackoffStartMs(),
+                conf.getZkRetryBackoffMaxMs(),
+                conf.getZkOpRetryCount()),
             optionalCtx);
         this.statsLogger = statsLogger;
         this.clientConf = conf;

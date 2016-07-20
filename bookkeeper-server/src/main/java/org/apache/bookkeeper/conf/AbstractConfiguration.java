@@ -88,6 +88,9 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     // Zookeeper Parameters
     protected static final String ZK_TIMEOUT = "zkTimeout";
     protected static final String ZK_SERVERS = "zkServers";
+    protected static final String ZK_OP_RETRY_COUNT = "zkOpRetryCount";
+    protected static final String ZK_RETRY_BACKOFF_START_MS = "zkRetryBackoffStartMs";
+    protected static final String ZK_RETRY_BACKOFF_MAX_MS = "zkRetryBackoffMaxMs";
 
     // Ledger Manager
     protected static final String LEDGER_MANAGER_TYPE = "ledgerManagerType";
@@ -357,6 +360,69 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
         setProperty(ZK_TIMEOUT, Integer.toString(zkTimeout));
         return getThis();
     }
+
+    /**
+     * Get max times to retry a zk op.
+     *
+     * @return the retry count
+     */
+    public int getZkOpRetryCount() {
+        return getInt(ZK_OP_RETRY_COUNT, 3);
+    }
+
+    /**
+     * Set max times to retry a zk op.
+     *
+     * @return client configuration
+     */
+    public T setZkOpRetryCount(int count) {
+        setProperty(ZK_OP_RETRY_COUNT, count);
+        return getThis();
+    }
+
+
+    /**
+     * Get zookeeper client backoff retry start time in millis.
+     *
+     * @return zk backoff retry start time in millis.
+     */
+    public int getZkRetryBackoffStartMs() {
+        return getInt(ZK_RETRY_BACKOFF_START_MS, getZkTimeout());
+    }
+
+    /**
+     * Set zookeeper client backoff retry start time in millis.
+     *
+     * @param retryMs
+     *          backoff retry start time in millis.
+     * @return server configuration.
+     */
+    public AbstractConfiguration<T> setZkRetryBackoffStartMs(int retryMs) {
+        setProperty(ZK_RETRY_BACKOFF_START_MS, retryMs);
+        return this;
+    }
+
+    /**
+     * Get zookeeper client backoff retry max time in millis.
+     *
+     * @return zk backoff retry max time in millis.
+     */
+    public int getZkRetryBackoffMaxMs() {
+        return getInt(ZK_RETRY_BACKOFF_MAX_MS, getZkTimeout());
+    }
+
+    /**
+     * Set zookeeper client backoff retry max time in millis.
+     *
+     * @param retryMs
+     *          backoff retry max time in millis.
+     * @return server configuration.
+     */
+    public AbstractConfiguration<T> setZkRetryBackoffMaxMs(int retryMs) {
+        setProperty(ZK_RETRY_BACKOFF_MAX_MS, retryMs);
+        return this;
+    }
+
 
     /**
      * Set Ledger Manager Type.

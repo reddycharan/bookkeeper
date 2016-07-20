@@ -723,7 +723,11 @@ public class ZooKeeperClient extends ZooKeeper implements Watcher {
                 public void processResult(int rc, String path, Object ctx, String name) {
                     ZooWorker worker = (ZooWorker) ctx;
                     if (allowRetry(worker, rc)) {
-                        backOffAndRetry(that, worker.nextRetryWaitTime());
+                        long t = worker.nextRetryWaitTime();
+                        logger.info(
+                                "scheduling for another run; attempt #: " + worker.attempts
+                                + " retryWaitTime: " + t);
+                        backOffAndRetry(that, t);
                     } else {
                         cb.processResult(rc, path, context, name);
                     }

@@ -96,8 +96,6 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     protected static final String SERVER_SOCK_LINGER = "serverTcpLinger";
 
     // Zookeeper Parameters
-    protected static final String ZK_RETRY_BACKOFF_START_MS = "zkRetryBackoffStartMs";
-    protected static final String ZK_RETRY_BACKOFF_MAX_MS = "zkRetryBackoffMaxMs";
     protected static final String OPEN_LEDGER_REREPLICATION_GRACE_PERIOD = "openLedgerRereplicationGracePeriod";
     //ReadOnly mode support on all disk full
     protected static final String READ_ONLY_MODE_ENABLED = "readOnlyModeEnabled";
@@ -998,48 +996,6 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      */
     public ServerConfiguration setServerSockKeepalive(boolean keepalive) {
         setProperty(SERVER_SOCK_KEEPALIVE, Boolean.toString(keepalive));
-        return this;
-    }
-
-    /**
-     * Get zookeeper client backoff retry start time in millis.
-     *
-     * @return zk backoff retry start time in millis.
-     */
-    public int getZkRetryBackoffStartMs() {
-        return getInt(ZK_RETRY_BACKOFF_START_MS, getZkTimeout());
-    }
-
-    /**
-     * Set zookeeper client backoff retry start time in millis.
-     *
-     * @param retryMs
-     *          backoff retry start time in millis.
-     * @return server configuration.
-     */
-    public ServerConfiguration setZkRetryBackoffStartMs(int retryMs) {
-        setProperty(ZK_RETRY_BACKOFF_START_MS, retryMs);
-        return this;
-    }
-
-    /**
-     * Get zookeeper client backoff retry max time in millis.
-     *
-     * @return zk backoff retry max time in millis.
-     */
-    public int getZkRetryBackoffMaxMs() {
-        return getInt(ZK_RETRY_BACKOFF_MAX_MS, getZkTimeout());
-    }
-
-    /**
-     * Set zookeeper client backoff retry max time in millis.
-     *
-     * @param retryMs
-     *          backoff retry max time in millis.
-     * @return server configuration.
-     */
-    public ServerConfiguration setZkRetryBackoffMaxMs(int retryMs) {
-        setProperty(ZK_RETRY_BACKOFF_MAX_MS, retryMs);
         return this;
     }
 
