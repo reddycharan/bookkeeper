@@ -54,7 +54,7 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     private static final String CRC32 = "CRC32";
 
     protected static final String DIGEST_TYPE_STR = "digestType";
-    protected static final String DIGEST_TYPE_DEF = MAC;
+    protected static final String DIGEST_TYPE_DEF = CRC32;
 
     protected static final String CORE_POOL_SIZE_STR = "corePoolSize";
     protected static final int CORE_POOL_SIZE_DEF = 10;
