@@ -98,6 +98,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
         currentTestScenarioExceptions = new ArrayList<Throwable>();
         currentScenario.getCommonBKPConfig().setZkServers(zkUtil.getZooKeeperConnectString());
+        currentScenario.getCommonBKPConfig().setProperty("ledgerIdFormatterClass", "org.apache.bookkeeper.util.LedgerIdFormatter$UUIDLedgerIdFormatter");
     }
 
     @After

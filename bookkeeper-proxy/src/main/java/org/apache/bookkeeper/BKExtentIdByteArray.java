@@ -3,6 +3,7 @@ package org.apache.bookkeeper;
 import java.nio.ByteBuffer;
 
 import org.apache.bookkeeper.util.LedgerIdFormatter;
+import org.apache.bookkeeper.util.LedgerIdFormatter.LongLedgerIdFormatter;
 import org.apache.commons.codec.binary.Hex;
 
 public class BKExtentIdByteArray implements BKExtentId {
@@ -72,7 +73,11 @@ public class BKExtentIdByteArray implements BKExtentId {
 
     @Override
     public String asString() {
-        return ledgerIdFormatter.formatLedgerId(this.asLong());
+        String ledgerIdStr = ledgerIdFormatter.formatLedgerId(this.asLong());
+        if (!(ledgerIdFormatter instanceof LongLedgerIdFormatter)) {
+            ledgerIdStr += " (" + this.asLong() + ")";
+        }
+        return ledgerIdStr;
     }
 
     @Override
