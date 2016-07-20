@@ -5,10 +5,10 @@ public interface Operation {
     public String SPLITREGEX = "-";
 
     /**
-     * The GeneralOperations Id should not overlap with the BKPOperations Id, which are defined in BKPConstants.java. So
-     * we need to make sure that SleepReq Id - 91 is not used for any other constant in BKPConstants.java
+     * The GeneralOperations Id should not overlap with the BKPOperations Id, which are defined in BKPConstants.java
      */
-    public byte SleepReq = 91;
+    public byte SleepReq = BKPConstants.LedgerFirstUnusedReq;
+    public byte ZkServerPauseOpReq = BKPConstants.LedgerFirstUnusedReq + 1;
 
     public int getTimeSlot();
 
@@ -20,5 +20,7 @@ public interface Operation {
 
     public void preSetup(TestScenarioState state);
 
+    public void setPrePerformSleepMsecs(int msecs);
+    public void doPrePerformSleep() throws OperationException;
     public void perform(Object ctx);
 }

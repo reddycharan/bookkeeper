@@ -37,6 +37,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     // Zookeeper Parameters
     protected final static String ZK_TIMEOUT = "zkTimeout";
     protected final static String ZK_SERVERS = "zkServers";
+    protected final static String ZK_OP_RETRY_COUNT = "zkOpRetryCount";
 
     // Throttle value
     protected final static String THROTTLE = "throttle";
@@ -378,6 +379,27 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public int getZkTimeout() {
         return getInt(ZK_TIMEOUT, 10000);
+    }
+
+    /**
+     * How many times should we retry a failed zookeeper op
+     * on retryable errors.
+     *
+     * @return the retry count
+     */
+    public int getZkOpRetryCount() {
+        return getInt(ZK_OP_RETRY_COUNT, 3);
+    }
+
+    /**
+     * How many times should we retry a failed zookeeper op
+     * on retryable errors.
+     *
+     * @return client configuration
+     */
+    public ClientConfiguration setZkOpRetryCount(int count) {
+        setProperty(ZK_OP_RETRY_COUNT, count);
+        return this;
     }
 
     /**

@@ -31,9 +31,18 @@ public class SleepOperation extends AbstractOperation {
     }
 
     @Override
+    public void setPrePerformSleepMsecs(int msecs) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void preSetup(TestScenarioState state) {
-        state.setAdditionalTimeoutWaitTime(
-                Math.max(this.getSleepTimeInMilliSecs(), state.getAdditionalTimeoutWaitTime()));
+        if (this.getSleepTimeInMilliSecs() >= BKPClientThread.timeoutDurationInSecs*1000) {
+            // We always wait for timeoutDurationInSecs for an op to finish. Calculate how much additional
+            // time we need to wait for since this op could be sleeping for a long time
+            state.setAdditionalTimeoutWaitTime(
+                Math.max(this.getSleepTimeInMilliSecs() - BKPClientThread.timeoutDurationInSecs*1000 + 1000, state.getAdditionalTimeoutWaitTime()));
+        }
     };
 
     @Override
