@@ -18,6 +18,7 @@
 
 START_COMMAND="start"
 VPOD_START_COMMAND="vpod-start"
+PROD_START_COMMAND="prod-start"
 CLASSPATH_COMMAND="classpath"
 
 function usage(){
@@ -34,6 +35,10 @@ ${START_COMMAND}:
 ${VPOD_START_COMMAND}:
   $0 ${VPOD_START_COMMAND} <BKProxyMain options>
     Start the bookkeeper proxy for vpod environment.
+
+${PROD_START_COMMAND}:
+  $0 ${PROD_START_COMMAND} <BKProxyMain options>
+    Start the bookkeeper proxy for production environment.
 
   $0 --help || -h
     Show the help for the bookkeeper proxy
@@ -156,9 +161,13 @@ JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filesize=${BKPROXY_LOG_FILE_SIZE}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filecount=${BKPROXY_LOG_FILE_COUNT}"
 JAVA_OPTS="${JAVA_OPTS} -Djava.net.preferIPv4Stack=true -Duser.timezone=UTC"
 JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
-GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:G1HeapRegionSize=4M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:+PrintGCApplicationStoppedTime -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003 -Xloggc:$BKPROXY_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BKPROXY_LOG_FILE_COUNT -XX:GCLogFileSize=100M" #-XX:+UseLinuxPosixThreadCPUClocks
+GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:G1HeapRegionSize=8M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:+PrintGCApplicationStoppedTime -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003 -XX:+UseGCLogFileRotation -XX:GCLogFileSize=100M -Xloggc:$BKPROXY_GC_LOGS_FILE -XX:NumberOfGCLogFiles=$BKPROXY_LOG_FILE_COUNT" #-XX:+UseLinuxPosixThreadCPUClocks
 DEV_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=75"
 VPOD_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=40"
+PROD_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=40"
+DEV_SPECIFIC_OPTS=" "
+VPOD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages "
+PROD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages"
 JAVA_OPTS="${JAVA_OPTS} ${GC_OPTS}"
 
 #####################
@@ -169,14 +178,19 @@ case $1 in
    ${START_COMMAND})
      JAVA_HEAP_SIZE=${BKPROXY_HEAP_SIZE:-"2000"}
      JAVA_HEAP_MAX="-Xms${JAVA_HEAP_SIZE}m -Xmx${JAVA_HEAP_SIZE}m"
-     JAVA_OPTS="${JAVA_OPTS} ${DEV_SPECIFIC_GC_OPTS}"
+     JAVA_OPTS="${JAVA_OPTS} ${DEV_SPECIFIC_OPTS} ${DEV_SPECIFIC_GC_OPTS}"
      MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
      ;;
    ${VPOD_START_COMMAND})
      JAVA_HEAP_SIZE=${BKPROXY_HEAP_SIZE:-"6000"}
      JAVA_HEAP_MAX="-Xms${JAVA_HEAP_SIZE}m -Xmx${JAVA_HEAP_SIZE}m"
-     JAVA_OPTS="${JAVA_OPTS} ${VPOD_SPECIFIC_GC_OPTS}"
+     JAVA_OPTS="${JAVA_OPTS} ${VPOD_SPECIFIC_OPTS} ${VPOD_SPECIFIC_GC_OPTS}"
      MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
+     ;;
+   ${PROD_START_COMMAND})
+    JAVA_HEAP_MAX="-Xms10G -Xmx10G"
+    JAVA_OPTS="${JAVA_OPTS} ${PROD_SPECIFIC_OPTS} ${PROD_SPECIFIC_GC_OPTS}"
+    MAIN_CLASS="org.apache.bookkeeper.BKProxyMain"
      ;;
    ${CLASSPATH_COMMAND})
      echo "Using classpath: ${CLASSPATH}"
