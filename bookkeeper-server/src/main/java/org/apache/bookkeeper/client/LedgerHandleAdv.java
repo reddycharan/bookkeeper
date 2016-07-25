@@ -167,7 +167,9 @@ public class LedgerHandleAdv extends LedgerHandle {
                 "Invalid values for offset("+offset
                 +") or length("+length+")");
         }
-        throttler.acquire();
+        if (throttler != null) {
+            throttler.acquire();
+        }
 
         final long currentLength;
         boolean wasClosed = false;
