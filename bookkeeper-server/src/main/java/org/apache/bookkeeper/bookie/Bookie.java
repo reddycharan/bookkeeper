@@ -46,6 +46,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
@@ -1271,18 +1272,13 @@ public class Bookie extends BookieCriticalThread {
     }
 
 
-    public ByteBuffer getLastAddConfirmed(long ledgerId) {
-        try {
-            ByteBuffer lac;
-            LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
-            synchronized (handle) {
-                lac = handle.getLastAddConfirmed();
-            }
-            return lac;
-        } catch (IOException e) {
-            LOG.error("Exception during getLastAddConfirmed: {}", e);
-            return null;
+    public ByteBuffer getLastAddConfirmed(long ledgerId) throws IOException, Bookie.NoLedgerException {
+        ByteBuffer lac;
+        LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
+        synchronized (handle) {
+            lac = handle.getLastAddConfirmed();
         }
+        return lac;
     }
 
     /**
