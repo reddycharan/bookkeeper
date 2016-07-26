@@ -313,6 +313,7 @@ public class BKProxyMain implements Runnable {
                                 HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, null);
             pw.flush();
             LOG.error("\n{}", os.toString());
+            System.out.println(os.toString());
         } finally {
             pw.close();
         }
