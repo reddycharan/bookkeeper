@@ -426,7 +426,12 @@ public class BKSfdcClient {
         // Sanity check before trying to read; Get the latest LAC.
         if (entryId > lh.getLastAddConfirmed()) {
             // Get the latest Lac.
-            lh.readLac();
+            try {
+                lh.readLac();
+            } catch (BKException e) {
+                // We don't need to fail the read just because getting explicit LAC failed.
+                LOG.warn("Read lac on extentId: {} failed: {} ", extentId, e);
+            }
         }
 
         if ((entryId > lh.getLastAddConfirmed()) || (entryId == BKPConstants.NO_ENTRY)) {
