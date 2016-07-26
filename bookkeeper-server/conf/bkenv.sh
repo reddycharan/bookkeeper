@@ -52,3 +52,6 @@ BOOKIE_EXTRA_OPTS="-Xms6G -Xmx6G -Xmn3G -XX:PermSize=256M -XX:MaxPermSize=512M -
 
 #LedgerId formatter class to format ledgerids.
 LEDGERID_FORMATTER_CLASS=org.apache.bookkeeper.util.LedgerIdFormatter\$UUIDLedgerIdFormatter
+
+#Port number through which you want to enable JMX RMI connections. Be sure to specify an unused port number. In addition to publishing an RMI connector for local access, setting this property publishes an additional RMI connector in a private read-only registry at the specified port using a well known name, "jmxrmi". For more info. - https://docs.oracle.com/javase/8/docs/technotes/guides/management/agent.html
+JMX_PORT_NUM=9010
