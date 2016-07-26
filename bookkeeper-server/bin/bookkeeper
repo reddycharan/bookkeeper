@@ -238,7 +238,7 @@ elif [ $COMMAND == "upgrade" ]; then
 elif [ $COMMAND == "shell" ]; then
     ENTRY_FORMATTER_ARG="-DentryFormatterClass=${ENTRY_FORMATTER_CLASS:-org.apache.bookkeeper.util.HexDumpEntryFormatter}"
     LEDGERID_FORMATTER_ARG="-DledgerIdFormatterClass=${LEDGERID_FORMATTER_CLASS:-org.apache.bookkeeper.util.LedgerIdFormatter\$LongLedgerIdFormatter}"
-    exec $JAVA $OPTS $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
+    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 else
