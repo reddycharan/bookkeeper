@@ -37,7 +37,51 @@ DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.properties
 # this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
 DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
 
-source $BK_HOME/conf/bkenv.sh
+# if no args specified, show usage
+if [ $# = 0 ]; then
+    bookkeeper_help;
+    exit 1;
+fi
+
+# get arguments
+COMMAND=$1
+shift
+
+ENV_TYPE="dev"
+while getopts "e:" arg; do
+  case $arg in
+    e)
+      ENV_TYPE="$OPTARG"
+    ;;
+  esac
+done
+
+#Filter out the environment source arg as it is not supported by the core Bookie main classes
+array=("$@")
+ARGS=()
+for i in "${@}"; do
+    if [[ "$i" = "-e" ]]; then
+        skipNext="true"
+        continue
+    fi
+    if [ "$skipNext" == "true" ]; then
+        skipNext="false"
+        continue
+    fi
+    ARGS+="$i"
+done
+
+#Source the correct environment variables depending on environment
+if [[ $ENV_TYPE == "dev" ]]; then
+    echo "Sourcing dev"
+    source $BK_HOME/conf/bkenv.sh
+elif [[ $ENV_TYPE == "prod" ]]; then
+    echo "Sourcing prod"
+    source $BK_HOME/conf/bkenv.prod.sh
+elif [[ $ENV_TYPE == "vpod" ]]; then
+    echo "Sourcing vpod"
+    source $BK_HOME/conf/bkenv.vpod.sh
+fi
 
 if [ "x$JMX_PORT_NUM" != "x" ]
 then
@@ -145,16 +189,6 @@ else
     add_maven_deps_to_classpath
 fi
 
-# if no args specified, show usage
-if [ $# = 0 ]; then
-    bookkeeper_help;
-    exit 1;
-fi
-
-# get arguments
-COMMAND=$1
-shift
-
 if [ $COMMAND == "shell" ]; then
     DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.shell.properties
     if [[ $1 == "localbookie"  ]]; then
@@ -238,19 +272,19 @@ OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
 #Change to BK_HOME to support relative paths
 cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
-    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
+    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $ARGS
 elif [ $COMMAND == "autorecovery" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $@
+    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $ARGS
 elif [ $COMMAND == "localbookie" ]; then
     NUMBER=$1
     shift
-    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
+    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $ARGS
 elif [ $COMMAND == "upgrade" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
+    exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $ARGS
 elif [ $COMMAND == "shell" ]; then
     ENTRY_FORMATTER_ARG="-DentryFormatterClass=${ENTRY_FORMATTER_CLASS:-org.apache.bookkeeper.util.HexDumpEntryFormatter}"
     LEDGERID_FORMATTER_ARG="-DledgerIdFormatterClass=${LEDGERID_FORMATTER_CLASS:-org.apache.bookkeeper.util.LedgerIdFormatter\$LongLedgerIdFormatter}"
-    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
+    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $ARGS
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 elif [ $COMMAND == "jmx" ]; then
@@ -301,7 +335,7 @@ elif [ $COMMAND == "jmx" ]; then
         echo "Unknown JMX Command: $JMX_COMMAND"
     fi
 else
-    exec $JAVA $OPTS $COMMAND $@
+    exec $JAVA $OPTS $COMMAND $ARGS
 fi
 
 

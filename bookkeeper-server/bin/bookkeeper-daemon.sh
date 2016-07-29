@@ -26,6 +26,7 @@ where command is one of:
 
 where argument is one of:
     -force (accepted only with stop command): Decides whether to stop the Bookie Server forcefully if not stopped by normal shutdown
+    -e: environment type variables to source. Options include [dev|prod|vpod]
 EOF
 }
 

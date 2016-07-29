@@ -62,12 +62,12 @@ fi
 while getopts ":hd" optname; do
   case ${optname} in
     "h")
-			usage
-			exit
+      usage
+      exit
       ;;
     "d")
       DEBUG=1
-			set -x
+      set -x
       ;;
   esac
 done
@@ -148,7 +148,9 @@ BKPROXY_LOG_FILE=${BKPROXY_LOG_FILE:-"bookkeeper-proxy.log"}
 BKPROXY_LOG_LEVEL=${BKPROXY_LOG_LEVEL:-"INFO"}
 BKPROXY_LOG_FILE_SIZE=${BKPROXY_LOG_FILE_SIZE:-"100MB"}
 BKPROXY_LOG_FILE_COUNT=${BKPROXY_LOG_FILE_COUNT:-"10"}
-BKPROXY_GC_LOGS_FILE="${BKPROXY_LOG_DIR}/proxy-gc-log"
+if [ -n "${BKPROXY_GC_LOGS_FILE}" ]; then
+  BKPROXY_GC_LOGS_FILE="${BKPROXY_LOG_DIR}/proxy-gc-log"
+fi
 
 # Setup the generic java options
 #################################
