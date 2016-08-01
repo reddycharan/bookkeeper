@@ -157,7 +157,7 @@ public class ClientConfiguration extends AbstractConfiguration {
         this.setProperty(ENABLE_DIGEST_TYPE_AUTODETECTION, enable);
         return this;
     }
-
+    
     /**
      * Get digest type used in bookkeeper admin
      *

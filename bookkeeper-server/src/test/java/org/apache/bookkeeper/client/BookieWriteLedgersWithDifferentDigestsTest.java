@@ -89,10 +89,10 @@ public class BookieWriteLedgersWithDifferentDigestsTest extends
 
     @Test(timeout = 60000)
     public void testLedgersWithDifferentDigestTypesNoAutodetection() throws Exception {
-       bkc.conf.setEnableDigestTypeAutodetection(false);
+    	bkc.conf.setEnableDigestTypeAutodetection(false);
         // Create ledgers
         lh = bkc.createLedgerAdv(3, 2, 2, DigestType.MAC, ledgerPassword);
-
+        
         final long id = lh.ledgerId;
 
         LOG.info("Ledger ID-1: " + lh.getId());
@@ -111,24 +111,24 @@ public class BookieWriteLedgersWithDifferentDigestsTest extends
         // Reads here work ok because ledger uses digest type set during create
         readEntries(lh, entries1);
         lh.close();
-
+        
         try {
-           bkc.openLedgerNoRecovery(id, DigestType.CRC32, ledgerPassword).close();
-           fail("digest mismatch error is expected");
+	        bkc.openLedgerNoRecovery(id, DigestType.CRC32, ledgerPassword).close();
+	        fail("digest mismatch error is expected");
         } catch (BKException bke) {
-           // expected
+        	// expected
         }
     }
 
     @Test(timeout = 60000)
     public void testLedgersWithDifferentDigestTypesWithAutodetection() throws Exception {
-       bkc.conf.setEnableDigestTypeAutodetection(true);
+    	bkc.conf.setEnableDigestTypeAutodetection(true);
         // Create ledgers
         lh = bkc.createLedgerAdv(3, 2, 2, DigestType.MAC, ledgerPassword);
         lh2 = bkc.createLedgerAdv(3, 2, 2, DigestType.CRC32, ledgerPassword);
-
+        
         final long id = lh.ledgerId;
-        final long id2 = lh.ledgerId;
+        final long id2 = lh2.ledgerId;
 
         LOG.info("Ledger ID-1: " + lh.getId());
         LOG.info("Ledger ID-2: " + lh2.getId());
@@ -153,7 +153,7 @@ public class BookieWriteLedgersWithDifferentDigestsTest extends
         readEntries(lh2, entries2);
         lh.close();
         lh2.close();
-
+        
         // open here would fail if provided digest type is used
         // it passes because ledger just uses digest type from its metadata/autodetects it
         lh = bkc.openLedgerNoRecovery(id, DigestType.CRC32, ledgerPassword);
@@ -163,9 +163,9 @@ public class BookieWriteLedgersWithDifferentDigestsTest extends
         lh.close();
         lh2.close();
     }
-
-   private void waitForEntriesAddition(SyncObj syncObj, int numEntriesToWrite) throws InterruptedException {
-       synchronized (syncObj) {
+    
+	private void waitForEntriesAddition(SyncObj syncObj, int numEntriesToWrite) throws InterruptedException {
+		synchronized (syncObj) {
             while (syncObj.counter < numEntriesToWrite) {
                 syncObj.wait();
             }
