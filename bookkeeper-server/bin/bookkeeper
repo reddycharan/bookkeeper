@@ -48,28 +48,12 @@ COMMAND=$1
 shift
 
 ENV_TYPE="dev"
-while getopts "e:" arg; do
-  case $arg in
-    e)
-      ENV_TYPE="$OPTARG"
-    ;;
-  esac
-done
+if [ "$1" == "dev" ] || [ "$1" == "vpod" ] || [ "$1" == "prod" ]; then
+    ENV_TYPE="$1"
+    shift
+fi
 
-#Filter out the environment source arg as it is not supported by the core Bookie main classes
-array=("$@")
-ARGS=()
-for i in "${@}"; do
-    if [[ "$i" = "-e" ]]; then
-        skipNext="true"
-        continue
-    fi
-    if [ "$skipNext" == "true" ]; then
-        skipNext="false"
-        continue
-    fi
-    ARGS+="$i"
-done
+
 
 #Source the correct environment variables depending on environment
 if [[ $ENV_TYPE == "dev" ]]; then
@@ -272,19 +256,19 @@ OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
 #Change to BK_HOME to support relative paths
 cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
-    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $ARGS
+    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $ARGS
+    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "localbookie" ]; then
     NUMBER=$1
     shift
-    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $ARGS
+    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
 elif [ $COMMAND == "upgrade" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $ARGS
+    exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "shell" ]; then
     ENTRY_FORMATTER_ARG="-DentryFormatterClass=${ENTRY_FORMATTER_CLASS:-org.apache.bookkeeper.util.HexDumpEntryFormatter}"
     LEDGERID_FORMATTER_ARG="-DledgerIdFormatterClass=${LEDGERID_FORMATTER_CLASS:-org.apache.bookkeeper.util.LedgerIdFormatter\$LongLedgerIdFormatter}"
-    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $ARGS
+    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} $ENTRY_FORMATTER_ARG $LEDGERID_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 elif [ $COMMAND == "jmx" ]; then
@@ -335,7 +319,7 @@ elif [ $COMMAND == "jmx" ]; then
         echo "Unknown JMX Command: $JMX_COMMAND"
     fi
 else
-    exec $JAVA $OPTS $COMMAND $ARGS
+    exec $JAVA $OPTS $COMMAND $@
 fi
 
 

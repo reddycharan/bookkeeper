@@ -20,13 +20,17 @@
 
 usage() {
     cat <<EOF
-Usage: bookkeeper-daemon.sh (start|stop) <command> <args...>
+Usage: bookkeeper-daemon.sh (start|stop) <command> <sourceJvm> <args...>
 where command is one of:
     bookie           Run the bookie server
 
+where sourceJvm is one of:
+    prod             Source the prod JVM arguments
+    vpod             Source the vpod JVM arguments
+    dev              Source the dev JVM arguments (also the default if none provided)
+
 where argument is one of:
     -force (accepted only with stop command): Decides whether to stop the Bookie Server forcefully if not stopped by normal shutdown
-    -e: environment type variables to source. Options include [dev|prod|vpod]
 EOF
 }
 
