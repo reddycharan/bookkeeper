@@ -95,8 +95,24 @@ public class CodahaleMetricsProvider implements StatsProvider {
                 ServletContextHandler context = new ServletContextHandler();
                 context.setContextPath(contextPath);
                 context.setAttribute("show-jvm-metrics", "true");
-                MetricsServlet metricServlet = new MetricsServlet(this.getMetrics());
-                context.addServlet(new ServletHolder(metricServlet), endpoint);
+                context.addServlet(new ServletHolder(new MetricsServlet()), endpoint);
+                context.addEventListener(new MetricsServlet.ContextListener() {
+
+					@Override
+					protected MetricRegistry getMetricRegistry() {
+						return getMetrics();
+					}
+
+					@Override
+					protected TimeUnit getRateUnit() {
+						return TimeUnit.MILLISECONDS;
+					}
+
+					@Override
+					protected TimeUnit getDurationUnit() {
+						return TimeUnit.MILLISECONDS;
+					}
+				});
                 jettyServer.setHandler(context);
                 jettyServer.start();
             } catch (Exception e) {
