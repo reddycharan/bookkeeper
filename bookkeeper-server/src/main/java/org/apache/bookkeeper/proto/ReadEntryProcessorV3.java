@@ -118,18 +118,16 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
             }
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
-            LOG.error("No ledger found while reading entry:{} from ledger: {}", entryId, ledgerId);
+            LOG.error("No ledger found while reading entry:{} from ledger: {}", new Object[] {entryId, ledgerId, e});
         } catch (Bookie.NoEntryException e) {
             status = StatusCode.ENOENTRY;
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("No entry found while reading entry:{} from ledger:{}", entryId, ledgerId);
-            }
+            LOG.error("No ledger found while reading entry:{} from ledger:{}. status:{}", new Object[] {entryId, ledgerId, status, e});
         } catch (IOException e) {
             status = StatusCode.EIO;
-            LOG.error("IOException while reading entry:{} from ledger:{}", entryId, ledgerId);
+            LOG.error("IOException while reading entry:{} from ledger:{}", new Object[] {entryId, ledgerId, e});
         } catch (BookieException e) {
             LOG.error("Unauthorized access to ledger:{} while reading entry:{} in request from address: {}",
-                    new Object[]{ledgerId, entryId, channel.getRemoteAddress()});
+                    new Object[]{ledgerId, entryId, channel.getRemoteAddress(), e});
             status = StatusCode.EUA;
         }
 

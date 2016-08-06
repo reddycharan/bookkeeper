@@ -114,10 +114,8 @@ class WriteEntryProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
                          new Object[] { entryId, ledgerId, e });
             status = StatusCode.EIO;
         } catch (BookieException.LedgerFencedException e) {
-            if(logger.isDebugEnabled()) {
-                logger.debug("Ledger fenced while writing entry:{} to ledger:{}",
+            logger.error("Ledger fenced while writing entry:{} to ledger:{}",
                         new Object[] { entryId, ledgerId, e });
-            }
             status = StatusCode.EFENCED;
         } catch (BookieException e) {
             logger.error("Unauthorized access to ledger:{} while writing entry:{}",
