@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ class BKProxyWorker implements Runnable {
     private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
     private final BKExtentIdFactory extentIdFactory;
+    private final BKByteBufferPool byteBufPool;
 
 	public abstract class OpStatEntry {
 
@@ -110,11 +112,12 @@ class BKProxyWorker implements Runnable {
     private final OpStatsLogger ledgerWriteHist;
     private final OpStatsLogger ledgerListGetTimer;
 
-    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock,
-            BookKeeper bk, BKExtentLedgerMap elm, long bkProxyWorkerId, StatsLogger statsLogger)
-                    throws IOException {
+    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock, BookKeeper bk,
+            BKExtentLedgerMap elm, BKByteBufferPool byteBufPool, long bkProxyWorkerId, StatsLogger statsLogger)
+            throws IOException {
         this.bkpConfig = bkpConfig;
         this.clientChannel = sSock;
+        this.byteBufPool = byteBufPool;
         this.bkProxyWorkerId = bkProxyWorkerId;
         this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
         this.extentIdFactory = new BKExtentIdByteArrayFactory();
@@ -248,7 +251,6 @@ class BKProxyWorker implements Runnable {
         ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
         ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
         ByteBuffer erreq = ByteBuffer.allocate(BKPConstants.READ_REQ_SIZE);
-        ByteBuffer cByteBuf = ByteBuffer.allocate(bkpConfig.getMaxFragSize());
         ByteBuffer asreq = ByteBuffer.allocate(BKPConstants.ASYNC_STAT_REQ_SIZE);
         ByteBuffer extentBbuf = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE);
 
@@ -274,6 +276,8 @@ class BKProxyWorker implements Runnable {
             while (!Thread.interrupted()) {
                 boolean exceptionOccurred = false;
                 long startTime = MathUtils.nowInNano(); // in case exception happens before reading the request
+                ByteBuffer bufBorrowed = null;
+
                 try {
                     req.clear();
                     resp.clear();
@@ -484,7 +488,7 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerWriteEntryReq): {
-                        ByteBuffer wcByteBuf = cByteBuf;
+                        ByteBuffer wcByteBuf;
                         errorCode = BKPConstants.SF_OK;
                         int fragmentId;
                         int wSize;
@@ -497,6 +501,9 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
+
+                        bufBorrowed = byteBufPool.borrowBuffer();
+                        wcByteBuf = bufBorrowed;
 
                         reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
                         if (wSize > bkpConfig.getMaxFragSize()) {
@@ -552,8 +559,9 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
-                        // allocate buffer to read
-                        wcByteBuf = ByteBuffer.allocate(Math.min(wSize, bkpConfig.getMaxFragSize()));
+
+                        bufBorrowed = byteBufPool.borrowBuffer();
+                        wcByteBuf = bufBorrowed;
 
                         reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
                         if (wSize > bkpConfig.getMaxFragSize()) {
@@ -673,6 +681,18 @@ class BKProxyWorker implements Runnable {
                     resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
+                } catch (NoSuchElementException e) {
+                    exceptionOccurred = true;
+                    LOG.error("Exception on Req: "
+                            + BKPConstants.getReqRespString(reqId)
+                            + reqSpecific
+                            + " ElapsedMicroSecs: "
+                            + MathUtils.elapsedMicroSec(startTime)
+                            + " Error: {} extentId: {}", errorCode, extentId);
+                    LOG.error("Exception: ", e);
+                    resp.put(BKPConstants.SF_OutOfMemory);
+                    resp.flip();
+                    clientChannelWrite(resp);
                 } catch (Exception e) {
                     exceptionOccurred = true;
                     LOG.error("Exception on Req: "
@@ -697,6 +717,11 @@ class BKProxyWorker implements Runnable {
                         if (exceptionOccurred) {
                             markStats(asyncWriteStatQueue, exceptionOccurred);
                         }
+                    }
+
+                    // if buffer borrowed, return to pool
+                    if (bufBorrowed != null) {
+                        byteBufPool.returnBuffer(bufBorrowed);
                     }
                 }
             }

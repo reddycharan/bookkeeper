@@ -39,6 +39,7 @@ public interface BKProxyStats {
     public final static String LEDGER_ASYNC_PUT_FRAGMENT_TIME = "LEDGER_ASYNC_PUT_FRAGMENT_TIME";
     public final static String LEDGER_GET_FRAGMENT_TIME = "LEDGER_GET_FRAGMENT_TIME";
     public final static String WORKER_POOL_COUNT = "WORKER_POOL_COUNT";
+    public final static String BYTE_BUF_POOL_ACTIVE = "BYTE_BUF_POOL_ACTIVE";
     public final static String GET_FRAGMENT_BYTES = "GET_FRAGMENT_BYTES";
     public final static String PUT_FRAGMENT_BYTES = "PUT_FRAGMENT_BYTES";
     public final static String LEDGER_LIST_GET_TIME = "LEDGER_LIST_GET_TIME";
