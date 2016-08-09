@@ -49,6 +49,7 @@ class BKProxyWorker implements Runnable {
     private final long bkProxyWorkerId; 
     private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
+    private final BKExtentIdFactory extentIdFactory;
 
 	private abstract class OpStatEntry {
 
@@ -129,6 +130,7 @@ class BKProxyWorker implements Runnable {
         this.clientChannel = sSock;
         this.bkProxyWorkerId = bkProxyWorkerId;
         this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
+        this.extentIdFactory = new BKExtentIdByteArrayFactory();
         this.opStatQueue = new LinkedList<OpStatEntry>();
         this.proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
         this.ledgerCreationTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_CREATION_TIME);
@@ -274,7 +276,7 @@ class BKProxyWorker implements Runnable {
                     reqId = req.get();
                     extentBbuf.clear();
                     req.get(extentBbuf.array());
-                    this.extentId = new BKExtentIdByteArrayFactory().build(extentBbuf, this.ledgerIdFormatter);
+                    this.extentId = extentIdFactory.build(extentBbuf, this.ledgerIdFormatter);
 
                     LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId),
                         extentId);
@@ -343,8 +345,7 @@ class BKProxyWorker implements Runnable {
 
                         iterable = bksc.ledgerList();
                         for (Long pId : iterable) {
-                            BKExtentId bExtentId = new BKExtentIdByteArrayFactory().build(
-                                    pId, this.ledgerIdFormatter);
+                            BKExtentId bExtentId = extentIdFactory.build(pId, this.ledgerIdFormatter);
                             clientChannelWrite(bExtentId.asByteBuffer());
                             listCount--;
                             if (listCount == 0)
@@ -352,7 +353,7 @@ class BKProxyWorker implements Runnable {
                         }
 
                         // Handle the case where extents got deleted after taking listCount.
-                        BKExtentId bExtentId = new BKExtentIdByteArrayFactory().build(0L, this.ledgerIdFormatter);
+                        BKExtentId bExtentId = extentIdFactory.build(0L, this.ledgerIdFormatter);
                         for (int i = 0; i < listCount; i++) {
                             clientChannelWrite(bExtentId.asByteBuffer());
                         }

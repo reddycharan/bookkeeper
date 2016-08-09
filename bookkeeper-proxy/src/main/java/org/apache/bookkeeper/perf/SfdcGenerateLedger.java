@@ -150,10 +150,13 @@ public class SfdcGenerateLedger {
         final int numOfThreads = Integer.parseInt(cmdLine.getOptionValue("t", "" + Runtime.getRuntime().availableProcessors()));
         final double maxQps = Double.parseDouble(cmdLine.getOptionValue("q", "1000000"));
         final int warmup = Integer.parseInt(cmdLine.getOptionValue("w", "15"));
-        
-        final BKExtentLedgerMap elm = new BKExtentLedgerMap();
+
         final BookKeeper bk = new BookKeeper(bkConfig);
-        
+        final BKExtentLedgerMap elm = BKExtentLedgerMap.newBuilder()
+                .setReadHandleCacheLen(bkConfig.getReadHandleCacheLen())
+                .setReadHandleTTL(bkConfig.getReadHandleTTL())
+                .build();
+
         consoleReporter.start(30, TimeUnit.SECONDS);
         jmxReporter.start();
         

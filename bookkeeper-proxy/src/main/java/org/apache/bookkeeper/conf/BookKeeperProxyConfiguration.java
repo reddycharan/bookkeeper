@@ -9,7 +9,6 @@ import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.commons.configuration.ConfigurationException;
 
 public class BookKeeperProxyConfiguration extends ClientConfiguration {
-    private static final Logger logger = LoggerFactory.getLogger(BookKeeperProxyConfiguration.class);
 
     protected static final String BKPROXY_HOSTNAME_STR = "bkProxyHostname";
     protected static final String BKPROXY_HOSTNAME_DEF = "localhost";
@@ -59,9 +58,15 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
 
     protected static final String CORE_POOL_SIZE_STR = "corePoolSize";
     protected static final int CORE_POOL_SIZE_DEF = 10;
-    
+
     protected static final String CORE_POOL_KEEP_ALIVE_TIME_STR = "corePoolKeepAliveTime";
     protected static final long CORE_POOL_KEEP_ALIVE_TIME_DEF = 5000;
+
+    protected static final String READ_HANDLE_CACHE_LEN_STR = "readHandleCacheLen";
+    protected static final long READ_HANDLE_CACHE_LEN_DEF = 3 * 1000; // 3K handles
+
+    protected static final String READ_HANDLE_TTL_STR = "readHandleTTL";
+    protected static final long READ_HANDLE_TTL_DEF = -1; // unlimited
     
     protected static final String STATS_PROVIDER_CLASS = "statsProviderClass";
     protected static final String CODAHALE_STATS_OUTPUT_FREQUENCY="codahaleStatsOutputFrequency";
@@ -223,6 +228,24 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
 
     public BookKeeperProxyConfiguration setCorePoolKeepAliveTime(long corePoolKeepAliveTime) {
         setProperty(CORE_POOL_KEEP_ALIVE_TIME_STR, corePoolKeepAliveTime);
+        return this;
+    }
+
+    public long getReadHandleCacheLen() {
+        return getLong(READ_HANDLE_CACHE_LEN_STR, READ_HANDLE_CACHE_LEN_DEF);
+    }
+
+    public BookKeeperProxyConfiguration setReadHandleCacheLen(long readHandleCacheLen) {
+        setProperty(READ_HANDLE_CACHE_LEN_STR, readHandleCacheLen);
+        return this;
+    }
+
+    public long getReadHandleTTL() {
+        return getLong(READ_HANDLE_TTL_STR, READ_HANDLE_TTL_DEF);
+    }
+
+    public BookKeeperProxyConfiguration setReadHandleTTL(long readHandleTTL) {
+        setProperty(READ_HANDLE_TTL_STR, readHandleTTL);
         return this;
     }
 

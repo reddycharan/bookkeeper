@@ -112,7 +112,11 @@ public class BKProxyMain implements Runnable {
             serverChannel.socket().bind(new InetSocketAddress(hostname, port));
 
             // Global structures
-            BKExtentLedgerMap elm = new BKExtentLedgerMap();
+            BKExtentLedgerMap elm = BKExtentLedgerMap.newBuilder()
+                    .setReadHandleCacheLen(bkpConf.getReadHandleCacheLen())
+                    .setReadHandleTTL(bkpConf.getReadHandleTTL())
+                    .build();
+
             if (statsProvider != null) {
                 bk = BookKeeper.forConfig(bkpConf).setStatsLogger(statsLogger).build();
             } else {

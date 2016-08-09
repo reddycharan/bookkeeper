@@ -14,7 +14,6 @@ import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +33,7 @@ public class BKSfdcClient {
     private DigestType digestType;
 
     public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm,
-		StatsLogger statsLogger) {
+        StatsLogger statsLogger) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
@@ -50,134 +49,90 @@ public class BKSfdcClient {
         digestType = bkpConfig.getDigestType();
     }
 
+    // Synchronization not needed here because Bookkeeper guarantees only
+    // one ledger will be created.
     public void ledgerCreate(BKExtentId extentId) throws BKException, InterruptedException {
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if ((lpd != null) && (lpd.getAnyLedgerHandle() != null)) {
+        if (elm.anyLedgerExists(extentId)) {
             throw BKException.create(Code.LedgerExistException);
         }
 
         LedgerHandle lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize,
                 digestType, password.getBytes());
-        if (lpd == null) {
-            lpd = elm.createLedgerMap(extentId);
-        }
-        lpd.setWriteLedgerHandle(lh);
+
+        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh);
+        elm.addWriteLedger(extentId, lpd);
     }
 
     // creates new extent ID and creates ledger for it
-    public BKExtentId ledgerCreate() throws BKException, InterruptedException {
+    public synchronized BKExtentId ledgerCreate() throws BKException, InterruptedException {
         LedgerHandle lh = bk.createLedgerAdv(ensembleSize, writeQuorumSize, ackQuorumSize,
                 digestType, password.getBytes());
-        
+
         final BKExtentId extentId = new BKExtentIdByteArray(lh.getId());
-        LedgerPrivateData lpd = elm.createLedgerMap(extentId);
-        lpd.setWriteLedgerHandle(lh);
-        
+        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh);
+        elm.addWriteLedger(extentId, lpd);
+
         return extentId;
     }
 
     /*
-     * Opens an inactive ledger. i.e no more writes are going in. If this mode is attempted on an active ledger, it will
-     * stop accepting any more writes after this operation.
+     * Opens an inactive ledger. i.e no more writes are going in. If this mode
+     * is attempted on an active ledger, it will stop accepting any more writes
+     * after this operation.
      */
-
     public LedgerHandle ledgerRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
 
-        LedgerHandle lh = null;
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-
-        if (lpd == null) {
-            // No local mapping, create it
-            lpd = elm.createLedgerMap(extentId);
+        // fail if there is any write ledger
+        if (elm.getWriteLedgerHandle(extentId) != null) {
+            LOG.warn("Recovery-read when a Write ledger handle exists for extentId {}",
+                extentId);
+            elm.removeWriteLedger(extentId);
         }
 
-        try {
-            lpd.acquireLedgerRecoveryOpenLock();
-            lh = lpd.getRecoveryReadLedgerHandle();
-            if (lh != null) {
-                // The ledger is already opened for recovery read.
-                // Nothing to do
-                return lh;
-            }
-
-            lh = lpd.getWriteLedgerHandle();
-            if (lh != null) {
-                // The ledger is opened for write -- close it down
-                lh.close();
-                lpd.setWriteLedgerHandle(null);
-            }
-
-            // Opening for recovery -- further writes will be fenced
-            lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
-            lpd.setRecoveryReadLedgerHandle(lh);
+        LedgerHandle lh = elm.getRecoveryReadLedgerHandle(extentId);
+        if (lh != null) {
             return lh;
-        } finally {
-            if (lpd != null) {
-                lpd.releaseLedgerRecoveryOpenLock();
-            }
         }
+
+        lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
+        final LedgerPrivateData lpd = LedgerPrivateData.buildRecoveryReadHandle(lh);
+        elm.addRecoveryReadLedgerPrivateData(extentId, lpd);
+        return lh;
     }
 
     /*
-     * Opens ledger while it is still actively adding(writing) entries.
-     * In this mode, ledger is changing hence one may not get the latest and
-     * greatest state and entries of the ledger.
+     * Opens ledger while it is still actively adding(writing) entries. In this
+     * mode, ledger is changing hence one may not get the latest and greatest
+     * state and entries of the ledger.
      */
     public LedgerHandle ledgerNonRecoveryOpenRead(BKExtentId extentId) throws BKException, InterruptedException {
 
-        LedgerHandle rlh;
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd == null) {
-            // No local mapping, create it
-            lpd = elm.createLedgerMap(extentId);
-        } else {
-            rlh = lpd.getNonRecoveryReadLedgerHandle();
-            if (rlh != null) {
-                // The ledger is already opened for read.
-                // Nothing to do
-                return rlh;
-            }
+        // Any handle can be used for non-recovery read
+        LedgerHandle lh = elm.getAnyLedgerHandle(extentId);
+        if (lh != null) {
+            return lh;
         }
 
-        // Let us try to open the ledger for read
-        rlh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-        lpd.setNonRecoveryReadLedgerHandle(rlh);
+        lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
+        final LedgerPrivateData lpd = LedgerPrivateData.buildNonRecoveryReadHandle(lh);
+        elm.addNonRecoveryReadLedgerPrivateData(extentId, lpd);
 
-        return rlh;
-    }
-
-    public boolean ledgerMapExists(BKExtentId extentId) {
-        return elm.extentMapExists(extentId);
+        return lh;
     }
 
     public long ledgerStat(BKExtentId extentId) throws BKException, InterruptedException {
-        LedgerHandle lh = null;
-        long lSize = 0;
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd != null) {
-            // Check if we have write ledger handle open.
-            lh = lpd.getAnyLedgerHandle();
-            if (lh != null) {
-                lSize = lh.getLength();
-                return lSize;
-            }
+        LedgerHandle lh = elm.getAnyLedgerHandle(extentId);
+        if (lh != null) {
+            return lh.getLength();
         }
 
         // No ledger cached locally.
         // Just open/get size and close the extent.
         lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-        if (lh != null) {
-            lSize = lh.getLength();
-            lh.close();
+        long ledgerLength = lh.getLength();
+        lh.close();
 
-            return lSize;
-        }
-
-        LOG.error("Ledger for extentId: {} does not exist.", extentId);
-        return -1;
+        return ledgerLength;
     }
 
     // W-3049495: SDb expects int fragment ids 
@@ -189,18 +144,13 @@ public class BKSfdcClient {
     }
     
     public int ledgerLac(BKExtentId extentId) throws BKException, InterruptedException {
-        LedgerHandle lh = null;
         long lac = -1;
 
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd != null) {
-            // Check if we have write ledger handle open.
-            lh = lpd.getAnyLedgerHandle();
-            if (lh != null) {
-                lac = lh.getLastAddConfirmed();
-                
-                return lacToInt(lac);
-            }
+        // Check if we have write ledger handle open.
+        LedgerHandle lh = elm.getWriteLedgerHandle(extentId);
+        if (lh != null) {
+            lac = lh.getLastAddConfirmed();
+            return lacToInt(lac);
         }
 
         // No ledger cached locally.
@@ -216,9 +166,8 @@ public class BKSfdcClient {
     }
     
     public void ledgerDeleteAll() throws BKException, InterruptedException {
-        BKExtentId[] ledgerIdList = elm.getAllExtentIds();
-        for (int i = 0; i < ledgerIdList.length; i++) {
-            this.ledgerDelete(ledgerIdList[i]);
+        for (BKExtentId extentId: elm.getAllExtentIds()) {
+            this.ledgerDelete(extentId);
         }
     }
 
@@ -228,61 +177,38 @@ public class BKSfdcClient {
     }
 
     public void ledgerWriteClose(BKExtentId extentId) throws BKException, InterruptedException {
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd == null) {
-            // No Extent just return OK
-            return;
-        }
-
-        LedgerHandle wlh = lpd.getWriteLedgerHandle();
-        if (wlh != null) {
-            wlh.close();
-            lpd.setWriteLedgerHandle(null);
-        }
+        LOG.info("Received write-close request for extentId: {}", extentId);
+        elm.removeWriteLedger(extentId);
     }
 
     public void ledgerReadClose(BKExtentId extentId) throws BKException, InterruptedException {
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd == null) {
-            // No Extent just return OK
-            return;
-        }
-
-        LedgerHandle rrlh = lpd.getRecoveryReadLedgerHandle();
-        LedgerHandle rlh = lpd.getNonRecoveryReadLedgerHandle();
-        if (rrlh != null) {
-            rrlh.close();
-            lpd.setRecoveryReadLedgerHandle(null);
-        }
-        if (rlh != null) {
-            rlh.close();
-            lpd.setNonRecoveryReadLedgerHandle(null);
-        }
+        LOG.info("Received read-close request for extentId: {}", extentId);
+        elm.removeReadLedger(extentId);
+        return;
     }
 
-    public void ledgerDelete(BKExtentId ledgerId) throws BKException, InterruptedException {
-
-        bk.deleteLedger(ledgerId.asLong());
-
-        LedgerPrivateData lpd = elm.getLedgerPrivate(ledgerId);
-        if (lpd != null) {
-            elm.deleteLedgerPrivate(ledgerId);
+    public void ledgerDelete(BKExtentId extentId) throws BKException, InterruptedException {
+        // write ledger handles need to be closed before deletion
+        if (elm.getWriteLedgerPrivateData(extentId) != null) {
+            elm.closeWriteLedgerHandle(extentId);
         }
+        bk.deleteLedger(extentId.asLong());
+
+        // Remove the handle from the cache only if ledger deletion is successful.
+        elm.removeFromLedgerMap(extentId);
     }
 
     public byte ledgerAsyncWriteStatus(BKExtentId extentId, int fragmentId, int timeout) throws BKException, InterruptedException {
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        LedgerAsyncWriteStatus laws;
         byte errorCode = BKPConstants.SF_OK;
+
+        LedgerPrivateData lpd = elm.getWriteLedgerPrivateData(extentId);
         if (lpd == null) {
             LOG.error("LedgerPrivateData is missing: Attempt to get async write status extentId : {} and fragmentId: {}",
                     extentId, fragmentId);
             throw BKException.create(Code.IllegalOpException);
         }
 
-        laws = lpd.getLedgerAsyncWriteStatus(fragmentId);
+        LedgerAsyncWriteStatus laws = lpd.getLedgerFragmentAsyncWriteStatus(fragmentId);
         if (laws == null) {
             LOG.error("No LedgerAsyncWriteStatus : Attempt to get async write status extentId : {} and fragmentId: {}",
                     extentId, fragmentId);
@@ -313,18 +239,18 @@ public class BKSfdcClient {
         return errorCode;
     }
 
-    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, boolean async) throws BKException, InterruptedException {
+    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, boolean async)
+            throws BKException, InterruptedException {
 
         long entryId;
+        LedgerHandle lh = null;
 
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd == null) {
-            LOG.error("Attempt to write to extentId : {} with no ledger private data.", extentId);
-            throw BKException.create(Code.IllegalOpException);
+        final LedgerPrivateData lpd = elm.getWriteLedgerPrivateData(extentId);
+        if (lpd != null) {
+            lh = lpd.getLedgerHandle();
         }
 
-        LedgerHandle lh = lpd.getWriteLedgerHandle();
-        if (lh == null) {
+        if ((lpd == null) || (lh == null)) {
             LOG.error("Attempt to write to extentId : {} with no write ledger handle", extentId);
             throw BKException.create(Code.IllegalOpException);
         }
@@ -355,15 +281,15 @@ public class BKSfdcClient {
                 // back from sfstore or before it even called LedgerAsyncWriteStatusReq
                 // on pending async writes. As per contract it must not happen.
                 // Flag a warning, and SDB may expect errors of subsequent writes.
-                LOG.error("SDB is trying to close exetent: {} with pending writes", extentId);
+                LOG.error("SDB is trying to close extent: {} with pending writes", extentId);
             }
             tmpEntryId = lh.getLastAddConfirmed() + 1;
         }
+
         if (async) {
-            LedgerAsyncWriteStatus laws;
             ProxyAddCallback callback = new ProxyAddCallback();
             // Create LedgerAsyncWaitStatus object.
-            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId);
+            LedgerAsyncWriteStatus laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId);
             lh.asyncAddEntry(tmpEntryId, bdata.array(), 0, bdata.limit(), callback, laws);
         } else {
             // Try to catch out of sequence addEntry.
@@ -390,24 +316,20 @@ public class BKSfdcClient {
         }
     }
 
-    public ByteBuffer ledgerGetEntry(BKExtentId extentId, int fragmentId, int size) throws BKException, InterruptedException {
+    public ByteBuffer ledgerGetEntry(BKExtentId extentId, int fragmentId, int size)
+            throws BKException, InterruptedException {
         long entryId = fragmentId;
         byte[] data;
 
-        LedgerHandle lh = null;
-        LedgerPrivateData lpd = elm.getLedgerPrivate(extentId);
-        if (lpd != null) {
-            // If we are the writer, we will have write ledger handle
-            // and it will have the most recent information.
-            lh = lpd.getAnyLedgerHandle();
-        }
-
+        LedgerHandle lh = elm.getAnyLedgerHandle(extentId);
         if (lh == null) {
-            // Let us open the ledger for read in recovery mode.
-            // All reads without prior opens will be performed
-            // through opening the ledger in recovery mode.
+            // Let us open the ledger for read in non-recovery mode.
+            // Since we use LRU eviction policy for read handles, absence
+            // of the handle means that the handle could be evicted or
+            // that it was never opened. We cannot differentiate between
+            // the two cases.
 
-            lh = ledgerRecoveryOpenRead(extentId);
+            lh = ledgerNonRecoveryOpenRead(extentId);
         }
 
         if (fragmentId == 0) {

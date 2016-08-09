@@ -123,9 +123,12 @@ public class SfdcRandomReadLedgers {
         final double maxQps = Double.parseDouble(cmdLine.getOptionValue("q", "1000000"));
         final int warmup = Integer.parseInt(cmdLine.getOptionValue("w", "15"));
 
-        final BKExtentLedgerMap elm = new BKExtentLedgerMap();
         final BookKeeper bk = new BookKeeper(bkConfig);
-            
+        final BKExtentLedgerMap elm = BKExtentLedgerMap.newBuilder()
+                .setReadHandleCacheLen(bkConfig.getReadHandleCacheLen())
+                .setReadHandleTTL(bkConfig.getReadHandleTTL())
+                .build();
+
         final BKSfdcClient bksc = new BKSfdcClient(bkConfig, bk, elm, null);
         
         consoleReporter.start(30, TimeUnit.SECONDS);

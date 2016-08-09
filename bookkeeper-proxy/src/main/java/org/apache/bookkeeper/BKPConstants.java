@@ -73,6 +73,9 @@ public final class BKPConstants {
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
 
+    // Configuration values
+    public static final long INFINITY = -1;
+
     public static final byte convertBKtoSFerror(int BKerror) {
         switch (BKerror) {
         case Code.OK:
