@@ -40,6 +40,11 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.bookkeeper.stats</groupId>
+      <artifactId>codahale-metrics-provider</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>${protobuf.version}</version>
@@ -385,16 +390,6 @@
         <dependency>
           <groupId>org.apache.bookkeeper.stats</groupId>
           <artifactId>twitter-science-provider</artifactId>
-          <version>${project.parent.version}</version>
-        </dependency>
-      </dependencies>
-    </profile>
-    <profile>
-      <id>codahale-metrics-provider</id>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.bookkeeper.stats</groupId>
-          <artifactId>codahale-metrics-provider</artifactId>
           <version>${project.parent.version}</version>
         </dependency>
       </dependencies>
