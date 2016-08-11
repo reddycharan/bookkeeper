@@ -168,17 +168,26 @@ class BKProxyWorker implements Runnable {
         this.bksc = new BKSfdcClient(bkpConfig, bk, elm, statsLogger);
     }
 
-    private int clientChannelRead(ByteBuffer buf) throws IOException {
+    private int clientChannelRead(ByteBuffer buf, int expectedSize) throws IOException {
         int bytesRead = 0;
-        try {
-            bytesRead = clientChannel.read(buf);
-        } catch (IOException e) {
-            LOG.error("Exception in read. BKProxyWorker: "
-                    + bkProxyWorkerId
-                    + " req: " + BKPConstants.getReqRespString(reqId)
-                    + " respId: " + BKPConstants.getReqRespString(respId)
-                    + " ledgerId: " + extentId, e);
-            throw e;
+        int totalBytesRead = 0;
+        while (totalBytesRead < expectedSize) {
+            try {
+                bytesRead = clientChannel.read(buf);
+                if (bytesRead < 0) {
+                    // We got an error reading from the channel.
+                    // Throw an exception.
+                    throw new IOException("Received Channel end error. Socket must have been closed.");
+                }
+                totalBytesRead += bytesRead;
+            } catch (IOException e) {
+                LOG.error("Exception in read. BKProxyWorker: "
+                        + bkProxyWorkerId
+                        + " req: " + BKPConstants.getReqRespString(reqId)
+                        + " respId: " + BKPConstants.getReqRespString(respId)
+                        + " ledgerId: " + extentId, e);
+                throw e;
+            }
         }
 
         LOG.debug("clientChannelRead - Read bytes: " + bytesRead
@@ -186,7 +195,7 @@ class BKProxyWorker implements Runnable {
                 + " req: " + BKPConstants.getReqRespString(reqId)
                 + " respId: " + BKPConstants.getReqRespString(respId)
                 + " ledgerId: " + extentId);
-        return bytesRead;
+        return totalBytesRead;
     }
 
     private void clientChannelWrite(ByteBuffer buf) throws IOException {
@@ -246,7 +255,6 @@ class BKProxyWorker implements Runnable {
             LOG.warn("Exception while trying to get client address: ", e);
         }
 
-        int bytesRead;
         try {
             Thread.currentThread().setName(
                     "BKProxyWorker" + bkProxyWorkerId + ":[" + clientConn + "]:");
@@ -258,19 +266,10 @@ class BKProxyWorker implements Runnable {
                 try {
                     req.clear();
                     resp.clear();
-                    bytesRead = 0;
                     reqId = BKPConstants.UnInitialized;
                     respId = BKPConstants.UnInitialized;
 
-                    while (bytesRead >= 0 && bytesRead < req.capacity()) {
-                        bytesRead += clientChannelRead(req); // read into buffer.
-                    }
-
-                    if (bytesRead < 0) {
-                        LOG.error("Exiting BKProxyWorker: {}. Socket must have closed (bytes read: {})",
-                                bkProxyWorkerId, bytesRead);
-                        break;
-                    }
+                    clientChannelRead(req, req.capacity()); // read into buffer.
 
                     req.flip();
                     reqId = req.get();
@@ -457,13 +456,11 @@ class BKProxyWorker implements Runnable {
                         respId = BKPConstants.LedgerAsyncWriteStatusResp;
                         resp.put(respId);
                         asreq.clear();
-                        bytesRead = 0;
                         int fragmentId;
                         int timeout;
 
-                        while (bytesRead >= 0 && bytesRead < asreq.capacity()) {
-                            bytesRead += clientChannelRead(asreq);
-                        }
+                        clientChannelRead(asreq, asreq.capacity());
+
                         asreq.flip();
                         fragmentId = asreq.getInt();
                         timeout = asreq.getInt(); // msecs
@@ -485,10 +482,7 @@ class BKProxyWorker implements Runnable {
                         resp.put(respId);
 
                         ewreq.clear();
-                        bytesRead = 0;
-                        while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
-                            bytesRead += clientChannelRead(ewreq);
-                        }
+                        clientChannelRead(ewreq, ewreq.capacity());
                         ewreq.flip();
 
                         fragmentId = ewreq.getInt();
@@ -498,40 +492,34 @@ class BKProxyWorker implements Runnable {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
                             LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
                                       " is bigger than allowed:" + wcByteBuf.capacity());
-                            // #W-2763423 it is required to read the oversized
+                            // It is required to read the oversized
                             // fragment and empty out the clientsocketchannel,
                             // otherwise it would corrupt the clientsocketchannel
-                            bytesRead = 0;
+                            int bytesToEmpty = wSize;
                             wcByteBuf.clear();
-                            while (bytesRead < wSize) {
-                                bytesRead += clientChannelRead(wcByteBuf);
-                                if (!wcByteBuf.hasRemaining()) {
-                                    wcByteBuf.clear();
-                                }
+                            while (bytesToEmpty > 0) {
+                                bytesToEmpty -= clientChannelRead(wcByteBuf, Math.min(bytesToEmpty, wcByteBuf.capacity()));
+                                wcByteBuf.clear();
                             }
-                            wcByteBuf.clear();
                             resp.put(errorCode);
                             resp.flip();
                             clientChannelWrite(resp);
                             break;
                         }
-                        bytesRead = 0;
                         wcByteBuf.clear();
-                        while (bytesRead >= 0 && bytesRead < wSize) {
-                            bytesRead += clientChannelRead(wcByteBuf);
-                        }
-
+                        clientChannelRead(wcByteBuf, wSize);
                         wcByteBuf.flip();
+
                         //Exclude channel reads above
                         startTime = MathUtils.nowInNano();
                         opStatQueue.add(new OpStatEntryTimer(ledgerSyncPutTimer, startTime));
                         opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
                         bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, false); // false -> sync write
-
                         resp.put(errorCode);
                         resp.flip();
 
                         clientChannelWrite(resp);
+
                         break;
                     }
 
@@ -546,10 +534,7 @@ class BKProxyWorker implements Runnable {
                         resp.put(respId);
 
                         ewreq.clear();
-                        bytesRead = 0;
-                        while (bytesRead >= 0 && bytesRead < ewreq.capacity()) {
-                            bytesRead += clientChannelRead(ewreq);
-                        }
+                        clientChannelRead(ewreq, ewreq.capacity());
                         ewreq.flip();
 
                         fragmentId = ewreq.getInt();
@@ -561,28 +546,22 @@ class BKProxyWorker implements Runnable {
                             errorCode = BKPConstants.SF_ErrorBadRequest;
                             LOG.error("Write message size:" + wSize + " on Extent:" + extentId +
                                       " is bigger than allowed:" + wcByteBuf.capacity());
-                            // #W-2763423 it is required to read the oversized
+                            // It is required to read the oversized
                             // fragment and empty out the clientsocketchannel,
                             // otherwise it would corrupt the clientsocketchannel
-                            bytesRead = 0;
+                            int bytesToEmpty = wSize;
                             wcByteBuf.clear();
-                            while (bytesRead < wSize) {
-                                bytesRead += clientChannelRead(wcByteBuf);
-                                if (!wcByteBuf.hasRemaining()) {
-                                    wcByteBuf.clear();
-                                }
+                            while (bytesToEmpty > 0) {
+                                bytesToEmpty -= clientChannelRead(wcByteBuf, Math.min(bytesToEmpty, wcByteBuf.capacity()));
+                                wcByteBuf.clear();
                             }
-                            wcByteBuf.clear();
                             resp.put(errorCode);
                             resp.flip();
                             clientChannelWrite(resp);
                             break;
                         }
-                        bytesRead = 0;
                         wcByteBuf.clear();
-                        while (bytesRead >= 0 && bytesRead < wSize) {
-                            bytesRead += clientChannelRead(wcByteBuf);
-                        }
+                        clientChannelRead(wcByteBuf, wSize);
 
                         wcByteBuf.flip();
                         //Exclude channel reads above
@@ -608,10 +587,7 @@ class BKProxyWorker implements Runnable {
                         resp.put(respId);
 
                         erreq.clear();
-                        bytesRead = 0;
-                        while (bytesRead >= 0 && bytesRead < erreq.capacity()) {
-                            bytesRead += clientChannelRead(erreq);
-                        }
+                        clientChannelRead(erreq, erreq.capacity());
                         erreq.flip();
                         fragmentId = erreq.getInt();
                         bufSize = erreq.getInt();
