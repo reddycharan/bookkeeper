@@ -37,6 +37,54 @@ DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.properties
 # this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
 DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
 
+bookkeeper_help() {
+    cat <<EOF
+Usage: bookkeeper <command>
+where command is one of:
+    bookie         	Run a bookie server
+    autorecovery   	Run AutoRecovery service daemon
+    localbookie <n>	Run a test ensemble of <n> bookies locally
+    upgrade        	Upgrade bookie filesystem
+    shell 		Run shell for admin commands
+    jmx 		Run jmx operations
+    help                This help message
+
+or command is the full name of a class with a defined main() method.
+
+Environment variables:
+   BOOKIE_LOG_CONF        	Log4j configuration file (default $DEFAULT_LOG_CONF)
+   BOOKIE_CONF            	Configuration file (default: $DEFAULT_CONF)
+   BOOKIE_EXTRA_OPTS      	Extra options to be passed to the jvm
+   BOOKIE_EXTRA_CLASSPATH 	Add extra paths to the bookkeeper classpath
+   ENTRY_FORMATTER_CLASS  	Entry formatter class to format entries.
+   LEDGERID_FORMATTER_CLASS  	LedgerId formatter class to format ledgerId
+   BOOKIE_PID_DIR         	Folder where the Bookie server PID file should be stored
+   BOOKIE_STOP_TIMEOUT    	Wait time before forcefully kill the Bookie server instance, if the stop is not successful
+
+These variable can also be set in conf/bkenv.sh
+EOF
+}
+
+
+jmx_help() {
+    cat <<EOF
+Usage: bookkeeper jmx [localbookie -<localbookieAddress>] <command>
+where command is one of:
+    forcecompaction
+    suspendmajorgc
+    suspendminorgc
+    resumeminorgc
+    resumemajorgc
+    flushbookie
+    openfilelimit
+    pagelimit
+    pagesize
+    pagecount
+    numopenledgers
+    help
+EOF
+}
+
 # if no args specified, show usage
 if [ $# = 0 ]; then
     bookkeeper_help;
@@ -53,17 +101,12 @@ if [ "$1" == "dev" ] || [ "$1" == "vpod" ] || [ "$1" == "prod" ]; then
     shift
 fi
 
-
-
 #Source the correct environment variables depending on environment
 if [[ $ENV_TYPE == "dev" ]]; then
-    echo "Sourcing dev"
     source $BK_HOME/conf/bkenv.sh
 elif [[ $ENV_TYPE == "prod" ]]; then
-    echo "Sourcing prod"
     source $BK_HOME/conf/bkenv.prod.sh
 elif [[ $ENV_TYPE == "vpod" ]]; then
-    echo "Sourcing vpod"
     source $BK_HOME/conf/bkenv.vpod.sh
 fi
 
@@ -100,53 +143,6 @@ if [ $? != 0 ] && [ ! -e "$BOOKIE_JAR" ]; then
 elif [ -e "$BUILT_JAR" ]; then
     BOOKIE_JAR=$BUILT_JAR
 fi
-
-bookkeeper_help() {
-    cat <<EOF
-Usage: bookkeeper <command>
-where command is one of:
-    bookie              								Run a bookie server
-    autorecovery        								Run AutoRecovery service daemon
-    localbookie <n>     								Run a test ensemble of <n> bookies locally
-    upgrade             								Upgrade bookie filesystem
-    shell [localbookie -<localbookieAddress>] [ledgeridformat -<hex/long/uuid>]		Run shell for admin commands
-    jmx [localbookie -<localbookieAddress>]						Run jmx operations
-    help                								This help message
-
-or command is the full name of a class with a defined main() method.
-
-Environment variables:
-   BOOKIE_LOG_CONF        Log4j configuration file (default $DEFAULT_LOG_CONF)
-   BOOKIE_CONF            Configuration file (default: $DEFAULT_CONF)
-   BOOKIE_EXTRA_OPTS      Extra options to be passed to the jvm
-   BOOKIE_EXTRA_CLASSPATH Add extra paths to the bookkeeper classpath
-   ENTRY_FORMATTER_CLASS  Entry formatter class to format entries.
-   LEDGERID_FORMATTER_CLASS  LedgerId formatter class to format ledgerId
-   BOOKIE_PID_DIR         Folder where the Bookie server PID file should be stored
-   BOOKIE_STOP_TIMEOUT    Wait time before forcefully kill the Bookie server instance, if the stop is not successful
-
-These variable can also be set in conf/bkenv.sh
-EOF
-}
-
-jmx_help() {
-    cat <<EOF
-Usage: bookkeeper jmx [localbookie -<localbookieAddress>] <command>
-where command is one of:
-    forcecompaction
-    suspendmajorgc
-    suspendminorgc
-    resumeminorgc
-    resumemajorgc
-    flushbookie
-    openfilelimit
-    pagelimit
-    pagesize
-    pagecount
-    numopenledgers
-    help
-EOF
-}
 
 add_maven_deps_to_classpath() {
     MVN="mvn"
@@ -248,7 +244,11 @@ BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
 OPTS="$OPTS -Dbookkeeper.root.logger=$BOOKIE_ROOT_LOGGER"
 OPTS="$OPTS -Dbookkeeper.log.dir=$BOOKIE_LOG_DIR"
 OPTS="$OPTS -Dbookkeeper.log.file=$BOOKIE_LOG_FILE"
-OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+if [ $COMMAND == "shell" ]; then
+    OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog"
+else
+    OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+fi
 OPTS="$OPTS -Dbookkeeper.log.level=$BOOKIE_LOG_LEVEL"
 OPTS="$OPTS -Dbookkeeper.log.filesize=$BOOKIE_LOG_FILE_SIZE"
 OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
@@ -317,6 +317,7 @@ elif [ $COMMAND == "jmx" ]; then
         jmx_help;
     else
         echo "Unknown JMX Command: $JMX_COMMAND"
+        jmx_help
     fi
 else
     exec $JAVA $OPTS $COMMAND $@

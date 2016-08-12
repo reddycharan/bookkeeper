@@ -118,7 +118,6 @@ public class BookieShell implements Tool {
     static final String CMD_BOOKIESANITYTEST = "bookiesanity";
     static final String CMD_READLOG = "readlog";
     static final String CMD_READJOURNAL = "readjournal";
-    static final String CMD_READLEDGERENTRY = "readledgerentry";
     static final String CMD_LASTMARK = "lastmark";
     static final String CMD_AUTORECOVERY = "autorecovery";
     static final String CMD_LISTBOOKIES = "listbookies";
@@ -302,7 +301,7 @@ public class BookieShell implements Tool {
 
         @Override
         String getUsage() {
-            return "recover [-deleteCookie] <bookieSrc> [bookieDest]";
+            return "recover      [-deleteCookie] <bookieSrc> [bookieDest]";
         }
 
         @Override
@@ -423,6 +422,10 @@ public class BookieShell implements Tool {
 
         ReadLedgerEntriesCmd() {
             super(CMD_READ_LEDGER_ENTRIES);
+            lOpts.addOption("m", "msg", false, "Print message body");
+            lOpts.addOption("l", "ledgerid", true, "Ledger ID");
+            lOpts.addOption("fe", "firstentryid", true, "First EntryID");
+            lOpts.addOption("le", "lastentryid", true, "Last EntryID");
         }
 
         @Override
@@ -437,34 +440,21 @@ public class BookieShell implements Tool {
 
         @Override
         String getUsage() {
-            return "readledger <ledger_id> [<start_entry_id> [<end_entry_id>]]";
+            return "readledger   [-msg] -ledgerid <ledgerid> [-firstentryid <firstentryid> [-lastentryid <lastentryid>]]";
         }
 
         @Override
         int runCmd(CommandLine cmdLine) throws Exception {
-            String[] leftArgs = cmdLine.getArgs();
-            if (leftArgs.length <= 0) {
-                System.err.println("ERROR: missing ledger id");
-                printUsage();
+            final long ledgerId = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
+            if (ledgerId == -1) {
+                System.err.println("Must specify a ledger id");
                 return -1;
             }
 
-            long ledgerId;
-            long firstEntry = 0;
-            long lastEntry = -1;
-            try {
-                ledgerId = Long.parseLong(leftArgs[0]);
-                if (leftArgs.length >= 2) {
-                    firstEntry = Long.parseLong(leftArgs[1]);
-                }
-                if (leftArgs.length >= 3) {
-                    lastEntry = Long.parseLong(leftArgs[2]);
-                }
-            } catch (NumberFormatException nfe) {
-                System.err.println("ERROR: invalid number " + nfe.getMessage());
-                printUsage();
-                return -1;
-            }
+            final long firstEntry = getOptionLongValue(cmdLine, "firstentryid", 0);
+            final long lastEntry = getOptionLongValue(cmdLine, "lastentryid", -1);
+
+            boolean printMsg = cmdLine.hasOption("m");
 
             ClientConfiguration conf = new ClientConfiguration();
             conf.addConfiguration(bkConf);
@@ -476,10 +466,7 @@ public class BookieShell implements Tool {
                 Iterator<LedgerEntry> entries = bk.readEntries(ledgerId, firstEntry, lastEntry).iterator();
                 while (entries.hasNext()) {
                     LedgerEntry entry = entries.next();
-                    HexDump.dump(entry.getEntry(), 0, out, 0);
-                    System.out.println(
-                            "Entry Id: " + entry.getEntryId() + ", Data: " + new String(out.toByteArray(), UTF_8));
-                    out.reset();
+                    formatEntry(entry, printMsg);
                 }
             } catch (Exception e) {
                 LOG.error("Error reading entries from ledger {}", ledgerId, e.getCause());
@@ -920,20 +907,20 @@ public class BookieShell implements Tool {
                 logId = Long.parseLong(idString, 16);
             }
 
-            final long lId = getOptionLongValue(cmdLine, "ledgerid", -1);
+            final long lId = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             final long eId = getOptionLongValue(cmdLine, "entryid", -1);
             final long startpos = getOptionLongValue(cmdLine, "startpos", -1);
             final long endpos = getOptionLongValue(cmdLine, "endpos", -1);
 
             // scan entry log
-            if ((startpos != -1) && (endpos != -1)) {
-                if (endpos < startpos) {
+            if (startpos != -1) {
+                if ((endpos != -1) && (endpos < startpos)) {
                     System.err
                             .println("ERROR: StartPosition of the range should be lesser than or equal to EndPosition");
                     return -1;
                 }
                 scanEntryLogForPositionRange(logId, startpos, endpos, printMsg);
-            } else if ((lId != -1) && (eId != -1)) {
+            } else if (lId != -1) {
                 scanEntryLogForSpecificEntry(logId, lId, eId, printMsg);
             } else {
                 scanEntryLog(logId, printMsg);
@@ -949,8 +936,8 @@ public class BookieShell implements Tool {
 
         @Override
         String getUsage() {
-            return "readlog      [-msg] <entry_log_id | entry_log_file_name> [-ledgerid <ledgerid> -entryid <entryid>] "
-                    + "[-startpos <startpos> -endpos <endpos>]";
+            return "readlog      [-msg] <entry_log_id | entry_log_file_name> [-ledgerid <ledgerid> [-entryid <entryid>]] "
+                    + "[-startpos <startEntryLogBytePos> [-endpos <endEntryLogBytePos>]]";
         }
 
         @Override
@@ -1020,82 +1007,6 @@ public class BookieShell implements Tool {
         }
     }
 
-    /**
-     * Command to read entry of a ledger
-     */
-    class ReadLedgerEntryCmd extends MyCommand {
-        Options rleOpts = new Options();
-
-        ReadLedgerEntryCmd() {
-            super(CMD_READLEDGERENTRY);
-            rleOpts.addOption("m", "msg", false, "Print message body");
-            rleOpts.addOption("l", "ledgerid", true, "Ledger ID");
-            rleOpts.addOption("fe", "firstEntryId", true, "First EntryID");
-            rleOpts.addOption("le", "lastEntryId", true, "Last EntryID");
-        }
-
-        @Override
-        public int runCmd(CommandLine cmdLine) throws Exception {
-            final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
-            if (lid == -1) {
-                System.err.println("Must specify a ledger id");
-                return -1;
-            }
-
-            final long feid = getOptionLongValue(cmdLine, "firstEntryId", -1);
-            if (feid == -1) {
-                System.err.println("Must specify first entry id");
-                return -1;
-            }
-
-            final long leid = getOptionLongValue(cmdLine, "lastEntryId", -1);
-            if (leid == -1) {
-                System.err.println("Must specify last entry id");
-                return -1;
-            }
-
-            boolean printMsg = cmdLine.hasOption("m");
-
-            ClientConfiguration adminConf = new ClientConfiguration(bkConf);
-            BookKeeperAdmin admin = new BookKeeperAdmin(adminConf);
-            LedgerHandle lh = null;
-            try {
-                lh = admin.openLedgerNoRecovery(lid);
-                Enumeration<LedgerEntry> entries = lh.readEntries(feid, leid);
-                while (entries.hasMoreElements()) {
-                    formatEntry(entries.nextElement(), printMsg);
-                }
-            } finally {
-                if (lh != null) {
-                    try {
-                        lh.close();
-                    } catch (BKException bke) {
-                        LOG.warn("Couldn't close ledger " + lid, bke);
-                    } catch (InterruptedException ie) {
-                        LOG.warn("Interrupted closing ledger " + lid, ie);
-                    }
-                }
-                admin.close();
-            }
-            return 0;
-        }
-
-        @Override
-        String getDescription() {
-            return "Print the Entries content";
-        }
-
-        @Override
-        String getUsage() {
-            return "readledgerentry     [-msg] -ledgerid <ledgerid> -firstEntryId <firstEntryId> -lastEntryId <lastEntryId> ";
-        }
-
-        @Override
-        Options getOptions() {
-            return rleOpts;
-        }
-    }
-    
     /**
      * Command to print last log mark
      */
@@ -1755,7 +1666,6 @@ public class BookieShell implements Tool {
         commands.put(CMD_BOOKIESANITYTEST, new BookieSanityTestCmd());
         commands.put(CMD_READLOG, new ReadLogCmd());
         commands.put(CMD_READJOURNAL, new ReadJournalCmd());
-        commands.put(CMD_READLEDGERENTRY, new ReadLedgerEntryCmd());
         commands.put(CMD_LASTMARK, new LastMarkCmd());
         commands.put(CMD_AUTORECOVERY, new AutoRecoveryCmd());
         commands.put(CMD_LISTBOOKIES, new ListBookiesCmd());
@@ -1785,8 +1695,8 @@ public class BookieShell implements Tool {
 
     private void printShellUsage() {
         System.err.println(
-                "Usage: BookieShell [localbookie -<localbookieAddress>] [ledgeridformat -<hex/long/uuid>] [-conf configuration] <command>");
-        System.err.println();
+                "Usage: bookkeeper shell [localbookie [-<localbookieAddress>]] [ledgeridformat -<hex/long/uuid>] [-conf configuration] <command>");
+        System.err.println("where command is one of:");
         List<String> commandNames = new ArrayList<String>();
         for (MyCommand c : commands.values()) {
             commandNames.add("       " + c.getUsage());
@@ -2078,20 +1988,20 @@ public class BookieShell implements Tool {
      * @param ledgerId
      *          id of the ledger
      * @param entryId
-     *          entryId of the ledger we are looking for
+     *          entryId of the ledger we are looking for (-1 for all of the entries of the ledger)
      * @param printMsg
      *          Whether printing the entry data.
      * @throws Exception
      */
     protected void scanEntryLogForSpecificEntry(long logId, final long lId, final long eId, final boolean printMsg)
             throws Exception {
-        System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + "for LedgerId " + lId
-                + " for EntryId " + eId);
+        System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for LedgerId " + lId
+                + ((eId == -1) ? "" : " for EntryId " + eId));
         final MutableBoolean entryFound = new MutableBoolean(false);
         scanEntryLog(logId, new EntryLogScanner() {
             @Override
             public boolean accept(long ledgerId) {
-                return ((lId == ledgerId) && !entryFound.booleanValue());
+                return ((lId == ledgerId) && ((!entryFound.booleanValue()) || (eId == -1)));
             }
 
             @Override
@@ -2099,15 +2009,15 @@ public class BookieShell implements Tool {
                 long entrysLedgerId = entry.getLong();
                 long entrysEntryId = entry.getLong();
                 entry.rewind();
-                if ((ledgerId == entrysLedgerId) && (ledgerId == lId) && (entrysEntryId == eId)) {
+                if ((ledgerId == entrysLedgerId) && (ledgerId == lId) && ((entrysEntryId == eId)) || (eId == -1)) {
                     entryFound.setValue(true);
                     formatEntry(startPos, entry, printMsg);
                 }
             }
         });
         if (!entryFound.booleanValue()) {
-            System.out.println("LedgerId " + lId + " EntryId " + eId + " is not available in the entry log " + logId
-                    + " (" + Long.toHexString(logId) + ".log)");
+            System.out.println("LedgerId " + lId + ((eId == -1) ? "" : " EntryId " + eId)
+                    + " is not available in the entry log " + logId + " (" + Long.toHexString(logId) + ".log)");
         }
     }
 
@@ -2119,7 +2029,7 @@ public class BookieShell implements Tool {
      * @param rangeStartPos
      *          Start position of the entry we are looking for
      * @param rangeEndPos
-     *          End position of the entry we are looking for
+     *          End position of the entry we are looking for (-1 for till the end of the entrylog)
      * @param printMsg
      *          Whether printing the entry data.
      * @throws Exception
@@ -2127,7 +2037,7 @@ public class BookieShell implements Tool {
     protected void scanEntryLogForPositionRange(long logId, final long rangeStartPos, final long rangeEndPos, final boolean printMsg)
  throws Exception {
         System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for PositionRange: "
-                + rangeStartPos + "-" + rangeEndPos);
+                + rangeStartPos + " - " + rangeEndPos);
         final MutableBoolean entryFound = new MutableBoolean(false);
         scanEntryLog(logId, new EntryLogScanner() {
             private MutableBoolean stopScanning = new MutableBoolean(false);
@@ -2140,7 +2050,7 @@ public class BookieShell implements Tool {
             @Override
             public void process(long ledgerId, long entryStartPos, ByteBuffer entry) {
                 if (!stopScanning.booleanValue()) {
-                    if (entryStartPos > rangeEndPos) {
+                    if ((rangeEndPos != -1) && (entryStartPos > rangeEndPos)) {
                         stopScanning.setValue(true);
                     } else {
                         int entrySize = entry.limit();
@@ -2153,7 +2063,7 @@ public class BookieShell implements Tool {
                          * EntryLogger.scanEntryLog.
                          */
                         long entryEndPos = entryStartPos + entrySize + 4 - 1;
-                        if ((entryStartPos <= rangeEndPos) && (rangeStartPos <= entryEndPos)) {
+                        if (((rangeEndPos == -1) || (entryStartPos <= rangeEndPos)) && (rangeStartPos <= entryEndPos)) {
                             formatEntry(entryStartPos, entry, printMsg);
                             entryFound.setValue(true);
                         }
@@ -2163,7 +2073,7 @@ public class BookieShell implements Tool {
         });
         if (!entryFound.booleanValue()) {
             System.out.println("Entry log " + logId + " (" + Long.toHexString(logId)
-                    + ".log) doesn't has any entry in the range " + rangeStartPos + "-" + rangeEndPos
+                    + ".log) doesn't has any entry in the range " + rangeStartPos + " - " + rangeEndPos
                     + ". Probably the position range, you have provided is lesser than the LOGFILE_HEADER_SIZE (1024) "
                     + "or greater than the current log filesize.");
         }

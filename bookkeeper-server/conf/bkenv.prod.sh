@@ -37,7 +37,7 @@
 # Extra options to be passed to the jvm
 # In production we presume we have > 256GB of RAM
 # BOOKIE_EXTRA_OPTS=
-BOOKIE_EXTRA_OPTS="-Xms31G -Xmx31G -Xmn15G -XX:PermSize=256M -XX:MaxPermSize=512M -Duser.timezone=UTC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:+CMSParallelInitialMarkEnabled -XX:+ParallelRefProcEnabled -XX:+UnlockDiagnosticVMOptions -XX:+CMSEdenChunksRecordAlways -XX:ParGCCardsPerStrideChunk=4096 -XX:StringTableSize=1000003 -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:-OmitStackTraceInFastThrow -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics "
+BOOKIE_EXTRA_OPTS="-Xms31G -Xmx31G -Xmn15G -Duser.timezone=UTC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:+CMSParallelInitialMarkEnabled -XX:+ParallelRefProcEnabled -XX:+UnlockDiagnosticVMOptions -XX:+CMSEdenChunksRecordAlways -XX:ParGCCardsPerStrideChunk=4096 -XX:StringTableSize=1000003 -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:-OmitStackTraceInFastThrow -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics "
 
 # Add extra paths to the bookkeeper classpath
 # BOOKIE_EXTRA_CLASSPATH=
