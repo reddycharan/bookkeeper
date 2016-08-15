@@ -1,0 +1,9 @@
+[Info]
+#list of bookies to monitor; a comma separated list. E.g: say1shared1-sfstore1-1-prd.eng.sfdc.net,say1shared1-sfstore1-2-prd.eng.sfdc.net
+Bookies:
+# list of zk servers; a comma separated list
+ZkServers:
+# List of processes to monitor; list in a comma separated format
+Processes:sfms,BookieServer
+# List of directory mount points to monitor; list in a comma separated format
+DirPaths:/sfs/sfsdata,/sfs/sfsdump,/sfs/sfslogs,/sfs/sfsbuild

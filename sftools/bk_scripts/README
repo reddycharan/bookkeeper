@@ -34,3 +34,11 @@ stop_io.sh: terminate (kill) the iostat process on each bookie and
 total_io.sh: Run this script from the directory created above from io_trends.sh
   script.  The reads and writes are summed and reported for Ledger and 
   Journal across all bookie and zookeeper nodes.
+
+monitor_sfstore.py: Given an input file(see Hosts.txt) that contains a list of
+  bookie server hostnames, zk server hostnames, process names on bookie server,
+  and a list of dir mount points on bookie server, this script checks: (i) if all
+  the bookies are reachable via ping, (ii) if all the bookies are in RW state or
+  not, (iii) are the processes provided still running, or (iv) is the disk
+  utilization on the mount points provided below the 80%(configurable) threshold.
+  If any of the checks fail, it sends an email to the specified email address.
