@@ -8,20 +8,46 @@ public final class BookkeeperProtocol {
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
+  /**
+   * Protobuf enum {@code ProtocolVersion}
+   *
+   * <pre>
+   **
+   * Protocol Versions.
+   * </pre>
+   */
   public enum ProtocolVersion
       implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>VERSION_ONE = 1;</code>
+     */
     VERSION_ONE(0, 1),
+    /**
+     * <code>VERSION_TWO = 2;</code>
+     */
     VERSION_TWO(1, 2),
+    /**
+     * <code>VERSION_THREE = 3;</code>
+     */
     VERSION_THREE(2, 3),
     ;
-    
+
+    /**
+     * <code>VERSION_ONE = 1;</code>
+     */
     public static final int VERSION_ONE_VALUE = 1;
+    /**
+     * <code>VERSION_TWO = 2;</code>
+     */
     public static final int VERSION_TWO_VALUE = 2;
+    /**
+     * <code>VERSION_THREE = 3;</code>
+     */
     public static final int VERSION_THREE_VALUE = 3;
-    
-    
+
+
     public final int getNumber() { return value; }
-    
+
     public static ProtocolVersion valueOf(int value) {
       switch (value) {
         case 1: return VERSION_ONE;
@@ -30,7 +56,7 @@ public final class BookkeeperProtocol {
         default: return null;
       }
     }
-    
+
     public static com.google.protobuf.Internal.EnumLiteMap<ProtocolVersion>
         internalGetValueMap() {
       return internalValueMap;
@@ -42,7 +68,7 @@ public final class BookkeeperProtocol {
               return ProtocolVersion.valueOf(number);
             }
           };
-    
+
     public final com.google.protobuf.Descriptors.EnumValueDescriptor
         getValueDescriptor() {
       return getDescriptor().getValues().get(index);
@@ -55,11 +81,9 @@ public final class BookkeeperProtocol {
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.getDescriptor().getEnumTypes().get(0);
     }
-    
-    private static final ProtocolVersion[] VALUES = {
-      VERSION_ONE, VERSION_TWO, VERSION_THREE, 
-    };
-    
+
+    private static final ProtocolVersion[] VALUES = values();
+
     public static ProtocolVersion valueOf(
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
@@ -68,44 +92,122 @@ public final class BookkeeperProtocol {
       }
       return VALUES[desc.getIndex()];
     }
-    
+
     private final int index;
     private final int value;
-    
+
     private ProtocolVersion(int index, int value) {
       this.index = index;
       this.value = value;
     }
-    
+
     // @@protoc_insertion_point(enum_scope:ProtocolVersion)
   }
-  
+
+  /**
+   * Protobuf enum {@code StatusCode}
+   *
+   * <pre>
+   **
+   * Status codes.
+   * </pre>
+   */
   public enum StatusCode
       implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>EOK = 0;</code>
+     */
     EOK(0, 0),
+    /**
+     * <code>ENOLEDGER = 402;</code>
+     *
+     * <pre>
+     * Server side Errors 4xx
+     * </pre>
+     */
     ENOLEDGER(1, 402),
+    /**
+     * <code>ENOENTRY = 403;</code>
+     */
     ENOENTRY(2, 403),
+    /**
+     * <code>EBADREQ = 404;</code>
+     */
     EBADREQ(3, 404),
+    /**
+     * <code>EIO = 501;</code>
+     *
+     * <pre>
+     * IO/access errors 5xx
+     * </pre>
+     */
     EIO(4, 501),
+    /**
+     * <code>EUA = 502;</code>
+     */
     EUA(5, 502),
+    /**
+     * <code>EBADVERSION = 503;</code>
+     */
     EBADVERSION(6, 503),
+    /**
+     * <code>EFENCED = 504;</code>
+     */
     EFENCED(7, 504),
+    /**
+     * <code>EREADONLY = 505;</code>
+     */
     EREADONLY(8, 505),
     ;
-    
+
+    /**
+     * <code>EOK = 0;</code>
+     */
     public static final int EOK_VALUE = 0;
+    /**
+     * <code>ENOLEDGER = 402;</code>
+     *
+     * <pre>
+     * Server side Errors 4xx
+     * </pre>
+     */
     public static final int ENOLEDGER_VALUE = 402;
+    /**
+     * <code>ENOENTRY = 403;</code>
+     */
     public static final int ENOENTRY_VALUE = 403;
+    /**
+     * <code>EBADREQ = 404;</code>
+     */
     public static final int EBADREQ_VALUE = 404;
+    /**
+     * <code>EIO = 501;</code>
+     *
+     * <pre>
+     * IO/access errors 5xx
+     * </pre>
+     */
     public static final int EIO_VALUE = 501;
+    /**
+     * <code>EUA = 502;</code>
+     */
     public static final int EUA_VALUE = 502;
+    /**
+     * <code>EBADVERSION = 503;</code>
+     */
     public static final int EBADVERSION_VALUE = 503;
+    /**
+     * <code>EFENCED = 504;</code>
+     */
     public static final int EFENCED_VALUE = 504;
+    /**
+     * <code>EREADONLY = 505;</code>
+     */
     public static final int EREADONLY_VALUE = 505;
-    
-    
+
+
     public final int getNumber() { return value; }
-    
+
     public static StatusCode valueOf(int value) {
       switch (value) {
         case 0: return EOK;
@@ -120,7 +222,7 @@ public final class BookkeeperProtocol {
         default: return null;
       }
     }
-    
+
     public static com.google.protobuf.Internal.EnumLiteMap<StatusCode>
         internalGetValueMap() {
       return internalValueMap;
@@ -132,7 +234,7 @@ public final class BookkeeperProtocol {
               return StatusCode.valueOf(number);
             }
           };
-    
+
     public final com.google.protobuf.Descriptors.EnumValueDescriptor
         getValueDescriptor() {
       return getDescriptor().getValues().get(index);
@@ -145,11 +247,9 @@ public final class BookkeeperProtocol {
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.getDescriptor().getEnumTypes().get(1);
     }
-    
-    private static final StatusCode[] VALUES = {
-      EOK, ENOLEDGER, ENOENTRY, EBADREQ, EIO, EUA, EBADVERSION, EFENCED, EREADONLY, 
-    };
-    
+
+    private static final StatusCode[] VALUES = values();
+
     public static StatusCode valueOf(
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
@@ -158,40 +258,106 @@ public final class BookkeeperProtocol {
       }
       return VALUES[desc.getIndex()];
     }
-    
+
     private final int index;
     private final int value;
-    
+
     private StatusCode(int index, int value) {
       this.index = index;
       this.value = value;
     }
-    
+
     // @@protoc_insertion_point(enum_scope:StatusCode)
   }
-  
+
+  /**
+   * Protobuf enum {@code OperationType}
+   *
+   * <pre>
+   **
+   * Supported operations by this protocol.
+   * </pre>
+   */
   public enum OperationType
       implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>READ_ENTRY = 1;</code>
+     */
     READ_ENTRY(0, 1),
+    /**
+     * <code>ADD_ENTRY = 2;</code>
+     */
     ADD_ENTRY(1, 2),
+    /**
+     * <code>RANGE_READ_ENTRY = 3;</code>
+     *
+     * <pre>
+     * Not supported yet.
+     * </pre>
+     */
     RANGE_READ_ENTRY(2, 3),
+    /**
+     * <code>RANGE_ADD_ENTRY = 4;</code>
+     *
+     * <pre>
+     * Not supported yet.
+     * </pre>
+     */
     RANGE_ADD_ENTRY(3, 4),
+    /**
+     * <code>AUTH = 5;</code>
+     */
     AUTH(4, 5),
+    /**
+     * <code>WRITE_LAC = 6;</code>
+     */
     WRITE_LAC(5, 6),
+    /**
+     * <code>READ_LAC = 7;</code>
+     */
     READ_LAC(6, 7),
     ;
-    
+
+    /**
+     * <code>READ_ENTRY = 1;</code>
+     */
     public static final int READ_ENTRY_VALUE = 1;
+    /**
+     * <code>ADD_ENTRY = 2;</code>
+     */
     public static final int ADD_ENTRY_VALUE = 2;
+    /**
+     * <code>RANGE_READ_ENTRY = 3;</code>
+     *
+     * <pre>
+     * Not supported yet.
+     * </pre>
+     */
     public static final int RANGE_READ_ENTRY_VALUE = 3;
+    /**
+     * <code>RANGE_ADD_ENTRY = 4;</code>
+     *
+     * <pre>
+     * Not supported yet.
+     * </pre>
+     */
     public static final int RANGE_ADD_ENTRY_VALUE = 4;
+    /**
+     * <code>AUTH = 5;</code>
+     */
     public static final int AUTH_VALUE = 5;
+    /**
+     * <code>WRITE_LAC = 6;</code>
+     */
     public static final int WRITE_LAC_VALUE = 6;
+    /**
+     * <code>READ_LAC = 7;</code>
+     */
     public static final int READ_LAC_VALUE = 7;
-    
-    
+
+
     public final int getNumber() { return value; }
-    
+
     public static OperationType valueOf(int value) {
       switch (value) {
         case 1: return READ_ENTRY;
@@ -204,7 +370,7 @@ public final class BookkeeperProtocol {
         default: return null;
       }
     }
-    
+
     public static com.google.protobuf.Internal.EnumLiteMap<OperationType>
         internalGetValueMap() {
       return internalValueMap;
@@ -216,7 +382,7 @@ public final class BookkeeperProtocol {
               return OperationType.valueOf(number);
             }
           };
-    
+
     public final com.google.protobuf.Descriptors.EnumValueDescriptor
         getValueDescriptor() {
       return getDescriptor().getValues().get(index);
@@ -229,11 +395,9 @@ public final class BookkeeperProtocol {
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.getDescriptor().getEnumTypes().get(2);
     }
-    
-    private static final OperationType[] VALUES = {
-      READ_ENTRY, ADD_ENTRY, RANGE_READ_ENTRY, RANGE_ADD_ENTRY, AUTH, WRITE_LAC, READ_LAC, 
-    };
-    
+
+    private static final OperationType[] VALUES = values();
+
     public static OperationType valueOf(
         com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
       if (desc.getType() != getDescriptor()) {
@@ -242,396 +406,103 @@ public final class BookkeeperProtocol {
       }
       return VALUES[desc.getIndex()];
     }
-    
+
     private final int index;
     private final int value;
-    
+
     private OperationType(int index, int value) {
       this.index = index;
       this.value = value;
     }
-    
+
     // @@protoc_insertion_point(enum_scope:OperationType)
   }
-  
-  public interface BKPacketHeaderOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .ProtocolVersion version = 1;
+
+  public interface BKPacketHeaderOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:BKPacketHeader)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .ProtocolVersion version = 1;</code>
+     */
     boolean hasVersion();
+    /**
+     * <code>required .ProtocolVersion version = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion getVersion();
-    
-    // required .OperationType operation = 2;
+
+    /**
+     * <code>required .OperationType operation = 2;</code>
+     */
     boolean hasOperation();
+    /**
+     * <code>required .OperationType operation = 2;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType getOperation();
-    
-    // required uint64 txnId = 3;
+
+    /**
+     * <code>required uint64 txnId = 3;</code>
+     */
     boolean hasTxnId();
+    /**
+     * <code>required uint64 txnId = 3;</code>
+     */
     long getTxnId();
   }
+  /**
+   * Protobuf type {@code BKPacketHeader}
+   *
+   * <pre>
+   **
+   * Packet header for all requests.
+   * </pre>
+   */
   public static final class BKPacketHeader extends
-      com.google.protobuf.GeneratedMessage
-      implements BKPacketHeaderOrBuilder {
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:BKPacketHeader)
+      BKPacketHeaderOrBuilder {
     // Use BKPacketHeader.newBuilder() to construct.
-    private BKPacketHeader(Builder builder) {
+    private BKPacketHeader(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private BKPacketHeader(boolean noInit) {}
-    
+    private BKPacketHeader(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final BKPacketHeader defaultInstance;
     public static BKPacketHeader getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public BKPacketHeader getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_fieldAccessorTable;
-    }
-    
-    private int bitField0_;
-    // required .ProtocolVersion version = 1;
-    public static final int VERSION_FIELD_NUMBER = 1;
-    private org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion version_;
-    public boolean hasVersion() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    public org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion getVersion() {
-      return version_;
-    }
-    
-    // required .OperationType operation = 2;
-    public static final int OPERATION_FIELD_NUMBER = 2;
-    private org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType operation_;
-    public boolean hasOperation() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    public org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType getOperation() {
-      return operation_;
-    }
-    
-    // required uint64 txnId = 3;
-    public static final int TXNID_FIELD_NUMBER = 3;
-    private long txnId_;
-    public boolean hasTxnId() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    public long getTxnId() {
-      return txnId_;
-    }
-    
-    private void initFields() {
-      version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
-      operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
-      txnId_ = 0L;
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
-      if (!hasVersion()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasOperation()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasTxnId()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      memoizedIsInitialized = 1;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeEnum(1, version_.getNumber());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeEnum(2, operation_.getNumber());
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeUInt64(3, txnId_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, version_.getNumber());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(2, operation_.getNumber());
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt64Size(3, txnId_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    private static final long serialVersionUID = 0L;
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
     @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+    private BKPacketHeader(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_descriptor;
-      }
-      
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_fieldAccessorTable;
-      }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-      
-      private Builder(BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-      
-      public Builder clear() {
-        super.clear();
-        version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
-        bitField0_ = (bitField0_ & ~0x00000001);
-        operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        txnId_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDescriptor();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader result = new org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.version_ = version_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.operation_ = operation_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
-        result.txnId_ = txnId_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance()) return this;
-        if (other.hasVersion()) {
-          setVersion(other.getVersion());
-        }
-        if (other.hasOperation()) {
-          setOperation(other.getOperation());
-        }
-        if (other.hasTxnId()) {
-          setTxnId(other.getTxnId());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public final boolean isInitialized() {
-        if (!hasVersion()) {
-          
-          return false;
-        }
-        if (!hasOperation()) {
-          
-          return false;
-        }
-        if (!hasTxnId()) {
-          
-          return false;
-        }
-        return true;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -664,18 +535,397 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.class, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<BKPacketHeader> PARSER =
+        new com.google.protobuf.AbstractParser<BKPacketHeader>() {
+      public BKPacketHeader parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new BKPacketHeader(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<BKPacketHeader> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    public static final int VERSION_FIELD_NUMBER = 1;
+    private org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion version_;
+    /**
+     * <code>required .ProtocolVersion version = 1;</code>
+     */
+    public boolean hasVersion() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required .ProtocolVersion version = 1;</code>
+     */
+    public org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion getVersion() {
+      return version_;
+    }
+
+    public static final int OPERATION_FIELD_NUMBER = 2;
+    private org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType operation_;
+    /**
+     * <code>required .OperationType operation = 2;</code>
+     */
+    public boolean hasOperation() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required .OperationType operation = 2;</code>
+     */
+    public org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType getOperation() {
+      return operation_;
+    }
+
+    public static final int TXNID_FIELD_NUMBER = 3;
+    private long txnId_;
+    /**
+     * <code>required uint64 txnId = 3;</code>
+     */
+    public boolean hasTxnId() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required uint64 txnId = 3;</code>
+     */
+    public long getTxnId() {
+      return txnId_;
+    }
+
+    private void initFields() {
+      version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
+      operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
+      txnId_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      if (!hasVersion()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasOperation()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasTxnId()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(1, version_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeEnum(2, operation_.getNumber());
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeUInt64(3, txnId_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(1, version_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(2, operation_.getNumber());
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(3, txnId_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code BKPacketHeader}
+     *
+     * <pre>
+     **
+     * Packet header for all requests.
+     * </pre>
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:BKPacketHeader)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.class, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder.class);
+      }
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        txnId_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_BKPacketHeader_descriptor;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader result = new org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.version_ = version_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.operation_ = operation_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.txnId_ = txnId_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance()) return this;
+        if (other.hasVersion()) {
+          setVersion(other.getVersion());
+        }
+        if (other.hasOperation()) {
+          setOperation(other.getOperation());
+        }
+        if (other.hasTxnId()) {
+          setTxnId(other.getTxnId());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasVersion()) {
+          
+          return false;
+        }
+        if (!hasOperation()) {
+          
+          return false;
+        }
+        if (!hasTxnId()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
       private int bitField0_;
-      
-      // required .ProtocolVersion version = 1;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
+      /**
+       * <code>required .ProtocolVersion version = 1;</code>
+       */
       public boolean hasVersion() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>required .ProtocolVersion version = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion getVersion() {
         return version_;
       }
+      /**
+       * <code>required .ProtocolVersion version = 1;</code>
+       */
       public Builder setVersion(org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion value) {
         if (value == null) {
           throw new NullPointerException();
@@ -685,21 +935,32 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>required .ProtocolVersion version = 1;</code>
+       */
       public Builder clearVersion() {
         bitField0_ = (bitField0_ & ~0x00000001);
         version_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion.VERSION_ONE;
         onChanged();
         return this;
       }
-      
-      // required .OperationType operation = 2;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
+      /**
+       * <code>required .OperationType operation = 2;</code>
+       */
       public boolean hasOperation() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>required .OperationType operation = 2;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType getOperation() {
         return operation_;
       }
+      /**
+       * <code>required .OperationType operation = 2;</code>
+       */
       public Builder setOperation(org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType value) {
         if (value == null) {
           throw new NullPointerException();
@@ -709,185 +970,461 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>required .OperationType operation = 2;</code>
+       */
       public Builder clearOperation() {
         bitField0_ = (bitField0_ & ~0x00000002);
         operation_ = org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType.READ_ENTRY;
         onChanged();
         return this;
       }
-      
-      // required uint64 txnId = 3;
+
       private long txnId_ ;
+      /**
+       * <code>required uint64 txnId = 3;</code>
+       */
       public boolean hasTxnId() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+      /**
+       * <code>required uint64 txnId = 3;</code>
+       */
       public long getTxnId() {
         return txnId_;
       }
+      /**
+       * <code>required uint64 txnId = 3;</code>
+       */
       public Builder setTxnId(long value) {
         bitField0_ |= 0x00000004;
         txnId_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>required uint64 txnId = 3;</code>
+       */
       public Builder clearTxnId() {
         bitField0_ = (bitField0_ & ~0x00000004);
         txnId_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:BKPacketHeader)
     }
-    
+
     static {
       defaultInstance = new BKPacketHeader(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:BKPacketHeader)
   }
-  
-  public interface RequestOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .BKPacketHeader header = 1;
+
+  public interface RequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:Request)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     boolean hasHeader();
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader();
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder();
-    
-    // optional .ReadRequest readRequest = 100;
+
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     boolean hasReadRequest();
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest getReadRequest();
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder getReadRequestOrBuilder();
-    
-    // optional .AddRequest addRequest = 101;
+
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     boolean hasAddRequest();
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest getAddRequest();
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder getAddRequestOrBuilder();
-    
-    // optional .AuthMessage authRequest = 102;
+
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     boolean hasAuthRequest();
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthRequest();
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthRequestOrBuilder();
-    
-    // optional .WriteLacRequest writeLacRequest = 103;
+
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     boolean hasWriteLacRequest();
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest getWriteLacRequest();
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder getWriteLacRequestOrBuilder();
-    
-    // optional .ReadLacRequest readLacRequest = 104;
+
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     boolean hasReadLacRequest();
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest getReadLacRequest();
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder getReadLacRequestOrBuilder();
   }
+  /**
+   * Protobuf type {@code Request}
+   */
   public static final class Request extends
-      com.google.protobuf.GeneratedMessage
-      implements RequestOrBuilder {
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:Request)
+      RequestOrBuilder {
     // Use Request.newBuilder() to construct.
-    private Request(Builder builder) {
+    private Request(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private Request(boolean noInit) {}
-    
+    private Request(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final Request defaultInstance;
     public static Request getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public Request getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Request(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = header_.toBuilder();
+              }
+              header_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(header_);
+                header_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+            case 802: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000002) == 0x00000002)) {
+                subBuilder = readRequest_.toBuilder();
+              }
+              readRequest_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(readRequest_);
+                readRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000002;
+              break;
+            }
+            case 810: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = addRequest_.toBuilder();
+              }
+              addRequest_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(addRequest_);
+                addRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
+              break;
+            }
+            case 818: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000008) == 0x00000008)) {
+                subBuilder = authRequest_.toBuilder();
+              }
+              authRequest_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(authRequest_);
+                authRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000008;
+              break;
+            }
+            case 826: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000010) == 0x00000010)) {
+                subBuilder = writeLacRequest_.toBuilder();
+              }
+              writeLacRequest_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(writeLacRequest_);
+                writeLacRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000010;
+              break;
+            }
+            case 834: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000020) == 0x00000020)) {
+                subBuilder = readLacRequest_.toBuilder();
+              }
+              readLacRequest_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(readLacRequest_);
+                readLacRequest_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000020;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.Request.class, org.apache.bookkeeper.proto.BookkeeperProtocol.Request.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<Request> PARSER =
+        new com.google.protobuf.AbstractParser<Request>() {
+      public Request parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Request(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Request> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required .BKPacketHeader header = 1;
     public static final int HEADER_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader header_;
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public boolean hasHeader() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader() {
       return header_;
     }
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder() {
       return header_;
     }
-    
-    // optional .ReadRequest readRequest = 100;
+
     public static final int READREQUEST_FIELD_NUMBER = 100;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest readRequest_;
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     public boolean hasReadRequest() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest getReadRequest() {
       return readRequest_;
     }
+    /**
+     * <code>optional .ReadRequest readRequest = 100;</code>
+     *
+     * <pre>
+     * Requests
+     * </pre>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder getReadRequestOrBuilder() {
       return readRequest_;
     }
-    
-    // optional .AddRequest addRequest = 101;
+
     public static final int ADDREQUEST_FIELD_NUMBER = 101;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest addRequest_;
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     public boolean hasAddRequest() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest getAddRequest() {
       return addRequest_;
     }
+    /**
+     * <code>optional .AddRequest addRequest = 101;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder getAddRequestOrBuilder() {
       return addRequest_;
     }
-    
-    // optional .AuthMessage authRequest = 102;
+
     public static final int AUTHREQUEST_FIELD_NUMBER = 102;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage authRequest_;
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     public boolean hasAuthRequest() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthRequest() {
       return authRequest_;
     }
+    /**
+     * <code>optional .AuthMessage authRequest = 102;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthRequestOrBuilder() {
       return authRequest_;
     }
-    
-    // optional .WriteLacRequest writeLacRequest = 103;
+
     public static final int WRITELACREQUEST_FIELD_NUMBER = 103;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest writeLacRequest_;
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     public boolean hasWriteLacRequest() {
       return ((bitField0_ & 0x00000010) == 0x00000010);
     }
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest getWriteLacRequest() {
       return writeLacRequest_;
     }
+    /**
+     * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder getWriteLacRequestOrBuilder() {
       return writeLacRequest_;
     }
-    
-    // optional .ReadLacRequest readLacRequest = 104;
+
     public static final int READLACREQUEST_FIELD_NUMBER = 104;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest readLacRequest_;
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     public boolean hasReadLacRequest() {
       return ((bitField0_ & 0x00000020) == 0x00000020);
     }
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest getReadLacRequest() {
       return readLacRequest_;
     }
+    /**
+     * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder getReadLacRequestOrBuilder() {
       return readLacRequest_;
     }
-    
+
     private void initFields() {
       header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
       readRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance();
@@ -899,8 +1436,9 @@ public final class BookkeeperProtocol {
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasHeader()) {
         memoizedIsInitialized = 0;
         return false;
@@ -942,7 +1480,7 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -966,12 +1504,12 @@ public final class BookkeeperProtocol {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -1001,113 +1539,106 @@ public final class BookkeeperProtocol {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Request parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.Request prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code Request}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.RequestOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:Request)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.RequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.Request.class, org.apache.bookkeeper.proto.BookkeeperProtocol.Request.Builder.class);
       }
-      
+
       // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.Request.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -1124,7 +1655,7 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         if (headerBuilder_ == null) {
@@ -1165,20 +1696,20 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.Request.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Request_descriptor;
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Request getDefaultInstanceForType() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.Request.getDefaultInstance();
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Request build() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.Request result = buildPartial();
         if (!result.isInitialized()) {
@@ -1186,17 +1717,7 @@ public final class BookkeeperProtocol {
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.Request buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.Request result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Request buildPartial() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.Request result = new org.apache.bookkeeper.proto.BookkeeperProtocol.Request(this);
         int from_bitField0_ = bitField0_;
@@ -1253,7 +1774,7 @@ public final class BookkeeperProtocol {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.Request) {
           return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.Request)other);
@@ -1262,7 +1783,7 @@ public final class BookkeeperProtocol {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.Request other) {
         if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.Request.getDefaultInstance()) return this;
         if (other.hasHeader()) {
@@ -1286,7 +1807,7 @@ public final class BookkeeperProtocol {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasHeader()) {
           
@@ -1328,97 +1849,38 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.newBuilder();
-              if (hasHeader()) {
-                subBuilder.mergeFrom(getHeader());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setHeader(subBuilder.buildPartial());
-              break;
-            }
-            case 802: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.newBuilder();
-              if (hasReadRequest()) {
-                subBuilder.mergeFrom(getReadRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setReadRequest(subBuilder.buildPartial());
-              break;
-            }
-            case 810: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.newBuilder();
-              if (hasAddRequest()) {
-                subBuilder.mergeFrom(getAddRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setAddRequest(subBuilder.buildPartial());
-              break;
-            }
-            case 818: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.newBuilder();
-              if (hasAuthRequest()) {
-                subBuilder.mergeFrom(getAuthRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setAuthRequest(subBuilder.buildPartial());
-              break;
-            }
-            case 826: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.newBuilder();
-              if (hasWriteLacRequest()) {
-                subBuilder.mergeFrom(getWriteLacRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setWriteLacRequest(subBuilder.buildPartial());
-              break;
-            }
-            case 834: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.newBuilder();
-              if (hasReadLacRequest()) {
-                subBuilder.mergeFrom(getReadLacRequest());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setReadLacRequest(subBuilder.buildPartial());
-              break;
-            }
+        org.apache.bookkeeper.proto.BookkeeperProtocol.Request parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.Request) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
-      // required .BKPacketHeader header = 1;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder> headerBuilder_;
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public boolean hasHeader() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader() {
         if (headerBuilder_ == null) {
           return header_;
@@ -1426,6 +1888,9 @@ public final class BookkeeperProtocol {
           return headerBuilder_.getMessage();
         }
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder setHeader(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader value) {
         if (headerBuilder_ == null) {
           if (value == null) {
@@ -1439,6 +1904,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder setHeader(
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder builderForValue) {
         if (headerBuilder_ == null) {
@@ -1450,6 +1918,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder mergeHeader(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader value) {
         if (headerBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001) &&
@@ -1466,6 +1937,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder clearHeader() {
         if (headerBuilder_ == null) {
           header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
@@ -1476,11 +1950,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder getHeaderBuilder() {
         bitField0_ |= 0x00000001;
         onChanged();
         return getHeaderFieldBuilder().getBuilder();
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder() {
         if (headerBuilder_ != null) {
           return headerBuilder_.getMessageOrBuilder();
@@ -1488,27 +1968,43 @@ public final class BookkeeperProtocol {
           return header_;
         }
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder> 
           getHeaderFieldBuilder() {
         if (headerBuilder_ == null) {
           headerBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder>(
-                  header_,
+                  getHeader(),
                   getParentForChildren(),
                   isClean());
           header_ = null;
         }
         return headerBuilder_;
       }
-      
-      // optional .ReadRequest readRequest = 100;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest readRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder> readRequestBuilder_;
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public boolean hasReadRequest() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest getReadRequest() {
         if (readRequestBuilder_ == null) {
           return readRequest_;
@@ -1516,6 +2012,13 @@ public final class BookkeeperProtocol {
           return readRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public Builder setReadRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest value) {
         if (readRequestBuilder_ == null) {
           if (value == null) {
@@ -1529,6 +2032,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public Builder setReadRequest(
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder builderForValue) {
         if (readRequestBuilder_ == null) {
@@ -1540,6 +2050,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public Builder mergeReadRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest value) {
         if (readRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000002) == 0x00000002) &&
@@ -1556,6 +2073,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000002;
         return this;
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public Builder clearReadRequest() {
         if (readRequestBuilder_ == null) {
           readRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance();
@@ -1566,11 +2090,25 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder getReadRequestBuilder() {
         bitField0_ |= 0x00000002;
         onChanged();
         return getReadRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder getReadRequestOrBuilder() {
         if (readRequestBuilder_ != null) {
           return readRequestBuilder_.getMessageOrBuilder();
@@ -1578,27 +2116,39 @@ public final class BookkeeperProtocol {
           return readRequest_;
         }
       }
+      /**
+       * <code>optional .ReadRequest readRequest = 100;</code>
+       *
+       * <pre>
+       * Requests
+       * </pre>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder> 
           getReadRequestFieldBuilder() {
         if (readRequestBuilder_ == null) {
           readRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder>(
-                  readRequest_,
+                  getReadRequest(),
                   getParentForChildren(),
                   isClean());
           readRequest_ = null;
         }
         return readRequestBuilder_;
       }
-      
-      // optional .AddRequest addRequest = 101;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest addRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder> addRequestBuilder_;
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public boolean hasAddRequest() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest getAddRequest() {
         if (addRequestBuilder_ == null) {
           return addRequest_;
@@ -1606,6 +2156,9 @@ public final class BookkeeperProtocol {
           return addRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public Builder setAddRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest value) {
         if (addRequestBuilder_ == null) {
           if (value == null) {
@@ -1619,6 +2172,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public Builder setAddRequest(
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder builderForValue) {
         if (addRequestBuilder_ == null) {
@@ -1630,6 +2186,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public Builder mergeAddRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest value) {
         if (addRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000004) == 0x00000004) &&
@@ -1646,6 +2205,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public Builder clearAddRequest() {
         if (addRequestBuilder_ == null) {
           addRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance();
@@ -1656,11 +2218,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder getAddRequestBuilder() {
         bitField0_ |= 0x00000004;
         onChanged();
         return getAddRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder getAddRequestOrBuilder() {
         if (addRequestBuilder_ != null) {
           return addRequestBuilder_.getMessageOrBuilder();
@@ -1668,27 +2236,35 @@ public final class BookkeeperProtocol {
           return addRequest_;
         }
       }
+      /**
+       * <code>optional .AddRequest addRequest = 101;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder> 
           getAddRequestFieldBuilder() {
         if (addRequestBuilder_ == null) {
           addRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder>(
-                  addRequest_,
+                  getAddRequest(),
                   getParentForChildren(),
                   isClean());
           addRequest_ = null;
         }
         return addRequestBuilder_;
       }
-      
-      // optional .AuthMessage authRequest = 102;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage authRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder> authRequestBuilder_;
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public boolean hasAuthRequest() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthRequest() {
         if (authRequestBuilder_ == null) {
           return authRequest_;
@@ -1696,6 +2272,9 @@ public final class BookkeeperProtocol {
           return authRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public Builder setAuthRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage value) {
         if (authRequestBuilder_ == null) {
           if (value == null) {
@@ -1709,6 +2288,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public Builder setAuthRequest(
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder builderForValue) {
         if (authRequestBuilder_ == null) {
@@ -1720,6 +2302,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public Builder mergeAuthRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage value) {
         if (authRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000008) == 0x00000008) &&
@@ -1736,6 +2321,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public Builder clearAuthRequest() {
         if (authRequestBuilder_ == null) {
           authRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance();
@@ -1746,11 +2334,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder getAuthRequestBuilder() {
         bitField0_ |= 0x00000008;
         onChanged();
         return getAuthRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthRequestOrBuilder() {
         if (authRequestBuilder_ != null) {
           return authRequestBuilder_.getMessageOrBuilder();
@@ -1758,27 +2352,35 @@ public final class BookkeeperProtocol {
           return authRequest_;
         }
       }
+      /**
+       * <code>optional .AuthMessage authRequest = 102;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder> 
           getAuthRequestFieldBuilder() {
         if (authRequestBuilder_ == null) {
           authRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder>(
-                  authRequest_,
+                  getAuthRequest(),
                   getParentForChildren(),
                   isClean());
           authRequest_ = null;
         }
         return authRequestBuilder_;
       }
-      
-      // optional .WriteLacRequest writeLacRequest = 103;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest writeLacRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder> writeLacRequestBuilder_;
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public boolean hasWriteLacRequest() {
         return ((bitField0_ & 0x00000010) == 0x00000010);
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest getWriteLacRequest() {
         if (writeLacRequestBuilder_ == null) {
           return writeLacRequest_;
@@ -1786,6 +2388,9 @@ public final class BookkeeperProtocol {
           return writeLacRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public Builder setWriteLacRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest value) {
         if (writeLacRequestBuilder_ == null) {
           if (value == null) {
@@ -1799,6 +2404,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public Builder setWriteLacRequest(
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder builderForValue) {
         if (writeLacRequestBuilder_ == null) {
@@ -1810,6 +2418,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public Builder mergeWriteLacRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest value) {
         if (writeLacRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000010) == 0x00000010) &&
@@ -1826,6 +2437,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public Builder clearWriteLacRequest() {
         if (writeLacRequestBuilder_ == null) {
           writeLacRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance();
@@ -1836,11 +2450,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder getWriteLacRequestBuilder() {
         bitField0_ |= 0x00000010;
         onChanged();
         return getWriteLacRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder getWriteLacRequestOrBuilder() {
         if (writeLacRequestBuilder_ != null) {
           return writeLacRequestBuilder_.getMessageOrBuilder();
@@ -1848,27 +2468,35 @@ public final class BookkeeperProtocol {
           return writeLacRequest_;
         }
       }
+      /**
+       * <code>optional .WriteLacRequest writeLacRequest = 103;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder> 
           getWriteLacRequestFieldBuilder() {
         if (writeLacRequestBuilder_ == null) {
           writeLacRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder>(
-                  writeLacRequest_,
+                  getWriteLacRequest(),
                   getParentForChildren(),
                   isClean());
           writeLacRequest_ = null;
         }
         return writeLacRequestBuilder_;
       }
-      
-      // optional .ReadLacRequest readLacRequest = 104;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest readLacRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder> readLacRequestBuilder_;
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public boolean hasReadLacRequest() {
         return ((bitField0_ & 0x00000020) == 0x00000020);
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest getReadLacRequest() {
         if (readLacRequestBuilder_ == null) {
           return readLacRequest_;
@@ -1876,6 +2504,9 @@ public final class BookkeeperProtocol {
           return readLacRequestBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public Builder setReadLacRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest value) {
         if (readLacRequestBuilder_ == null) {
           if (value == null) {
@@ -1889,6 +2520,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public Builder setReadLacRequest(
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder builderForValue) {
         if (readLacRequestBuilder_ == null) {
@@ -1900,6 +2534,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public Builder mergeReadLacRequest(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest value) {
         if (readLacRequestBuilder_ == null) {
           if (((bitField0_ & 0x00000020) == 0x00000020) &&
@@ -1916,6 +2553,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public Builder clearReadLacRequest() {
         if (readLacRequestBuilder_ == null) {
           readLacRequest_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.getDefaultInstance();
@@ -1926,11 +2566,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder getReadLacRequestBuilder() {
         bitField0_ |= 0x00000020;
         onChanged();
         return getReadLacRequestFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder getReadLacRequestOrBuilder() {
         if (readLacRequestBuilder_ != null) {
           return readLacRequestBuilder_.getMessageOrBuilder();
@@ -1938,498 +2584,139 @@ public final class BookkeeperProtocol {
           return readLacRequest_;
         }
       }
+      /**
+       * <code>optional .ReadLacRequest readLacRequest = 104;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder> 
           getReadLacRequestFieldBuilder() {
         if (readLacRequestBuilder_ == null) {
           readLacRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder>(
-                  readLacRequest_,
+                  getReadLacRequest(),
                   getParentForChildren(),
                   isClean());
           readLacRequest_ = null;
         }
         return readLacRequestBuilder_;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:Request)
     }
-    
+
     static {
       defaultInstance = new Request(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:Request)
   }
-  
-  public interface ReadRequestOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // optional .ReadRequest.Flag flag = 100;
+
+  public interface ReadRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:ReadRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>optional .ReadRequest.Flag flag = 100;</code>
+     */
     boolean hasFlag();
+    /**
+     * <code>optional .ReadRequest.Flag flag = 100;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag getFlag();
-    
-    // required int64 ledgerId = 1;
+
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     long getLedgerId();
-    
-    // required int64 entryId = 2;
+
+    /**
+     * <code>required int64 entryId = 2;</code>
+     *
+     * <pre>
+     * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+     * </pre>
+     */
     boolean hasEntryId();
+    /**
+     * <code>required int64 entryId = 2;</code>
+     *
+     * <pre>
+     * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+     * </pre>
+     */
     long getEntryId();
-    
-    // optional bytes masterKey = 3;
+
+    /**
+     * <code>optional bytes masterKey = 3;</code>
+     *
+     * <pre>
+     * Used while fencing a ledger.
+     * </pre>
+     */
     boolean hasMasterKey();
+    /**
+     * <code>optional bytes masterKey = 3;</code>
+     *
+     * <pre>
+     * Used while fencing a ledger.
+     * </pre>
+     */
     com.google.protobuf.ByteString getMasterKey();
   }
+  /**
+   * Protobuf type {@code ReadRequest}
+   */
   public static final class ReadRequest extends
-      com.google.protobuf.GeneratedMessage
-      implements ReadRequestOrBuilder {
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:ReadRequest)
+      ReadRequestOrBuilder {
     // Use ReadRequest.newBuilder() to construct.
-    private ReadRequest(Builder builder) {
+    private ReadRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private ReadRequest(boolean noInit) {}
-    
+    private ReadRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final ReadRequest defaultInstance;
     public static ReadRequest getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public ReadRequest getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_fieldAccessorTable;
-    }
-    
-    public enum Flag
-        implements com.google.protobuf.ProtocolMessageEnum {
-      FENCE_LEDGER(0, 1),
-      ;
-      
-      public static final int FENCE_LEDGER_VALUE = 1;
-      
-      
-      public final int getNumber() { return value; }
-      
-      public static Flag valueOf(int value) {
-        switch (value) {
-          case 1: return FENCE_LEDGER;
-          default: return null;
-        }
-      }
-      
-      public static com.google.protobuf.Internal.EnumLiteMap<Flag>
-          internalGetValueMap() {
-        return internalValueMap;
-      }
-      private static com.google.protobuf.Internal.EnumLiteMap<Flag>
-          internalValueMap =
-            new com.google.protobuf.Internal.EnumLiteMap<Flag>() {
-              public Flag findValueByNumber(int number) {
-                return Flag.valueOf(number);
-              }
-            };
-      
-      public final com.google.protobuf.Descriptors.EnumValueDescriptor
-          getValueDescriptor() {
-        return getDescriptor().getValues().get(index);
-      }
-      public final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptorForType() {
-        return getDescriptor();
-      }
-      public static final com.google.protobuf.Descriptors.EnumDescriptor
-          getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDescriptor().getEnumTypes().get(0);
-      }
-      
-      private static final Flag[] VALUES = {
-        FENCE_LEDGER, 
-      };
-      
-      public static Flag valueOf(
-          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
-        if (desc.getType() != getDescriptor()) {
-          throw new java.lang.IllegalArgumentException(
-            "EnumValueDescriptor is not for this type.");
-        }
-        return VALUES[desc.getIndex()];
-      }
-      
-      private final int index;
-      private final int value;
-      
-      private Flag(int index, int value) {
-        this.index = index;
-        this.value = value;
-      }
-      
-      // @@protoc_insertion_point(enum_scope:ReadRequest.Flag)
-    }
-    
-    private int bitField0_;
-    // optional .ReadRequest.Flag flag = 100;
-    public static final int FLAG_FIELD_NUMBER = 100;
-    private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag flag_;
-    public boolean hasFlag() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag getFlag() {
-      return flag_;
-    }
-    
-    // required int64 ledgerId = 1;
-    public static final int LEDGERID_FIELD_NUMBER = 1;
-    private long ledgerId_;
-    public boolean hasLedgerId() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    public long getLedgerId() {
-      return ledgerId_;
-    }
-    
-    // required int64 entryId = 2;
-    public static final int ENTRYID_FIELD_NUMBER = 2;
-    private long entryId_;
-    public boolean hasEntryId() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    public long getEntryId() {
-      return entryId_;
-    }
-    
-    // optional bytes masterKey = 3;
-    public static final int MASTERKEY_FIELD_NUMBER = 3;
-    private com.google.protobuf.ByteString masterKey_;
-    public boolean hasMasterKey() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
-    }
-    public com.google.protobuf.ByteString getMasterKey() {
-      return masterKey_;
-    }
-    
-    private void initFields() {
-      flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
-      ledgerId_ = 0L;
-      entryId_ = 0L;
-      masterKey_ = com.google.protobuf.ByteString.EMPTY;
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
-      if (!hasLedgerId()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasEntryId()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      memoizedIsInitialized = 1;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeInt64(1, ledgerId_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeInt64(2, entryId_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeBytes(3, masterKey_);
-      }
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeEnum(100, flag_.getNumber());
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(1, ledgerId_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(2, entryId_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(3, masterKey_);
-      }
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(100, flag_.getNumber());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    private static final long serialVersionUID = 0L;
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
     @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
+    private ReadRequest(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_descriptor;
-      }
-      
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_fieldAccessorTable;
-      }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-      
-      private Builder(BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-      
-      public Builder clear() {
-        super.clear();
-        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
-        bitField0_ = (bitField0_ & ~0x00000001);
-        ledgerId_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        entryId_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        masterKey_ = com.google.protobuf.ByteString.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000008);
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDescriptor();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.flag_ = flag_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.ledgerId_ = ledgerId_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
-        result.entryId_ = entryId_;
-        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
-          to_bitField0_ |= 0x00000008;
-        }
-        result.masterKey_ = masterKey_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance()) return this;
-        if (other.hasFlag()) {
-          setFlag(other.getFlag());
-        }
-        if (other.hasLedgerId()) {
-          setLedgerId(other.getLedgerId());
-        }
-        if (other.hasEntryId()) {
-          setEntryId(other.getEntryId());
-        }
-        if (other.hasMasterKey()) {
-          setMasterKey(other.getMasterKey());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public final boolean isInitialized() {
-        if (!hasLedgerId()) {
-          
-          return false;
-        }
-        if (!hasEntryId()) {
-          
-          return false;
-        }
-        return true;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -2461,179 +2748,69 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // optional .ReadRequest.Flag flag = 100;
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
-      public boolean hasFlag() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag getFlag() {
-        return flag_;
-      }
-      public Builder setFlag(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag value) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        bitField0_ |= 0x00000001;
-        flag_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearFlag() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 ledgerId = 1;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000002;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 entryId = 2;
-      private long entryId_ ;
-      public boolean hasEntryId() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      public long getEntryId() {
-        return entryId_;
-      }
-      public Builder setEntryId(long value) {
-        bitField0_ |= 0x00000004;
-        entryId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearEntryId() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        entryId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // optional bytes masterKey = 3;
-      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasMasterKey() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
-      }
-      public com.google.protobuf.ByteString getMasterKey() {
-        return masterKey_;
-      }
-      public Builder setMasterKey(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        masterKey_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearMasterKey() {
-        bitField0_ = (bitField0_ & ~0x00000008);
-        masterKey_ = getDefaultInstance().getMasterKey();
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:ReadRequest)
     }
-    
-    static {
-      defaultInstance = new ReadRequest(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:ReadRequest)
-  }
-  
-  public interface AddRequestOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // optional .AddRequest.Flag flag = 100;
-    boolean hasFlag();
-    org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag();
-    
-    // required int64 ledgerId = 1;
-    boolean hasLedgerId();
-    long getLedgerId();
-    
-    // required int64 entryId = 2;
-    boolean hasEntryId();
-    long getEntryId();
-    
-    // required bytes masterKey = 3;
-    boolean hasMasterKey();
-    com.google.protobuf.ByteString getMasterKey();
-    
-    // required bytes body = 4;
-    boolean hasBody();
-    com.google.protobuf.ByteString getBody();
-  }
-  public static final class AddRequest extends
-      com.google.protobuf.GeneratedMessage
-      implements AddRequestOrBuilder {
-    // Use AddRequest.newBuilder() to construct.
-    private AddRequest(Builder builder) {
-      super(builder);
-    }
-    private AddRequest(boolean noInit) {}
-    
-    private static final AddRequest defaultInstance;
-    public static AddRequest getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public AddRequest getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<ReadRequest> PARSER =
+        new com.google.protobuf.AbstractParser<ReadRequest>() {
+      public ReadRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ReadRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ReadRequest> getParserForType() {
+      return PARSER;
+    }
+
+    /**
+     * Protobuf enum {@code ReadRequest.Flag}
+     */
     public enum Flag
         implements com.google.protobuf.ProtocolMessageEnum {
-      RECOVERY_ADD(0, 1),
+      /**
+       * <code>FENCE_LEDGER = 1;</code>
+       */
+      FENCE_LEDGER(0, 1),
       ;
-      
-      public static final int RECOVERY_ADD_VALUE = 1;
-      
-      
+
+      /**
+       * <code>FENCE_LEDGER = 1;</code>
+       */
+      public static final int FENCE_LEDGER_VALUE = 1;
+
+
       public final int getNumber() { return value; }
-      
+
       public static Flag valueOf(int value) {
         switch (value) {
-          case 1: return RECOVERY_ADD;
+          case 1: return FENCE_LEDGER;
           default: return null;
         }
       }
-      
+
       public static com.google.protobuf.Internal.EnumLiteMap<Flag>
           internalGetValueMap() {
         return internalValueMap;
@@ -2645,7 +2822,7 @@ public final class BookkeeperProtocol {
                 return Flag.valueOf(number);
               }
             };
-      
+
       public final com.google.protobuf.Descriptors.EnumValueDescriptor
           getValueDescriptor() {
         return getDescriptor().getValues().get(index);
@@ -2656,13 +2833,11 @@ public final class BookkeeperProtocol {
       }
       public static final com.google.protobuf.Descriptors.EnumDescriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDescriptor().getEnumTypes().get(0);
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDescriptor().getEnumTypes().get(0);
       }
-      
-      private static final Flag[] VALUES = {
-        RECOVERY_ADD, 
-      };
-      
+
+      private static final Flag[] VALUES = values();
+
       public static Flag valueOf(
           com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
         if (desc.getType() != getDescriptor()) {
@@ -2671,81 +2846,107 @@ public final class BookkeeperProtocol {
         }
         return VALUES[desc.getIndex()];
       }
-      
+
       private final int index;
       private final int value;
-      
+
       private Flag(int index, int value) {
         this.index = index;
         this.value = value;
       }
-      
-      // @@protoc_insertion_point(enum_scope:AddRequest.Flag)
+
+      // @@protoc_insertion_point(enum_scope:ReadRequest.Flag)
     }
-    
+
     private int bitField0_;
-    // optional .AddRequest.Flag flag = 100;
     public static final int FLAG_FIELD_NUMBER = 100;
-    private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag flag_;
+    private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag flag_;
+    /**
+     * <code>optional .ReadRequest.Flag flag = 100;</code>
+     */
     public boolean hasFlag() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag() {
+    /**
+     * <code>optional .ReadRequest.Flag flag = 100;</code>
+     */
+    public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag getFlag() {
       return flag_;
     }
-    
-    // required int64 ledgerId = 1;
+
     public static final int LEDGERID_FIELD_NUMBER = 1;
     private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     public boolean hasLedgerId() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
-    // required int64 entryId = 2;
+
     public static final int ENTRYID_FIELD_NUMBER = 2;
     private long entryId_;
+    /**
+     * <code>required int64 entryId = 2;</code>
+     *
+     * <pre>
+     * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+     * </pre>
+     */
     public boolean hasEntryId() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
+    /**
+     * <code>required int64 entryId = 2;</code>
+     *
+     * <pre>
+     * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+     * </pre>
+     */
     public long getEntryId() {
       return entryId_;
     }
-    
-    // required bytes masterKey = 3;
+
     public static final int MASTERKEY_FIELD_NUMBER = 3;
     private com.google.protobuf.ByteString masterKey_;
+    /**
+     * <code>optional bytes masterKey = 3;</code>
+     *
+     * <pre>
+     * Used while fencing a ledger.
+     * </pre>
+     */
     public boolean hasMasterKey() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
+    /**
+     * <code>optional bytes masterKey = 3;</code>
+     *
+     * <pre>
+     * Used while fencing a ledger.
+     * </pre>
+     */
     public com.google.protobuf.ByteString getMasterKey() {
       return masterKey_;
     }
-    
-    // required bytes body = 4;
-    public static final int BODY_FIELD_NUMBER = 4;
-    private com.google.protobuf.ByteString body_;
-    public boolean hasBody() {
-      return ((bitField0_ & 0x00000010) == 0x00000010);
-    }
-    public com.google.protobuf.ByteString getBody() {
-      return body_;
-    }
-    
+
     private void initFields() {
-      flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
+      flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
       ledgerId_ = 0L;
       entryId_ = 0L;
       masterKey_ = com.google.protobuf.ByteString.EMPTY;
-      body_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasLedgerId()) {
         memoizedIsInitialized = 0;
         return false;
@@ -2754,18 +2955,10 @@ public final class BookkeeperProtocol {
         memoizedIsInitialized = 0;
         return false;
       }
-      if (!hasMasterKey()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasBody()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -2778,20 +2971,17 @@ public final class BookkeeperProtocol {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeBytes(3, masterKey_);
       }
-      if (((bitField0_ & 0x00000010) == 0x00000010)) {
-        output.writeBytes(4, body_);
-      }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeEnum(100, flag_.getNumber());
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
@@ -2805,10 +2995,6 @@ public final class BookkeeperProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(3, masterKey_);
       }
-      if (((bitField0_ & 0x00000010) == 0x00000010)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(4, body_);
-      }
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(100, flag_.getNumber());
@@ -2817,113 +3003,106 @@ public final class BookkeeperProtocol {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code ReadRequest}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:ReadRequest)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -2934,10 +3113,10 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
-        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
+        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
         bitField0_ = (bitField0_ & ~0x00000001);
         ledgerId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000002);
@@ -2945,44 +3124,32 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000004);
         masterKey_ = com.google.protobuf.ByteString.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000008);
-        body_ = com.google.protobuf.ByteString.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadRequest_descriptor;
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance();
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest result = buildPartial();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest(this);
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -3001,26 +3168,22 @@ public final class BookkeeperProtocol {
           to_bitField0_ |= 0x00000008;
         }
         result.masterKey_ = masterKey_;
-        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
-          to_bitField0_ |= 0x00000010;
-        }
-        result.body_ = body_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest)other);
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance()) return this;
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.getDefaultInstance()) return this;
         if (other.hasFlag()) {
           setFlag(other.getFlag());
         }
@@ -3033,13 +3196,10 @@ public final class BookkeeperProtocol {
         if (other.hasMasterKey()) {
           setMasterKey(other.getMasterKey());
         }
-        if (other.hasBody()) {
-          setBody(other.getBody());
-        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasLedgerId()) {
           
@@ -3049,37 +3209,303 @@ public final class BookkeeperProtocol {
           
           return false;
         }
-        if (!hasMasterKey()) {
-          
-          return false;
-        }
-        if (!hasBody()) {
-          
-          return false;
-        }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
+      /**
+       * <code>optional .ReadRequest.Flag flag = 100;</code>
+       */
+      public boolean hasFlag() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .ReadRequest.Flag flag = 100;</code>
+       */
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag getFlag() {
+        return flag_;
+      }
+      /**
+       * <code>optional .ReadRequest.Flag flag = 100;</code>
+       */
+      public Builder setFlag(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        flag_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional .ReadRequest.Flag flag = 100;</code>
+       */
+      public Builder clearFlag() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Flag.FENCE_LEDGER;
+        onChanged();
+        return this;
+      }
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000002;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private long entryId_ ;
+      /**
+       * <code>required int64 entryId = 2;</code>
+       *
+       * <pre>
+       * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+       * </pre>
+       */
+      public boolean hasEntryId() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       *
+       * <pre>
+       * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+       * </pre>
+       */
+      public long getEntryId() {
+        return entryId_;
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       *
+       * <pre>
+       * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+       * </pre>
+       */
+      public Builder setEntryId(long value) {
+        bitField0_ |= 0x00000004;
+        entryId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       *
+       * <pre>
+       * entryId will be -1 for reading the LAST_ADD_CONFIRMED entry.
+       * </pre>
+       */
+      public Builder clearEntryId() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        entryId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes masterKey = 3;</code>
+       *
+       * <pre>
+       * Used while fencing a ledger.
+       * </pre>
+       */
+      public boolean hasMasterKey() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional bytes masterKey = 3;</code>
+       *
+       * <pre>
+       * Used while fencing a ledger.
+       * </pre>
+       */
+      public com.google.protobuf.ByteString getMasterKey() {
+        return masterKey_;
+      }
+      /**
+       * <code>optional bytes masterKey = 3;</code>
+       *
+       * <pre>
+       * Used while fencing a ledger.
+       * </pre>
+       */
+      public Builder setMasterKey(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        masterKey_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bytes masterKey = 3;</code>
+       *
+       * <pre>
+       * Used while fencing a ledger.
+       * </pre>
+       */
+      public Builder clearMasterKey() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        masterKey_ = getDefaultInstance().getMasterKey();
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:ReadRequest)
+    }
+
+    static {
+      defaultInstance = new ReadRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:ReadRequest)
+  }
+
+  public interface AddRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:AddRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>optional .AddRequest.Flag flag = 100;</code>
+     */
+    boolean hasFlag();
+    /**
+     * <code>optional .AddRequest.Flag flag = 100;</code>
+     */
+    org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag();
+
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    long getLedgerId();
+
+    /**
+     * <code>required int64 entryId = 2;</code>
+     */
+    boolean hasEntryId();
+    /**
+     * <code>required int64 entryId = 2;</code>
+     */
+    long getEntryId();
+
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    boolean hasMasterKey();
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    com.google.protobuf.ByteString getMasterKey();
+
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    boolean hasBody();
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    com.google.protobuf.ByteString getBody();
+  }
+  /**
+   * Protobuf type {@code AddRequest}
+   */
+  public static final class AddRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:AddRequest)
+      AddRequestOrBuilder {
+    // Use AddRequest.newBuilder() to construct.
+    private AddRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private AddRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final AddRequest defaultInstance;
+    public static AddRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public AddRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private AddRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -3116,239 +3542,210 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // optional .AddRequest.Flag flag = 100;
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
-      public boolean hasFlag() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag() {
-        return flag_;
-      }
-      public Builder setFlag(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag value) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        bitField0_ |= 0x00000001;
-        flag_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearFlag() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 ledgerId = 1;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000002;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 entryId = 2;
-      private long entryId_ ;
-      public boolean hasEntryId() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      public long getEntryId() {
-        return entryId_;
-      }
-      public Builder setEntryId(long value) {
-        bitField0_ |= 0x00000004;
-        entryId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearEntryId() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        entryId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required bytes masterKey = 3;
-      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasMasterKey() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
-      }
-      public com.google.protobuf.ByteString getMasterKey() {
-        return masterKey_;
-      }
-      public Builder setMasterKey(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        masterKey_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearMasterKey() {
-        bitField0_ = (bitField0_ & ~0x00000008);
-        masterKey_ = getDefaultInstance().getMasterKey();
-        onChanged();
-        return this;
-      }
-      
-      // required bytes body = 4;
-      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasBody() {
-        return ((bitField0_ & 0x00000010) == 0x00000010);
-      }
-      public com.google.protobuf.ByteString getBody() {
-        return body_;
-      }
-      public Builder setBody(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000010;
-        body_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearBody() {
-        bitField0_ = (bitField0_ & ~0x00000010);
-        body_ = getDefaultInstance().getBody();
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:AddRequest)
     }
-    
-    static {
-      defaultInstance = new AddRequest(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:AddRequest)
-  }
-  
-  public interface WriteLacRequestOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required int64 ledgerId = 1;
-    boolean hasLedgerId();
-    long getLedgerId();
-    
-    // required int64 lac = 2;
-    boolean hasLac();
-    long getLac();
-    
-    // required bytes masterKey = 3;
-    boolean hasMasterKey();
-    com.google.protobuf.ByteString getMasterKey();
-    
-    // required bytes body = 4;
-    boolean hasBody();
-    com.google.protobuf.ByteString getBody();
-  }
-  public static final class WriteLacRequest extends
-      com.google.protobuf.GeneratedMessage
-      implements WriteLacRequestOrBuilder {
-    // Use WriteLacRequest.newBuilder() to construct.
-    private WriteLacRequest(Builder builder) {
-      super(builder);
-    }
-    private WriteLacRequest(boolean noInit) {}
-    
-    private static final WriteLacRequest defaultInstance;
-    public static WriteLacRequest getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public WriteLacRequest getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<AddRequest> PARSER =
+        new com.google.protobuf.AbstractParser<AddRequest>() {
+      public AddRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new AddRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<AddRequest> getParserForType() {
+      return PARSER;
+    }
+
+    /**
+     * Protobuf enum {@code AddRequest.Flag}
+     */
+    public enum Flag
+        implements com.google.protobuf.ProtocolMessageEnum {
+      /**
+       * <code>RECOVERY_ADD = 1;</code>
+       */
+      RECOVERY_ADD(0, 1),
+      ;
+
+      /**
+       * <code>RECOVERY_ADD = 1;</code>
+       */
+      public static final int RECOVERY_ADD_VALUE = 1;
+
+
+      public final int getNumber() { return value; }
+
+      public static Flag valueOf(int value) {
+        switch (value) {
+          case 1: return RECOVERY_ADD;
+          default: return null;
+        }
+      }
+
+      public static com.google.protobuf.Internal.EnumLiteMap<Flag>
+          internalGetValueMap() {
+        return internalValueMap;
+      }
+      private static com.google.protobuf.Internal.EnumLiteMap<Flag>
+          internalValueMap =
+            new com.google.protobuf.Internal.EnumLiteMap<Flag>() {
+              public Flag findValueByNumber(int number) {
+                return Flag.valueOf(number);
+              }
+            };
+
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor
+          getValueDescriptor() {
+        return getDescriptor().getValues().get(index);
+      }
+      public final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptorForType() {
+        return getDescriptor();
+      }
+      public static final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDescriptor().getEnumTypes().get(0);
+      }
+
+      private static final Flag[] VALUES = values();
+
+      public static Flag valueOf(
+          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+        if (desc.getType() != getDescriptor()) {
+          throw new java.lang.IllegalArgumentException(
+            "EnumValueDescriptor is not for this type.");
+        }
+        return VALUES[desc.getIndex()];
+      }
+
+      private final int index;
+      private final int value;
+
+      private Flag(int index, int value) {
+        this.index = index;
+        this.value = value;
+      }
+
+      // @@protoc_insertion_point(enum_scope:AddRequest.Flag)
+    }
+
     private int bitField0_;
-    // required int64 ledgerId = 1;
-    public static final int LEDGERID_FIELD_NUMBER = 1;
-    private long ledgerId_;
-    public boolean hasLedgerId() {
+    public static final int FLAG_FIELD_NUMBER = 100;
+    private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag flag_;
+    /**
+     * <code>optional .AddRequest.Flag flag = 100;</code>
+     */
+    public boolean hasFlag() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>optional .AddRequest.Flag flag = 100;</code>
+     */
+    public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag() {
+      return flag_;
+    }
+
+    public static final int LEDGERID_FIELD_NUMBER = 1;
+    private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    public boolean hasLedgerId() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
-    // required int64 lac = 2;
-    public static final int LAC_FIELD_NUMBER = 2;
-    private long lac_;
-    public boolean hasLac() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    public long getLac() {
-      return lac_;
-    }
-    
-    // required bytes masterKey = 3;
-    public static final int MASTERKEY_FIELD_NUMBER = 3;
-    private com.google.protobuf.ByteString masterKey_;
-    public boolean hasMasterKey() {
+
+    public static final int ENTRYID_FIELD_NUMBER = 2;
+    private long entryId_;
+    /**
+     * <code>required int64 entryId = 2;</code>
+     */
+    public boolean hasEntryId() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
+    /**
+     * <code>required int64 entryId = 2;</code>
+     */
+    public long getEntryId() {
+      return entryId_;
+    }
+
+    public static final int MASTERKEY_FIELD_NUMBER = 3;
+    private com.google.protobuf.ByteString masterKey_;
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    public boolean hasMasterKey() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
     public com.google.protobuf.ByteString getMasterKey() {
       return masterKey_;
     }
-    
-    // required bytes body = 4;
+
     public static final int BODY_FIELD_NUMBER = 4;
     private com.google.protobuf.ByteString body_;
+    /**
+     * <code>required bytes body = 4;</code>
+     */
     public boolean hasBody() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
+      return ((bitField0_ & 0x00000010) == 0x00000010);
     }
+    /**
+     * <code>required bytes body = 4;</code>
+     */
     public com.google.protobuf.ByteString getBody() {
       return body_;
     }
-    
+
     private void initFields() {
+      flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
       ledgerId_ = 0L;
-      lac_ = 0L;
+      entryId_ = 0L;
       masterKey_ = com.google.protobuf.ByteString.EMPTY;
       body_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasLedgerId()) {
         memoizedIsInitialized = 0;
         return false;
       }
-      if (!hasLac()) {
+      if (!hasEntryId()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -3363,158 +3760,158 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeInt64(1, ledgerId_);
       }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeInt64(2, lac_);
-      }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeBytes(3, masterKey_);
+        output.writeInt64(2, entryId_);
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(3, masterKey_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
         output.writeBytes(4, body_);
+      }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(100, flag_.getNumber());
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(1, ledgerId_);
       }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(2, lac_);
-      }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(3, masterKey_);
+          .computeInt64Size(2, entryId_);
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(3, masterKey_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(4, body_);
+      }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(100, flag_.getNumber());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code AddRequest}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:AddRequest)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -3525,92 +3922,91 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
-        ledgerId_ = 0L;
+        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
         bitField0_ = (bitField0_ & ~0x00000001);
-        lac_ = 0L;
+        ledgerId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000002);
-        masterKey_ = com.google.protobuf.ByteString.EMPTY;
+        entryId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
-        body_ = com.google.protobuf.ByteString.EMPTY;
+        masterKey_ = com.google.protobuf.ByteString.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000008);
+        body_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddRequest_descriptor;
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance();
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest result = buildPartial();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest(this);
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
           to_bitField0_ |= 0x00000001;
         }
-        result.ledgerId_ = ledgerId_;
+        result.flag_ = flag_;
         if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
           to_bitField0_ |= 0x00000002;
         }
-        result.lac_ = lac_;
+        result.ledgerId_ = ledgerId_;
         if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
           to_bitField0_ |= 0x00000004;
         }
-        result.masterKey_ = masterKey_;
+        result.entryId_ = entryId_;
         if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
           to_bitField0_ |= 0x00000008;
+        }
+        result.masterKey_ = masterKey_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
         }
         result.body_ = body_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest)other);
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance()) return this;
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.getDefaultInstance()) return this;
+        if (other.hasFlag()) {
+          setFlag(other.getFlag());
+        }
         if (other.hasLedgerId()) {
           setLedgerId(other.getLedgerId());
         }
-        if (other.hasLac()) {
-          setLac(other.getLac());
+        if (other.hasEntryId()) {
+          setEntryId(other.getEntryId());
         }
         if (other.hasMasterKey()) {
           setMasterKey(other.getMasterKey());
@@ -3621,13 +4017,13 @@ public final class BookkeeperProtocol {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasLedgerId()) {
           
           return false;
         }
-        if (!hasLac()) {
+        if (!hasEntryId()) {
           
           return false;
         }
@@ -3641,27 +4037,295 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
+      /**
+       * <code>optional .AddRequest.Flag flag = 100;</code>
+       */
+      public boolean hasFlag() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .AddRequest.Flag flag = 100;</code>
+       */
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag getFlag() {
+        return flag_;
+      }
+      /**
+       * <code>optional .AddRequest.Flag flag = 100;</code>
+       */
+      public Builder setFlag(org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        flag_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional .AddRequest.Flag flag = 100;</code>
+       */
+      public Builder clearFlag() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        flag_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Flag.RECOVERY_ADD;
+        onChanged();
+        return this;
+      }
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000002;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private long entryId_ ;
+      /**
+       * <code>required int64 entryId = 2;</code>
+       */
+      public boolean hasEntryId() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       */
+      public long getEntryId() {
+        return entryId_;
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       */
+      public Builder setEntryId(long value) {
+        bitField0_ |= 0x00000004;
+        entryId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 entryId = 2;</code>
+       */
+      public Builder clearEntryId() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        entryId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public boolean hasMasterKey() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public com.google.protobuf.ByteString getMasterKey() {
+        return masterKey_;
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public Builder setMasterKey(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        masterKey_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public Builder clearMasterKey() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        masterKey_ = getDefaultInstance().getMasterKey();
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public boolean hasBody() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public com.google.protobuf.ByteString getBody() {
+        return body_;
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public Builder setBody(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000010;
+        body_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public Builder clearBody() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        body_ = getDefaultInstance().getBody();
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:AddRequest)
+    }
+
+    static {
+      defaultInstance = new AddRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:AddRequest)
+  }
+
+  public interface WriteLacRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:WriteLacRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    long getLedgerId();
+
+    /**
+     * <code>required int64 lac = 2;</code>
+     */
+    boolean hasLac();
+    /**
+     * <code>required int64 lac = 2;</code>
+     */
+    long getLac();
+
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    boolean hasMasterKey();
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    com.google.protobuf.ByteString getMasterKey();
+
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    boolean hasBody();
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    com.google.protobuf.ByteString getBody();
+  }
+  /**
+   * Protobuf type {@code WriteLacRequest}
+   */
+  public static final class WriteLacRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:WriteLacRequest)
+      WriteLacRequestOrBuilder {
+    // Use WriteLacRequest.newBuilder() to construct.
+    private WriteLacRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private WriteLacRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final WriteLacRequest defaultInstance;
+    public static WriteLacRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public WriteLacRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private WriteLacRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -3687,303 +4351,280 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // required int64 ledgerId = 1;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000001;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 lac = 2;
-      private long lac_ ;
-      public boolean hasLac() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLac() {
-        return lac_;
-      }
-      public Builder setLac(long value) {
-        bitField0_ |= 0x00000002;
-        lac_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLac() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        lac_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required bytes masterKey = 3;
-      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasMasterKey() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      public com.google.protobuf.ByteString getMasterKey() {
-        return masterKey_;
-      }
-      public Builder setMasterKey(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000004;
-        masterKey_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearMasterKey() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        masterKey_ = getDefaultInstance().getMasterKey();
-        onChanged();
-        return this;
-      }
-      
-      // required bytes body = 4;
-      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasBody() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
-      }
-      public com.google.protobuf.ByteString getBody() {
-        return body_;
-      }
-      public Builder setBody(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        body_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearBody() {
-        bitField0_ = (bitField0_ & ~0x00000008);
-        body_ = getDefaultInstance().getBody();
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:WriteLacRequest)
     }
-    
-    static {
-      defaultInstance = new WriteLacRequest(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:WriteLacRequest)
-  }
-  
-  public interface ReadLacRequestOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required int64 ledgerId = 1;
-    boolean hasLedgerId();
-    long getLedgerId();
-  }
-  public static final class ReadLacRequest extends
-      com.google.protobuf.GeneratedMessage
-      implements ReadLacRequestOrBuilder {
-    // Use ReadLacRequest.newBuilder() to construct.
-    private ReadLacRequest(Builder builder) {
-      super(builder);
-    }
-    private ReadLacRequest(boolean noInit) {}
-    
-    private static final ReadLacRequest defaultInstance;
-    public static ReadLacRequest getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public ReadLacRequest getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<WriteLacRequest> PARSER =
+        new com.google.protobuf.AbstractParser<WriteLacRequest>() {
+      public WriteLacRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new WriteLacRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<WriteLacRequest> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required int64 ledgerId = 1;
     public static final int LEDGERID_FIELD_NUMBER = 1;
     private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     public boolean hasLedgerId() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
+
+    public static final int LAC_FIELD_NUMBER = 2;
+    private long lac_;
+    /**
+     * <code>required int64 lac = 2;</code>
+     */
+    public boolean hasLac() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required int64 lac = 2;</code>
+     */
+    public long getLac() {
+      return lac_;
+    }
+
+    public static final int MASTERKEY_FIELD_NUMBER = 3;
+    private com.google.protobuf.ByteString masterKey_;
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    public boolean hasMasterKey() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required bytes masterKey = 3;</code>
+     */
+    public com.google.protobuf.ByteString getMasterKey() {
+      return masterKey_;
+    }
+
+    public static final int BODY_FIELD_NUMBER = 4;
+    private com.google.protobuf.ByteString body_;
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    public boolean hasBody() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>required bytes body = 4;</code>
+     */
+    public com.google.protobuf.ByteString getBody() {
+      return body_;
+    }
+
     private void initFields() {
       ledgerId_ = 0L;
+      lac_ = 0L;
+      masterKey_ = com.google.protobuf.ByteString.EMPTY;
+      body_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasLedgerId()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasLac()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasMasterKey()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasBody()) {
         memoizedIsInitialized = 0;
         return false;
       }
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeInt64(1, ledgerId_);
       }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeInt64(2, lac_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeBytes(3, masterKey_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(4, body_);
+      }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(1, ledgerId_);
       }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(2, lac_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(3, masterKey_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(4, body_);
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code WriteLacRequest}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:WriteLacRequest)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -3994,27 +4635,573 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
+      public Builder clear() {
+        super.clear();
+        ledgerId_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        lac_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        masterKey_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        body_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacRequest_descriptor;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance();
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.ledgerId_ = ledgerId_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.lac_ = lac_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.masterKey_ = masterKey_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.body_ = body_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.getDefaultInstance()) return this;
+        if (other.hasLedgerId()) {
+          setLedgerId(other.getLedgerId());
+        }
+        if (other.hasLac()) {
+          setLac(other.getLac());
+        }
+        if (other.hasMasterKey()) {
+          setMasterKey(other.getMasterKey());
+        }
+        if (other.hasBody()) {
+          setBody(other.getBody());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasLedgerId()) {
+          
+          return false;
+        }
+        if (!hasLac()) {
+          
+          return false;
+        }
+        if (!hasMasterKey()) {
+          
+          return false;
+        }
+        if (!hasBody()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000001;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private long lac_ ;
+      /**
+       * <code>required int64 lac = 2;</code>
+       */
+      public boolean hasLac() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 lac = 2;</code>
+       */
+      public long getLac() {
+        return lac_;
+      }
+      /**
+       * <code>required int64 lac = 2;</code>
+       */
+      public Builder setLac(long value) {
+        bitField0_ |= 0x00000002;
+        lac_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 lac = 2;</code>
+       */
+      public Builder clearLac() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        lac_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString masterKey_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public boolean hasMasterKey() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public com.google.protobuf.ByteString getMasterKey() {
+        return masterKey_;
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public Builder setMasterKey(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000004;
+        masterKey_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes masterKey = 3;</code>
+       */
+      public Builder clearMasterKey() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        masterKey_ = getDefaultInstance().getMasterKey();
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public boolean hasBody() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public com.google.protobuf.ByteString getBody() {
+        return body_;
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public Builder setBody(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        body_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes body = 4;</code>
+       */
+      public Builder clearBody() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        body_ = getDefaultInstance().getBody();
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:WriteLacRequest)
+    }
+
+    static {
+      defaultInstance = new WriteLacRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:WriteLacRequest)
+  }
+
+  public interface ReadLacRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:ReadLacRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    long getLedgerId();
+  }
+  /**
+   * Protobuf type {@code ReadLacRequest}
+   */
+  public static final class ReadLacRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:ReadLacRequest)
+      ReadLacRequestOrBuilder {
+    // Use ReadLacRequest.newBuilder() to construct.
+    private ReadLacRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private ReadLacRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final ReadLacRequest defaultInstance;
+    public static ReadLacRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public ReadLacRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private ReadLacRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              ledgerId_ = input.readInt64();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<ReadLacRequest> PARSER =
+        new com.google.protobuf.AbstractParser<ReadLacRequest>() {
+      public ReadLacRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ReadLacRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ReadLacRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    public static final int LEDGERID_FIELD_NUMBER = 1;
+    private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    public boolean hasLedgerId() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required int64 ledgerId = 1;</code>
+     */
+    public long getLedgerId() {
+      return ledgerId_;
+    }
+
+    private void initFields() {
+      ledgerId_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      if (!hasLedgerId()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt64(1, ledgerId_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(1, ledgerId_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code ReadLacRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:ReadLacRequest)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder.class);
+      }
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
       public Builder clear() {
         super.clear();
         ledgerId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacRequest_descriptor;
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest getDefaultInstanceForType() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.getDefaultInstance();
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest build() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest result = buildPartial();
         if (!result.isInitialized()) {
@@ -4022,17 +5209,7 @@ public final class BookkeeperProtocol {
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest buildPartial() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest(this);
         int from_bitField0_ = bitField0_;
@@ -4045,7 +5222,7 @@ public final class BookkeeperProtocol {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest) {
           return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest)other);
@@ -4054,7 +5231,7 @@ public final class BookkeeperProtocol {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest other) {
         if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.getDefaultInstance()) return this;
         if (other.hasLedgerId()) {
@@ -4063,7 +5240,7 @@ public final class BookkeeperProtocol {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasLedgerId()) {
           
@@ -4071,227 +5248,526 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 8: {
-              bitField0_ |= 0x00000001;
-              ledgerId_ = input.readInt64();
-              break;
-            }
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
-      // required int64 ledgerId = 1;
+
       private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
       public boolean hasLedgerId() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
       public long getLedgerId() {
         return ledgerId_;
       }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
       public Builder setLedgerId(long value) {
         bitField0_ |= 0x00000001;
         ledgerId_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>required int64 ledgerId = 1;</code>
+       */
       public Builder clearLedgerId() {
         bitField0_ = (bitField0_ & ~0x00000001);
         ledgerId_ = 0L;
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:ReadLacRequest)
     }
-    
+
     static {
       defaultInstance = new ReadLacRequest(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:ReadLacRequest)
   }
-  
-  public interface ResponseOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .BKPacketHeader header = 1;
+
+  public interface ResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:Response)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     boolean hasHeader();
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader();
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder();
-    
-    // required .StatusCode status = 2;
+
+    /**
+     * <code>required .StatusCode status = 2;</code>
+     *
+     * <pre>
+     * EOK if the underlying request succeeded. Each individual response
+     * has a more meaningful status. EBADREQ if we have an unsupported request.
+     * </pre>
+     */
     boolean hasStatus();
+    /**
+     * <code>required .StatusCode status = 2;</code>
+     *
+     * <pre>
+     * EOK if the underlying request succeeded. Each individual response
+     * has a more meaningful status. EBADREQ if we have an unsupported request.
+     * </pre>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
-    
-    // optional .ReadResponse readResponse = 100;
+
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     boolean hasReadResponse();
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse getReadResponse();
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder getReadResponseOrBuilder();
-    
-    // optional .AddResponse addResponse = 101;
+
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     boolean hasAddResponse();
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse getAddResponse();
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder getAddResponseOrBuilder();
-    
-    // optional .AuthMessage authResponse = 102;
+
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     boolean hasAuthResponse();
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthResponse();
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthResponseOrBuilder();
-    
-    // optional .WriteLacResponse writeLacResponse = 103;
+
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     boolean hasWriteLacResponse();
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse getWriteLacResponse();
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder getWriteLacResponseOrBuilder();
-    
-    // optional .ReadLacResponse readLacResponse = 104;
+
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     boolean hasReadLacResponse();
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse getReadLacResponse();
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder getReadLacResponseOrBuilder();
   }
+  /**
+   * Protobuf type {@code Response}
+   */
   public static final class Response extends
-      com.google.protobuf.GeneratedMessage
-      implements ResponseOrBuilder {
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:Response)
+      ResponseOrBuilder {
     // Use Response.newBuilder() to construct.
-    private Response(Builder builder) {
+    private Response(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private Response(boolean noInit) {}
-    
+    private Response(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final Response defaultInstance;
     public static Response getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public Response getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Response(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = header_.toBuilder();
+              }
+              header_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(header_);
+                header_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+            case 16: {
+              int rawValue = input.readEnum();
+              org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(2, rawValue);
+              } else {
+                bitField0_ |= 0x00000002;
+                status_ = value;
+              }
+              break;
+            }
+            case 802: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = readResponse_.toBuilder();
+              }
+              readResponse_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(readResponse_);
+                readResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
+              break;
+            }
+            case 810: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000008) == 0x00000008)) {
+                subBuilder = addResponse_.toBuilder();
+              }
+              addResponse_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(addResponse_);
+                addResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000008;
+              break;
+            }
+            case 818: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000010) == 0x00000010)) {
+                subBuilder = authResponse_.toBuilder();
+              }
+              authResponse_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(authResponse_);
+                authResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000010;
+              break;
+            }
+            case 826: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000020) == 0x00000020)) {
+                subBuilder = writeLacResponse_.toBuilder();
+              }
+              writeLacResponse_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(writeLacResponse_);
+                writeLacResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000020;
+              break;
+            }
+            case 834: {
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000040) == 0x00000040)) {
+                subBuilder = readLacResponse_.toBuilder();
+              }
+              readLacResponse_ = input.readMessage(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(readLacResponse_);
+                readLacResponse_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000040;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.Response.class, org.apache.bookkeeper.proto.BookkeeperProtocol.Response.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<Response> PARSER =
+        new com.google.protobuf.AbstractParser<Response>() {
+      public Response parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Response(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Response> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required .BKPacketHeader header = 1;
     public static final int HEADER_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader header_;
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public boolean hasHeader() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader() {
       return header_;
     }
+    /**
+     * <code>required .BKPacketHeader header = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder() {
       return header_;
     }
-    
-    // required .StatusCode status = 2;
+
     public static final int STATUS_FIELD_NUMBER = 2;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
+    /**
+     * <code>required .StatusCode status = 2;</code>
+     *
+     * <pre>
+     * EOK if the underlying request succeeded. Each individual response
+     * has a more meaningful status. EBADREQ if we have an unsupported request.
+     * </pre>
+     */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>required .StatusCode status = 2;</code>
+     *
+     * <pre>
+     * EOK if the underlying request succeeded. Each individual response
+     * has a more meaningful status. EBADREQ if we have an unsupported request.
+     * </pre>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
       return status_;
     }
-    
-    // optional .ReadResponse readResponse = 100;
+
     public static final int READRESPONSE_FIELD_NUMBER = 100;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse readResponse_;
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     public boolean hasReadResponse() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse getReadResponse() {
       return readResponse_;
     }
+    /**
+     * <code>optional .ReadResponse readResponse = 100;</code>
+     *
+     * <pre>
+     * Response
+     * </pre>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder getReadResponseOrBuilder() {
       return readResponse_;
     }
-    
-    // optional .AddResponse addResponse = 101;
+
     public static final int ADDRESPONSE_FIELD_NUMBER = 101;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse addResponse_;
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     public boolean hasAddResponse() {
       return ((bitField0_ & 0x00000008) == 0x00000008);
     }
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse getAddResponse() {
       return addResponse_;
     }
+    /**
+     * <code>optional .AddResponse addResponse = 101;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder getAddResponseOrBuilder() {
       return addResponse_;
     }
-    
-    // optional .AuthMessage authResponse = 102;
+
     public static final int AUTHRESPONSE_FIELD_NUMBER = 102;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage authResponse_;
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     public boolean hasAuthResponse() {
       return ((bitField0_ & 0x00000010) == 0x00000010);
     }
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthResponse() {
       return authResponse_;
     }
+    /**
+     * <code>optional .AuthMessage authResponse = 102;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthResponseOrBuilder() {
       return authResponse_;
     }
-    
-    // optional .WriteLacResponse writeLacResponse = 103;
+
     public static final int WRITELACRESPONSE_FIELD_NUMBER = 103;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse writeLacResponse_;
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     public boolean hasWriteLacResponse() {
       return ((bitField0_ & 0x00000020) == 0x00000020);
     }
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse getWriteLacResponse() {
       return writeLacResponse_;
     }
+    /**
+     * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder getWriteLacResponseOrBuilder() {
       return writeLacResponse_;
     }
-    
-    // optional .ReadLacResponse readLacResponse = 104;
+
     public static final int READLACRESPONSE_FIELD_NUMBER = 104;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse readLacResponse_;
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     public boolean hasReadLacResponse() {
       return ((bitField0_ & 0x00000040) == 0x00000040);
     }
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse getReadLacResponse() {
       return readLacResponse_;
     }
+    /**
+     * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder getReadLacResponseOrBuilder() {
       return readLacResponse_;
     }
-    
+
     private void initFields() {
       header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
       status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
@@ -4304,8 +5780,9 @@ public final class BookkeeperProtocol {
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasHeader()) {
         memoizedIsInitialized = 0;
         return false;
@@ -4351,7 +5828,7 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -4378,12 +5855,12 @@ public final class BookkeeperProtocol {
       }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -4417,113 +5894,106 @@ public final class BookkeeperProtocol {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.Response parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.Response prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code Response}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.ResponseOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:Response)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ResponseOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.Response.class, org.apache.bookkeeper.proto.BookkeeperProtocol.Response.Builder.class);
       }
-      
+
       // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.Response.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -4540,7 +6010,7 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         if (headerBuilder_ == null) {
@@ -4583,20 +6053,20 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000040);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.Response.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_Response_descriptor;
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Response getDefaultInstanceForType() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.Response.getDefaultInstance();
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Response build() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.Response result = buildPartial();
         if (!result.isInitialized()) {
@@ -4604,17 +6074,7 @@ public final class BookkeeperProtocol {
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.Response buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.Response result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.Response buildPartial() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.Response result = new org.apache.bookkeeper.proto.BookkeeperProtocol.Response(this);
         int from_bitField0_ = bitField0_;
@@ -4675,7 +6135,7 @@ public final class BookkeeperProtocol {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.Response) {
           return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.Response)other);
@@ -4684,7 +6144,7 @@ public final class BookkeeperProtocol {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.Response other) {
         if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.Response.getDefaultInstance()) return this;
         if (other.hasHeader()) {
@@ -4711,7 +6171,7 @@ public final class BookkeeperProtocol {
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasHeader()) {
           
@@ -4757,108 +6217,38 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.newBuilder();
-              if (hasHeader()) {
-                subBuilder.mergeFrom(getHeader());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setHeader(subBuilder.buildPartial());
-              break;
-            }
-            case 16: {
-              int rawValue = input.readEnum();
-              org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.valueOf(rawValue);
-              if (value == null) {
-                unknownFields.mergeVarintField(2, rawValue);
-              } else {
-                bitField0_ |= 0x00000002;
-                status_ = value;
-              }
-              break;
-            }
-            case 802: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.newBuilder();
-              if (hasReadResponse()) {
-                subBuilder.mergeFrom(getReadResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setReadResponse(subBuilder.buildPartial());
-              break;
-            }
-            case 810: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.newBuilder();
-              if (hasAddResponse()) {
-                subBuilder.mergeFrom(getAddResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setAddResponse(subBuilder.buildPartial());
-              break;
-            }
-            case 818: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.newBuilder();
-              if (hasAuthResponse()) {
-                subBuilder.mergeFrom(getAuthResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setAuthResponse(subBuilder.buildPartial());
-              break;
-            }
-            case 826: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.newBuilder();
-              if (hasWriteLacResponse()) {
-                subBuilder.mergeFrom(getWriteLacResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setWriteLacResponse(subBuilder.buildPartial());
-              break;
-            }
-            case 834: {
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder subBuilder = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.newBuilder();
-              if (hasReadLacResponse()) {
-                subBuilder.mergeFrom(getReadLacResponse());
-              }
-              input.readMessage(subBuilder, extensionRegistry);
-              setReadLacResponse(subBuilder.buildPartial());
-              break;
-            }
+        org.apache.bookkeeper.proto.BookkeeperProtocol.Response parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.Response) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
-      // required .BKPacketHeader header = 1;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder> headerBuilder_;
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public boolean hasHeader() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader getHeader() {
         if (headerBuilder_ == null) {
           return header_;
@@ -4866,6 +6256,9 @@ public final class BookkeeperProtocol {
           return headerBuilder_.getMessage();
         }
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder setHeader(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader value) {
         if (headerBuilder_ == null) {
           if (value == null) {
@@ -4879,6 +6272,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder setHeader(
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder builderForValue) {
         if (headerBuilder_ == null) {
@@ -4890,6 +6286,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder mergeHeader(org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader value) {
         if (headerBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001) &&
@@ -4906,6 +6305,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000001;
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public Builder clearHeader() {
         if (headerBuilder_ == null) {
           header_ = org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.getDefaultInstance();
@@ -4916,11 +6318,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder getHeaderBuilder() {
         bitField0_ |= 0x00000001;
         onChanged();
         return getHeaderFieldBuilder().getBuilder();
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder getHeaderOrBuilder() {
         if (headerBuilder_ != null) {
           return headerBuilder_.getMessageOrBuilder();
@@ -4928,28 +6336,54 @@ public final class BookkeeperProtocol {
           return header_;
         }
       }
+      /**
+       * <code>required .BKPacketHeader header = 1;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder> 
           getHeaderFieldBuilder() {
         if (headerBuilder_ == null) {
           headerBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeaderOrBuilder>(
-                  header_,
+                  getHeader(),
                   getParentForChildren(),
                   isClean());
           header_ = null;
         }
         return headerBuilder_;
       }
-      
-      // required .StatusCode status = 2;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      /**
+       * <code>required .StatusCode status = 2;</code>
+       *
+       * <pre>
+       * EOK if the underlying request succeeded. Each individual response
+       * has a more meaningful status. EBADREQ if we have an unsupported request.
+       * </pre>
+       */
       public boolean hasStatus() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>required .StatusCode status = 2;</code>
+       *
+       * <pre>
+       * EOK if the underlying request succeeded. Each individual response
+       * has a more meaningful status. EBADREQ if we have an unsupported request.
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
         return status_;
       }
+      /**
+       * <code>required .StatusCode status = 2;</code>
+       *
+       * <pre>
+       * EOK if the underlying request succeeded. Each individual response
+       * has a more meaningful status. EBADREQ if we have an unsupported request.
+       * </pre>
+       */
       public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
         if (value == null) {
           throw new NullPointerException();
@@ -4959,20 +6393,41 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>required .StatusCode status = 2;</code>
+       *
+       * <pre>
+       * EOK if the underlying request succeeded. Each individual response
+       * has a more meaningful status. EBADREQ if we have an unsupported request.
+       * </pre>
+       */
       public Builder clearStatus() {
         bitField0_ = (bitField0_ & ~0x00000002);
         status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
         onChanged();
         return this;
       }
-      
-      // optional .ReadResponse readResponse = 100;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse readResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder> readResponseBuilder_;
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public boolean hasReadResponse() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse getReadResponse() {
         if (readResponseBuilder_ == null) {
           return readResponse_;
@@ -4980,6 +6435,13 @@ public final class BookkeeperProtocol {
           return readResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public Builder setReadResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse value) {
         if (readResponseBuilder_ == null) {
           if (value == null) {
@@ -4993,6 +6455,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public Builder setReadResponse(
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder builderForValue) {
         if (readResponseBuilder_ == null) {
@@ -5004,6 +6473,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public Builder mergeReadResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse value) {
         if (readResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000004) == 0x00000004) &&
@@ -5020,6 +6496,13 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000004;
         return this;
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public Builder clearReadResponse() {
         if (readResponseBuilder_ == null) {
           readResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance();
@@ -5030,11 +6513,25 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder getReadResponseBuilder() {
         bitField0_ |= 0x00000004;
         onChanged();
         return getReadResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder getReadResponseOrBuilder() {
         if (readResponseBuilder_ != null) {
           return readResponseBuilder_.getMessageOrBuilder();
@@ -5042,27 +6539,39 @@ public final class BookkeeperProtocol {
           return readResponse_;
         }
       }
+      /**
+       * <code>optional .ReadResponse readResponse = 100;</code>
+       *
+       * <pre>
+       * Response
+       * </pre>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder> 
           getReadResponseFieldBuilder() {
         if (readResponseBuilder_ == null) {
           readResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder>(
-                  readResponse_,
+                  getReadResponse(),
                   getParentForChildren(),
                   isClean());
           readResponse_ = null;
         }
         return readResponseBuilder_;
       }
-      
-      // optional .AddResponse addResponse = 101;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse addResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder> addResponseBuilder_;
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public boolean hasAddResponse() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse getAddResponse() {
         if (addResponseBuilder_ == null) {
           return addResponse_;
@@ -5070,6 +6579,9 @@ public final class BookkeeperProtocol {
           return addResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public Builder setAddResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse value) {
         if (addResponseBuilder_ == null) {
           if (value == null) {
@@ -5083,6 +6595,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public Builder setAddResponse(
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder builderForValue) {
         if (addResponseBuilder_ == null) {
@@ -5094,6 +6609,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public Builder mergeAddResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse value) {
         if (addResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000008) == 0x00000008) &&
@@ -5110,6 +6628,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000008;
         return this;
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public Builder clearAddResponse() {
         if (addResponseBuilder_ == null) {
           addResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance();
@@ -5120,11 +6641,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder getAddResponseBuilder() {
         bitField0_ |= 0x00000008;
         onChanged();
         return getAddResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder getAddResponseOrBuilder() {
         if (addResponseBuilder_ != null) {
           return addResponseBuilder_.getMessageOrBuilder();
@@ -5132,27 +6659,35 @@ public final class BookkeeperProtocol {
           return addResponse_;
         }
       }
+      /**
+       * <code>optional .AddResponse addResponse = 101;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder> 
           getAddResponseFieldBuilder() {
         if (addResponseBuilder_ == null) {
           addResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder>(
-                  addResponse_,
+                  getAddResponse(),
                   getParentForChildren(),
                   isClean());
           addResponse_ = null;
         }
         return addResponseBuilder_;
       }
-      
-      // optional .AuthMessage authResponse = 102;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage authResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder> authResponseBuilder_;
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public boolean hasAuthResponse() {
         return ((bitField0_ & 0x00000010) == 0x00000010);
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getAuthResponse() {
         if (authResponseBuilder_ == null) {
           return authResponse_;
@@ -5160,6 +6695,9 @@ public final class BookkeeperProtocol {
           return authResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public Builder setAuthResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage value) {
         if (authResponseBuilder_ == null) {
           if (value == null) {
@@ -5173,6 +6711,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public Builder setAuthResponse(
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder builderForValue) {
         if (authResponseBuilder_ == null) {
@@ -5184,6 +6725,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public Builder mergeAuthResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage value) {
         if (authResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000010) == 0x00000010) &&
@@ -5200,6 +6744,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000010;
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public Builder clearAuthResponse() {
         if (authResponseBuilder_ == null) {
           authResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance();
@@ -5210,11 +6757,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder getAuthResponseBuilder() {
         bitField0_ |= 0x00000010;
         onChanged();
         return getAuthResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder getAuthResponseOrBuilder() {
         if (authResponseBuilder_ != null) {
           return authResponseBuilder_.getMessageOrBuilder();
@@ -5222,27 +6775,35 @@ public final class BookkeeperProtocol {
           return authResponse_;
         }
       }
+      /**
+       * <code>optional .AuthMessage authResponse = 102;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder> 
           getAuthResponseFieldBuilder() {
         if (authResponseBuilder_ == null) {
           authResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder>(
-                  authResponse_,
+                  getAuthResponse(),
                   getParentForChildren(),
                   isClean());
           authResponse_ = null;
         }
         return authResponseBuilder_;
       }
-      
-      // optional .WriteLacResponse writeLacResponse = 103;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse writeLacResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder> writeLacResponseBuilder_;
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public boolean hasWriteLacResponse() {
         return ((bitField0_ & 0x00000020) == 0x00000020);
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse getWriteLacResponse() {
         if (writeLacResponseBuilder_ == null) {
           return writeLacResponse_;
@@ -5250,6 +6811,9 @@ public final class BookkeeperProtocol {
           return writeLacResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public Builder setWriteLacResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse value) {
         if (writeLacResponseBuilder_ == null) {
           if (value == null) {
@@ -5263,6 +6827,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public Builder setWriteLacResponse(
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder builderForValue) {
         if (writeLacResponseBuilder_ == null) {
@@ -5274,6 +6841,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public Builder mergeWriteLacResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse value) {
         if (writeLacResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000020) == 0x00000020) &&
@@ -5290,6 +6860,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000020;
         return this;
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public Builder clearWriteLacResponse() {
         if (writeLacResponseBuilder_ == null) {
           writeLacResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance();
@@ -5300,11 +6873,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder getWriteLacResponseBuilder() {
         bitField0_ |= 0x00000020;
         onChanged();
         return getWriteLacResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder getWriteLacResponseOrBuilder() {
         if (writeLacResponseBuilder_ != null) {
           return writeLacResponseBuilder_.getMessageOrBuilder();
@@ -5312,27 +6891,35 @@ public final class BookkeeperProtocol {
           return writeLacResponse_;
         }
       }
+      /**
+       * <code>optional .WriteLacResponse writeLacResponse = 103;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder> 
           getWriteLacResponseFieldBuilder() {
         if (writeLacResponseBuilder_ == null) {
           writeLacResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder>(
-                  writeLacResponse_,
+                  getWriteLacResponse(),
                   getParentForChildren(),
                   isClean());
           writeLacResponse_ = null;
         }
         return writeLacResponseBuilder_;
       }
-      
-      // optional .ReadLacResponse readLacResponse = 104;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse readLacResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder> readLacResponseBuilder_;
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public boolean hasReadLacResponse() {
         return ((bitField0_ & 0x00000040) == 0x00000040);
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse getReadLacResponse() {
         if (readLacResponseBuilder_ == null) {
           return readLacResponse_;
@@ -5340,6 +6927,9 @@ public final class BookkeeperProtocol {
           return readLacResponseBuilder_.getMessage();
         }
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public Builder setReadLacResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse value) {
         if (readLacResponseBuilder_ == null) {
           if (value == null) {
@@ -5353,6 +6943,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000040;
         return this;
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public Builder setReadLacResponse(
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder builderForValue) {
         if (readLacResponseBuilder_ == null) {
@@ -5364,6 +6957,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000040;
         return this;
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public Builder mergeReadLacResponse(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse value) {
         if (readLacResponseBuilder_ == null) {
           if (((bitField0_ & 0x00000040) == 0x00000040) &&
@@ -5380,6 +6976,9 @@ public final class BookkeeperProtocol {
         bitField0_ |= 0x00000040;
         return this;
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public Builder clearReadLacResponse() {
         if (readLacResponseBuilder_ == null) {
           readLacResponse_ = org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance();
@@ -5390,11 +6989,17 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000040);
         return this;
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder getReadLacResponseBuilder() {
         bitField0_ |= 0x00000040;
         onChanged();
         return getReadLacResponseFieldBuilder().getBuilder();
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder getReadLacResponseOrBuilder() {
         if (readLacResponseBuilder_ != null) {
           return readLacResponseBuilder_.getMessageOrBuilder();
@@ -5402,440 +7007,123 @@ public final class BookkeeperProtocol {
           return readLacResponse_;
         }
       }
+      /**
+       * <code>optional .ReadLacResponse readLacResponse = 104;</code>
+       */
       private com.google.protobuf.SingleFieldBuilder<
           org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder> 
           getReadLacResponseFieldBuilder() {
         if (readLacResponseBuilder_ == null) {
           readLacResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
               org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder>(
-                  readLacResponse_,
+                  getReadLacResponse(),
                   getParentForChildren(),
                   isClean());
           readLacResponse_ = null;
         }
         return readLacResponseBuilder_;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:Response)
     }
-    
+
     static {
       defaultInstance = new Response(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:Response)
   }
-  
-  public interface ReadResponseOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .StatusCode status = 1;
+
+  public interface ReadResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:ReadResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     boolean hasStatus();
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
-    
-    // required int64 ledgerId = 2;
+
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     long getLedgerId();
-    
-    // required int64 entryId = 3;
+
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
     boolean hasEntryId();
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
     long getEntryId();
-    
-    // optional bytes body = 4;
+
+    /**
+     * <code>optional bytes body = 4;</code>
+     */
     boolean hasBody();
+    /**
+     * <code>optional bytes body = 4;</code>
+     */
     com.google.protobuf.ByteString getBody();
   }
+  /**
+   * Protobuf type {@code ReadResponse}
+   */
   public static final class ReadResponse extends
-      com.google.protobuf.GeneratedMessage
-      implements ReadResponseOrBuilder {
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:ReadResponse)
+      ReadResponseOrBuilder {
     // Use ReadResponse.newBuilder() to construct.
-    private ReadResponse(Builder builder) {
+    private ReadResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private ReadResponse(boolean noInit) {}
-    
+    private ReadResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final ReadResponse defaultInstance;
     public static ReadResponse getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public ReadResponse getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_fieldAccessorTable;
-    }
-    
-    private int bitField0_;
-    // required .StatusCode status = 1;
-    public static final int STATUS_FIELD_NUMBER = 1;
-    private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
-    public boolean hasStatus() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
-      return status_;
-    }
-    
-    // required int64 ledgerId = 2;
-    public static final int LEDGERID_FIELD_NUMBER = 2;
-    private long ledgerId_;
-    public boolean hasLedgerId() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    public long getLedgerId() {
-      return ledgerId_;
-    }
-    
-    // required int64 entryId = 3;
-    public static final int ENTRYID_FIELD_NUMBER = 3;
-    private long entryId_;
-    public boolean hasEntryId() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    public long getEntryId() {
-      return entryId_;
-    }
-    
-    // optional bytes body = 4;
-    public static final int BODY_FIELD_NUMBER = 4;
-    private com.google.protobuf.ByteString body_;
-    public boolean hasBody() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
-    }
-    public com.google.protobuf.ByteString getBody() {
-      return body_;
-    }
-    
-    private void initFields() {
-      status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-      ledgerId_ = 0L;
-      entryId_ = 0L;
-      body_ = com.google.protobuf.ByteString.EMPTY;
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
-      if (!hasStatus()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasLedgerId()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasEntryId()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      memoizedIsInitialized = 1;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeEnum(1, status_.getNumber());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeInt64(2, ledgerId_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeInt64(3, entryId_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeBytes(4, body_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeEnumSize(1, status_.getNumber());
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(2, ledgerId_);
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(3, entryId_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(4, body_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    private static final long serialVersionUID = 0L;
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
     @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
+    private ReadResponse(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_descriptor;
-      }
-      
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_fieldAccessorTable;
-      }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-      
-      private Builder(BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-      
-      public Builder clear() {
-        super.clear();
-        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-        bitField0_ = (bitField0_ & ~0x00000001);
-        ledgerId_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        entryId_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        body_ = com.google.protobuf.ByteString.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000008);
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDescriptor();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance();
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.status_ = status_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.ledgerId_ = ledgerId_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
-        result.entryId_ = entryId_;
-        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
-          to_bitField0_ |= 0x00000008;
-        }
-        result.body_ = body_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance()) return this;
-        if (other.hasStatus()) {
-          setStatus(other.getStatus());
-        }
-        if (other.hasLedgerId()) {
-          setLedgerId(other.getLedgerId());
-        }
-        if (other.hasEntryId()) {
-          setEntryId(other.getEntryId());
-        }
-        if (other.hasBody()) {
-          setBody(other.getBody());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public final boolean isInitialized() {
-        if (!hasStatus()) {
-          
-          return false;
-        }
-        if (!hasLedgerId()) {
-          
-          return false;
-        }
-        if (!hasEntryId()) {
-          
-          return false;
-        }
-        return true;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -5867,195 +7155,116 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // required .StatusCode status = 1;
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-      public boolean hasStatus() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
-        return status_;
-      }
-      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        bitField0_ |= 0x00000001;
-        status_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearStatus() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 ledgerId = 2;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000002;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 entryId = 3;
-      private long entryId_ ;
-      public boolean hasEntryId() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      public long getEntryId() {
-        return entryId_;
-      }
-      public Builder setEntryId(long value) {
-        bitField0_ |= 0x00000004;
-        entryId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearEntryId() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        entryId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // optional bytes body = 4;
-      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasBody() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
-      }
-      public com.google.protobuf.ByteString getBody() {
-        return body_;
-      }
-      public Builder setBody(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        body_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearBody() {
-        bitField0_ = (bitField0_ & ~0x00000008);
-        body_ = getDefaultInstance().getBody();
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:ReadResponse)
     }
-    
-    static {
-      defaultInstance = new ReadResponse(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:ReadResponse)
-  }
-  
-  public interface AddResponseOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .StatusCode status = 1;
-    boolean hasStatus();
-    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
-    
-    // required int64 ledgerId = 2;
-    boolean hasLedgerId();
-    long getLedgerId();
-    
-    // required int64 entryId = 3;
-    boolean hasEntryId();
-    long getEntryId();
-  }
-  public static final class AddResponse extends
-      com.google.protobuf.GeneratedMessage
-      implements AddResponseOrBuilder {
-    // Use AddResponse.newBuilder() to construct.
-    private AddResponse(Builder builder) {
-      super(builder);
-    }
-    private AddResponse(boolean noInit) {}
-    
-    private static final AddResponse defaultInstance;
-    public static AddResponse getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public AddResponse getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<ReadResponse> PARSER =
+        new com.google.protobuf.AbstractParser<ReadResponse>() {
+      public ReadResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ReadResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ReadResponse> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required .StatusCode status = 1;
     public static final int STATUS_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
       return status_;
     }
-    
-    // required int64 ledgerId = 2;
+
     public static final int LEDGERID_FIELD_NUMBER = 2;
     private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public boolean hasLedgerId() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
-    // required int64 entryId = 3;
+
     public static final int ENTRYID_FIELD_NUMBER = 3;
     private long entryId_;
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
     public boolean hasEntryId() {
       return ((bitField0_ & 0x00000004) == 0x00000004);
     }
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
     public long getEntryId() {
       return entryId_;
     }
-    
+
+    public static final int BODY_FIELD_NUMBER = 4;
+    private com.google.protobuf.ByteString body_;
+    /**
+     * <code>optional bytes body = 4;</code>
+     */
+    public boolean hasBody() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bytes body = 4;</code>
+     */
+    public com.google.protobuf.ByteString getBody() {
+      return body_;
+    }
+
     private void initFields() {
       status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
       ledgerId_ = 0L;
       entryId_ = 0L;
+      body_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasStatus()) {
         memoizedIsInitialized = 0;
         return false;
@@ -6071,7 +7280,7 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -6084,14 +7293,17 @@ public final class BookkeeperProtocol {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeInt64(3, entryId_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(4, body_);
+      }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -6105,117 +7317,114 @@ public final class BookkeeperProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(3, entryId_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(4, body_);
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code ReadResponse}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:ReadResponse)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponseOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -6226,7 +7435,7 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
@@ -6235,42 +7444,34 @@ public final class BookkeeperProtocol {
         bitField0_ = (bitField0_ & ~0x00000002);
         entryId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
+        body_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadResponse_descriptor;
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance();
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse result = buildPartial();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse(this);
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -6285,22 +7486,26 @@ public final class BookkeeperProtocol {
           to_bitField0_ |= 0x00000004;
         }
         result.entryId_ = entryId_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.body_ = body_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse)other);
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance()) return this;
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.getDefaultInstance()) return this;
         if (other.hasStatus()) {
           setStatus(other.getStatus());
         }
@@ -6310,10 +7515,13 @@ public final class BookkeeperProtocol {
         if (other.hasEntryId()) {
           setEntryId(other.getEntryId());
         }
+        if (other.hasBody()) {
+          setBody(other.getBody());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasStatus()) {
           
@@ -6329,27 +7537,251 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public boolean hasStatus() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
+        return status_;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        status_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder clearStatus() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+        onChanged();
+        return this;
+      }
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000002;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private long entryId_ ;
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public boolean hasEntryId() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public long getEntryId() {
+        return entryId_;
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public Builder setEntryId(long value) {
+        bitField0_ |= 0x00000004;
+        entryId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public Builder clearEntryId() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        entryId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString body_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes body = 4;</code>
+       */
+      public boolean hasBody() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional bytes body = 4;</code>
+       */
+      public com.google.protobuf.ByteString getBody() {
+        return body_;
+      }
+      /**
+       * <code>optional bytes body = 4;</code>
+       */
+      public Builder setBody(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        body_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bytes body = 4;</code>
+       */
+      public Builder clearBody() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        body_ = getDefaultInstance().getBody();
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:ReadResponse)
+    }
+
+    static {
+      defaultInstance = new ReadResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:ReadResponse)
+  }
+
+  public interface AddResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:AddResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    boolean hasStatus();
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
+
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    long getLedgerId();
+
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
+    boolean hasEntryId();
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
+    long getEntryId();
+  }
+  /**
+   * Protobuf type {@code AddResponse}
+   */
+  public static final class AddResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:AddResponse)
+      AddResponseOrBuilder {
+    // Use AddResponse.newBuilder() to construct.
+    private AddResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private AddResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final AddResponse defaultInstance;
+    public static AddResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public AddResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private AddResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -6376,156 +7808,100 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // required .StatusCode status = 1;
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-      public boolean hasStatus() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
-        return status_;
-      }
-      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        bitField0_ |= 0x00000001;
-        status_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearStatus() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 ledgerId = 2;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000002;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 entryId = 3;
-      private long entryId_ ;
-      public boolean hasEntryId() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      public long getEntryId() {
-        return entryId_;
-      }
-      public Builder setEntryId(long value) {
-        bitField0_ |= 0x00000004;
-        entryId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearEntryId() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        entryId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:AddResponse)
     }
-    
-    static {
-      defaultInstance = new AddResponse(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:AddResponse)
-  }
-  
-  public interface WriteLacResponseOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .StatusCode status = 1;
-    boolean hasStatus();
-    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
-    
-    // required int64 ledgerId = 2;
-    boolean hasLedgerId();
-    long getLedgerId();
-  }
-  public static final class WriteLacResponse extends
-      com.google.protobuf.GeneratedMessage
-      implements WriteLacResponseOrBuilder {
-    // Use WriteLacResponse.newBuilder() to construct.
-    private WriteLacResponse(Builder builder) {
-      super(builder);
-    }
-    private WriteLacResponse(boolean noInit) {}
-    
-    private static final WriteLacResponse defaultInstance;
-    public static WriteLacResponse getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public WriteLacResponse getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<AddResponse> PARSER =
+        new com.google.protobuf.AbstractParser<AddResponse>() {
+      public AddResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new AddResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<AddResponse> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required .StatusCode status = 1;
     public static final int STATUS_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
       return status_;
     }
-    
-    // required int64 ledgerId = 2;
+
     public static final int LEDGERID_FIELD_NUMBER = 2;
     private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public boolean hasLedgerId() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
+
+    public static final int ENTRYID_FIELD_NUMBER = 3;
+    private long entryId_;
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
+    public boolean hasEntryId() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required int64 entryId = 3;</code>
+     */
+    public long getEntryId() {
+      return entryId_;
+    }
+
     private void initFields() {
       status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
       ledgerId_ = 0L;
+      entryId_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasStatus()) {
         memoizedIsInitialized = 0;
         return false;
@@ -6534,10 +7910,14 @@ public final class BookkeeperProtocol {
         memoizedIsInitialized = 0;
         return false;
       }
+      if (!hasEntryId()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -6547,14 +7927,17 @@ public final class BookkeeperProtocol {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeInt64(2, ledgerId_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeInt64(3, entryId_);
+      }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -6564,117 +7947,114 @@ public final class BookkeeperProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(2, ledgerId_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(3, entryId_);
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code AddResponse}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:AddResponse)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponseOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -6685,49 +8065,41 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
         bitField0_ = (bitField0_ & ~0x00000001);
         ledgerId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000002);
+        entryId_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AddResponse_descriptor;
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance();
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse result = buildPartial();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse(this);
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -6738,32 +8110,39 @@ public final class BookkeeperProtocol {
           to_bitField0_ |= 0x00000002;
         }
         result.ledgerId_ = ledgerId_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.entryId_ = entryId_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse)other);
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance()) return this;
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.getDefaultInstance()) return this;
         if (other.hasStatus()) {
           setStatus(other.getStatus());
         }
         if (other.hasLedgerId()) {
           setLedgerId(other.getLedgerId());
         }
+        if (other.hasEntryId()) {
+          setEntryId(other.getEntryId());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasStatus()) {
           
@@ -6773,29 +8152,213 @@ public final class BookkeeperProtocol {
           
           return false;
         }
+        if (!hasEntryId()) {
+          
+          return false;
+        }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public boolean hasStatus() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
+        return status_;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        status_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder clearStatus() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+        onChanged();
+        return this;
+      }
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000002;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private long entryId_ ;
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public boolean hasEntryId() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public long getEntryId() {
+        return entryId_;
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public Builder setEntryId(long value) {
+        bitField0_ |= 0x00000004;
+        entryId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 entryId = 3;</code>
+       */
+      public Builder clearEntryId() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        entryId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:AddResponse)
+    }
+
+    static {
+      defaultInstance = new AddResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:AddResponse)
+  }
+
+  public interface WriteLacResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:WriteLacResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    boolean hasStatus();
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
+
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    long getLedgerId();
+  }
+  /**
+   * Protobuf type {@code WriteLacResponse}
+   */
+  public static final class WriteLacResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:WriteLacResponse)
+      WriteLacResponseOrBuilder {
+    // Use WriteLacResponse.newBuilder() to construct.
+    private WriteLacResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private WriteLacResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final WriteLacResponse defaultInstance;
+    public static WriteLacResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public WriteLacResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private WriteLacResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -6817,165 +8380,84 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
-      private int bitField0_;
-      
-      // required .StatusCode status = 1;
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-      public boolean hasStatus() {
-        return ((bitField0_ & 0x00000001) == 0x00000001);
-      }
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
-        return status_;
-      }
-      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
-        if (value == null) {
-          throw new NullPointerException();
-        }
-        bitField0_ |= 0x00000001;
-        status_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearStatus() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
-        onChanged();
-        return this;
-      }
-      
-      // required int64 ledgerId = 2;
-      private long ledgerId_ ;
-      public boolean hasLedgerId() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public long getLedgerId() {
-        return ledgerId_;
-      }
-      public Builder setLedgerId(long value) {
-        bitField0_ |= 0x00000002;
-        ledgerId_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearLedgerId() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        ledgerId_ = 0L;
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:WriteLacResponse)
     }
-    
-    static {
-      defaultInstance = new WriteLacResponse(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:WriteLacResponse)
-  }
-  
-  public interface ReadLacResponseOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required .StatusCode status = 1;
-    boolean hasStatus();
-    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
-    
-    // required int64 ledgerId = 2;
-    boolean hasLedgerId();
-    long getLedgerId();
-    
-    // optional bytes lacBody = 3;
-    boolean hasLacBody();
-    com.google.protobuf.ByteString getLacBody();
-    
-    // optional bytes lastEntryBody = 4;
-    boolean hasLastEntryBody();
-    com.google.protobuf.ByteString getLastEntryBody();
-  }
-  public static final class ReadLacResponse extends
-      com.google.protobuf.GeneratedMessage
-      implements ReadLacResponseOrBuilder {
-    // Use ReadLacResponse.newBuilder() to construct.
-    private ReadLacResponse(Builder builder) {
-      super(builder);
-    }
-    private ReadLacResponse(boolean noInit) {}
-    
-    private static final ReadLacResponse defaultInstance;
-    public static ReadLacResponse getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public ReadLacResponse getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_descriptor;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<WriteLacResponse> PARSER =
+        new com.google.protobuf.AbstractParser<WriteLacResponse>() {
+      public WriteLacResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new WriteLacResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<WriteLacResponse> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required .StatusCode status = 1;
     public static final int STATUS_FIELD_NUMBER = 1;
     private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public boolean hasStatus() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
     public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
       return status_;
     }
-    
-    // required int64 ledgerId = 2;
+
     public static final int LEDGERID_FIELD_NUMBER = 2;
     private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public boolean hasLedgerId() {
       return ((bitField0_ & 0x00000002) == 0x00000002);
     }
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
     public long getLedgerId() {
       return ledgerId_;
     }
-    
-    // optional bytes lacBody = 3;
-    public static final int LACBODY_FIELD_NUMBER = 3;
-    private com.google.protobuf.ByteString lacBody_;
-    public boolean hasLacBody() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    public com.google.protobuf.ByteString getLacBody() {
-      return lacBody_;
-    }
-    
-    // optional bytes lastEntryBody = 4;
-    public static final int LASTENTRYBODY_FIELD_NUMBER = 4;
-    private com.google.protobuf.ByteString lastEntryBody_;
-    public boolean hasLastEntryBody() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
-    }
-    public com.google.protobuf.ByteString getLastEntryBody() {
-      return lastEntryBody_;
-    }
-    
+
     private void initFields() {
       status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
       ledgerId_ = 0L;
-      lacBody_ = com.google.protobuf.ByteString.EMPTY;
-      lastEntryBody_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasStatus()) {
         memoizedIsInitialized = 0;
         return false;
@@ -6987,7 +8469,7 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -6997,20 +8479,14 @@ public final class BookkeeperProtocol {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeInt64(2, ledgerId_);
       }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeBytes(3, lacBody_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeBytes(4, lastEntryBody_);
-      }
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -7020,125 +8496,110 @@ public final class BookkeeperProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(2, ledgerId_);
       }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(3, lacBody_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(4, lastEntryBody_);
-      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(byte[] data)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseDelimitedFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
-    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse prototype) {
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code WriteLacResponse}
+     */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder {
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:WriteLacResponse)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponseOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_descriptor;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder.class);
       }
-      
-      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.newBuilder()
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -7149,53 +8610,39 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
         bitField0_ = (bitField0_ & ~0x00000001);
         ledgerId_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000002);
-        lacBody_ = com.google.protobuf.ByteString.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        lastEntryBody_ = com.google.protobuf.ByteString.EMPTY;
-        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_WriteLacResponse_descriptor;
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse getDefaultInstanceForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance();
       }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse build() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse result = buildPartial();
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse buildPartial() {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse(this);
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -7206,46 +8653,32 @@ public final class BookkeeperProtocol {
           to_bitField0_ |= 0x00000002;
         }
         result.ledgerId_ = ledgerId_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
-        result.lacBody_ = lacBody_;
-        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
-          to_bitField0_ |= 0x00000008;
-        }
-        result.lastEntryBody_ = lastEntryBody_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse) {
-          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse)other);
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-      
-      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse other) {
-        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance()) return this;
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.getDefaultInstance()) return this;
         if (other.hasStatus()) {
           setStatus(other.getStatus());
         }
         if (other.hasLedgerId()) {
           setLedgerId(other.getLedgerId());
         }
-        if (other.hasLacBody()) {
-          setLacBody(other.getLacBody());
-        }
-        if (other.hasLastEntryBody()) {
-          setLastEntryBody(other.getLastEntryBody());
-        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasStatus()) {
           
@@ -7257,27 +8690,209 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public boolean hasStatus() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
+        return status_;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        status_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
+      public Builder clearStatus() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+        onChanged();
+        return this;
+      }
+
+      private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public boolean hasLedgerId() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public long getLedgerId() {
+        return ledgerId_;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder setLedgerId(long value) {
+        bitField0_ |= 0x00000002;
+        ledgerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
+      public Builder clearLedgerId() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        ledgerId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:WriteLacResponse)
+    }
+
+    static {
+      defaultInstance = new WriteLacResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:WriteLacResponse)
+  }
+
+  public interface ReadLacResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:ReadLacResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    boolean hasStatus();
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus();
+
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    boolean hasLedgerId();
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    long getLedgerId();
+
+    /**
+     * <code>optional bytes lacBody = 3;</code>
+     *
+     * <pre>
+     * lac sent by PutLacRequest
+     * </pre>
+     */
+    boolean hasLacBody();
+    /**
+     * <code>optional bytes lacBody = 3;</code>
+     *
+     * <pre>
+     * lac sent by PutLacRequest
+     * </pre>
+     */
+    com.google.protobuf.ByteString getLacBody();
+
+    /**
+     * <code>optional bytes lastEntryBody = 4;</code>
+     *
+     * <pre>
+     * Actual last entry on the disk
+     * </pre>
+     */
+    boolean hasLastEntryBody();
+    /**
+     * <code>optional bytes lastEntryBody = 4;</code>
+     *
+     * <pre>
+     * Actual last entry on the disk
+     * </pre>
+     */
+    com.google.protobuf.ByteString getLastEntryBody();
+  }
+  /**
+   * Protobuf type {@code ReadLacResponse}
+   */
+  public static final class ReadLacResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:ReadLacResponse)
+      ReadLacResponseOrBuilder {
+    // Use ReadLacResponse.newBuilder() to construct.
+    private ReadLacResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private ReadLacResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final ReadLacResponse defaultInstance;
+    public static ReadLacResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public ReadLacResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private ReadLacResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
+              done = true;
+              break;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
+                done = true;
               }
               break;
             }
@@ -7309,18 +8924,432 @@ public final class BookkeeperProtocol {
             }
           }
         }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
       }
-      
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<ReadLacResponse> PARSER =
+        new com.google.protobuf.AbstractParser<ReadLacResponse>() {
+      public ReadLacResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new ReadLacResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<ReadLacResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    public static final int STATUS_FIELD_NUMBER = 1;
+    private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_;
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    public boolean hasStatus() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required .StatusCode status = 1;</code>
+     */
+    public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
+      return status_;
+    }
+
+    public static final int LEDGERID_FIELD_NUMBER = 2;
+    private long ledgerId_;
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    public boolean hasLedgerId() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required int64 ledgerId = 2;</code>
+     */
+    public long getLedgerId() {
+      return ledgerId_;
+    }
+
+    public static final int LACBODY_FIELD_NUMBER = 3;
+    private com.google.protobuf.ByteString lacBody_;
+    /**
+     * <code>optional bytes lacBody = 3;</code>
+     *
+     * <pre>
+     * lac sent by PutLacRequest
+     * </pre>
+     */
+    public boolean hasLacBody() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional bytes lacBody = 3;</code>
+     *
+     * <pre>
+     * lac sent by PutLacRequest
+     * </pre>
+     */
+    public com.google.protobuf.ByteString getLacBody() {
+      return lacBody_;
+    }
+
+    public static final int LASTENTRYBODY_FIELD_NUMBER = 4;
+    private com.google.protobuf.ByteString lastEntryBody_;
+    /**
+     * <code>optional bytes lastEntryBody = 4;</code>
+     *
+     * <pre>
+     * Actual last entry on the disk
+     * </pre>
+     */
+    public boolean hasLastEntryBody() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bytes lastEntryBody = 4;</code>
+     *
+     * <pre>
+     * Actual last entry on the disk
+     * </pre>
+     */
+    public com.google.protobuf.ByteString getLastEntryBody() {
+      return lastEntryBody_;
+    }
+
+    private void initFields() {
+      status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      ledgerId_ = 0L;
+      lacBody_ = com.google.protobuf.ByteString.EMPTY;
+      lastEntryBody_ = com.google.protobuf.ByteString.EMPTY;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      if (!hasStatus()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasLedgerId()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(1, status_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeInt64(2, ledgerId_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeBytes(3, lacBody_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(4, lastEntryBody_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(1, status_.getNumber());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(2, ledgerId_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(3, lacBody_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(4, lastEntryBody_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code ReadLacResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:ReadLacResponse)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.class, org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder.class);
+      }
+
+      // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        ledgerId_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        lacBody_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        lastEntryBody_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_ReadLacResponse_descriptor;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse getDefaultInstanceForType() {
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance();
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse build() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse buildPartial() {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse result = new org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.status_ = status_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.ledgerId_ = ledgerId_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.lacBody_ = lacBody_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.lastEntryBody_ = lastEntryBody_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse) {
+          return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse other) {
+        if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.getDefaultInstance()) return this;
+        if (other.hasStatus()) {
+          setStatus(other.getStatus());
+        }
+        if (other.hasLedgerId()) {
+          setLedgerId(other.getLedgerId());
+        }
+        if (other.hasLacBody()) {
+          setLacBody(other.getLacBody());
+        }
+        if (other.hasLastEntryBody()) {
+          setLastEntryBody(other.getLastEntryBody());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasStatus()) {
+          
+          return false;
+        }
+        if (!hasLedgerId()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
       private int bitField0_;
-      
-      // required .StatusCode status = 1;
+
       private org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
       public boolean hasStatus() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
       public org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode getStatus() {
         return status_;
       }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
       public Builder setStatus(org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode value) {
         if (value == null) {
           throw new NullPointerException();
@@ -7330,42 +9359,76 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>required .StatusCode status = 1;</code>
+       */
       public Builder clearStatus() {
         bitField0_ = (bitField0_ & ~0x00000001);
         status_ = org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode.EOK;
         onChanged();
         return this;
       }
-      
-      // required int64 ledgerId = 2;
+
       private long ledgerId_ ;
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
       public boolean hasLedgerId() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
       public long getLedgerId() {
         return ledgerId_;
       }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
       public Builder setLedgerId(long value) {
         bitField0_ |= 0x00000002;
         ledgerId_ = value;
         onChanged();
         return this;
       }
+      /**
+       * <code>required int64 ledgerId = 2;</code>
+       */
       public Builder clearLedgerId() {
         bitField0_ = (bitField0_ & ~0x00000002);
         ledgerId_ = 0L;
         onChanged();
         return this;
       }
-      
-      // optional bytes lacBody = 3;
+
       private com.google.protobuf.ByteString lacBody_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes lacBody = 3;</code>
+       *
+       * <pre>
+       * lac sent by PutLacRequest
+       * </pre>
+       */
       public boolean hasLacBody() {
         return ((bitField0_ & 0x00000004) == 0x00000004);
       }
+      /**
+       * <code>optional bytes lacBody = 3;</code>
+       *
+       * <pre>
+       * lac sent by PutLacRequest
+       * </pre>
+       */
       public com.google.protobuf.ByteString getLacBody() {
         return lacBody_;
       }
+      /**
+       * <code>optional bytes lacBody = 3;</code>
+       *
+       * <pre>
+       * lac sent by PutLacRequest
+       * </pre>
+       */
       public Builder setLacBody(com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
@@ -7375,21 +9438,48 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>optional bytes lacBody = 3;</code>
+       *
+       * <pre>
+       * lac sent by PutLacRequest
+       * </pre>
+       */
       public Builder clearLacBody() {
         bitField0_ = (bitField0_ & ~0x00000004);
         lacBody_ = getDefaultInstance().getLacBody();
         onChanged();
         return this;
       }
-      
-      // optional bytes lastEntryBody = 4;
+
       private com.google.protobuf.ByteString lastEntryBody_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes lastEntryBody = 4;</code>
+       *
+       * <pre>
+       * Actual last entry on the disk
+       * </pre>
+       */
       public boolean hasLastEntryBody() {
         return ((bitField0_ & 0x00000008) == 0x00000008);
       }
+      /**
+       * <code>optional bytes lastEntryBody = 4;</code>
+       *
+       * <pre>
+       * Actual last entry on the disk
+       * </pre>
+       */
       public com.google.protobuf.ByteString getLastEntryBody() {
         return lastEntryBody_;
       }
+      /**
+       * <code>optional bytes lastEntryBody = 4;</code>
+       *
+       * <pre>
+       * Actual last entry on the disk
+       * </pre>
+       */
       public Builder setLastEntryBody(com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
@@ -7399,101 +9489,206 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>optional bytes lastEntryBody = 4;</code>
+       *
+       * <pre>
+       * Actual last entry on the disk
+       * </pre>
+       */
       public Builder clearLastEntryBody() {
         bitField0_ = (bitField0_ & ~0x00000008);
         lastEntryBody_ = getDefaultInstance().getLastEntryBody();
         onChanged();
         return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:ReadLacResponse)
     }
-    
+
     static {
       defaultInstance = new ReadLacResponse(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:ReadLacResponse)
   }
-  
+
   public interface AuthMessageOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:AuthMessage)
       com.google.protobuf.GeneratedMessage.
           ExtendableMessageOrBuilder<AuthMessage> {
-    
-    // required string authPluginName = 1;
+
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
     boolean hasAuthPluginName();
-    String getAuthPluginName();
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
+    java.lang.String getAuthPluginName();
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
+    com.google.protobuf.ByteString
+        getAuthPluginNameBytes();
   }
+  /**
+   * Protobuf type {@code AuthMessage}
+   *
+   * <pre>
+   **
+   * Extendible message which auth mechanisms
+   * can use to carry their payload.
+   * </pre>
+   */
   public static final class AuthMessage extends
       com.google.protobuf.GeneratedMessage.ExtendableMessage<
-        AuthMessage> implements AuthMessageOrBuilder {
+        AuthMessage> implements
+      // @@protoc_insertion_point(message_implements:AuthMessage)
+      AuthMessageOrBuilder {
     // Use AuthMessage.newBuilder() to construct.
-    private AuthMessage(Builder builder) {
+    private AuthMessage(com.google.protobuf.GeneratedMessage.ExtendableBuilder<org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, ?> builder) {
       super(builder);
+      this.unknownFields = builder.getUnknownFields();
     }
-    private AuthMessage(boolean noInit) {}
-    
+    private AuthMessage(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
     private static final AuthMessage defaultInstance;
     public static AuthMessage getDefaultInstance() {
       return defaultInstance;
     }
-    
+
     public AuthMessage getDefaultInstanceForType() {
       return defaultInstance;
     }
-    
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private AuthMessage(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              com.google.protobuf.ByteString bs = input.readBytes();
+              bitField0_ |= 0x00000001;
+              authPluginName_ = bs;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
       return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_descriptor;
     }
-    
+
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_fieldAccessorTable;
+      return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder.class);
     }
-    
+
+    public static com.google.protobuf.Parser<AuthMessage> PARSER =
+        new com.google.protobuf.AbstractParser<AuthMessage>() {
+      public AuthMessage parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new AuthMessage(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<AuthMessage> getParserForType() {
+      return PARSER;
+    }
+
     private int bitField0_;
-    // required string authPluginName = 1;
     public static final int AUTHPLUGINNAME_FIELD_NUMBER = 1;
     private java.lang.Object authPluginName_;
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
     public boolean hasAuthPluginName() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    public String getAuthPluginName() {
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
+    public java.lang.String getAuthPluginName() {
       java.lang.Object ref = authPluginName_;
-      if (ref instanceof String) {
-        return (String) ref;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
       } else {
         com.google.protobuf.ByteString bs = 
             (com.google.protobuf.ByteString) ref;
-        String s = bs.toStringUtf8();
-        if (com.google.protobuf.Internal.isValidUtf8(bs)) {
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
           authPluginName_ = s;
         }
         return s;
       }
     }
-    private com.google.protobuf.ByteString getAuthPluginNameBytes() {
+    /**
+     * <code>required string authPluginName = 1;</code>
+     */
+    public com.google.protobuf.ByteString
+        getAuthPluginNameBytes() {
       java.lang.Object ref = authPluginName_;
-      if (ref instanceof String) {
+      if (ref instanceof java.lang.String) {
         com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8((String) ref);
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
         authPluginName_ = b;
         return b;
       } else {
         return (com.google.protobuf.ByteString) ref;
       }
     }
-    
+
     private void initFields() {
       authPluginName_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
       if (!hasAuthPluginName()) {
         memoizedIsInitialized = 0;
         return false;
@@ -7505,7 +9700,7 @@ public final class BookkeeperProtocol {
       memoizedIsInitialized = 1;
       return true;
     }
-    
+
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -7518,12 +9713,12 @@ public final class BookkeeperProtocol {
       extensionWriter.writeUntil(536870912, output);
       getUnknownFields().writeTo(output);
     }
-    
+
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-    
+
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -7534,113 +9729,113 @@ public final class BookkeeperProtocol {
       memoizedSerializedSize = size;
       return size;
     }
-    
+
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-    
+
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
+      return PARSER.parseFrom(data);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(data, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
+      return PARSER.parseFrom(input);
     }
     public static org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
+      return PARSER.parseFrom(input, extensionRegistry);
     }
-    
+
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
     public static Builder newBuilder(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-    
+
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
+    /**
+     * Protobuf type {@code AuthMessage}
+     *
+     * <pre>
+     **
+     * Extendible message which auth mechanisms
+     * can use to carry their payload.
+     * </pre>
+     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.ExtendableBuilder<
-          org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, Builder> implements org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder {
+          org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, Builder> implements
+        // @@protoc_insertion_point(builder_implements:AuthMessage)
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_descriptor;
       }
-      
+
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_fieldAccessorTable;
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.class, org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder.class);
       }
-      
+
       // Construct using org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-      
-      private Builder(BuilderParent parent) {
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -7651,27 +9846,27 @@ public final class BookkeeperProtocol {
       private static Builder create() {
         return new Builder();
       }
-      
+
       public Builder clear() {
         super.clear();
         authPluginName_ = "";
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
-      
+
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-      
+
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDescriptor();
+        return org.apache.bookkeeper.proto.BookkeeperProtocol.internal_static_AuthMessage_descriptor;
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage getDefaultInstanceForType() {
         return org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance();
       }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage build() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage result = buildPartial();
         if (!result.isInitialized()) {
@@ -7679,17 +9874,7 @@ public final class BookkeeperProtocol {
         }
         return result;
       }
-      
-      private org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
+
       public org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage buildPartial() {
         org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage result = new org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage(this);
         int from_bitField0_ = bitField0_;
@@ -7702,7 +9887,7 @@ public final class BookkeeperProtocol {
         onBuilt();
         return result;
       }
-      
+
       public Builder mergeFrom(com.google.protobuf.Message other) {
         if (other instanceof org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage) {
           return mergeFrom((org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage)other);
@@ -7711,17 +9896,19 @@ public final class BookkeeperProtocol {
           return this;
         }
       }
-      
+
       public Builder mergeFrom(org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage other) {
         if (other == org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.getDefaultInstance()) return this;
         if (other.hasAuthPluginName()) {
-          setAuthPluginName(other.getAuthPluginName());
+          bitField0_ |= 0x00000001;
+          authPluginName_ = other.authPluginName_;
+          onChanged();
         }
         this.mergeExtensionFields(other);
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-      
+
       public final boolean isInitialized() {
         if (!hasAuthPluginName()) {
           
@@ -7733,57 +9920,71 @@ public final class BookkeeperProtocol {
         }
         return true;
       }
-      
+
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              bitField0_ |= 0x00000001;
-              authPluginName_ = input.readBytes();
-              break;
-            }
+        org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
           }
         }
+        return this;
       }
-      
       private int bitField0_;
-      
-      // required string authPluginName = 1;
+
       private java.lang.Object authPluginName_ = "";
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
       public boolean hasAuthPluginName() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      public String getAuthPluginName() {
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
+      public java.lang.String getAuthPluginName() {
         java.lang.Object ref = authPluginName_;
-        if (!(ref instanceof String)) {
-          String s = ((com.google.protobuf.ByteString) ref).toStringUtf8();
-          authPluginName_ = s;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          if (bs.isValidUtf8()) {
+            authPluginName_ = s;
+          }
           return s;
         } else {
-          return (String) ref;
+          return (java.lang.String) ref;
         }
       }
-      public Builder setAuthPluginName(String value) {
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
+      public com.google.protobuf.ByteString
+          getAuthPluginNameBytes() {
+        java.lang.Object ref = authPluginName_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          authPluginName_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
+      public Builder setAuthPluginName(
+          java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
@@ -7792,90 +9993,101 @@ public final class BookkeeperProtocol {
         onChanged();
         return this;
       }
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
       public Builder clearAuthPluginName() {
         bitField0_ = (bitField0_ & ~0x00000001);
         authPluginName_ = getDefaultInstance().getAuthPluginName();
         onChanged();
         return this;
       }
-      void setAuthPluginName(com.google.protobuf.ByteString value) {
-        bitField0_ |= 0x00000001;
+      /**
+       * <code>required string authPluginName = 1;</code>
+       */
+      public Builder setAuthPluginNameBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
         authPluginName_ = value;
         onChanged();
+        return this;
       }
-      
+
       // @@protoc_insertion_point(builder_scope:AuthMessage)
     }
-    
+
     static {
       defaultInstance = new AuthMessage(true);
       defaultInstance.initFields();
     }
-    
+
     // @@protoc_insertion_point(class_scope:AuthMessage)
   }
-  
-  private static com.google.protobuf.Descriptors.Descriptor
+
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_BKPacketHeader_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_BKPacketHeader_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_Request_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_Request_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_ReadRequest_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadRequest_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_AddRequest_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_AddRequest_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_WriteLacRequest_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_WriteLacRequest_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_ReadLacRequest_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadLacRequest_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_Response_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_Response_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_ReadResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadResponse_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_AddResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_AddResponse_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_WriteLacResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_WriteLacResponse_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_ReadLacResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ReadLacResponse_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
+  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_AuthMessage_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_AuthMessage_fieldAccessorTable;
-  
+
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
     return descriptor;
@@ -7932,114 +10144,90 @@ public final class BookkeeperProtocol {
       "toH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
-      new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
-        public com.google.protobuf.ExtensionRegistry assignDescriptors(
-            com.google.protobuf.Descriptors.FileDescriptor root) {
-          descriptor = root;
-          internal_static_BKPacketHeader_descriptor =
-            getDescriptor().getMessageTypes().get(0);
-          internal_static_BKPacketHeader_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_BKPacketHeader_descriptor,
-              new java.lang.String[] { "Version", "Operation", "TxnId", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader.Builder.class);
-          internal_static_Request_descriptor =
-            getDescriptor().getMessageTypes().get(1);
-          internal_static_Request_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_Request_descriptor,
-              new java.lang.String[] { "Header", "ReadRequest", "AddRequest", "AuthRequest", "WriteLacRequest", "ReadLacRequest", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.Request.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.Request.Builder.class);
-          internal_static_ReadRequest_descriptor =
-            getDescriptor().getMessageTypes().get(2);
-          internal_static_ReadRequest_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_ReadRequest_descriptor,
-              new java.lang.String[] { "Flag", "LedgerId", "EntryId", "MasterKey", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest.Builder.class);
-          internal_static_AddRequest_descriptor =
-            getDescriptor().getMessageTypes().get(3);
-          internal_static_AddRequest_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_AddRequest_descriptor,
-              new java.lang.String[] { "Flag", "LedgerId", "EntryId", "MasterKey", "Body", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest.Builder.class);
-          internal_static_WriteLacRequest_descriptor =
-            getDescriptor().getMessageTypes().get(4);
-          internal_static_WriteLacRequest_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_WriteLacRequest_descriptor,
-              new java.lang.String[] { "LedgerId", "Lac", "MasterKey", "Body", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest.Builder.class);
-          internal_static_ReadLacRequest_descriptor =
-            getDescriptor().getMessageTypes().get(5);
-          internal_static_ReadLacRequest_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_ReadLacRequest_descriptor,
-              new java.lang.String[] { "LedgerId", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest.Builder.class);
-          internal_static_Response_descriptor =
-            getDescriptor().getMessageTypes().get(6);
-          internal_static_Response_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_Response_descriptor,
-              new java.lang.String[] { "Header", "Status", "ReadResponse", "AddResponse", "AuthResponse", "WriteLacResponse", "ReadLacResponse", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.Response.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.Response.Builder.class);
-          internal_static_ReadResponse_descriptor =
-            getDescriptor().getMessageTypes().get(7);
-          internal_static_ReadResponse_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_ReadResponse_descriptor,
-              new java.lang.String[] { "Status", "LedgerId", "EntryId", "Body", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse.Builder.class);
-          internal_static_AddResponse_descriptor =
-            getDescriptor().getMessageTypes().get(8);
-          internal_static_AddResponse_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_AddResponse_descriptor,
-              new java.lang.String[] { "Status", "LedgerId", "EntryId", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse.Builder.class);
-          internal_static_WriteLacResponse_descriptor =
-            getDescriptor().getMessageTypes().get(9);
-          internal_static_WriteLacResponse_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_WriteLacResponse_descriptor,
-              new java.lang.String[] { "Status", "LedgerId", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse.Builder.class);
-          internal_static_ReadLacResponse_descriptor =
-            getDescriptor().getMessageTypes().get(10);
-          internal_static_ReadLacResponse_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_ReadLacResponse_descriptor,
-              new java.lang.String[] { "Status", "LedgerId", "LacBody", "LastEntryBody", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse.Builder.class);
-          internal_static_AuthMessage_descriptor =
-            getDescriptor().getMessageTypes().get(11);
-          internal_static_AuthMessage_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_AuthMessage_descriptor,
-              new java.lang.String[] { "AuthPluginName", },
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.class,
-              org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage.Builder.class);
-          return null;
-        }
-      };
+        new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
+          public com.google.protobuf.ExtensionRegistry assignDescriptors(
+              com.google.protobuf.Descriptors.FileDescriptor root) {
+            descriptor = root;
+            return null;
+          }
+        };
     com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         }, assigner);
+    internal_static_BKPacketHeader_descriptor =
+      getDescriptor().getMessageTypes().get(0);
+    internal_static_BKPacketHeader_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_BKPacketHeader_descriptor,
+        new java.lang.String[] { "Version", "Operation", "TxnId", });
+    internal_static_Request_descriptor =
+      getDescriptor().getMessageTypes().get(1);
+    internal_static_Request_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_Request_descriptor,
+        new java.lang.String[] { "Header", "ReadRequest", "AddRequest", "AuthRequest", "WriteLacRequest", "ReadLacRequest", });
+    internal_static_ReadRequest_descriptor =
+      getDescriptor().getMessageTypes().get(2);
+    internal_static_ReadRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_ReadRequest_descriptor,
+        new java.lang.String[] { "Flag", "LedgerId", "EntryId", "MasterKey", });
+    internal_static_AddRequest_descriptor =
+      getDescriptor().getMessageTypes().get(3);
+    internal_static_AddRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_AddRequest_descriptor,
+        new java.lang.String[] { "Flag", "LedgerId", "EntryId", "MasterKey", "Body", });
+    internal_static_WriteLacRequest_descriptor =
+      getDescriptor().getMessageTypes().get(4);
+    internal_static_WriteLacRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_WriteLacRequest_descriptor,
+        new java.lang.String[] { "LedgerId", "Lac", "MasterKey", "Body", });
+    internal_static_ReadLacRequest_descriptor =
+      getDescriptor().getMessageTypes().get(5);
+    internal_static_ReadLacRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_ReadLacRequest_descriptor,
+        new java.lang.String[] { "LedgerId", });
+    internal_static_Response_descriptor =
+      getDescriptor().getMessageTypes().get(6);
+    internal_static_Response_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_Response_descriptor,
+        new java.lang.String[] { "Header", "Status", "ReadResponse", "AddResponse", "AuthResponse", "WriteLacResponse", "ReadLacResponse", });
+    internal_static_ReadResponse_descriptor =
+      getDescriptor().getMessageTypes().get(7);
+    internal_static_ReadResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_ReadResponse_descriptor,
+        new java.lang.String[] { "Status", "LedgerId", "EntryId", "Body", });
+    internal_static_AddResponse_descriptor =
+      getDescriptor().getMessageTypes().get(8);
+    internal_static_AddResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_AddResponse_descriptor,
+        new java.lang.String[] { "Status", "LedgerId", "EntryId", });
+    internal_static_WriteLacResponse_descriptor =
+      getDescriptor().getMessageTypes().get(9);
+    internal_static_WriteLacResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_WriteLacResponse_descriptor,
+        new java.lang.String[] { "Status", "LedgerId", });
+    internal_static_ReadLacResponse_descriptor =
+      getDescriptor().getMessageTypes().get(10);
+    internal_static_ReadLacResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_ReadLacResponse_descriptor,
+        new java.lang.String[] { "Status", "LedgerId", "LacBody", "LastEntryBody", });
+    internal_static_AuthMessage_descriptor =
+      getDescriptor().getMessageTypes().get(11);
+    internal_static_AuthMessage_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_AuthMessage_descriptor,
+        new java.lang.String[] { "AuthPluginName", });
   }
-  
+
   // @@protoc_insertion_point(outer_class_scope)
 }
