@@ -3,7 +3,9 @@ package org.apache.bookkeeper;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
+import java.util.Queue;
 
+import org.apache.bookkeeper.BKProxyWorker.OpStatEntry;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
@@ -238,8 +240,7 @@ public class BKSfdcClient {
         return errorCode;
     }
 
-    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, boolean async)
-            throws BKException, InterruptedException {
+    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, Queue<OpStatEntry> asyncStatQueue) throws BKException, InterruptedException {
 
         long entryId;
         LedgerHandle lh = null;
@@ -285,13 +286,14 @@ public class BKSfdcClient {
             tmpEntryId = lh.getLastAddConfirmed() + 1;
         }
 
-        if (async) {
+        if (asyncStatQueue != null) {
+            LedgerAsyncWriteStatus laws;
             ProxyAddCallback callback = new ProxyAddCallback();
             // Create LedgerAsyncWaitStatus object.
-            LedgerAsyncWriteStatus laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId);
+            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId, asyncStatQueue);
             lh.asyncAddEntry(tmpEntryId, bdata.array(), 0, bdata.limit(), callback, laws);
         } else {
-            // Try to catch out of sequence addEntry.
+            // Try to catch out-of-sequence addEntry.
             // Condition below is to check and reduce number of log messages for sequential addEntrys through this worker thread.
             // If multiple threads are adding entries simultaneously, we may log the debug message anyway.
             // This is temporary debug message to catch out of order writes.

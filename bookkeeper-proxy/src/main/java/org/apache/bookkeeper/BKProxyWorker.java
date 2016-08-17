@@ -8,9 +8,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -23,21 +21,8 @@ import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.bookkeeper.BKProxyStats.PXY_BYTES_GET_FRAGMENT_HIST;
-import static org.apache.bookkeeper.BKProxyStats.PXY_BYTES_PUT_FRAGMENT_HIST;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_CREATION_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_ALL_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_DELETE_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_GET_FRAGMENT_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_NON_RECOVERY_READ_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_READ_CLOSE_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_RECOVERY_READ_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_STAT_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_WRITE_CLOSE_TIME;
-import static org.apache.bookkeeper.BKProxyStats.PXY_WORKER_POOL_COUNT;
-import static org.apache.bookkeeper.BKProxyStats.PXY_LEDGER_LIST_GET_TIME;
+import static org.apache.bookkeeper.BKProxyStats.*;
+
 
 class BKProxyWorker implements Runnable {
 
@@ -55,7 +40,7 @@ class BKProxyWorker implements Runnable {
     private final LedgerIdFormatter ledgerIdFormatter;
     private final BKExtentIdFactory extentIdFactory;
 
-    private abstract class OpStatEntry {
+	public abstract class OpStatEntry {
 
         protected OpStatsLogger osl;
 
@@ -69,7 +54,7 @@ class BKProxyWorker implements Runnable {
 
     }
 
-    private class OpStatEntryValue extends OpStatEntry {
+    public class OpStatEntryValue extends OpStatEntry {
 
         private long value;
 
@@ -88,7 +73,7 @@ class BKProxyWorker implements Runnable {
 
     }
 
-    private class OpStatEntryTimer extends OpStatEntry {
+    public class OpStatEntryTimer extends OpStatEntry {
 
         private long startTime;
 
@@ -108,6 +93,7 @@ class BKProxyWorker implements Runnable {
 
     //Stats
     private Queue<OpStatEntry> opStatQueue;
+    private Queue<OpStatEntry> asyncWriteStatQueue;
     private final Counter proxyWorkerPoolCounter;
     private final OpStatsLogger ledgerCreationTimer;
     private final OpStatsLogger ledgerRecoveryReadTimer;
@@ -119,6 +105,7 @@ class BKProxyWorker implements Runnable {
     private final OpStatsLogger ledgerDeletionTimer;
     private final OpStatsLogger ledgerSyncPutTimer;
     private final OpStatsLogger ledgerAsyncPutTimer;
+    private final OpStatsLogger ledgerAsyncPutStatusTimer;
     private final OpStatsLogger ledgerGetTimer;
     private final OpStatsLogger ledgerReadHist;
     private final OpStatsLogger ledgerWriteHist;
@@ -144,6 +131,7 @@ class BKProxyWorker implements Runnable {
         this.ledgerDeletionTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_TIME);
         this.ledgerSyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME);
         this.ledgerAsyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME);
+        this.ledgerAsyncPutStatusTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_ASYNC_PUT_FRAGMENT_STATUS_TIME);
         this.ledgerGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_GET_FRAGMENT_TIME);
         this.ledgerReadHist = statsLogger.getOpStatsLogger(PXY_BYTES_GET_FRAGMENT_HIST);
         this.ledgerWriteHist = statsLogger.getOpStatsLogger(PXY_BYTES_PUT_FRAGMENT_HIST);
@@ -222,7 +210,7 @@ class BKProxyWorker implements Runnable {
         + " ledgerId: " + extentId);
     }
 
-    private void markStats(boolean isFail) {
+    private void markStats(Queue<OpStatEntry> opStatQueue, boolean isFail) {
         while (!opStatQueue.isEmpty()) {
             OpStatEntry osl = opStatQueue.remove();
             if (isFail) {
@@ -488,6 +476,7 @@ class BKProxyWorker implements Runnable {
                         asreq.flip();
                         fragmentId = asreq.getInt();
                         timeout = asreq.getInt(); // msecs
+                        opStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutStatusTimer, startTime));
                         errorCode = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
                         resp.put(errorCode);
                         resp.flip();
@@ -537,7 +526,9 @@ class BKProxyWorker implements Runnable {
                         startTime = MathUtils.nowInNano();
                         opStatQueue.add(new OpStatEntryTimer(ledgerSyncPutTimer, startTime));
                         opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
-                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, false); // false -> sync write
+
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, null); // null param form opStatQueue indicates sync write
+
                         resp.put(errorCode);
                         resp.flip();
 
@@ -590,9 +581,10 @@ class BKProxyWorker implements Runnable {
                         wcByteBuf.flip();
                         //Exclude channel reads above
                         startTime = MathUtils.nowInNano();
-                        opStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutTimer, startTime));
-                        opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
-                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, true); // true -> Async write.
+                        asyncWriteStatQueue = new LinkedList<OpStatEntry>();
+                        asyncWriteStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutTimer, startTime));
+                        asyncWriteStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, asyncWriteStatQueue); // send StatQueue for Async write.
 
                         resp.put(errorCode);
                         resp.flip();
@@ -695,7 +687,18 @@ class BKProxyWorker implements Runnable {
                     clientChannelWrite(resp);
                 }
                 finally {
-                    markStats(exceptionOccurred);
+                    if (reqId != BKPConstants.LedgerAsyncWriteEntryReq) {
+                        // All non AsyncWrites status is updated here.
+                        markStats(opStatQueue, exceptionOccurred);
+                    } else {
+                        // It is LedgerAsyncWriteEntryReq
+                        // markStats here only if we fail to submit the request.
+                        // A successful asyncWrite stats will get updated on the callback.
+                        // in {@link LedgerAsyncWriteStatus#setComplete(int result, long entryId)}
+                        if (exceptionOccurred) {
+                            markStats(asyncWriteStatQueue, exceptionOccurred);
+                        }
+                    }
                 }
             }
 

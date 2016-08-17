@@ -1,8 +1,10 @@
 package org.apache.bookkeeper;
 
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.bookkeeper.BKProxyWorker.OpStatEntry;
 import org.apache.bookkeeper.client.BKException.Code;
 
 public class LedgerAsyncWriteStatus {
@@ -12,10 +14,12 @@ public class LedgerAsyncWriteStatus {
     private final long expectingEntryId; // entryId number we will be expecting
     private final int fragmentId;
     private CountDownLatch latch;
+    private Queue<OpStatEntry> asyncWriteStatQueue;
 
-    public LedgerAsyncWriteStatus(int fragmentId, long entryId) {
+    public LedgerAsyncWriteStatus(int fragmentId, long entryId, Queue<OpStatEntry> asyncStatQueue) {
         this.fragmentId = fragmentId;
         this.expectingEntryId = entryId;
+        this.asyncWriteStatQueue = asyncStatQueue;
         this.latch = new CountDownLatch(1);
     }
 
@@ -43,6 +47,15 @@ public class LedgerAsyncWriteStatus {
         this.bkError = result;
         this.actualEntryId = entryId;
         this.inProgress = false;
+        // Update stats
+        while (!this.asyncWriteStatQueue.isEmpty()) {
+            OpStatEntry osl = this.asyncWriteStatQueue.remove();
+            if (this.bkError != Code.OK) {
+                osl.markFailure();
+            } else {
+                osl.markSuccess();
+            }
+        }
         latch.countDown();
     }
 

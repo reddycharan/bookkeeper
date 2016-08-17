@@ -2,9 +2,10 @@ package org.apache.bookkeeper;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerHandle;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
+import org.apache.bookkeeper.BKProxyWorker.OpStatEntry;
 
 class LedgerPrivateData {
 
@@ -65,8 +66,8 @@ class LedgerPrivateData {
         return !asyncWriteStatus.isEmpty();
     }
 
-    public LedgerAsyncWriteStatus createLedgerAsyncWriteStatus(int fragmentId, long entryId) {
-        LedgerAsyncWriteStatus laws = new LedgerAsyncWriteStatus(fragmentId, entryId);
+    public LedgerAsyncWriteStatus createLedgerAsyncWriteStatus(int fragmentId, long entryId, Queue<OpStatEntry> asyncStatQueue) {
+        LedgerAsyncWriteStatus laws = new LedgerAsyncWriteStatus(fragmentId, entryId, asyncStatQueue);
         asyncWriteStatus.putIfAbsent(fragmentId, laws);
         return asyncWriteStatus.get(fragmentId);
     }
