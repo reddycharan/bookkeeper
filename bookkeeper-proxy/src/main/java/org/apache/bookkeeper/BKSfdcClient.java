@@ -228,18 +228,17 @@ public class BKSfdcClient {
 
         if (errorCode != BKPConstants.SF_ErrorInProgress) {
             // IO Finished.
+            lpd.deleteLedgerAsyncWriteStatus(fragmentId);
             if (errorCode == BKPConstants.SF_OK) {
                 // Success; Do some sanity check.
                 long actualEntryId = laws.getActualEntryId();
                 long expectedEntryId = laws.getExpectedEntryId();
                 if (actualEntryId != expectedEntryId) {
                     LOG.error("expecting entryId: " + expectedEntryId + "but bk returned entryId: " + actualEntryId +
-                              " On ledger: " + extentId);
-                    lpd.deleteLedgerAsyncWriteStatus(fragmentId);
+                              " On ledger: " + extentId);                    
                     throw BKException.create(Code.UnexpectedConditionException);
                 }
-            }
-            lpd.deleteLedgerAsyncWriteStatus(fragmentId);
+            }            
         }
         return errorCode;
     }
