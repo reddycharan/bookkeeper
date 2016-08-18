@@ -299,6 +299,7 @@
                 <exclude>**/BookkeeperProtocol.java</exclude>
                 <exclude>**/DataFormats.java</exclude>
                 <exclude>**/BookKeeperProxyConfiguration.java</exclude>
+                <exclude>**/bookkeeper/perf/*.java</exclude>
               </excludes>
             </configuration>
           </plugin>
