@@ -44,8 +44,8 @@ import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_DELETED_LEDGER_COUNT;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_ACTIVE_LEDGERS_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.DELETED_LEDGER_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ACTIVE_LEDGER_COUNT;
 
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRange;
@@ -104,9 +104,9 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
         LOG.info("Over Replicated Ledger Deletion : enabled=" + enableGcOverReplicatedLedger + ", interval="
                 + gcOverReplicatedLedgerIntervalMillis);
         this.activeLedgerCounter = 0;
-        this.deletedLedgerCounter = statsLogger.getCounter(GC_DELETED_LEDGER_COUNT);
+        this.deletedLedgerCounter = statsLogger.getCounter(DELETED_LEDGER_COUNT);
 
-        statsLogger.registerGauge(GC_ACTIVE_LEDGERS_COUNT, new Gauge<Integer>() {
+        statsLogger.registerGauge(ACTIVE_LEDGER_COUNT, new Gauge<Integer>() {
 
             @Override
             public Integer getDefaultValue() {

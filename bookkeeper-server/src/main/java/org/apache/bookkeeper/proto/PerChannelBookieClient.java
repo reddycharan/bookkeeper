@@ -18,6 +18,7 @@
 package org.apache.bookkeeper.proto;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -28,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.bookkeeper.auth.ClientAuthProvider;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeperClientStats;
@@ -35,23 +37,24 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AddResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse;
+import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -62,6 +65,7 @@ import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -73,7 +77,6 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.local.DefaultLocalClientChannelFactory;
-import org.jboss.netty.channel.local.LocalAddress;
 import org.jboss.netty.channel.local.LocalClientChannelFactory;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.frame.CorruptedFrameException;
@@ -90,8 +93,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
-import java.net.SocketAddress;
-import org.jboss.netty.channel.ChannelFactory;
 
 /**
  * This class manages all details of connection to a particular bookie. It also
@@ -133,6 +134,8 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     private final OpStatsLogger addTimeoutOpLogger;
     private final OpStatsLogger writeLacTimeoutOpLogger;
     private final OpStatsLogger readLacTimeoutOpLogger;
+    private final OpStatsLogger connectTimer;
+    private final Counter exceptionCounter;
 
     /**
      * The following member variables do not need to be concurrent, or volatile
@@ -189,22 +192,26 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         this.authProviderFactory = authProviderFactory;
         this.extRegistry = extRegistry;
 
-        StringBuilder nameBuilder = new StringBuilder();
-        nameBuilder.append(addr.getHostname().replace('.', '_').replace('-', '_'))
-            .append("_").append(addr.getPort());
-
         this.statsLogger = parentStatsLogger.scope(BookKeeperClientStats.CHANNEL_SCOPE)
-            .scope(nameBuilder.toString());
+            .scope(generateAddressScope(addr));
         this.pcbcPool = pcbcPool;
         
-        readEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_READ_OP);
-        addEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_ADD_OP);
-        writeLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_WRITE_LAC_OP);
-        readLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_READ_LAC_OP);
-        readTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_READ);
-        addTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_ADD);
-        writeLacTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_WRITE_LAC);
-        readLacTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_READ_LAC);
+        readEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.READ_OP);
+        addEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.ADD_OP);
+        writeLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.WRITE_LAC_OP);
+        readLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.READ_LAC_OP);
+        readTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_READ);
+        addTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_ADD);
+        writeLacTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_WRITE_LAC);
+        readLacTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_READ_LAC);
+        exceptionCounter = statsLogger.getCounter(BookKeeperClientStats.NETTY_EXCEPTION_CNT);
+        connectTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_CONNECT_TIMER);
+    }
+    
+    private String generateAddressScope(BookieSocketAddress addr) {
+        StringBuilder nameBuilder = new StringBuilder();
+    	return nameBuilder.append(addr.getFullyQualifiedDomainName().replace('.', '_').replace('-', '_'))
+        .append("_").append(addr.getPort()).toString();
     }
 
     private void completeOperation(GenericCallback<PerChannelBookieClient> op, int rc) {
@@ -293,6 +300,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     }
 
     void connectIfNeededAndDoOp(GenericCallback<PerChannelBookieClient> op) {
+    	long startTime = MathUtils.nowInNano();
         boolean completeOpNow = false;
         int opRc = BKException.Code.OK;
         // common case without lock first
@@ -318,6 +326,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
                     if (state == ConnectionState.CONNECTING) {
                         // just return as connection request has already send
                         // and waiting for the response.
+                    	connectTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         return;
                     }
                     // switch state to connecting and do connection attempt
@@ -333,7 +342,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         if (completeOpNow) {
             completeOperation(op, opRc);
         }
-
+        connectTimer.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
     }
 
     void writeLac(final long ledgerId, final byte[] masterKey, final long lac, ChannelBuffer toSend, WriteLacCallback cb, Object ctx) {
@@ -887,6 +896,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
         Throwable t = e.getCause();
+        exceptionCounter.inc();
         if (t instanceof CorruptedFrameException || t instanceof TooLongFrameException) {
             LOG.error("Corrupted frame received from bookie: {}",
                       e.getChannel().getRemoteAddress());

@@ -37,7 +37,8 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.bookkeeper.BKProxyStats.PXY_WORKER_POOL_COUNT;
+import static org.apache.bookkeeper.BKProxyStats.WORKER_POOL_COUNT;
+import static org.apache.bookkeeper.BKProxyStats.PROXY_WORKER_SCOPE;
 
 /*
  * BKProxyMain implements runnable method and when Thread is spawned it starts ServerSocketChannel on the provided bkProxyPort.
@@ -83,7 +84,7 @@ public class BKProxyMain implements Runnable {
                 statsProviderClass = bkpConf.getStatsProviderClass();
                 statsProvider = ReflectionUtils.newInstance(statsProviderClass);
                 statsProvider.start(bkpConf);
-                statsLogger = statsProvider.getStatsLogger(bkpConf.getString("statsPrefix", "bkProxy"));
+                statsLogger = statsProvider.getStatsLogger(bkpConf.getString("statsPrefix"));
                 System.out.println("Running stats...");
             } catch (ConfigurationException e) {
                 statsLogger = NullStatsLogger.INSTANCE;
@@ -94,7 +95,7 @@ public class BKProxyMain implements Runnable {
             // Declare it as null so operations do not log, but also do not throw NPEs
             statsLogger = NullStatsLogger.INSTANCE;
         }
-        proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
+        proxyWorkerPoolCounter = statsLogger.scope(PROXY_WORKER_SCOPE).getCounter(WORKER_POOL_COUNT);
     }
 
     public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
@@ -146,8 +147,8 @@ public class BKProxyMain implements Runnable {
                     }
 
                     try {
-                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
-                                bkProxyWorkerNo.getAndIncrement(), statsLogger));
+						proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
+								bkProxyWorkerNo.getAndIncrement(), statsLogger.scope(PROXY_WORKER_SCOPE)));
                         proxyWorkerPoolCounter.inc();
                     } catch (RejectedExecutionException rejException) {
                         LOG.error("ProxyWorkerExecutor has rejected new task. Current number of active Threads: "

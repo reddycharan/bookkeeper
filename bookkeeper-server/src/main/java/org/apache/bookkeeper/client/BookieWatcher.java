@@ -48,8 +48,8 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WATCHER_NEW_ENSEMBLE_TIME;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WATCHER_REPLACE_BOOKIE_TIME;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.NEW_ENSEMBLE_TIME;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.REPLACE_BOOKIE_TIME;
 
 
 import com.google.common.cache.Cache;
@@ -113,8 +113,8 @@ class BookieWatcher implements Watcher, ChildrenCallback {
 
                 }).build();
         //Stats
-        this.newEnsembleTimer = statsLogger.getOpStatsLogger(WATCHER_NEW_ENSEMBLE_TIME);
-        this.replaceBookieTimer = statsLogger.getOpStatsLogger(WATCHER_REPLACE_BOOKIE_TIME);
+        this.newEnsembleTimer = statsLogger.getOpStatsLogger(NEW_ENSEMBLE_TIME);
+        this.replaceBookieTimer = statsLogger.getOpStatsLogger(REPLACE_BOOKIE_TIME);
         //End Stats
     }
 

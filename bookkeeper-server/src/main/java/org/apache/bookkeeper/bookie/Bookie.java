@@ -88,13 +88,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_ADD_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_ADD_ENTRY_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_READ_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_READ_ENTRY_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_RECOVERY_ADD_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_LEDGER_SCOPE;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_INDEX_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.RECOVERY_ADD_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LEDGER_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.INDEX_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_BYTES;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_STATUS;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_BYTES;
@@ -488,14 +488,13 @@ public class Bookie extends BookieCriticalThread {
         this.conf = conf;
         this.journalDirectory = getCurrentDirectory(conf.getJournalDir());
         this.ledgerDirsManager = new LedgerDirsManager(conf, conf.getLedgerDirs(),
-                statsLogger.scope(LD_LEDGER_SCOPE));
-
+        		statsLogger.scope(LEDGER_SCOPE));
         File[] idxDirs = conf.getIndexDirs();
         if (null == idxDirs) {
             this.indexDirsManager = this.ledgerDirsManager;
         } else {
             this.indexDirsManager = new LedgerDirsManager(conf, idxDirs,
-                    statsLogger.scope(LD_INDEX_SCOPE));
+                    statsLogger.scope(INDEX_SCOPE));
         }
 
         // instantiate zookeeper client to initialize ledger manager
@@ -552,11 +551,11 @@ public class Bookie extends BookieCriticalThread {
         // Expose Stats
         writeBytes = statsLogger.getCounter(WRITE_BYTES);
         readBytes = statsLogger.getCounter(READ_BYTES);
-        addEntryStats = statsLogger.getOpStatsLogger(BOOKIE_ADD_ENTRY);
-        recoveryAddEntryStats = statsLogger.getOpStatsLogger(BOOKIE_RECOVERY_ADD_ENTRY);
-        readEntryStats = statsLogger.getOpStatsLogger(BOOKIE_READ_ENTRY);
-        addBytesStats = statsLogger.getOpStatsLogger(BOOKIE_ADD_ENTRY_BYTES);
-        readBytesStats = statsLogger.getOpStatsLogger(BOOKIE_READ_ENTRY_BYTES);
+        addEntryStats = statsLogger.getOpStatsLogger(ADD_ENTRY);
+        recoveryAddEntryStats = statsLogger.getOpStatsLogger(RECOVERY_ADD_ENTRY);
+        readEntryStats = statsLogger.getOpStatsLogger(READ_ENTRY);
+        addBytesStats = statsLogger.getOpStatsLogger(ADD_ENTRY_BYTES);
+        readBytesStats = statsLogger.getOpStatsLogger(READ_ENTRY_BYTES);
         // 1 : up, 0 : readonly, -1 : unregistered
         statsLogger.registerGauge(SERVER_STATUS, new Gauge<Number>() {
             @Override

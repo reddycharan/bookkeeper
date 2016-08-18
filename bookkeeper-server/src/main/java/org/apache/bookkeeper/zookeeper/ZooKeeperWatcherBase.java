@@ -97,7 +97,7 @@ public class ZooKeeperWatcherBase implements Watcher {
     public Counter getStateCounter(Event.KeeperState state) {
         Counter c = stateCounters.get(state);
         if (null == c) {
-            Counter newCounter = statsLogger.scope("state").getCounter(state.name());
+            Counter newCounter = statsLogger.getCounter(state.name());
             Counter oldCounter = stateCounters.putIfAbsent(state, newCounter);
             if (null != oldCounter) {
                 c = oldCounter;

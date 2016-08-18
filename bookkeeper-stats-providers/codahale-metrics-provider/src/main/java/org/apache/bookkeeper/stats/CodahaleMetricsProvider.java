@@ -61,9 +61,9 @@ public class CodahaleMetricsProvider implements StatsProvider {
     synchronized void initIfNecessary() {
         if (metrics == null) {
             metrics = new MetricRegistry();
-            metrics.register(name("jvm_gc"), new GarbageCollectorMetricSet());
-            metrics.register(name("jvm_memory"), new MemoryUsageGaugeSet());
-            metrics.register(name("jvm_system"), new JvmSystemMetricSet());
+            metrics.register(name("jvm.gc"), new GarbageCollectorMetricSet());
+            metrics.register(name("jvm.memory"), new MemoryUsageGaugeSet());
+            metrics.register(name("jvm.system"), new JvmSystemMetricSet());
         }
     }
 
@@ -86,8 +86,8 @@ public class CodahaleMetricsProvider implements StatsProvider {
 
         if (!Strings.isNullOrEmpty(servletPort)) {
             //Get the context and endpoint. If none specified, set to "/" and "metrics.json", respectively, as default.
-            String contextPath = conf.getString("servletContextPath") != null ? conf.getString("servletContextPath") : "/";
-            String endpoint = conf.getString("servletEndpoint") != null ? conf.getString("servletEndpoint") : "/metrics.json";
+            String contextPath = conf.getString("servletContextPath", "/");
+            String endpoint = conf.getString("servletEndpoint", "/metrics.json");
             int port = Integer.valueOf(servletPort);
             LOG.info("Configuring stats on port: " + servletPort);
             try {

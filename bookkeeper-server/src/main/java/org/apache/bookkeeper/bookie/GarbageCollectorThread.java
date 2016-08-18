@@ -47,14 +47,14 @@ import org.slf4j.LoggerFactory;
 
 
 //Import constant stat names
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_MINOR_COMPACTION_COUNT;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_MAJOR_COMPACTION_COUNT;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_THREAD_RUNTIME;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_RECLAIMED_ENTRY_LOG_SPACE_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_ACTIVE_ENTRY_LOG_SPACE_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_ACTIVE_ENTRY_LOG_COUNT;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_RECLAIMED_COMPACTION_SPACE_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GC_TOTAL_RECLAIMED_SPACE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.MINOR_COMPACTION_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.MAJOR_COMPACTION_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.THREAD_RUNTIME;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.RECLAIMED_ENTRY_LOG_SPACE_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ACTIVE_ENTRY_LOG_SPACE_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ACTIVE_ENTRY_LOG_COUNT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.RECLAIMED_COMPACTION_SPACE_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.TOTAL_RECLAIMED_SPACE;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.RateLimiter;
@@ -105,7 +105,6 @@ public class GarbageCollectorThread extends BookieThread {
     private volatile Long reclaimedSpaceViaDeletes;
     private volatile Long totalEntryLogSize;
     private volatile Long reclaimedSpaceViaCompaction;
-    private volatile Long totalReclaimedSpace;
     private volatile Integer numActiveEntryLogs;
 
     final CompactableLedgerStorage ledgerStorage;
@@ -234,13 +233,12 @@ public class GarbageCollectorThread extends BookieThread {
         this.reclaimedSpaceViaDeletes = 0L;
         this.totalEntryLogSize = 0L;
         this.reclaimedSpaceViaCompaction = 0L;
-        this.totalReclaimedSpace = 0L;
         this.numActiveEntryLogs = 0;
-        this.minorCompactionCounter = statsLogger.getCounter(GC_MINOR_COMPACTION_COUNT);
-        this.majorCompactionCounter = statsLogger.getCounter(GC_MAJOR_COMPACTION_COUNT);
-        this.gcThreadRuntime = statsLogger.getOpStatsLogger(GC_THREAD_RUNTIME);
+        this.minorCompactionCounter = statsLogger.getCounter(MINOR_COMPACTION_COUNT);
+        this.majorCompactionCounter = statsLogger.getCounter(MAJOR_COMPACTION_COUNT);
+        this.gcThreadRuntime = statsLogger.getOpStatsLogger(THREAD_RUNTIME);
 
-        statsLogger.registerGauge(GC_ACTIVE_ENTRY_LOG_COUNT, new Gauge<Integer>() {
+        statsLogger.registerGauge(ACTIVE_ENTRY_LOG_COUNT, new Gauge<Integer>() {
 
             @Override
             public Integer getDefaultValue() {
@@ -254,7 +252,7 @@ public class GarbageCollectorThread extends BookieThread {
 
         });
 
-        statsLogger.registerGauge(GC_TOTAL_RECLAIMED_SPACE, new Gauge<Long>() {
+        statsLogger.registerGauge(TOTAL_RECLAIMED_SPACE, new Gauge<Long>() {
 
             @Override
             public Long getDefaultValue() {
@@ -263,12 +261,12 @@ public class GarbageCollectorThread extends BookieThread {
 
             @Override
             public Long getSample() {
-                return totalReclaimedSpace;
+                return reclaimedSpaceViaDeletes + reclaimedSpaceViaCompaction;
             }
 
         });
 
-        statsLogger.registerGauge(GC_RECLAIMED_ENTRY_LOG_SPACE_BYTES, new Gauge<Long>() {
+        statsLogger.registerGauge(RECLAIMED_ENTRY_LOG_SPACE_BYTES, new Gauge<Long>() {
 
             @Override
             public Long getDefaultValue() {
@@ -282,7 +280,7 @@ public class GarbageCollectorThread extends BookieThread {
 
         });
 
-        statsLogger.registerGauge(GC_ACTIVE_ENTRY_LOG_SPACE_BYTES, new Gauge<Long>() {
+        statsLogger.registerGauge(ACTIVE_ENTRY_LOG_SPACE_BYTES, new Gauge<Long>() {
 
             @Override
             public Long getDefaultValue() {
@@ -296,7 +294,7 @@ public class GarbageCollectorThread extends BookieThread {
 
         });
 
-        statsLogger.registerGauge(GC_RECLAIMED_COMPACTION_SPACE_BYTES, new Gauge<Long>() {
+        statsLogger.registerGauge(RECLAIMED_COMPACTION_SPACE_BYTES, new Gauge<Long>() {
 
             @Override
             public Long getDefaultValue() {
@@ -511,7 +509,6 @@ public class GarbageCollectorThread extends BookieThread {
                 LOG.info("Deleting entryLogId " + entryLogId + " as it has no active ledgers!");
                 removeEntryLog(entryLogId);
                 this.reclaimedSpaceViaDeletes += meta.getTotalSize();
-                this.totalReclaimedSpace += meta.getTotalSize();
             }
             tmpTotalEntryLogSize += meta.getRemainingSize();
         }
@@ -570,7 +567,6 @@ public class GarbageCollectorThread extends BookieThread {
                 removeEntryLog(meta.getEntryLogId());
                 long reclaimedSpace = meta.getTotalSize() - currRemainingSize;
                 this.reclaimedSpaceViaCompaction += reclaimedSpace;
-                this.totalReclaimedSpace += reclaimedSpace;
             } catch (LedgerDirsManager.NoWritableLedgerDirException nwlde) {
                 LOG.warn("No writable ledger directory available, aborting compaction", nwlde);
                 break;

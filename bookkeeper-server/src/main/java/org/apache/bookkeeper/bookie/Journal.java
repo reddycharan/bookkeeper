@@ -560,19 +560,19 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
         LOG.debug("Last Log Mark : {}", lastLogMark.getCurMark());
 
         // Expose Stats
-        journalAddEntryStats = statsLogger.getOpStatsLogger(JOURNAL_ADD_ENTRY);
-        journalCreationStats = statsLogger.getOpStatsLogger(JOURNAL_CREATION_LATENCY);
-        journalFlushStats = statsLogger.getOpStatsLogger(JOURNAL_FLUSH_LATENCY);
-        forceWriteGroupingCountStats = statsLogger.getOpStatsLogger(JOURNAL_FORCE_WRITE_GROUPING_COUNT);
-        forceWriteBatchEntriesStats = statsLogger.getOpStatsLogger(JOURNAL_FORCE_WRITE_BATCH_ENTRIES);
-        forceWriteBatchBytesStats = statsLogger.getOpStatsLogger(JOURNAL_FORCE_WRITE_BATCH_BYTES);
-        journalQueueSize = statsLogger.getCounter(JOURNAL_QUEUE_SIZE);
-        forceWriteQueueSize = statsLogger.getCounter(JOURNAL_FORCE_WRITE_QUEUE_SIZE);
-        flushMaxWaitCounter = statsLogger.getCounter(JOURNAL_NUM_FLUSH_MAX_WAIT);
-        flushMaxOutstandingBytesCounter = statsLogger.getCounter(JOURNAL_NUM_FLUSH_MAX_OUTSTANDING_BYTES);
-        flushEmptyQueueCounter = statsLogger.getCounter(JOURNAL_NUM_FLUSH_EMPTY_QUEUE);
-        journalWriteBytes = statsLogger.getCounter(JOURNAL_WRITE_BYTES);
-        journalCbThreadPoolSize = statsLogger.getCounter(JOURNAL_CB_THREAD_POOL_SIZE);
+        journalAddEntryStats = statsLogger.getOpStatsLogger(ADD_ENTRY);
+        journalCreationStats = statsLogger.getOpStatsLogger(CREATION_LATENCY);
+        journalFlushStats = statsLogger.getOpStatsLogger(FLUSH_LATENCY);
+        forceWriteGroupingCountStats = statsLogger.getOpStatsLogger(FORCE_WRITE_GROUPING_COUNT);
+        forceWriteBatchEntriesStats = statsLogger.getOpStatsLogger(FORCE_WRITE_BATCH_ENTRIES);
+        forceWriteBatchBytesStats = statsLogger.getOpStatsLogger(FORCE_WRITE_BATCH_BYTES);
+        journalQueueSize = statsLogger.getCounter(QUEUE_SIZE);
+        forceWriteQueueSize = statsLogger.getCounter(FORCE_WRITE_QUEUE_SIZE);
+        flushMaxWaitCounter = statsLogger.getCounter(NUM_FLUSH_MAX_WAIT);
+        flushMaxOutstandingBytesCounter = statsLogger.getCounter(NUM_FLUSH_MAX_OUTSTANDING_BYTES);
+        flushEmptyQueueCounter = statsLogger.getCounter(NUM_FLUSH_EMPTY_QUEUE);
+        journalWriteBytes = statsLogger.getCounter(WRITE_BYTES);
+        journalCbThreadPoolSize = statsLogger.getCounter(CB_THREAD_POOL_SIZE);
     }
 
     LastLogMark getLastLogMark() {

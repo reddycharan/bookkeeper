@@ -231,6 +231,9 @@ OPTS="$OPTS $BOOKIE_EXTRA_OPTS"
 # Disable ipv6 as it can cause issues
 OPTS="$OPTS -Djava.net.preferIPv4Stack=true"
 
+#Cache FQDN that we retrieve for an hour
+OPTS="$OPTS -Dnetworkaddress.cache.ttl=3600"
+
 # log directory & file
 BOOKIE_ROOT_LOGGER=${BOOKIE_ROOT_LOGGER:-"INFO,CONSOLE"}
 BOOKIE_LOG_DIR=${BOOKIE_LOG_DIR:-"$BK_HOME/logs"}

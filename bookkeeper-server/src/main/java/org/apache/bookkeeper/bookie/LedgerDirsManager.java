@@ -20,8 +20,6 @@
  */
 package org.apache.bookkeeper.bookie;
 
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_WRITABLE_DIRS;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -40,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITABLE_DIRS;
 /**
  * This class manages ledger directories used by the bookie.
  */
@@ -82,7 +81,7 @@ public class LedgerDirsManager {
                 }
             });
         }
-        statsLogger.registerGauge(LD_WRITABLE_DIRS, new Gauge<Number>() {
+        statsLogger.registerGauge(WRITABLE_DIRS, new Gauge<Number>() {
             @Override
             public Number getDefaultValue() {
                 return 0;

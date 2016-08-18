@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.bookkeeper.BKProxyStats.*;
 
-
 class BKProxyWorker implements Runnable {
 
     private final static Logger LOG = LoggerFactory.getLogger(BKProxyWorker.class);
@@ -120,22 +119,22 @@ class BKProxyWorker implements Runnable {
         this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
         this.extentIdFactory = new BKExtentIdByteArrayFactory();
         this.opStatQueue = new LinkedList<OpStatEntry>();
-        this.proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
-        this.ledgerCreationTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_CREATION_TIME);
-        this.ledgerRecoveryReadTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_RECOVERY_READ_TIME);
-        this.ledgerNonRecoveryReadTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_NON_RECOVERY_READ_TIME);
-        this.ledgerStatTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_STAT_TIME);
-        this.ledgerDeleteAllTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_ALL_TIME);
-        this.ledgerWriteCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_WRITE_CLOSE_TIME);
-        this.ledgerReadCloseTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_READ_CLOSE_TIME);
-        this.ledgerDeletionTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_DELETE_TIME);
-        this.ledgerSyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_SYNC_PUT_FRAGMENT_TIME);
-        this.ledgerAsyncPutTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_ASYNC_PUT_FRAGMENT_TIME);
-        this.ledgerAsyncPutStatusTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_ASYNC_PUT_FRAGMENT_STATUS_TIME);
-        this.ledgerGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_GET_FRAGMENT_TIME);
-        this.ledgerReadHist = statsLogger.getOpStatsLogger(PXY_BYTES_GET_FRAGMENT_HIST);
-        this.ledgerWriteHist = statsLogger.getOpStatsLogger(PXY_BYTES_PUT_FRAGMENT_HIST);
-        this.ledgerListGetTimer = statsLogger.getOpStatsLogger(PXY_LEDGER_LIST_GET_TIME);
+        this.proxyWorkerPoolCounter = statsLogger.getCounter(WORKER_POOL_COUNT);
+        this.ledgerCreationTimer = statsLogger.getOpStatsLogger(LEDGER_CREATION_TIME);
+        this.ledgerRecoveryReadTimer = statsLogger.getOpStatsLogger(LEDGER_RECOVERY_READ_TIME);
+        this.ledgerNonRecoveryReadTimer = statsLogger.getOpStatsLogger(LEDGER_NON_RECOVERY_READ_TIME);
+        this.ledgerStatTimer = statsLogger.getOpStatsLogger(LEDGER_STAT_TIME);
+        this.ledgerDeleteAllTimer = statsLogger.getOpStatsLogger(LEDGER_DELETE_ALL_TIME);
+        this.ledgerWriteCloseTimer = statsLogger.getOpStatsLogger(LEDGER_WRITE_CLOSE_TIME);
+        this.ledgerReadCloseTimer = statsLogger.getOpStatsLogger(LEDGER_READ_CLOSE_TIME);
+        this.ledgerDeletionTimer = statsLogger.getOpStatsLogger(LEDGER_DELETE_TIME);
+        this.ledgerSyncPutTimer = statsLogger.getOpStatsLogger(LEDGER_SYNC_PUT_FRAGMENT_TIME);
+        this.ledgerAsyncPutTimer = statsLogger.getOpStatsLogger(LEDGER_ASYNC_PUT_FRAGMENT_TIME);
+        this.ledgerGetTimer = statsLogger.getOpStatsLogger(LEDGER_GET_FRAGMENT_TIME);
+        this.ledgerReadHist = statsLogger.getOpStatsLogger(GET_FRAGMENT_BYTES);
+        this.ledgerWriteHist = statsLogger.getOpStatsLogger(PUT_FRAGMENT_BYTES);
+        this.ledgerListGetTimer = statsLogger.getOpStatsLogger(LEDGER_LIST_GET_TIME);
+        this.ledgerAsyncPutStatusTimer = statsLogger.getOpStatsLogger(LEDGER_ASYNC_PUT_FRAGMENT_STATUS_TIME);
 
         try {
             // To facilitate Data Extents,

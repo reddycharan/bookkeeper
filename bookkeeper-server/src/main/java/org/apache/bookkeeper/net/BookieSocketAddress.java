@@ -20,6 +20,7 @@
  */
 package org.apache.bookkeeper.net;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
@@ -60,7 +61,17 @@ public class BookieSocketAddress {
             throw new UnknownHostException(addr);
         }
         socketAddress = new InetSocketAddress(hostname, port);
-    }
+	}
+
+	public String getFullyQualifiedDomainName() {
+		try {
+			//These are cached in JVM for 1 hour via networkaddress.cache.ttl
+			return InetAddress.getByName(this.hostname).getHostName();
+		} catch (UnknownHostException e) {
+			// No issue -- just assign it to the provided default host.
+			return this.hostname;
+		}
+	}
 
     // Public getters
     public String getHostname() {
@@ -71,8 +82,8 @@ public class BookieSocketAddress {
         return port;
     }
 
-    // Method to return an InetSocketAddress for the regular port.
-    public InetSocketAddress getSocketAddress() {
+	// Method to return an InetSocketAddress for the regular port.
+	public InetSocketAddress getSocketAddress() {
         return socketAddress;
     }
 
