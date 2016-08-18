@@ -78,10 +78,10 @@ esac
 
 export BOOKIE_LOG_DIR=$BOOKIE_LOG_DIR
 export BOOKIE_ROOT_LOGGER=$BOOKIE_ROOT_LOGGER
-if [ -n "$BOOKIE_LOG_FORMAT"  ]; then
-  export BOOKIE_LOG_FILE = $BOOKIE_LOG_FORMAT.log
-else
+if [ -z "$BOOKIE_LOG_FORMAT"  ]; then
   export BOOKIE_LOG_FILE=bookkeeper-$command-$HOSTNAME.log
+else
+  export BOOKIE_LOG_FILE = $BOOKIE_LOG_FORMAT.log
 fi
 
 pid=$BOOKIE_PID_DIR/bookkeeper-$command.pid
