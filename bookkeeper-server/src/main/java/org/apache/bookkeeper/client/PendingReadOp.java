@@ -61,6 +61,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     private ScheduledFuture<?> speculativeTask = null;
     Queue<LedgerEntryRequest> seq;
     Set<BookieSocketAddress> heardFromHosts;
+    Set<BookieSocketAddress> sentToHosts;
     ReadCallback cb;
     Object ctx;
     LedgerHandle lh;
@@ -174,6 +175,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
             try {
                 BookieSocketAddress to = ensemble.get(bookieIndex);
                 sendReadTo(to, this);
+                sentToHosts.add(to);
                 sentReplicas.set(replica);
                 return to;
             } catch (InterruptedException ie) {
@@ -268,7 +270,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                 - getLedgerMetadata().getAckQuorumSize();
         speculativeReadTimeout = lh.bk.getConf().getSpeculativeReadTimeout();
         heardFromHosts = new HashSet<BookieSocketAddress>();
-
+        sentToHosts = new HashSet<BookieSocketAddress>();
         readOpLogger = lh.bk.getReadOpLogger();
     }
 
@@ -298,15 +300,15 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                                 // Subsequent speculative read will not materialize anyway
                                 cancelSpeculativeTask(false);
                             } else {
-                                LOG.debug("Send speculative read for {}. Hosts heard are {}.",
-                                          r, heardFromHosts);
+                                LOG.info("Send speculative read for {}. Hosts sent are {}, Hosts heard are {}.",
+                                          new Object[] {r, sentToHosts, heardFromHosts});
                                 ++x;
                             }
                         }
                     }
                     if (x > 0) {
-                        LOG.debug("Send {} speculative reads for ledger {} ({}, {}). Hosts heard are {}.",
-                                  new Object[] { x, lh.getId(), startEntryId, endEntryId, heardFromHosts });
+                        LOG.info("Send {} speculative reads for ledger {} ({}, {}). Hosts sent are {}, Hosts heard are {}.",
+                                  new Object[] { x, lh.getId(), startEntryId, endEntryId, sentToHosts, heardFromHosts });
                     }
                 }
             };
@@ -314,7 +316,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                 speculativeTask = scheduler.scheduleWithFixedDelay(readTask,
                         speculativeReadTimeout, speculativeReadTimeout, TimeUnit.MILLISECONDS);
             } catch (RejectedExecutionException re) {
-                LOG.debug("Failed to schedule speculative reads for ledger {} ({}, {}) : ",
+                LOG.error("Failed to schedule speculative reads for ledger {} ({}, {}) : ",
                     new Object[] { lh.getId(), startEntryId, endEntryId, re });
             }
         }
@@ -389,8 +391,8 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
                     break;
                 }
             }
-            LOG.error("Read of ledger entry failed: L{} E{}-E{}, Heard from {}. First unread entry is {}",
-                    new Object[] { lh.getId(), startEntryId, endEntryId, heardFromHosts, firstUnread });
+            LOG.error("Read of ledger entry failed: L{} E{}-E{}, Sent to {}, Heard from {}. First unread entry is {}",
+                    new Object[] { lh.getId(), startEntryId, endEntryId, sentToHosts, heardFromHosts, firstUnread });
             readOpLogger.registerFailedEvent(latencyNanos, TimeUnit.NANOSECONDS);
         } else {
             readOpLogger.registerSuccessfulEvent(latencyNanos, TimeUnit.NANOSECONDS);
