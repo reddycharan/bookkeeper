@@ -188,10 +188,14 @@ public class BKSfdcClient {
         return;
     }
 
-    public void ledgerDelete(BKExtentId extentId) throws BKException, InterruptedException {
+    public void ledgerDelete(BKExtentId extentId) throws InterruptedException, BKException {
         // write ledger handles need to be closed before deletion
         if (elm.getWriteLedgerPrivateData(extentId) != null) {
-            elm.closeWriteLedgerHandle(extentId);
+            try {
+                elm.closeWriteLedgerHandle(extentId);
+            } catch (InterruptedException | BKException e) {
+                LOG.warn("Exception when trying to close write-handle during delete for extentId {}", extentId, e);
+            }
         }
         bk.deleteLedger(extentId.asLong());
 

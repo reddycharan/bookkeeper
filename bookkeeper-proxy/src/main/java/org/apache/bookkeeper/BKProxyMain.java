@@ -86,13 +86,13 @@ public class BKProxyMain implements Runnable {
                 statsLogger = statsProvider.getStatsLogger(bkpConf.getString("statsPrefix", "bkProxy"));
                 System.out.println("Running stats...");
             } catch (ConfigurationException e) {
-				statsLogger = NullStatsLogger.INSTANCE;
-				LOG.error("Failed to instantiate stats provider class: ", e);
+                statsLogger = NullStatsLogger.INSTANCE;
+                LOG.error("Failed to instantiate stats provider class: ", e);
             }
         }
         else {
-			// Declare it as null so operations do not log, but also do not throw NPEs
-			statsLogger = NullStatsLogger.INSTANCE;
+            // Declare it as null so operations do not log, but also do not throw NPEs
+            statsLogger = NullStatsLogger.INSTANCE;
         }
         proxyWorkerPoolCounter = statsLogger.getCounter(PXY_WORKER_POOL_COUNT);
     }
@@ -146,8 +146,8 @@ public class BKProxyMain implements Runnable {
                     }
 
                     try {
-						proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
-								bkProxyWorkerNo.getAndIncrement(), statsLogger));
+                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
+                                bkProxyWorkerNo.getAndIncrement(), statsLogger));
                         proxyWorkerPoolCounter.inc();
                     } catch (RejectedExecutionException rejException) {
                         LOG.error("ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
@@ -183,10 +183,10 @@ public class BKProxyMain implements Runnable {
             } catch (InterruptedException e) {
                 LOG.warn("Got interrupted while waiting for termination of ProxyWorkers", e);
             }
-			if (statsProvider != null) {
-				LOG.info("Stats provider stopped...");
-				statsProvider.stop();
-			}
+            if (statsProvider != null) {
+                LOG.info("Stats provider stopped...");
+                statsProvider.stop();
+            }
             if (serverChannel != null) {
                 LOG.info("Closing ServerSocketChannel...");
                 try {

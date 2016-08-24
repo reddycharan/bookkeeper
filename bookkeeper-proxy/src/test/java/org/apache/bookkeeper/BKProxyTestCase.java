@@ -1295,6 +1295,32 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         executeTestcase(testDefinition);
     }
 
+    /**
+     * In this testcase an old proxy tries to delete an extent with a write handle which has been opened for
+     * recovery in a new proxy.
+     *
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void deleteRecoveredLedgerFromOldProxyWhichHasWriteHandle() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP2\n"
+                                    +   NUMOFSLOTS + "-6\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    // the following delete should succeed with a warning logged
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerDeleteReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+        executeTestcase(testDefinition);
+    }
+
+
     public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();
         parseTestDefinition(testDefinition);
