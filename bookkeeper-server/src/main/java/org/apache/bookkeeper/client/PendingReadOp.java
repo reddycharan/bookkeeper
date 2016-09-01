@@ -39,6 +39,7 @@ import org.apache.bookkeeper.client.AsyncCallback.ReadCallback;
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
+import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -70,6 +71,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
     long endEntryId;
     long requestTimeNanos;
     OpStatsLogger readOpLogger;
+    Counter speculativeReadCounter;
 
     final int maxMissedReadsAllowed;
 
@@ -146,6 +148,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
             // only send another read, if we have had no response at all (even for other entries)
             // from any of the other bookies we have sent the request to
             if (sentTo.cardinality() == 0) {
+				speculativeReadCounter.inc();
                 return sendNextRead();
             } else {
                 return null;
@@ -272,6 +275,7 @@ class PendingReadOp implements Enumeration<LedgerEntry>, ReadEntryCallback {
         heardFromHosts = new HashSet<BookieSocketAddress>();
         sentToHosts = new HashSet<BookieSocketAddress>();
         readOpLogger = lh.bk.getReadOpLogger();
+        speculativeReadCounter = lh.bk.getStatsLogger().getCounter(BookKeeperClientStats.SPECULATIVE_READ_COUNT);
     }
 
     protected LedgerMetadata getLedgerMetadata() {
