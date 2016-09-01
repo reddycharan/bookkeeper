@@ -50,6 +50,7 @@ public class TestLedgerDirsManager {
     ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
     File curDir;
     LedgerDirsManager dirsManager;
+    LedgerDirsMonitor ledgerMonitor;
     MockDiskChecker mockDiskChecker;
     int diskCheckInterval = 1000;
     float threshold = 0.5f;
@@ -71,16 +72,19 @@ public class TestLedgerDirsManager {
 
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
         conf.setLedgerDirNames(new String[] { tmpDir.toString() });
+        conf.setDiskLowWaterMarkUsageThreshold(conf.getDiskUsageThreshold());
         conf.setDiskCheckInterval(diskCheckInterval);
 
         mockDiskChecker = new MockDiskChecker(threshold, warnThreshold);
-        dirsManager = new LedgerDirsManager(conf, conf.getLedgerDirs(), NullStatsLogger.INSTANCE, mockDiskChecker);
-        dirsManager.init();
+        dirsManager = new LedgerDirsManager(conf, conf.getLedgerDirs(), NullStatsLogger.INSTANCE);
+        ledgerMonitor = new LedgerDirsMonitor(conf, 
+                mockDiskChecker, dirsManager);
+        ledgerMonitor.init();
     }
 
     @After
     public void tearDown() throws Exception {
-        dirsManager.shutdown();
+        ledgerMonitor.shutdown();
         for (File dir : tempDirs) {
             FileUtils.deleteDirectory(dir);
         }
@@ -116,7 +120,7 @@ public class TestLedgerDirsManager {
 
         MockLedgerDirsListener mockLedgerDirsListener = new MockLedgerDirsListener();
         dirsManager.addLedgerDirsListener(mockLedgerDirsListener);
-        dirsManager.start();
+        ledgerMonitor.start();
 
         assertFalse(mockLedgerDirsListener.readOnly);
         mockDiskChecker.setUsage(threshold + 0.05f);
@@ -131,9 +135,58 @@ public class TestLedgerDirsManager {
         assertFalse(mockLedgerDirsListener.readOnly);
     }
 
+    @Test(timeout=60000)
+    public void testLedgerDirsMonitorHandlingLowWaterMark() throws Exception {
+        final float warn = 0.90f;
+        final float nospace = 0.98f;
+        mockDiskChecker.setDiskSpaceThreshold(nospace, warn);
+        
+        final float lwm = (warn + nospace) / 2;
+        conf.setDiskLowWaterMarkUsageThreshold(lwm);
+        
+        final float lwm2warn = (warn + lwm) / 2;
+        final float lwm2nospace = (lwm + nospace) / 2;
+        final float nospaceExceeded = nospace + 0.005f;
+        
+        final MockLedgerDirsListener mockLedgerDirsListener = new MockLedgerDirsListener();
+        dirsManager.addLedgerDirsListener(mockLedgerDirsListener);
+        ledgerMonitor.start();
+        Thread.sleep((diskCheckInterval * 2) + 100);
+        assertFalse(mockLedgerDirsListener.readOnly);
+
+        // go above LWM but below threshold
+        // should still be writable
+        mockDiskChecker.setUsage(lwm2nospace);
+        Thread.sleep((diskCheckInterval * 2) + 100);
+        assertFalse(mockLedgerDirsListener.readOnly);
+
+        // exceed the threshold, should go to readonly
+        mockDiskChecker.setUsage(nospaceExceeded);
+        Thread.sleep(diskCheckInterval + 100);
+        assertTrue(mockLedgerDirsListener.readOnly);
+        
+        // drop below threshold but above LWM
+        // should stay read-only
+        mockDiskChecker.setUsage(lwm2nospace);
+        Thread.sleep((diskCheckInterval * 2) + 100);
+        assertTrue(mockLedgerDirsListener.readOnly);
+        
+        // drop below LWM
+        // should become writable
+        mockDiskChecker.setUsage(lwm2warn);
+        Thread.sleep((diskCheckInterval * 2) + 100);
+        assertFalse(mockLedgerDirsListener.readOnly);
+        
+        // go above LWM but below threshold
+        // should still be writable
+        mockDiskChecker.setUsage(lwm2nospace);
+        Thread.sleep((diskCheckInterval * 2) + 100);
+        assertFalse(mockLedgerDirsListener.readOnly);
+    }
+
     private class MockDiskChecker extends DiskChecker {
 
-        private float used;
+        private volatile float used;
 
         public MockDiskChecker(float threshold, float warnThreshold) {
             super(threshold, warnThreshold);
@@ -158,7 +211,7 @@ public class TestLedgerDirsManager {
 
     private class MockLedgerDirsListener implements LedgerDirsListener {
 
-        public boolean readOnly;
+        public volatile boolean readOnly;
 
         public MockLedgerDirsListener() {
             reset();

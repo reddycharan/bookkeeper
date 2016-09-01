@@ -20,25 +20,28 @@
  */
 package org.apache.bookkeeper.bookie;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
-import org.junit.Assert;
 
-import org.apache.bookkeeper.conf.TestBKConfiguration;
+import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
+import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.client.BookKeeperAdmin;
+import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.util.DiskChecker;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.KeeperException;
 import org.jboss.netty.channel.ChannelException;
+import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -325,25 +328,50 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
     }
 
     /**
-     * Check disk full. Expected to throw NoWritableLedgerDirException
-     * during bookie initialisation.
+     * Check disk full. Expected to fail on start.
      */
     @Test(timeout = 30000)
-    public void testWithDiskFull() throws Exception {
+    public void testWithDiskFullReadOnlyDisabled() throws Exception {
         File tmpDir = createTempDir("DiskCheck", "test");
         long usableSpace = tmpDir.getUsableSpace();
         long totalSpace = tmpDir.getTotalSpace();
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
                 .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000).setJournalDirName(tmpDir.getPath())
-                .setLedgerDirNames(new String[] { tmpDir.getPath() });
-        conf.setDiskUsageThreshold((1f - ((float) usableSpace / (float) totalSpace)) - 0.05f);
-        conf.setDiskUsageWarnThreshold((1f - ((float) usableSpace / (float) totalSpace)) - 0.25f);
+                .setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setDiskCheckInterval(1000)
+                .setReadOnlyModeEnabled(false);
+        conf.setDiskUsageThreshold((1.0f - ((float) usableSpace / (float) totalSpace)) * 0.999f);
+        conf.setDiskUsageWarnThreshold(0.0f);
         try {
             new Bookie(conf);
-        } catch (Exception e) {
+            fail("NoWritableLedgerDirException expected");
+        } catch(NoWritableLedgerDirException e) {
             // expected
         }
+    }
+
+    /**
+     * Check disk full. Expected to start as read-only.
+     */
+    @Test(timeout = 30000)
+    public void testWithDiskFullReadOnlyEnabled() throws Exception {
+        File tmpDir = createTempDir("DiskCheck", "test");
+        long usableSpace = tmpDir.getUsableSpace();
+        long totalSpace = tmpDir.getTotalSpace();
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
+                .setZkServers(zkUtil.getZooKeeperConnectString())
+                .setZkTimeout(5000).setJournalDirName(tmpDir.getPath())
+                .setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setDiskCheckInterval(1000)
+                .setReadOnlyModeEnabled(true);
+        conf.setDiskUsageThreshold((1.0f - ((float) usableSpace / (float) totalSpace)) * 0.999f);
+        conf.setDiskUsageWarnThreshold(0.0f);
+        final Bookie bk = new Bookie(conf);
+        Thread.sleep((conf.getDiskCheckInterval() * 2) + 100);
+        
+        assertTrue(bk.isReadOnly());
+        bk.shutdown();
     }
 
     /**
@@ -361,7 +389,10 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
             // LedgerDirsManager#init() is used in Bookie instantiation.
             // Simulating disk errors by directly calling #init
             LedgerDirsManager ldm = new LedgerDirsManager(conf, conf.getLedgerDirs());
-            ldm.init();
+            LedgerDirsMonitor ledgerMonitor = new LedgerDirsMonitor(conf, 
+                    new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()), ldm);
+            ledgerMonitor.init();
+            fail("should throw exception");
         } catch (Exception e) {
             // expected
         }
