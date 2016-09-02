@@ -523,7 +523,7 @@ public class GarbageCollectorThread extends BookieThread {
      * Compact entry logs if necessary.
      *
      * <p>
-     * Compaction will be executed from low unused space to high unused space.
+     * Compaction will be executed from high unused (reclaimable) space to low unused space.
      * Those entry log files whose remaining size percentage is higher than threshold
      * would not be compacted.
      * </p>
@@ -538,6 +538,11 @@ public class GarbageCollectorThread extends BookieThread {
             public int compare(EntryLogMetadata m1, EntryLogMetadata m2) {
                 long unusedSize1 = m1.getTotalSize() - m1.getRemainingSize();
                 long unusedSize2 = m2.getTotalSize() - m2.getRemainingSize();
+                // Natural ordering is to return a negative integer, zero, or a positive integer as the
+                // m1 is less than, equal to, or greater than m2. That helps to sort the array in ascending
+                // order. Since we need the array in the descending order (high unused to low unused)
+                // we will be returning a negative integer, zero, or a positive integer as the
+                // m1 is greater than, equal to, or less than m2
                 if (unusedSize1 > unusedSize2) {
                     return -1;
                 } else if (unusedSize1 < unusedSize2) {
@@ -551,9 +556,18 @@ public class GarbageCollectorThread extends BookieThread {
         logsToCompact.addAll(entryLogMetaMap.values());
         Collections.sort(logsToCompact, sizeComparator);
 
+        int entryLogUsageBuckets[] = new int[10];
+
         for (EntryLogMetadata meta : logsToCompact) {
+            int bucketIndex = ((int) (meta.getUsage() * 10));
+
+            // Handle the case where the getUsage is 100%
+            if (bucketIndex > 9) {
+                bucketIndex = 9;
+            }
+            entryLogUsageBuckets[bucketIndex]++;
             if (meta.getUsage() >= threshold) {
-                break;
+                continue;
             }
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Compacting entry log {} below threshold {}", meta.getEntryLogId(), threshold);
@@ -581,6 +595,7 @@ public class GarbageCollectorThread extends BookieThread {
                 return;
             }
         }
+        LOG.info("Compaction: entry log usage buckets[10% 20% 30% 40% 50% 60% 70% 80% 90% 100%] = {}",  entryLogUsageBuckets);
     }
 
     /**
