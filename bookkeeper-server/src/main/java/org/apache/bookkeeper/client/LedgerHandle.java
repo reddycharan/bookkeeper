@@ -277,6 +277,15 @@ public class LedgerHandle implements AutoCloseable {
     }
 
     /**
+     * Returns the ledger creation time
+     *
+     * @return the ledger creating time
+     */
+    public long getCtime() {
+        return this.metadata.getCtime();
+    }
+
+    /**
      * Get the Distribution Schedule
      *
      * @return DistributionSchedule for the LedgerHandle
