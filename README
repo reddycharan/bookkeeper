@@ -23,7 +23,9 @@ applications.
 --------------------------------------------------------------------------------
 How do I build?
 
- BookKeeper uses maven as its build system. To build, run "mvn package" from the 
+ BookKeeper uses maven as its build system. Copy maven_settings.xml file to
+ $HOME/.m2/settings.xml. Generate user token from https://nexus.soma.salesforce.com
+ and add it to the settings.xml file. To build, run "mvn package" from the
  top-level directory, or from within any of the submodules.
 
  Useful maven commands are:
