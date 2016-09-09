@@ -1,5 +1,7 @@
 package org.apache.bookkeeper.conf;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.stats.NullStatsProvider;
 import org.apache.bookkeeper.stats.StatsProvider;
@@ -66,10 +68,6 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     protected static final String READ_HANDLE_TTL_STR = "readHandleTTL";
     protected static final long READ_HANDLE_TTL_DEF = -1; // unlimited
     
-    // max # of byteBuffers in the shared pool; idle and available to be borrowed, puts an upperbound on unused space
-    protected static final String BYTE_BUFFER_POOL_SIZE_MAX_IDLE_STR = "byteBufferPoolSizeMaxIdle";
-    protected static final int BYTE_BUFFER_POOL_SIZE_MAX_IDLE_DEF = 100;
-
     protected static final String STATS_PROVIDER_CLASS = "statsProviderClass";
     protected static final String CODAHALE_STATS_OUTPUT_FREQUENCY="codahaleStatsOutputFrequency";
     protected static final String CODAHALE_STATS_CSV_ENDPOINT = "codahaleStatsCSVEndpoint";
@@ -249,15 +247,6 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     public BookKeeperProxyConfiguration setReadHandleTTL(long readHandleTTL) {
         setProperty(READ_HANDLE_TTL_STR, readHandleTTL);
         return this;
-    }
-
-    public BookKeeperProxyConfiguration setByteBufferPoolSizeMaxIdle(int byteBufferPoolSizeMaxIdle) {
-        setProperty(BYTE_BUFFER_POOL_SIZE_MAX_IDLE_STR, byteBufferPoolSizeMaxIdle);
-        return this;
-    }
-
-    public int getByteBufferPoolSizeMaxIdle() {
-        return getInt(BYTE_BUFFER_POOL_SIZE_MAX_IDLE_STR, BYTE_BUFFER_POOL_SIZE_MAX_IDLE_DEF);
     }
 
     public Class<? extends StatsProvider> getStatsProviderClass()
