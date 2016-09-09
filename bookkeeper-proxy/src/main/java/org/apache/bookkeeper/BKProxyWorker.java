@@ -248,8 +248,7 @@ class BKProxyWorker implements Runnable {
     public void run() {
         
         ByteBuffer req = ByteBuffer.allocate(BKPConstants.GENERIC_REQ_SIZE);
-        ByteBuffer resp = ByteBuffer.allocate(BKPConstants.GENERIC_RESP_SIZE);
-        ByteBuffer sresp = ByteBuffer.allocate(BKPConstants.STAT_RESP_SIZE);
+        ByteBuffer resp = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
         ByteBuffer ewreq = ByteBuffer.allocate(BKPConstants.WRITE_REQ_SIZE);
         ByteBuffer erreq = ByteBuffer.allocate(BKPConstants.READ_REQ_SIZE);
         ByteBuffer asreq = ByteBuffer.allocate(BKPConstants.ASYNC_STAT_REQ_SIZE);
@@ -257,7 +256,6 @@ class BKProxyWorker implements Runnable {
 
         req.order(ByteOrder.nativeOrder());
         resp.order(ByteOrder.nativeOrder());
-        sresp.order(ByteOrder.nativeOrder());
         ewreq.order(ByteOrder.nativeOrder());
         erreq.order(ByteOrder.nativeOrder());
         asreq.order(ByteOrder.nativeOrder());
@@ -318,14 +316,12 @@ class BKProxyWorker implements Runnable {
                     errorCode = BKPConstants.SF_OK;
                     switch (reqId) {
                     case (BKPConstants.LedgerStatReq): {
-                        sresp.clear();
-                        sresp.put(respId);
-
+                        resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerStatTimer, startTime));
 
-                        LedgerStat ledgerStat = null;
+                        long lSize = 0;
                         try {
-                            ledgerStat = bksc.ledgerStat(extentId);
+                            lSize = bksc.ledgerStat(extentId);
                         } catch (BKException e) {
                             LOG.error("Exception when getting stats for extent {}",
                                        extentId, e);
@@ -338,16 +334,12 @@ class BKProxyWorker implements Runnable {
                             errorCode = BKPConstants.SF_ServerInternalError;
                         }
 
-                        sresp.put(errorCode);
+                        resp.put(errorCode);
                         if (errorCode == BKPConstants.SF_OK) {
-                            sresp.putLong(ledgerStat.getSize());
-                            LOG.info("Stat Size: " + ledgerStat.getSize());
-                            sresp.putLong(ledgerStat.getCtime());
-                            LOG.info("Stat Ctime: " + ledgerStat.getCtime());
+                            resp.putLong(lSize);
                         }
-
-                        sresp.flip();
-                        clientChannelWrite(sresp);
+                        resp.flip();
+                        clientChannelWrite(resp);
                         break;
                     }
 
@@ -360,7 +352,7 @@ class BKProxyWorker implements Runnable {
                         List<Long> extentIdList = new ArrayList<Long>();
                         // To reduce the GC load allocating these here
                         // instead of inside sendExtentIdList
-                        ByteBuffer respBuf = ByteBuffer.allocate(BKPConstants.GENERIC_RESP_SIZE);
+                        ByteBuffer respBuf = ByteBuffer.allocate(BKPConstants.RESP_SIZE);
                         respBuf.order(ByteOrder.nativeOrder());
                         ByteBuffer listBuf = ByteBuffer.allocate(BKPConstants.EXTENTID_SIZE *
                                                                BKPConstants.LEDGER_LIST_BATCH_SIZE);
