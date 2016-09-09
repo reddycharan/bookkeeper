@@ -139,6 +139,23 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
+    
+    /**
+     * In this testcase four letters commands are tested.
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void fourLettersCommandTest() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   NUMOFSLOTS + "-1\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+Operation.FourLettersReq+"-ruok-imok\n"
+                                    +   BKPOPERATION + "-0-Thread2-"+Operation.FourLettersReq+"-ruok-imok\n";
+        executeTestcase(testDefinition);
+    }
 
     /**
      * In this testcase we use lower and higher rev protocol versions and make sure that the proxy server is backward compatible and rejects higher

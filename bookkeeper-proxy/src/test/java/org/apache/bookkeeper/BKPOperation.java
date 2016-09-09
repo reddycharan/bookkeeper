@@ -89,6 +89,9 @@ public abstract class BKPOperation extends AbstractOperation {
         case BKPConstants.LedgerAsyncWriteStatusReq:
             bkpOperation = LedgerAsyncWriteStatusReqBKPOperation.createLedgerAsyncWriteStatusReqBKPOperation(protocolVersion, operationDefinition);
             break;
+        case Operation.FourLettersReq:
+            bkpOperation = FourLetterCommandOperation.createFourLetterCommandOperation(protocolVersion, operationDefinition);
+            break;
         }
         return bkpOperation;
     }

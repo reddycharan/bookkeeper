@@ -281,7 +281,25 @@ class BKProxyWorker implements Runnable {
                     respId = BKPConstants.UnInitialized;
                     reqSpecific = "";
 
-                    clientChannelRead(req, req.capacity()); // read into buffer.
+                    // Four Letter cmd for ProxyStatus.
+                    // This will work because first 2 bytes of the
+                    // BKProxyrequest is protocol version number and the first
+                    // two bytes in case of four letter command
+                    // will make very high short number or negative short number
+                    // (for eg: in 'ruok' command - 0x72 0x75 0x6f 0x6b, first 2
+                    // bytes decimal value will be 29301)
+                    // So protocol version number will not overlap with first 2
+                    // bytes of the four letter command.
+                    
+                    req.limit(4);
+                    clientChannelRead(req, req.remaining());
+                    String commandString = new String(req.array(), 0, 4);
+                    CommandExecutor commandExecutor = new CommandExecutor();
+                    if (commandExecutor.execute(commandString, clientChannel, bkpConfig)) {
+                        break;
+                    }
+                    req.limit(req.capacity());
+                    clientChannelRead(req, req.remaining()); // read into buffer.
 
                     req.flip();
                     short version = req.getShort();
@@ -673,17 +691,6 @@ class BKProxyWorker implements Runnable {
                     resp.put(errorCode);
                     resp.flip();
                     clientChannelWrite(resp);
-                } catch (Exception e) {
-                    exceptionOccurred = true;
-                    LOG.error("Exception on Req: "
-                            + BKPConstants.getReqRespString(reqId)
-                            + reqSpecific
-                            + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
-                            + " Error: {} extentId: {}", errorCode, extentId);
-                    LOG.error("Exception: ", e);
-                    resp.put(BKPConstants.SF_ServerInternalError);
-                    resp.flip();
-                    clientChannelWrite(resp);
                 }
                 finally {
                     if (reqId != BKPConstants.LedgerAsyncWriteEntryReq) {
@@ -702,7 +709,7 @@ class BKProxyWorker implements Runnable {
             }
 
         } catch (IOException e) {
-            LOG.error("Exception in worker processing:", e);
+            LOG.error("IOException in worker processing:", e);
         } finally {
             proxyWorkerPoolCounter.dec();
             try {

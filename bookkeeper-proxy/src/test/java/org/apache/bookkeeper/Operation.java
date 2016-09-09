@@ -9,6 +9,7 @@ public interface Operation {
      */
     public byte SleepReq = BKPConstants.LedgerFirstUnusedReq;
     public byte ZkServerPauseOpReq = BKPConstants.LedgerFirstUnusedReq + 1;
+    public byte FourLettersReq = BKPConstants.LedgerFirstUnusedReq + 2;
 
     public int getTimeSlot();
 
