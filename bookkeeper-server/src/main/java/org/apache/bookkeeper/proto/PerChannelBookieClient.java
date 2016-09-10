@@ -711,7 +711,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
             public void safeRun() {
                 String bAddress = "null";
                 Channel c = channel;
-                if (c != null) {
+                if (c != null && c.getRemoteAddress() != null) {
                     bAddress = c.getRemoteAddress().toString();
                 }
 
@@ -791,7 +791,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
             public void safeRun() {
                 String bAddress = "null";
                 Channel c = channel;
-                if(c != null) {
+                if(c != null && c.getRemoteAddress() != null) {
                     bAddress = c.getRemoteAddress().toString();
                 }
                 LOG.debug("Could not write request for adding entry: {} ledger-id: {} bookie: {} rc: {}",
