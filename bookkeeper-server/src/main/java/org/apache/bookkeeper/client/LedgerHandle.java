@@ -225,7 +225,7 @@ public class LedgerHandle implements AutoCloseable {
 
     /**
      * Get the number of fragments that makeup this ledger
-     * 
+     *
      * @return the count of fragments
      */
     synchronized public long getNumFragments() {

@@ -145,10 +145,12 @@ public class BookKeeperAdmin {
 
     /**
      * Constructor that takes in a BookKeeper instance . This will be useful,
-     * when users already has bk instance ready.
+     * when user already has bk instance ready.
      *
      * @param bkc
      *            - bookkeeper instance
+     * @param statsLogger
+     *            - stats logger
      */
     public BookKeeperAdmin(final BookKeeper bkc, StatsLogger statsLogger) {
         this.bkc = bkc;
