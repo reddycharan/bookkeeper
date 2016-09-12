@@ -195,6 +195,7 @@
             </goals>
             <phase>validate</phase>
             <configuration>
+              <dateFormat>MM.dd.yyyy '@' HH:mm:ss z</dateFormat>
               <prefix>git-commit-id</prefix>
               <skipPoms>false</skipPoms>
               <gitDescribe>
