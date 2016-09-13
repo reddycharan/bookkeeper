@@ -333,9 +333,9 @@ class BKProxyWorker implements Runnable {
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerStatTimer, startTime));
 
-                        long lSize = 0;
+                        LedgerStat ledgerStat = null;
                         try {
-                            lSize = bksc.ledgerStat(extentId);
+                            ledgerStat = bksc.ledgerStat(extentId);
                         } catch (BKException e) {
                             LOG.error("Exception when getting stats for extent {}",
                                        extentId, e);
@@ -350,8 +350,10 @@ class BKProxyWorker implements Runnable {
 
                         resp.put(errorCode);
                         if (errorCode == BKPConstants.SF_OK) {
-                            resp.putLong(lSize);
+                            resp.putLong(ledgerStat.getSize());
+                            resp.putLong(ledgerStat.getCtime());
                         }
+
                         resp.flip();
                         clientChannelWrite(resp);
                         break;

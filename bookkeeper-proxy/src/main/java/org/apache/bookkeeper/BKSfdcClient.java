@@ -121,19 +121,20 @@ public class BKSfdcClient {
         return lh;
     }
 
-    public long ledgerStat(BKExtentId extentId) throws BKException, InterruptedException {
+    public LedgerStat ledgerStat(BKExtentId extentId) throws BKException, InterruptedException {
         LedgerHandle lh = elm.getAnyLedgerHandle(extentId);
         if (lh != null) {
-            return lh.getLength();
+            return new LedgerStat(lh.getLength(), lh.getCtime());
         }
 
         // No ledger cached locally.
         // Just open/get size and close the extent.
         lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
         long ledgerLength = lh.getLength();
+        long ledgerCtime = lh.getCtime();
         lh.close();
 
-        return ledgerLength;
+        return new LedgerStat(ledgerLength, ledgerCtime);
     }
 
     // W-3049495: SDb expects int fragment ids 

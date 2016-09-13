@@ -2,15 +2,18 @@ package org.apache.bookkeeper;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.time.Instant;
 
 public class LedgerStatReqBKPOperation extends BKPOperationExtension {
 
     private long expectedSize;
+    private final long ctime;
 
     public LedgerStatReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType, byte[] extentId,
             byte responseType, byte expectedReturnStatus, long expectedSize) {
         super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.expectedSize = expectedSize;
+        this.ctime = Instant.now().toEpochMilli();
     }
 
     public long getExpectedSize() {
@@ -40,6 +43,9 @@ public class LedgerStatReqBKPOperation extends BKPOperationExtension {
     public void receivePayloadAndVerify(SocketChannel clientSocketChannel) throws OperationException, IOException {
         if (getExpectedReturnStatus() == BKPConstants.SF_OK) {
             getLongFromResponseAndVerify(clientSocketChannel, expectedSize, "ExpectedSize");
+            // expected value of ctime is captured before making a request to proxy. Actual value from the response
+            // should be greater than or equal to expected value
+            getLongFromResponseAndVerifyEqualOrGreater(clientSocketChannel, ctime, "Ctime");
         }
     }
 }
