@@ -34,6 +34,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.zookeeper.KeeperException;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +73,8 @@ public class BKProxyMain implements Runnable {
     private StatsProvider statsProvider;
     private StatsLogger statsLogger;
     private final Counter proxyWorkerPoolCounter;
+    // byteBuffer pool shared by all threads
+    private final BKByteBufferPool byteBufSharedPool;
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
@@ -96,6 +99,14 @@ public class BKProxyMain implements Runnable {
             statsLogger = NullStatsLogger.INSTANCE;
         }
         proxyWorkerPoolCounter = statsLogger.scope(PROXY_WORKER_SCOPE).getCounter(WORKER_POOL_COUNT);
+
+        GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
+
+        poolConfig.setMaxIdle(bkpConf.getByteBufferPoolSizeMaxIdle());
+        LOG.info("Byte Buffer Pool Max Idle: " + poolConfig.getMaxIdle());
+
+        BKByteBufferPoolFactory poolFactory = new BKByteBufferPoolFactory(bkpConf.getMaxFragSize());
+        this.byteBufSharedPool = new BKByteBufferPool(poolFactory, poolConfig, statsLogger);
     }
 
     public BookKeeperProxyConfiguration getBookKeeperProxyConfiguration() {
@@ -147,8 +158,8 @@ public class BKProxyMain implements Runnable {
                     }
 
                     try {
-						proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf,sock, bk, elm,
-								bkProxyWorkerNo.getAndIncrement(), statsLogger.scope(PROXY_WORKER_SCOPE)));
+                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf, sock, bk, elm, byteBufSharedPool,
+                                bkProxyWorkerNo.getAndIncrement(), statsLogger.scope(PROXY_WORKER_SCOPE)));
                         proxyWorkerPoolCounter.inc();
                     } catch (RejectedExecutionException rejException) {
                         LOG.error("ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
@@ -183,6 +194,9 @@ public class BKProxyMain implements Runnable {
                 }
             } catch (InterruptedException e) {
                 LOG.warn("Got interrupted while waiting for termination of ProxyWorkers", e);
+            }
+            if (byteBufSharedPool != null) {
+                byteBufSharedPool.close();
             }
             if (statsProvider != null) {
                 LOG.info("Stats provider stopped...");
