@@ -129,7 +129,7 @@ public class SfdcRandomReadLedgers {
                 .setReadHandleTTL(bkConfig.getReadHandleTTL())
                 .build();
 
-        final BKSfdcClient bksc = new BKSfdcClient(bkConfig, bk, elm, null);
+        final BKSfdcClient bksc = new BKSfdcClient(bkConfig, bk, elm, null, null);
         
         consoleReporter.start(30, TimeUnit.SECONDS);
         jmxReporter.start();
@@ -160,7 +160,7 @@ public class SfdcRandomReadLedgers {
                 public void run() {
                     LOG.info("Thread is starting");
                     
-                    final BKSfdcClient bkscT = new BKSfdcClient(bkConfig, bk, elm, null);
+                    final BKSfdcClient bkscT = new BKSfdcClient(bkConfig, bk, elm, null, null);
 
                     final int numberOfLedgers = ledgerInfo.size();
                     final Random random = new SecureRandom();

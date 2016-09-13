@@ -173,7 +173,7 @@ public class SfdcGenerateLedger {
                     LOG.info("Thread is starting");
                     final Random random = new SecureRandom();
                     
-                    final BKSfdcClient bkscT = new BKSfdcClient(bkConfig, bk, elm, null);
+                    final BKSfdcClient bkscT = new BKSfdcClient(bkConfig, bk, elm, null, null);
                     
                     final BKExtentId[] extIds = new BKExtentId[numberOfLedgers];
                     for(int i = 0; i < numberOfLedgers; ++i) {

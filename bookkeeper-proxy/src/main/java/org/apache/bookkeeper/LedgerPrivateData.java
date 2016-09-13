@@ -2,6 +2,8 @@ package org.apache.bookkeeper;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerHandle;
+
+import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -19,10 +21,12 @@ class LedgerPrivateData {
 
     private final LedgerHandle lh;
     private final LedgerHandleType lhType;
+    private final BKByteBufferPool bufPool;
 
-    private LedgerPrivateData(LedgerHandle lh, LedgerHandleType type) {
+    private LedgerPrivateData(LedgerHandle lh, LedgerHandleType type, BKByteBufferPool bufPool) {
         this.lh = lh;
         this.lhType = type;
+        this.bufPool = bufPool;
         if (this.lhType == LedgerHandleType.WRITE) {
             this.asyncWriteStatus = new ConcurrentHashMap<Integer, LedgerAsyncWriteStatus>();
         } else {
@@ -30,16 +34,16 @@ class LedgerPrivateData {
         }
     }
 
-    public static LedgerPrivateData buildWriteHandle(LedgerHandle lh) {
-        return new LedgerPrivateData(lh, LedgerHandleType.WRITE);
+    public static LedgerPrivateData buildWriteHandle(LedgerHandle lh, BKByteBufferPool bufPool) {
+        return new LedgerPrivateData(lh, LedgerHandleType.WRITE, bufPool);
     }
 
-    public static LedgerPrivateData buildRecoveryReadHandle(LedgerHandle lh) {
-        return new LedgerPrivateData(lh, LedgerHandleType.RECOVERYREAD);
+    public static LedgerPrivateData buildRecoveryReadHandle(LedgerHandle lh, BKByteBufferPool bufPool) {
+        return new LedgerPrivateData(lh, LedgerHandleType.RECOVERYREAD, bufPool);
     }
 
-    public static LedgerPrivateData buildNonRecoveryReadHandle(LedgerHandle lh) {
-        return new LedgerPrivateData(lh, LedgerHandleType.NONRECOVERYREAD);
+    public static LedgerPrivateData buildNonRecoveryReadHandle(LedgerHandle lh, BKByteBufferPool bufPool) {
+        return new LedgerPrivateData(lh, LedgerHandleType.NONRECOVERYREAD, bufPool);
     }
 
     public LedgerHandle getLedgerHandle() {
@@ -48,6 +52,10 @@ class LedgerPrivateData {
 
     public LedgerHandleType getLedgerHandleType() {
         return this.lhType;
+    }
+
+    public BKByteBufferPool getBufferPool() {
+        return this.bufPool;
     }
 
     public LedgerAsyncWriteStatus getLedgerFragmentAsyncWriteStatus(int fragmentId) {
@@ -66,8 +74,9 @@ class LedgerPrivateData {
         return !asyncWriteStatus.isEmpty();
     }
 
-    public LedgerAsyncWriteStatus createLedgerAsyncWriteStatus(int fragmentId, long entryId, Queue<OpStatEntry> asyncStatQueue) {
-        LedgerAsyncWriteStatus laws = new LedgerAsyncWriteStatus(fragmentId, entryId, asyncStatQueue);
+    public LedgerAsyncWriteStatus createLedgerAsyncWriteStatus(int fragmentId, long entryId, ByteBuffer bdata,
+            Queue<OpStatEntry> asyncStatQueue) {
+        LedgerAsyncWriteStatus laws = new LedgerAsyncWriteStatus(fragmentId, entryId, this, bdata, asyncStatQueue);
         asyncWriteStatus.putIfAbsent(fragmentId, laws);
         return asyncWriteStatus.get(fragmentId);
     }

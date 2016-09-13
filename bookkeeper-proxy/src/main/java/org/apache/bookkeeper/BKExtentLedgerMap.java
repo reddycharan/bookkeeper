@@ -101,7 +101,6 @@ public class BKExtentLedgerMap {
             this.readHandleTTL = readHandleTTL;
             return this;
         }
-
     }
 
     public static BKExtentLedgerMapBuilder newBuilder() {

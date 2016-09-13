@@ -1,5 +1,6 @@
 package org.apache.bookkeeper;
 
+import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -17,11 +18,16 @@ public class LedgerAsyncWriteStatus {
     private final int fragmentId;
     private CountDownLatch latch;
     private Queue<OpStatEntry> asyncWriteStatQueue;
+    private final ByteBuffer bdata;
+    private final LedgerPrivateData lpd;
 
-    public LedgerAsyncWriteStatus(int fragmentId, long entryId, Queue<OpStatEntry> asyncStatQueue) {
+    public LedgerAsyncWriteStatus(int fragmentId, long entryId, LedgerPrivateData ledgerPrivateData, ByteBuffer bdata,
+            Queue<OpStatEntry> asyncStatQueue) {
         this.fragmentId = fragmentId;
         this.expectingEntryId = entryId;
         this.asyncWriteStatQueue = asyncStatQueue;
+        this.lpd = ledgerPrivateData;
+        this.bdata = bdata;
         this.latch = new CountDownLatch(1);
     }
 
@@ -49,6 +55,12 @@ public class LedgerAsyncWriteStatus {
         this.bkError = result;
         this.actualEntryId = entryId;
         this.inProgress = false;
+
+        // release borrowed buffer back to pool.
+        if (this.bdata != null) {
+            lpd.getBufferPool().returnBuffer(this.bdata);
+        }
+
         // Update stats
         while (!this.asyncWriteStatQueue.isEmpty()) {
             OpStatEntry osl = this.asyncWriteStatQueue.remove();

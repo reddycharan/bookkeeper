@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 public class BKSfdcClient {
     private final static Logger LOG = LoggerFactory.getLogger(BKSfdcClient.class);
     private final BookKeeperProxyConfiguration bkpConfig;
+    private final BKByteBufferPool bufPool;
     BKExtentLedgerMap elm = null;
     long ledgerId = LedgerHandle.INVALID_ENTRY_ID;
     BookKeeper bk = null;
@@ -35,10 +36,11 @@ public class BKSfdcClient {
     private DigestType digestType;
 
     public BKSfdcClient(BookKeeperProxyConfiguration bkpConfig, BookKeeper bk, BKExtentLedgerMap elm,
-        StatsLogger statsLogger) {
+            BKByteBufferPool bufPool, StatsLogger statsLogger) {
         this.bkpConfig = bkpConfig;
         this.bk = bk;
         this.elm = elm;
+        this.bufPool = bufPool;
         initBookkeeperConfiguration();
     }
 
@@ -60,7 +62,7 @@ public class BKSfdcClient {
 
         LedgerHandle lh = bk.createLedgerAdv(extentId.asLong(), ensembleSize, writeQuorumSize, ackQuorumSize,
                 digestType, password.getBytes(), null);
-        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh);
+        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh, bufPool);
         elm.addWriteLedger(extentId, lpd);
     }
 
@@ -70,7 +72,7 @@ public class BKSfdcClient {
                 digestType, password.getBytes());
 
         final BKExtentId extentId = new BKExtentIdByteArray(lh.getId());
-        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh);
+        final LedgerPrivateData lpd = LedgerPrivateData.buildWriteHandle(lh, bufPool);
         elm.addWriteLedger(extentId, lpd);
 
         return extentId;
@@ -96,7 +98,7 @@ public class BKSfdcClient {
         }
 
         lh = bk.openLedger(extentId.asLong(), digestType, password.getBytes());
-        final LedgerPrivateData lpd = LedgerPrivateData.buildRecoveryReadHandle(lh);
+        final LedgerPrivateData lpd = LedgerPrivateData.buildRecoveryReadHandle(lh, bufPool);
         elm.addRecoveryReadLedgerPrivateData(extentId, lpd);
         return lh;
     }
@@ -115,7 +117,7 @@ public class BKSfdcClient {
         }
 
         lh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
-        final LedgerPrivateData lpd = LedgerPrivateData.buildNonRecoveryReadHandle(lh);
+        final LedgerPrivateData lpd = LedgerPrivateData.buildNonRecoveryReadHandle(lh, bufPool);
         elm.addNonRecoveryReadLedgerPrivateData(extentId, lpd);
 
         return lh;
@@ -244,7 +246,8 @@ public class BKSfdcClient {
         return laws;
     }
 
-    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, Queue<OpStatEntry> asyncStatQueue) throws BKException, InterruptedException {
+    public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata,
+            Queue<OpStatEntry> asyncStatQueue) throws BKException, InterruptedException {
 
         long entryId;
         LedgerHandle lh = null;
@@ -294,7 +297,7 @@ public class BKSfdcClient {
             LedgerAsyncWriteStatus laws;
             ProxyAddCallback callback = new ProxyAddCallback();
             // Create LedgerAsyncWaitStatus object.
-            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId, asyncStatQueue);
+            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId, bdata, asyncStatQueue);
             lh.asyncAddEntry(tmpEntryId, bdata.array(), 0, bdata.limit(), callback, laws);
         } else {
             // Try to catch out-of-sequence addEntry.
@@ -384,11 +387,11 @@ public class BKSfdcClient {
         long entryId = -1;
 
         /**
-         * Implementation of callback interface for synchronous write method.
+         * Implementation of callback interface for asynchronous write method.
          *
          * @param rc
          *          return code
-         * @param leder
+         * @param ledger
          *          ledger identifier
          * @param entry
          *          entry identifier
