@@ -204,7 +204,7 @@ public class BKSfdcClient {
         elm.removeFromLedgerMap(extentId);
     }
 
-    public byte ledgerAsyncWriteStatus(BKExtentId extentId, int fragmentId, int timeout) throws BKException, InterruptedException {
+    public LedgerAsyncWriteStatus ledgerAsyncWriteStatus(BKExtentId extentId, int fragmentId, int timeout) throws BKException, InterruptedException {
         byte errorCode = BKPConstants.SF_OK;
 
         LedgerPrivateData lpd = elm.getWriteLedgerPrivateData(extentId);
@@ -241,7 +241,7 @@ public class BKSfdcClient {
                 }
             }            
         }
-        return errorCode;
+        return laws;
     }
 
     public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata, Queue<OpStatEntry> asyncStatQueue) throws BKException, InterruptedException {

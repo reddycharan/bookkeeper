@@ -336,13 +336,13 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     // For the following Async Write Status we are doing preopsleep for 1 sec, so we should get OK status but not InProgress status,
                                     // though we are awaiting for 0 msecs time for the status response
                                     +   PREOPSLEEP + "-1000\n"
-                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-1-0-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-1-0-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-2-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-3-300-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-4-Thread3-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-4-30000-"+BKPConstants.SF_OK+"\n"
                                     // Here for the following statusreqs we are having sufficient await time, so we should get OK status
-                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-2-0-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-4-1000-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread3-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-2-0-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-4-1000-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerOpenReadReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-8-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-1\n"
@@ -367,23 +367,25 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   NUMOFTHREADS + "-2\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
-                                    +   NUMOFSLOTS + "-8\n"
+                                    +   NUMOFSLOTS + "-9\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-1-1000000-"+BKPConstants.SF_OK+"\n"
                                     // in the following operation we are waiting for quite sometime to get the result, so it should succeed
-                                    +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-1-3000-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-1-3000-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_OK+"\n"
                                     // here we are doing out of order async write operation
                                     +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-3-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-3-1-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_ErrorInProgress+"\n"
+
                                     // in this slot, in Thread2 we are writing fragment 2 after 5000 msecs preop sleep. But in thread1 we are waiting forever to get status of
                                     // the asyncwrite of fragment 3. Since we are waiting for status forever in Thread1 we will eventually get ok status response.
                                     +   PREOPSLEEP + "-5000\n"
-                                    +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-3-"+ LedgerAsyncWriteStatusReqBKPOperation.INFINITE_TIMEOUT+"-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-3-"+ LedgerAsyncWriteStatusReqBKPOperation.INFINITE_TIMEOUT+"-"+BKPConstants.SF_OK+"-"+BKPConstants.SF_OK+"\n"
                                     // following are BadRequest scenarios according to the contract of AsyncAPI
-                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-3-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
-                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-2-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
-                                    +   BKPOPERATION + "-6-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext2-2-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
-                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-3-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-7-Thread1-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext1-2-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-7-Thread2-"+BKPConstants.LedgerAsyncWriteStatusReq+"-ext2-2-0-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-8-Thread2-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
 

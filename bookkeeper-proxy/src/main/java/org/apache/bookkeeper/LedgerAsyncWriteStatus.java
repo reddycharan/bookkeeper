@@ -5,11 +5,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.BKProxyWorker.OpStatEntry;
+import org.apache.bookkeeper.BKProxyWorker.OpStatEntryTimer;
 import org.apache.bookkeeper.client.BKException.Code;
 
 public class LedgerAsyncWriteStatus {
     private volatile boolean inProgress = true;
     private volatile int bkError = Code.UnexpectedConditionException;
+    private long completionTime = 0;
     private volatile long actualEntryId; // EntryId number we received from BK client
     private final long expectingEntryId; // entryId number we will be expecting
     private final int fragmentId;
@@ -55,6 +57,9 @@ public class LedgerAsyncWriteStatus {
             } else {
                 osl.markSuccess();
             }
+            if (osl instanceof OpStatEntryTimer) {
+                this.completionTime = ((OpStatEntryTimer) osl).getElapsedTime();
+            }
         }
         latch.countDown();
     }
@@ -65,5 +70,9 @@ public class LedgerAsyncWriteStatus {
         }
         // Finished execution.
         return BKPConstants.convertBKtoSFerror(bkError);
+    }
+
+    public long getCompletionTime() {
+        return this.completionTime;
     }
 }

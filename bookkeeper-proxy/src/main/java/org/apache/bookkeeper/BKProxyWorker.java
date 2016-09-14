@@ -75,6 +75,7 @@ class BKProxyWorker implements Runnable {
     public class OpStatEntryTimer extends OpStatEntry {
 
         private long startTime;
+        private long elapsedTime;
 
         public OpStatEntryTimer(OpStatsLogger osl, long startTime) {
             super(osl);
@@ -82,11 +83,17 @@ class BKProxyWorker implements Runnable {
         }
 
         public void markSuccess() {
-            osl.registerSuccessfulEvent(MathUtils.elapsedNanos(this.startTime), TimeUnit.NANOSECONDS);
+            elapsedTime = MathUtils.elapsedNanos(this.startTime);
+            osl.registerSuccessfulEvent(elapsedTime, TimeUnit.NANOSECONDS);
         }
 
         public void markFailure() {
-            osl.registerFailedEvent(MathUtils.elapsedNanos(this.startTime), TimeUnit.NANOSECONDS);
+            elapsedTime = MathUtils.elapsedNanos(this.startTime);
+            osl.registerFailedEvent(elapsedTime, TimeUnit.NANOSECONDS);
+        }
+
+        public long getElapsedTime() {
+            return elapsedTime;
         }
     }
 
@@ -484,6 +491,7 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerAsyncWriteStatusReq): {
+                        LedgerAsyncWriteStatus laws;
                         respId = BKPConstants.LedgerAsyncWriteStatusResp;
                         resp.put(respId);
                         asreq.clear();
@@ -496,8 +504,10 @@ class BKProxyWorker implements Runnable {
                         fragmentId = asreq.getInt();
                         timeout = asreq.getInt(); // msecs
                         opStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutStatusTimer, startTime));
-                        errorCode = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
-                        resp.put(errorCode);
+                        laws = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
+                        resp.put(BKPConstants.SF_OK); //RC of the request to get the status.
+                        resp.put(laws.getResult()); // RC of the actual async IO
+                        resp.putLong(laws.getCompletionTime()); // IO Completion Time.
                         resp.flip();
                         clientChannelWrite(resp);
                         break;

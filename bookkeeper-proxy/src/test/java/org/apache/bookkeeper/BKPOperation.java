@@ -160,6 +160,22 @@ public abstract class BKPOperation extends AbstractOperation {
         }
     }
 
+    public void getByteFromResponseAndVerify(SocketChannel clientSocketChannel, byte expectedValue, String paramName)
+            throws OperationException, IOException {
+        ByteBuffer nextByteResp = ByteBuffer.allocate(1);
+        nextByteResp.order(ByteOrder.nativeOrder());
+        while (nextByteResp.hasRemaining()) {
+            clientSocketChannel.read(nextByteResp);
+        }
+        nextByteResp.flip();
+        byte actualvalue = nextByteResp.get();
+        if (actualvalue != expectedValue) {
+            throw new OperationException(String.format(
+                    "Operation at Timeslot: %d in ThreadId: %s has failed because of unexpected %s : %d, whereas the expected value is %d",
+                    getTimeSlot(), getThreadId(), paramName, actualvalue, expectedValue));
+        }
+    }
+
     public void getIntFromResponseAndVerify(SocketChannel clientSocketChannel, int expectedValue, String paramName)
             throws OperationException, IOException {
         ByteBuffer nextIntResp = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE);

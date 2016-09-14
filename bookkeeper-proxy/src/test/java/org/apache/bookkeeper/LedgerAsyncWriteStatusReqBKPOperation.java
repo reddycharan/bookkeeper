@@ -7,14 +7,16 @@ public class LedgerAsyncWriteStatusReqBKPOperation extends BKPOperationExtension
 
     private int fragmentID;
     private int timeout;
+    private byte expectedAsyncWriteStatus;
     private static final int MAXWAITTIME_FOR_ASYNCWRITESTATUS = 10 * 1000;
     public static final String INFINITE_TIMEOUT = "INFINITE";
 
     public LedgerAsyncWriteStatusReqBKPOperation(short protocolVersion, int timeSlot, String threadId, byte requestType,
-            byte[] extentId, int fragmentID, int timeout, byte responseType, byte expectedReturnStatus) {
+            byte[] extentId, int fragmentID, int timeout, byte responseType, byte expectedReturnStatus, byte expectedAsyncWriteStatus) {
         super(protocolVersion, timeSlot, threadId, requestType, extentId, responseType, expectedReturnStatus);
         this.fragmentID = fragmentID;
         this.timeout = timeout;
+        this.expectedAsyncWriteStatus = expectedAsyncWriteStatus;
     }
 
     public static LedgerAsyncWriteStatusReqBKPOperation createLedgerAsyncWriteStatusReqBKPOperation(
@@ -42,12 +44,31 @@ public class LedgerAsyncWriteStatusReqBKPOperation extends BKPOperationExtension
             }
         }
         byte expectedReturnStatus = Byte.valueOf(operationParameters[6]);
+        byte expectedAsyncWriteStatus = BKPConstants.SF_Error; // Default error.
+        if (expectedReturnStatus == BKPConstants.SF_OK) {
+            expectedAsyncWriteStatus = Byte.valueOf(operationParameters[7]);
+        }
 
         LedgerAsyncWriteStatusReqBKPOperation lawsOperation = new LedgerAsyncWriteStatusReqBKPOperation(protocolVersion,
                 timeSlot, threadId, requestType, extentId, fragmentID, timeout, BKPConstants.LedgerAsyncWriteStatusResp,
-                expectedReturnStatus);
+                expectedReturnStatus, expectedAsyncWriteStatus);
 
         return lawsOperation;
+    }
+
+    @Override
+    public void receivePayloadAndVerify(SocketChannel clientSocketChannel) throws OperationException, IOException {
+        if (getExpectedReturnStatus() == BKPConstants.SF_OK) {
+            // Validate the AsyncWrite completion status
+            getByteFromResponseAndVerify(clientSocketChannel, this.expectedAsyncWriteStatus, "AsyncWriteStatus");
+            if (this.expectedAsyncWriteStatus == BKPConstants.SF_ErrorInProgress) {
+                // If in progress, time should be set to 0.
+                getLongFromResponseAndVerify(clientSocketChannel, 0, "CompletinTime");
+            } else {
+                // Make sure we are not receiving negative completion time.
+                getLongFromResponseAndVerifyEqualOrGreater(clientSocketChannel, 0, "CompletinTime");
+            }
+        }
     }
 
     @Override
