@@ -72,6 +72,14 @@ public class BKProxyMain implements Runnable {
     private StatsProvider statsProvider;
     private StatsLogger statsLogger;
     private final Counter proxyWorkerPoolCounter;
+    private int exitCode = ProxyExitCode.OK;
+
+    public class ProxyExitCode {
+        // normal quit
+        public final static int OK = 0;
+        // exception running BookKeeperProxy
+        public final static int PROXY_EXCEPTION = 1;
+    }
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
@@ -135,7 +143,8 @@ public class BKProxyMain implements Runnable {
                         sock = serverChannel.accept();
                     } catch (ClosedChannelException cce) {
                         // we can get this exception when serverChannel.close() is called
-                        LOG.debug("Channel has been closed, so terminating main thread. Exception:", cce);
+                        LOG.error("Channel has been closed, so terminating main thread. Exception:", cce);
+                        exitCode = ProxyExitCode.PROXY_EXCEPTION;
                         break;
                     }
                     String remoteAddress = "";
@@ -157,7 +166,6 @@ public class BKProxyMain implements Runnable {
                         continue;
                     }
                     sock = null;
-
                 } finally {
                     if (sock != null) {
                         sock.close();
@@ -166,8 +174,13 @@ public class BKProxyMain implements Runnable {
                 }
             }
         } catch (IOException | InterruptedException | KeeperException e) {
-            LOG.error("Exception in starting a new bookkeeper proxy thread:", e);
+            LOG.error("Exception in starting a new bookkeeper proxy thread", e);
+            exitCode = ProxyExitCode.PROXY_EXCEPTION;
             return;
+        } catch (Exception e) {
+            LOG.error("Exception in starting a new bookkeeper proxy thread", e);
+            exitCode = ProxyExitCode.PROXY_EXCEPTION;
+            throw e;
         }
     }
 
@@ -227,19 +240,24 @@ public class BKProxyMain implements Runnable {
                 Runtime.getRuntime().addShutdownHook(new Thread() {
                     @Override
                     public void run() {
+                        LOG.info("ShutdownHook is triggered");
                         bkMainReference.get().shutdown();
-                        LOG.debug("Shutdown hook of BKProxyMain ran successfully");
+                        LOG.info("ShutdownHook of BKProxyMain ran successfully");
                     }
                 });
-                LOG.debug("Registered the shutdown hook successfully");
-                bkWorkerThreadController.join();  
+                LOG.info("Registered the shutdown hook successfully");
+                bkWorkerThreadController.join();
+                LOG.info("BKProxyMain instance thread has died");
             }
         } catch (Exception e) {
             LOG.error("Exception in main thread:", e);
             throw e;
         } finally {
             if (bkMainReference.get() != null) {
+                LOG.info("Shutting down BKProxy Instance before exiting");
                 bkMainReference.get().shutdown();
+                LOG.info("Exiting with exitcode: " + bkMainReference.get().exitCode);
+                System.exit(bkMainReference.get().exitCode);
             }
         }
     }
