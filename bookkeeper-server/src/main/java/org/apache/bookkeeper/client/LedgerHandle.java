@@ -1258,6 +1258,8 @@ public class LedgerHandle implements AutoCloseable {
 
             // We've successfully changed an ensemble
             ensembleChangeCounter.inc();
+            LOG.info("New Ensemble: {} for ledger: {}", ensembleInfo.newEnsemble, ledgerId);
+
             // the failed bookie has been replaced
             unsetSuccessAndSendWriteRequest(ensembleInfo.bookieIndex);
         }

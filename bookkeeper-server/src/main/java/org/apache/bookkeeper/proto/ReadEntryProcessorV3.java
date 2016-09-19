@@ -121,7 +121,7 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
             LOG.error("No ledger found while reading entry:{} from ledger: {}", new Object[] {entryId, ledgerId, e});
         } catch (Bookie.NoEntryException e) {
             status = StatusCode.ENOENTRY;
-            LOG.error("No ledger found while reading entry:{} from ledger:{}. status:{}", new Object[] {entryId, ledgerId, status, e});
+            LOG.error("No entry found while reading entry:{} from ledger:{}. status:{}", new Object[] {entryId, ledgerId, status, e});
         } catch (IOException e) {
             status = StatusCode.EIO;
             LOG.error("IOException while reading entry:{} from ledger:{}", new Object[] {entryId, ledgerId, e});

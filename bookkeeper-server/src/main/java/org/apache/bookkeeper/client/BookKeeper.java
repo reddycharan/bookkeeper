@@ -598,6 +598,9 @@ public class BookKeeper implements AutoCloseable {
             throw BKException.create(BKException.Code.UnexpectedConditionException);
         }
 
+        LOG.info("Ensemble: {} for ledger: {}", counter.getLh().getLedgerMetadata().getEnsemble(0L),
+                counter.getLh().getId());
+
         return counter.getLh();
     }
 
@@ -663,6 +666,9 @@ public class BookKeeper implements AutoCloseable {
             LOG.error("Unexpected condition : no ledger handle returned for a success ledger creation");
             throw BKException.create(BKException.Code.UnexpectedConditionException);
         }
+
+        LOG.info("Ensemble: {} for ledger: {}", counter.getLh().getLedgerMetadata().getEnsemble(0L),
+                counter.getLh().getId());
 
         return counter.getLh();
     }
@@ -764,6 +770,9 @@ public class BookKeeper implements AutoCloseable {
             LOG.error("Unexpected condition : Expected ledgerId: {} but got: {}", ledgerId, counter.getLh().getId());
             throw BKException.create(BKException.Code.UnexpectedConditionException);
         }
+
+        LOG.info("Ensemble: {} for ledger: {}", counter.getLh().getLedgerMetadata().getEnsemble(0L), ledgerId);
+
         return counter.getLh();
     }
 
