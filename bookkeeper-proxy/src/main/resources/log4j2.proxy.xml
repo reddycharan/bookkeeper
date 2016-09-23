@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="${sys:bkproxy.log.level}">
+  <Appenders>
+    <Console name="CONSOLE" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
+    </Console>
+    <RollingFile name="BOOKKEEPER-PROXY" fileName="${sys:bkproxy.log.dir}/${sys:bkproxy.log.file}"
+        filePattern="${sys:bkproxy.log.dir}/${sys:bkproxy.log.pattern}">
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
+      <Policies>
+      	<TimeBasedTriggeringPolicy/>
+      </Policies>
+      <DefaultRolloverStrategy>
+      	<Delete basePath="${sys:bkproxy.log.dir}">
+      		<!-- Delete log files older than P[days]D old -->
+      		<IfLastModified age="${sys:bkproxy.log.max.fileAge}"/>
+      	</Delete>
+      </DefaultRolloverStrategy>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Root level="${sys:bkproxy.log.level}">
+      <AppenderRef ref="BOOKKEEPER-PROXY"/>
+      <AppenderRef ref="CONSOLE"/>
+    </Root>
+  </Loggers>
+</Configuration>
+

@@ -33,7 +33,7 @@ BINDIR=`dirname "$0"`
 BK_HOME=`cd $BINDIR/..;pwd`
 
 DEFAULT_CONF=$BK_HOME/conf/bk_server.conf
-DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.properties
+DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.server.xml
 # this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
 DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
 
@@ -170,7 +170,7 @@ else
 fi
 
 if [ $COMMAND == "shell" ]; then
-    DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.shell.properties
+    DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.shell.xml
     if [[ $1 == "localbookie"  ]]; then
         if [[ $2 == -* ]]; 
         then
@@ -217,9 +217,12 @@ if [ -z "$BOOKIE_LOG_CONF" ]; then
     BOOKIE_LOG_CONF=$DEFAULT_LOG_CONF
 fi
 
+BOOKIE_LOG_FORMAT=${BOOKIE_LOG_FORMAT:-"$HOSTNAME.sfstore"}
+BOOKIE_LOG_FILE_PATTERN=${BOOKIE_LOG_FILE_PATTERN:-"$HOSTNAME.sfstore.%d{yyyyMMddHH}.log"}
+BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"$BOOKIE_LOG_FORMAT.log"}
 BOOKIE_CLASSPATH="$BOOKIE_JAR:$BOOKIE_CLASSPATH:$BOOKIE_EXTRA_CLASSPATH"
 BOOKIE_CLASSPATH="`dirname $BOOKIE_LOG_CONF`:$BOOKIE_CLASSPATH"
-OPTS="$OPTS -Dlog4j.configuration=`basename $BOOKIE_LOG_CONF`"
+OPTS="$OPTS -Dlog4j.configurationFile=`basename $BOOKIE_LOG_CONF`"
 
 #Allow the jvm to use the limits of the host
 OPTS="$OPTS -XX:-MaxFDLimit "
@@ -242,11 +245,16 @@ BOOKIE_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/bk-gc-log"
 BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"INFO"}
 BOOKIE_LOG_FILE_SIZE=${BOOKIE_LOG_FILE_SIZE:-"100MB"}
 BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
+#Delete logs with a last modified older than "P[days]D"
+BOOKIE_LOG_MAX_AGE=${BOOKIE_LOG_MAX_AGE:-"P20D"}
 
 #Configure log configuration system properties
 OPTS="$OPTS -Dbookkeeper.root.logger=$BOOKIE_ROOT_LOGGER"
 OPTS="$OPTS -Dbookkeeper.log.dir=$BOOKIE_LOG_DIR"
 OPTS="$OPTS -Dbookkeeper.log.file=$BOOKIE_LOG_FILE"
+OPTS="$OPTS -Dbookkeeper.log.pattern=$BOOKIE_LOG_FILE_PATTERN"
+OPTS="$OPTS -Dbookkeeper.log.max.fileAge=$BOOKIE_LOG_MAX_AGE"
+
 if [ $COMMAND == "shell" ]; then
     OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog"
 else

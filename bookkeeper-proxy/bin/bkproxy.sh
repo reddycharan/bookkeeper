@@ -144,13 +144,10 @@ CLASSPATH=${CLASSPATH}:${BKPROXY_CLASSPATH_SUFFIX}
 # Other constants
 ####################
 BKPROXY_LOG_DIR=${BKPROXY_LOG_DIR:-"$BKPROXY_HOME/logs"}
-BKPROXY_LOG_FILE=${BKPROXY_LOG_FILE:-"bookkeeper-proxy.log"}
+BKPROXY_GC_LOGS_FILE=${BKPROXY_LOG_DIR:-"BKPROXY_LOG_DIR/proxy-gc-log}"}
+BKPROXY_LOG_PATTERN=${BKPROXY_LOG_PATTERN:-"$HOSTNAME.proxy-%d{yyyyMMddHH}.log"}
+BKPROXY_LOG_FILE=${BKPROXY_LOG_FILE:-"$HOSTNAME.proxy.log"}
 BKPROXY_LOG_LEVEL=${BKPROXY_LOG_LEVEL:-"INFO"}
-BKPROXY_LOG_FILE_SIZE=${BKPROXY_LOG_FILE_SIZE:-"100MB"}
-BKPROXY_LOG_FILE_COUNT=${BKPROXY_LOG_FILE_COUNT:-"10"}
-if [ -z "${BKPROXY_GC_LOGS_FILE}" ]; then
-  BKPROXY_GC_LOGS_FILE="${BKPROXY_LOG_DIR}/proxy-gc-log"
-fi
 
 # Setup the generic java options
 #################################
@@ -161,6 +158,10 @@ JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.file=${BKPROXY_LOG_FILE}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.level=${BKPROXY_LOG_LEVEL}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filesize=${BKPROXY_LOG_FILE_SIZE}"
 JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.filecount=${BKPROXY_LOG_FILE_COUNT}"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.pattern=${BKPROXY_LOG_PATTERN}"
+
+#Delete logs with a last modified older than "P[days]D"
+JAVA_OPTS="${JAVA_OPTS} -Dbkproxy.log.max.fileAge=P20D"
 JAVA_OPTS="${JAVA_OPTS} -Djava.net.preferIPv4Stack=true -Duser.timezone=UTC"
 JAVA_OPTS="${JAVA_OPTS} -XX:-MaxFDLimit"
 GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:G1HeapRegionSize=8M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:+PrintGCApplicationStoppedTime -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:+PrintStringTableStatistics -XX:StringTableSize=1000003 -XX:+UseGCLogFileRotation -XX:GCLogFileSize=100M -Xloggc:$BKPROXY_GC_LOGS_FILE -XX:NumberOfGCLogFiles=$BKPROXY_LOG_FILE_COUNT" #-XX:+UseLinuxPosixThreadCPUClocks
@@ -170,7 +171,10 @@ PROD_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=40"
 DEV_SPECIFIC_OPTS=" "
 VPOD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages "
 PROD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages"
-JAVA_OPTS="${JAVA_OPTS} ${GC_OPTS}"
+#LOG4J_OPTS="-Dlog4j.configurationFile=${BKPROXY_HOME}/src/main/resources/log4j2.proxy.xml"
+LOG4J_OPTS="-Dlog4j.configurationFile=log4j2.proxy.xml"
+echo "Using this config file: ${BKPROXY_HOME}/src/main/resources/log4j2.proxy.xml"
+JAVA_OPTS="${JAVA_OPTS} ${LOG4J_OPTS}"
 
 #####################
 # Parse arguments

@@ -79,8 +79,10 @@ esac
 export BOOKIE_LOG_DIR=$BOOKIE_LOG_DIR
 export BOOKIE_ROOT_LOGGER=$BOOKIE_ROOT_LOGGER
 if [ -z "${BOOKIE_LOG_FORMAT+x}"  ]; then
+  export BOOKIE_LOG_FILE_PATTERN="bookkeeper-$command-$HOSTNAME-%d{yyyyMMddHH}.log"
   export BOOKIE_LOG_FILE=bookkeeper-$command-$HOSTNAME.log
 else
+  export BOOKIE_LOG_FILE_PATTERN="$BOOKIE_LOG_FORMAT-%d{yyyyMMddHH}.log"
   export BOOKIE_LOG_FILE=$BOOKIE_LOG_FORMAT.log
 fi
 
