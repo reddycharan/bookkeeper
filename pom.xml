@@ -214,7 +214,8 @@
                 </ignores>
                   <signature>
                     <groupId>org.codehaus.mojo.signature</groupId>
-                    <artifactId>java17</artifactId>
+                    <!-- BOOKKEEPER-932 moves code/build to Java 8 -->
+                    <artifactId>java18</artifactId>
                     <version>1.0</version>
                   </signature>
                 </configuration>

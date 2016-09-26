@@ -18,18 +18,33 @@
 package org.apache.bookkeeper.conf;
 
 import java.net.URL;
+import java.time.Clock;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.SystemConfiguration;
-
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.util.ReflectionUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * Abstract configuration
@@ -58,10 +73,189 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     protected final static String METASTORE_IMPL_CLASS = "metastoreImplClass";
     protected final static String METASTORE_MAX_ENTRIES_PER_SCAN = "metastoreMaxEntriesPerScan";
 
+    private volatile Map<DayOfWeek, List<DailyRange>> dailyRanges = null;
+    private final Object rangesLock = new Object(); 
+    
+    private final static String propForRangePattern = "%s@%s";
+    private final static String timerangePattern = "timerange%d";
+    private final static String timerangeStart = ".start";
+    private final static String timerangeEnd = ".end";
+    private final static String timerangeDays = ".days";
+    
+    private final Clock localClock = Clock.systemDefaultZone();
+
     protected AbstractConfiguration() {
         super();
         // add configuration for system properties
         addConfiguration(new SystemConfiguration());
+    }
+
+    // immutable
+    final class DailyRange {
+        public final String name;
+        public final LocalTime start;
+        public final LocalTime end;
+        
+        public DailyRange(String name, LocalTime start, LocalTime end) {
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException(
+                        String.format("parsing range %s failed: start time %s cannot be after end time %s", name,
+                                start.toString(), end.toString()));
+            }
+
+            this.start = start;
+            this.end = end;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s: from %s to %s", name, start.toString(), end.toString());
+        }
+    }
+    
+    public LocalTime getLocalTime() {
+        return LocalTime.from(localClock.instant().atZone(ZoneId.systemDefault())).truncatedTo(ChronoUnit.MINUTES);
+    }
+
+    public DayOfWeek getDayOfWeek() {
+        return LocalDate.from(localClock.instant().atZone(ZoneId.systemDefault())).getDayOfWeek();
+    }
+
+    protected Map<DayOfWeek, List<DailyRange>> getDailyRanges() {
+        loadDailyRangesIfNeeded();
+        return dailyRanges;
+    }
+    
+    // helper to format available ranges
+    protected static String rangesToString(Map<DayOfWeek, List<DailyRange>> ranges) {
+        if (ranges == null) {
+            return "null";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(System.lineSeparator());
+        for (DayOfWeek day : DayOfWeek.values()) {
+            sb.append(day.toString()).append(":").append(System.lineSeparator());
+            for (DailyRange dr : ranges.get(day)) {
+                sb.append("    ");
+                if (dr == null) {
+                    sb.append("null");
+                } else {
+                    sb.append(dr.toString());
+                }
+                sb.append(System.lineSeparator());
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private void loadDailyRangesIfNeeded() {
+        if (dailyRanges == null) {
+            synchronized (rangesLock) {
+                if (dailyRanges == null) {
+                    final Map<DayOfWeek, List<DailyRange>> ranges = new HashMap<>();
+                    for (DayOfWeek dow : DayOfWeek.values()) {
+                        ranges.put(dow, Lists.<DailyRange>newArrayList());
+                    }
+
+                    for (int i = 0; i < Integer.MAX_VALUE; ++i) {
+                        final String rangeName = String.format(timerangePattern, i);
+                        final String startKey = rangeName + timerangeStart;
+                        final String endKey = rangeName + timerangeEnd;
+                        if (!this.containsKey(startKey) || !this.containsKey(endKey)) {
+                            break;
+                        }
+                        
+                        try {
+                            for (DayOfWeek day : parseDays(this.getStringArray(rangeName + timerangeDays))) {
+                                LocalTime start = LocalTime.parse(this.getString(startKey));
+                                LocalTime end = LocalTime.parse(this.getString(endKey));
+                                ranges.get(day).add(new DailyRange(rangeName, start, end));
+                             }
+                        } catch(Exception e) {
+                            LOG.error("failed to parse time range {}", rangeName, e);
+                            break;
+                        }
+                    }
+                    
+                    // let's make it all immutable.
+                    for (DayOfWeek dow : DayOfWeek.values()) {
+                        ranges.put(dow, ImmutableList.copyOf(ranges.get(dow)));
+                    }
+                    dailyRanges = ImmutableMap.copyOf(ranges);
+                }
+                LOG.info("Configuration loaded folowing effective time ranges: " + rangesToString(dailyRanges));
+            }
+        }
+    }
+    
+    private static Set<DayOfWeek> parseDays(String[] values) {
+        final Set<DayOfWeek> days;
+        if (values == null || values.length == 0) {
+            days = Sets.newHashSet(DayOfWeek.values());
+        } else {
+            days = Sets.newHashSet();
+            for (String s : values) {
+                days.add(DayOfWeek.valueOf(s.trim().toUpperCase()));
+            }
+        }
+        return days;
+    }
+
+    @VisibleForTesting
+    protected List<String> getActiveDailyRanges(LocalTime now, DayOfWeek dayOfWeek) {
+        return getActiveDailyRanges(getDailyRanges(), now, dayOfWeek);
+    }
+
+    private static List<String> getActiveDailyRanges(Map<DayOfWeek, List<DailyRange>> ranges, LocalTime now,
+            DayOfWeek dayOfWeek) {
+        ImmutableList.Builder<String> result = ImmutableList.builder(); 
+        List<DailyRange> todaysRanges = ranges.get(dayOfWeek);
+        for (DailyRange dr : todaysRanges) {
+            // includes start time, excludes end time.
+            if (now.compareTo(dr.start) >= 0 && now.isBefore(dr.end)) {
+                result.add(dr.name);
+            }
+        }
+        return result.build();
+    }
+
+    /*
+     * a way to provide callback to iterate over all possible timeranges to
+     * perform validation of parameters subset
+     */
+    public void validateParametersForAllTimeRanges(ConfigurationValidator validator) throws IllegalArgumentException {
+        Map<DayOfWeek, List<DailyRange>> ranges = getDailyRanges();
+        for (DayOfWeek day : ranges.keySet()) {
+            for (DailyRange dr : ranges.get(day)) {
+                try {
+                    // period start time is always included in the time range
+                    // the only problem is with overlapping ranges. The first
+                    // one wins.
+                    validator.validateAtTimeAndDay(dr.start, day);
+                } catch (Throwable t) {
+                    throw new IllegalArgumentException("validation failed for timerange " + dr.name, t);
+                }
+            }
+        }
+    }
+    
+    protected String getPropertyNameForFirstActiveTimerange(String propName) {
+        return getPropertyNameForFirstActiveTimerange(propName, getLocalTime(), getDayOfWeek());
+    }
+
+    @VisibleForTesting
+    protected String getPropertyNameForFirstActiveTimerange(String propName, LocalTime now, DayOfWeek dayOfWeek) {
+        for (String range : getActiveDailyRanges(now, dayOfWeek)) {
+            final String propForRange = String.format(propForRangePattern, propName, range);
+            if (this.containsKey(propForRange) && this.getProperty(propForRange) != null) {
+                return propForRange;
+            }
+        }
+
+        return propName;
     }
 
     /**

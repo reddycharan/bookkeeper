@@ -534,6 +534,19 @@ public class Bookie extends BookieCriticalThread {
         String ledgerStorageClass = conf.getLedgerStorageClass();
         LOG.info("Using ledger storage: {}", ledgerStorageClass);
         ledgerStorage = LedgerStorageFactory.createLedgerStorage(ledgerStorageClass);
+
+        ledgerStorage.addShutdownCallback(new Runnable() {
+            @Override
+            public void run() {
+                if (!Bookie.this.shuttingdown) {
+                    // ledger storage shut down unexpectedly
+                    // so we should let bookie server exists
+                    LOG.error("Ledger storage quit unexpectedly.");
+                    triggerBookieShutdown(ExitCode.BOOKIE_EXCEPTION);
+                }
+            }
+        });
+
         try {
             ledgerStorage.initialize(conf, ledgerManager, ledgerDirsManager, indexDirsManager, journal, statsLogger);
         } catch(NoWritableLedgerDirException nle) {

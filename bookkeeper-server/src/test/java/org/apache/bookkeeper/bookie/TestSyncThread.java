@@ -345,6 +345,10 @@ public class TestSyncThread {
 
         @Override
         public BKMBeanInfo getJMXBean() { return null; }
+
+        @Override
+        public void addShutdownCallback(Runnable r) {
+        }
     }
 
     private static class DummyLedgerDirsListener

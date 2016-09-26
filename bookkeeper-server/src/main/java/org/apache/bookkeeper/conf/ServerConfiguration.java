@@ -18,6 +18,8 @@
 package org.apache.bookkeeper.conf;
 
 import java.io.File;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -191,15 +193,21 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get Garbage collection wait time. Default value is 10 minutes.
-     * The guideline is not to set a too low value for this, if using zookeeper based
-     * ledger manager. And it would be nice to align with the average lifecyle time of
-     * ledgers in the system.
+     * Get Garbage collection wait time. Default value is 10 minutes. The
+     * guideline is not to set a too low value for this, if using zookeeper
+     * based ledger manager. And it would be nice to align with the average
+     * lifecyle time of ledgers in the system.
+     *
+     * Supports timerange-specific configuration.
      *
      * @return gc wait time
      */
     public long getGcWaitTime() {
-        return this.getLong(GC_WAIT_TIME, 600000);
+        return this.getLong(this.getPropertyNameForFirstActiveTimerange(GC_WAIT_TIME), 600000);
+    }
+
+    public long getGcWaitTime(LocalTime now, DayOfWeek day) {
+        return this.getLong(this.getPropertyNameForFirstActiveTimerange(GC_WAIT_TIME, now, day), 600000);
     }
 
     /**
@@ -798,7 +806,11 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return threshold of minor compaction
      */
     public double getMinorCompactionThreshold() {
-        return getDouble(MINOR_COMPACTION_THRESHOLD, 0.2f);
+        return getDouble(this.getPropertyNameForFirstActiveTimerange(MINOR_COMPACTION_THRESHOLD), 0.2f);
+    }
+
+    public double getMinorCompactionThreshold(LocalTime now, DayOfWeek day) {
+        return getDouble(this.getPropertyNameForFirstActiveTimerange(MINOR_COMPACTION_THRESHOLD, now, day), 0.2f);
     }
 
     /**
@@ -826,7 +838,11 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return threshold of major compaction
      */
     public double getMajorCompactionThreshold() {
-        return getDouble(MAJOR_COMPACTION_THRESHOLD, 0.8f);
+        return getDouble(this.getPropertyNameForFirstActiveTimerange(MAJOR_COMPACTION_THRESHOLD), 0.8f);
+    }
+
+    public double getMajorCompactionThreshold(LocalTime now, DayOfWeek day) {
+        return getDouble(this.getPropertyNameForFirstActiveTimerange(MAJOR_COMPACTION_THRESHOLD, now, day), 0.8f);
     }
 
     /**
@@ -851,7 +867,11 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return threshold of minor compaction
      */
     public long getMinorCompactionInterval() {
-        return getLong(MINOR_COMPACTION_INTERVAL, 3600);
+        return getLong(this.getPropertyNameForFirstActiveTimerange(MINOR_COMPACTION_INTERVAL), 3600);
+    }
+
+    public long getMinorCompactionInterval(LocalTime now, DayOfWeek day) {
+        return getLong(this.getPropertyNameForFirstActiveTimerange(MINOR_COMPACTION_INTERVAL, now, day), 3600);
     }
 
     /**
@@ -876,7 +896,11 @@ public class ServerConfiguration extends AbstractConfiguration {
      * @return high water mark
      */
     public long getMajorCompactionInterval() {
-        return getLong(MAJOR_COMPACTION_INTERVAL, 86400);
+        return getLong(this.getPropertyNameForFirstActiveTimerange(MAJOR_COMPACTION_INTERVAL), 86400);
+    }
+
+    public long getMajorCompactionInterval(LocalTime now, DayOfWeek day) {
+        return getLong(this.getPropertyNameForFirstActiveTimerange(MAJOR_COMPACTION_INTERVAL, now, day), 86400);
     }
 
     /**
@@ -904,7 +928,12 @@ public class ServerConfiguration extends AbstractConfiguration {
      *         false - suspend GC when disk full.
      */
     public boolean getIsForceGCAllowWhenNoSpace() {
-        return getBoolean(IS_FORCE_GC_ALLOW_WHEN_NO_SPACE, false);
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(IS_FORCE_GC_ALLOW_WHEN_NO_SPACE), false);
+    }
+
+    public boolean getIsForceGCAllowWhenNoSpace(LocalTime now, DayOfWeek day) {
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(IS_FORCE_GC_ALLOW_WHEN_NO_SPACE, now, day),
+                false);
     }
 
     /**

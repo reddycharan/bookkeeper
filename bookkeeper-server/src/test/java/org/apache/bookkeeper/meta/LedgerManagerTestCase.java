@@ -210,5 +210,9 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
 		public ByteBuffer getLastAddConfirmed(long ledgerId) {
 			return null;
 		}
+
+        @Override
+        public void addShutdownCallback(Runnable r) {
+        }
     }
 }

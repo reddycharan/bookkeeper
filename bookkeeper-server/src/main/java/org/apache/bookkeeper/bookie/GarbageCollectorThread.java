@@ -23,6 +23,8 @@ package org.apache.bookkeeper.bookie;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.GarbageCollector.GarbageCleaner;
+import org.apache.bookkeeper.conf.ConfigurationValidator;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.jmx.BKMBeanInfo;
 import org.apache.bookkeeper.meta.LedgerManager;
@@ -70,19 +73,13 @@ public class GarbageCollectorThread extends BookieThread {
     // Maps entry log files to the set of ledgers that comprise the file and the size usage per ledger
     private Map<Long, EntryLogMetadata> entryLogMetaMap = new ConcurrentHashMap<Long, EntryLogMetadata>();
 
-    // This is how often we want to run the Garbage Collector Thread (in milliseconds).
-    final long gcWaitTime;
+
+    private final ServerConfiguration conf;
 
     // Compaction parameters
     boolean enableMinorCompaction = false;
-    final double minorCompactionThreshold;
-    final long minorCompactionInterval;
 
     boolean enableMajorCompaction = false;
-    final double majorCompactionThreshold;
-    final long majorCompactionInterval;
-
-    final boolean isForceGCAllowWhenNoSpace;
 
     long lastMinorCompactionTime;
     long lastMajorCompactionTime;
@@ -127,6 +124,15 @@ public class GarbageCollectorThread extends BookieThread {
 
     final GarbageCollector garbageCollector;
     final GarbageCleaner garbageCleaner;
+
+    // parameters that we re-read dynamically but somewhat transactionally
+    // This is how often we want to run the Garbage Collector Thread (in
+    // milliseconds).
+    private long gcWaitTime;
+    private double minorCompactionThreshold;
+    private long minorCompactionInterval;
+    private double majorCompactionThreshold;
+    private long majorCompactionInterval;
 
     private static class Throttler {
         final RateLimiter rateLimiter;
@@ -218,10 +224,18 @@ public class GarbageCollectorThread extends BookieThread {
         throws IOException {
         super("GarbageCollectorThread");
 
+        // let's make sure parameters consistent for all configured time ranges
+        conf.validateParametersForAllTimeRanges(new ConfigurationValidator() {
+            @Override
+            public void validateAtTimeAndDay(LocalTime now, DayOfWeek day) throws IllegalArgumentException {
+                refreshGcConfigParams(now, day);
+            }
+        });
+        this.conf = conf;
+
         this.entryLogger = ledgerStorage.getEntryLogger();
         this.ledgerStorage = ledgerStorage;
 
-        this.gcWaitTime = conf.getGcWaitTime();
         this.isThrottleByBytes = conf.getIsThrottleByBytes();
         this.maxOutstandingRequests = conf.getCompactionMaxOutstandingRequests();
         this.compactionRateByEntries = conf.getCompactionRateByEntries();
@@ -230,6 +244,7 @@ public class GarbageCollectorThread extends BookieThread {
 
         // Start stat declaration
         this.statsLogger = statsLogger;
+
         this.reclaimedSpaceViaDeletes = 0L;
         this.totalEntryLogSize = 0L;
         this.reclaimedSpaceViaCompaction = 0L;
@@ -238,6 +253,29 @@ public class GarbageCollectorThread extends BookieThread {
         this.majorCompactionCounter = statsLogger.getCounter(MAJOR_COMPACTION_COUNT);
         this.gcThreadRuntime = statsLogger.getOpStatsLogger(THREAD_RUNTIME);
 
+        initializeStats(this.statsLogger);
+
+        this.garbageCleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                try {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("delete ledger : " + ledgerId);
+                    }
+
+                    ledgerStorage.deleteLedger(ledgerId);
+                } catch (IOException e) {
+                    LOG.error("Exception when deleting the ledger index file on the Bookie: ", e);
+                }
+            }
+        };
+
+        this.garbageCollector = new ScanAndCompareGarbageCollector(ledgerManager, ledgerStorage, conf, statsLogger);
+
+        lastMinorCompactionTime = lastMajorCompactionTime = MathUtils.now();
+    }
+
+    private void initializeStats(StatsLogger statsLogger) {
         statsLogger.registerGauge(ACTIVE_ENTRY_LOG_COUNT, new Gauge<Integer>() {
 
             @Override
@@ -308,71 +346,6 @@ public class GarbageCollectorThread extends BookieThread {
 
         });
         // End stat declaration
-
-        this.garbageCleaner = new GarbageCollector.GarbageCleaner() {
-            @Override
-            public void clean(long ledgerId) {
-                try {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("delete ledger : " + ledgerId);
-                    }
-
-                    ledgerStorage.deleteLedger(ledgerId);
-                } catch (IOException e) {
-                    LOG.error("Exception when deleting the ledger index file on the Bookie: ", e);
-                }
-            }
-        };
-
-        this.garbageCollector = new ScanAndCompareGarbageCollector(ledgerManager, ledgerStorage, conf, statsLogger);
-
-        // compaction parameters
-        minorCompactionThreshold = conf.getMinorCompactionThreshold();
-        minorCompactionInterval = conf.getMinorCompactionInterval() * SECOND;
-        majorCompactionThreshold = conf.getMajorCompactionThreshold();
-        majorCompactionInterval = conf.getMajorCompactionInterval() * SECOND;
-        isForceGCAllowWhenNoSpace = conf.getIsForceGCAllowWhenNoSpace();
-
-        if (minorCompactionInterval > 0 && minorCompactionThreshold > 0) {
-            if (minorCompactionThreshold > 1.0f) {
-                throw new IOException("Invalid minor compaction threshold "
-                        + minorCompactionThreshold);
-            }
-            if (minorCompactionInterval <= gcWaitTime) {
-                throw new IOException("Too short minor compaction interval : "
-                        + minorCompactionInterval);
-            }
-            enableMinorCompaction = true;
-        }
-
-        if (majorCompactionInterval > 0 && majorCompactionThreshold > 0) {
-            if (majorCompactionThreshold > 1.0f) {
-                throw new IOException("Invalid major compaction threshold "
-                                    + majorCompactionThreshold);
-            }
-            if (majorCompactionInterval <= gcWaitTime) {
-                throw new IOException("Too short major compaction interval : "
-                                    + majorCompactionInterval);
-            }
-            enableMajorCompaction = true;
-        }
-
-        if (enableMinorCompaction && enableMajorCompaction) {
-            if (minorCompactionInterval >= majorCompactionInterval ||
-                    minorCompactionThreshold >= majorCompactionThreshold) {
-                throw new IOException("Invalid minor/major compaction settings : minor ("
-                    + minorCompactionThreshold + ", " + minorCompactionInterval
-                    + "), major (" + majorCompactionThreshold + ", "
-                        + majorCompactionInterval + ")");
-            }
-        }
-
-        LOG.info("Minor Compaction : enabled=" + enableMinorCompaction + ", threshold="
-        + minorCompactionThreshold + ", interval=" + minorCompactionInterval);
-        LOG.info("Major Compaction : enabled=" + enableMajorCompaction + ", threshold="
-        + majorCompactionThreshold + ", interval=" + majorCompactionInterval);
-
-        lastMinorCompactionTime = lastMajorCompactionTime = MathUtils.now();
     }
 
     public synchronized void enableForceGC() {
@@ -417,12 +390,28 @@ public class GarbageCollectorThread extends BookieThread {
         while (running) {
             synchronized (this) {
                 try {
+                    refreshGcConfigParams(conf.getLocalTime(), conf.getDayOfWeek());
                     wait(gcWaitTime);
+                    refreshGcConfigParams(conf.getLocalTime(), conf.getDayOfWeek());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     continue;
+                } catch (IllegalArgumentException iae) {
+                    LOG.error("misconfigured compaction, shutting down");
+                    try {
+                        ledgerStorage.shutdown();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    break;
                 }
             }
+
+            LOG.info("Minor Compaction : enabled=" + enableMinorCompaction + ", threshold=" + minorCompactionThreshold
+                    + ", interval=" + minorCompactionInterval);
+            LOG.info("Major Compaction : enabled=" + enableMajorCompaction + ", threshold=" + majorCompactionThreshold
+                    + ", interval=" + majorCompactionInterval);
+
             long threadStart = MathUtils.nowInNano();
             boolean force = forceGarbageCollection.get();
             if (force) {
@@ -474,6 +463,43 @@ public class GarbageCollectorThread extends BookieThread {
             forceGarbageCollection.set(false);
         }
         LOG.info("GarbageCollectorThread exited loop!");
+    }
+
+    private void refreshGcConfigParams(LocalTime now, DayOfWeek day) {
+        gcWaitTime = conf.getGcWaitTime(now, day);
+        minorCompactionThreshold = conf.getMinorCompactionThreshold(now, day);
+        minorCompactionInterval = conf.getMinorCompactionInterval(now, day) * SECOND;
+        majorCompactionThreshold = conf.getMajorCompactionThreshold(now, day);
+        majorCompactionInterval = conf.getMajorCompactionInterval(now, day) * SECOND;
+
+        if (minorCompactionInterval > 0 && minorCompactionThreshold > 0) {
+            if (minorCompactionThreshold > 1.0f) {
+                throw new IllegalArgumentException("Invalid minor compaction threshold " + minorCompactionThreshold);
+            }
+            if (minorCompactionInterval <= gcWaitTime) {
+                throw new IllegalArgumentException("Too short minor compaction interval : " + minorCompactionInterval);
+            }
+            enableMinorCompaction = true;
+        }
+
+        if (majorCompactionInterval > 0 && majorCompactionThreshold > 0) {
+            if (majorCompactionThreshold > 1.0f) {
+                throw new IllegalArgumentException("Invalid major compaction threshold " + majorCompactionThreshold);
+            }
+            if (majorCompactionInterval <= gcWaitTime) {
+                throw new IllegalArgumentException("Too short major compaction interval : " + majorCompactionInterval);
+            }
+            enableMajorCompaction = true;
+        }
+
+        if (enableMinorCompaction && enableMajorCompaction) {
+            if (minorCompactionInterval >= majorCompactionInterval
+                    || minorCompactionThreshold >= majorCompactionThreshold) {
+                throw new IllegalArgumentException("Invalid minor/major compaction settings : minor ("
+                        + minorCompactionThreshold + ", " + minorCompactionInterval + "), major ("
+                        + majorCompactionThreshold + ", " + majorCompactionInterval + ")");
+            }
+        }
     }
 
     /**

@@ -415,5 +415,9 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         public ByteBuffer getLastAddConfirmed(long ledgerId) {
             return null;
         }
+
+        @Override
+        public void addShutdownCallback(Runnable r) {
+        }
     }
 }

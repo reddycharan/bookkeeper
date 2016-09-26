@@ -63,6 +63,11 @@ public interface LedgerStorage {
     void shutdown() throws InterruptedException;
 
     /**
+     * Adds callback for shutdown events.
+     */
+    void addShutdownCallback(Runnable r);
+
+    /**
      * Whether a ledger exists
      */
     boolean ledgerExists(long ledgerId) throws IOException;

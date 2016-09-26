@@ -44,6 +44,7 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.stats.NullStatsLogger;
+import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.LedgerMetadataListener;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
@@ -694,4 +695,42 @@ public class CompactionTest extends BookKeeperClusterTestCase {
         // This operation should succeed even if the entry log rolls over after the last entry was compacted
         compactionScannerFactory.flush();
     }
+
+    @Test(timeout = 60000)
+    public void testMisconfiguredCompaction() throws Exception {
+
+        baseConf.setMinorCompactionThreshold(1.1f);
+        baseConf.setMajorCompactionThreshold(1.1f);
+        Thread.sleep(baseConf.getGcWaitTime() * 2);
+
+        for (BookieServer server : bs) {
+            InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
+            GarbageCollectorThread gcThread = ledgerStorage.gcThread;
+            assertFalse(gcThread.running);
+            assertFalse(server.getBookie().isRunning());
+            assertFalse(gcThread.isAlive());
+            assertFalse(server.getBookie().isAlive());
+        }
+    }
+
+    @Test(timeout = 60000)
+    public void testMisconfiguredCompactionOnStart() throws Exception {
+        baseConf.setMinorCompactionThreshold(1.1f);
+        baseConf.setMajorCompactionThreshold(1.1f);
+
+        // restart bookies
+        restartBookies(baseConf);
+
+        Thread.sleep(baseConf.getGcWaitTime() * 2);
+
+        for (BookieServer server : bs) {
+            InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
+            GarbageCollectorThread gcThread = ledgerStorage.gcThread;
+            assertFalse(gcThread.running);
+            assertFalse(server.getBookie().isRunning());
+            assertFalse(gcThread.isAlive());
+            assertFalse(server.getBookie().isAlive());
+        }
+    }
+
 }

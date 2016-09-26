@@ -31,7 +31,8 @@ import org.apache.bookkeeper.bookie.EntryLogger.EntryLogListener;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 
 import java.util.concurrent.TimeUnit;
-
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -57,6 +58,8 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.STORAGE_GET_OFF
 public class InterleavedLedgerStorage implements CompactableLedgerStorage, EntryLogListener {
     private final static Logger LOG = LoggerFactory.getLogger(InterleavedLedgerStorage.class);
 
+    private final List<Runnable> onShutdownCallbacks = new LinkedList<>();
+
     // Hold the last checkpoint
     protected static class CheckpointHolder {
         Checkpoint lastCheckpoint = Checkpoint.MAX;
@@ -77,6 +80,10 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
             return lastCheckpoint;
         }
     }
+
+    // initializing to skip null checks in the future
+    // I expect initialize() to set actual config.
+    private volatile ServerConfiguration conf = new ServerConfiguration();
 
     EntryLogger entryLogger;
     LedgerCache ledgerCache;
@@ -107,7 +114,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                            LedgerDirsManager ledgerDirsManager, LedgerDirsManager indexDirsManager,
                            CheckpointSource checkpointSource, StatsLogger statsLogger)
             throws IOException {
-
+        this.conf = conf;
         this.checkpointSource = checkpointSource;
         entryLogger = new EntryLogger(conf, ledgerDirsManager, this);
         ledgerCache = new LedgerCacheImpl(conf, activeLedgers,
@@ -128,7 +135,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
             @Override
             public void diskAlmostFull(File disk) {
-                if (gcThread.isForceGCAllowWhenNoSpace) {
+                if (conf.getIsForceGCAllowWhenNoSpace()) {
                     gcThread.enableForceGC();
                 } else {
                     gcThread.suspendMajorGC();
@@ -137,7 +144,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
             @Override
             public void diskFull(File disk) {
-                if (gcThread.isForceGCAllowWhenNoSpace) {
+                if (conf.getIsForceGCAllowWhenNoSpace()) {
                     gcThread.enableForceGC();
                 } else {
                     gcThread.suspendMajorGC();
@@ -147,7 +154,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
             @Override
             public void allDisksFull() {
-                if (gcThread.isForceGCAllowWhenNoSpace) {
+                if (conf.getIsForceGCAllowWhenNoSpace()) {
                     gcThread.enableForceGC();
                 } else {
                     gcThread.suspendMajorGC();
@@ -163,7 +170,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
             @Override
             public void diskWritable(File disk) {
                 // we have enough space now
-                if (gcThread.isForceGCAllowWhenNoSpace) {
+                if (conf.getIsForceGCAllowWhenNoSpace()) {
                     // disable force gc.
                     gcThread.disableForceGC();
                 } else {
@@ -175,7 +182,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
             @Override
             public void diskJustWritable(File disk) {
-                if (gcThread.isForceGCAllowWhenNoSpace) {
+                if (conf.getIsForceGCAllowWhenNoSpace()) {
                     // if a disk is just writable, we still need force gc.
                     gcThread.enableForceGC();
                 } else {
@@ -196,12 +203,26 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         // shut down gc thread, which depends on zookeeper client
         // also compaction will write entries again to entry log file
         LOG.info("Shutting down InterleavedLedgerStorage");
-        gcThread.shutdown();
-        entryLogger.shutdown();
         try {
-            ledgerCache.close();
-        } catch (IOException e) {
-            LOG.error("Error while closing the ledger cache", e);
+            gcThread.shutdown();
+            entryLogger.shutdown();
+            try {
+                ledgerCache.close();
+            } catch (IOException e) {
+                LOG.error("Error while closing the ledger cache", e);
+            }
+        } finally {
+            onShutdown();
+        }
+    }
+
+    private void onShutdown() {
+        for (Runnable r : onShutdownCallbacks) {
+            try {
+                r.run();
+            } catch (Exception e) {
+                LOG.error("Error while executing onShutdown callback", e);
+            }
         }
     }
 
@@ -425,5 +446,10 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         // later if we provide kind of LSN (Log/Journal Squeuence Number)
         // mechanism when adding entry.
         checkpointHolder.setNextCheckpoint(checkpointSource.newCheckpoint());
+    }
+
+    @Override
+    public void addShutdownCallback(Runnable r) {
+        onShutdownCallbacks.add(r);
     }
 }
