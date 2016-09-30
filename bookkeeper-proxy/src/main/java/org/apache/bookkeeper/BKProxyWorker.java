@@ -328,6 +328,19 @@ class BKProxyWorker implements Runnable {
                         break;
                     }
 
+                    if (this.extentId.asLong() < 0) {
+                        LOG.error(
+                                "Exiting BKProxyWorker: " + bkProxyWorkerId
+                                        + " Received Request: {} for negative extentId: {}",
+                                BKPConstants.getReqRespString(reqId), extentId);
+                        errorCode = BKPConstants.SF_ErrorBadRequest;
+                        resp.put(respId);
+                        resp.put(errorCode);
+                        resp.flip();
+                        clientChannelWrite(resp);
+                        break;
+                    }
+
                     //Set time after client channel read. Do it again below if needed after another read and before a ledger operation
                     startTime = MathUtils.nowInNano();
 
@@ -489,7 +502,7 @@ class BKProxyWorker implements Runnable {
                         break;
                     }
 
-                    case (BKPConstants.LedgerCreateReq): {
+                    case (BKPConstants.LedgerCreateReq): {                        
                         LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
                         errorCode = BKPConstants.SF_OK;

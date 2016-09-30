@@ -23,6 +23,7 @@ public class TestScenarioState {
 
     private static TestScenarioState currentTestScenario;
     public static final int MAXNUMOFFRAGMENTS = 20;
+    public static final String NEGATIVEEXTENTID = "negativeextentid";
 
     private HashMap<String, BKProxyMain> bkProxiesMap;
     private HashMap<String, Long> extentIdMap;
@@ -243,6 +244,9 @@ public class TestScenarioState {
             extentLong = extentIdMap.get(extentId);
         } else {
             extentLong = Math.abs(rand.nextLong());
+            if (extentId.equals(NEGATIVEEXTENTID)) {
+                extentLong *= -1;
+            }
             extentIdMap.put(extentId, extentLong);
         }
         return extentLong;

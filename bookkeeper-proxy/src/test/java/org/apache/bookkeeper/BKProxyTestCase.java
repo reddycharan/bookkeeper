@@ -141,6 +141,25 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     }
     
     /**
+     * In this testcase various operations are tried with negative ledgerid
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void negativeLedgerIdTest() throws IOException, InterruptedException {
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   NUMOFTHREADS + "-3\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   NUMOFSLOTS + "-5\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-"+TestScenarioState.NEGATIVEEXTENTID+"-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-1-Thread2-"+BKPConstants.LedgerWriteCloseReq+"-"+TestScenarioState.NEGATIVEEXTENTID+"-"+BKPConstants.SF_ErrorBadRequest+"\n"
+                                    +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerOpenReadReq+"-"+TestScenarioState.NEGATIVEEXTENTID+"-"+BKPConstants.SF_ErrorBadRequest+"\n";
+        executeTestcase(testDefinition);
+    }
+
+    /**
      * In this testcase four letters commands are tested.
      * @throws IOException
      * @throws InterruptedException
