@@ -176,6 +176,13 @@ public class CodahaleMetricsProvider implements StatsProvider {
             r.report();
             r.stop();
         }
+        if (jettyServer != null ) {
+        	try {
+				jettyServer.stop();
+			} catch (Exception e) {
+				LOG.error("Failed to stop Jetty stats servlet: {}", e);
+			}
+        }
         if (jmx != null) {
             jmx.stop();
         }
