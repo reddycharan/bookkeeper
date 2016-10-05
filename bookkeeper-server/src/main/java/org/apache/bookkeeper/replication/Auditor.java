@@ -21,6 +21,7 @@
 package org.apache.bookkeeper.replication;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.apache.bookkeeper.client.BKException;
@@ -104,6 +105,7 @@ public class Auditor implements BookiesListener {
     private final long auditorPeriodicCheckInterval;
     private final long bookieCheckInterval;
     private volatile boolean isBookieCheckFirstTime;
+    private Set<String> bookiesToBeAudited = Sets.newHashSet();
 
     public Auditor(final String bookieIdentifier, ServerConfiguration conf,
                    ZooKeeper zkc, StatsLogger statsLogger) throws UnavailableException {
@@ -195,46 +197,61 @@ public class Auditor implements BookiesListener {
                         waitIfLedgerReplicationDisabled();
 
                         List<String> availableBookies = getAvailableBookies();
-
                         // casting to String, as knownBookies and availableBookies
                         // contains only String values
                         // find new bookies(if any) and update the known bookie list
                         Collection<String> newBookies = CollectionUtils.subtract(
                                 availableBookies, knownBookies);
                         knownBookies.addAll(newBookies);
+                        if (!bookiesToBeAudited.isEmpty() && knownBookies.containsAll(bookiesToBeAudited)) {
+                            // the bookie, which went down earlier and had an audit scheduled for,
+                            // has come up. So let us stop tracking it and cancel the audit. Since
+                            // we allow delaying of audit when there is only one failed bookie,
+                            // bookiesToBeAudited should just have 1 element and hence containsAll
+                            // check should be ok
+                            if (auditTask != null && auditTask.cancel(false)) {
+                                auditTask = null;
+                                numDelayedBookieAuditsCancelled.inc();
+                            }
+                            bookiesToBeAudited.clear();
+                        }
 
                         // find lost bookies(if any)
-                        Collection<String> lostBookies = CollectionUtils.subtract(
-                                knownBookies, availableBookies);
-
-                        if (lostBookies.size() > 0) {
-                            knownBookies.removeAll(lostBookies);
-                            if (conf.getLostBookieRecoveryDelay() == 0 ||
-                                lostBookies.size() > 1 ||
-                                auditTask != null) {
-                                // 1) if more than one bookie is down, start the audit immediately;
-                                // 2) if we had scheduled an audit earlier for a lost bookie and in
-                                // the meantime another bookie goes down, let us not delay recovery
-                                // we cancel the previously scheduled audit before starting the new
-                                // one
-                                if (auditTask != null) {
-                                    if (auditTask.cancel(false)) {
-                                        auditTask = null;
-                                        numDelayedBookieAuditsCancelled.inc();
-                                    }
-                                }
-                                startAudit(false);
-                            } else {
-                                auditTask = executor.schedule( new Runnable() {
-                                    public void run() {
-                                        startAudit(false);
-                                        auditTask = null;
-                                    }
-                                }, conf.getLostBookieRecoveryDelay(), TimeUnit.SECONDS);
-                                numBookieAuditsDelayed.inc();
-                                LOG.info("Delaying the start of bookie audit by " + conf.getLostBookieRecoveryDelay() +
-                                         " seconds");
+                        bookiesToBeAudited.addAll(CollectionUtils.subtract(knownBookies, availableBookies));
+                        if (bookiesToBeAudited.size() == 0) {
+                            return;
+                        }
+                        knownBookies.removeAll(bookiesToBeAudited);
+                        if (conf.getLostBookieRecoveryDelay() == 0) {
+                            startAudit(false);
+                            bookiesToBeAudited.clear();
+                            return;
+                        }
+                        if (bookiesToBeAudited.size() > 1) {
+                            // if more than one bookie is down, start the audit immediately;
+                            LOG.info("Multiple bookie failure; not delaying bookie audit. Bookies lost now: "
+                                     + CollectionUtils.subtract(knownBookies, availableBookies)
+                                     +"; All lost bookies: " + bookiesToBeAudited.toString());
+                            if (auditTask != null && auditTask.cancel(false)) {
+                                auditTask = null;
+                                numDelayedBookieAuditsCancelled.inc();
                             }
+                            startAudit(false);
+                            bookiesToBeAudited.clear();
+                            return;
+                        }
+                        if (auditTask == null) {
+                            // if there is no scheduled audit, schedule one
+                            auditTask = executor.schedule( new Runnable() {
+                                public void run() {
+                                    startAudit(false);
+                                    auditTask = null;
+                                    bookiesToBeAudited.clear();
+                                }
+                            }, conf.getLostBookieRecoveryDelay(), TimeUnit.SECONDS);
+                            numBookieAuditsDelayed.inc();
+                            LOG.info("Delaying bookie audit by " + conf.getLostBookieRecoveryDelay()
+                                     + "secs for " + bookiesToBeAudited.toString());
                         }
                     } catch (BKException bke) {
                         LOG.error("Exception getting bookie list", bke);

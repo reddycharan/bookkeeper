@@ -436,7 +436,7 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         // 2 second grace period for the ledgers to get reported as under replicated
         Thread.sleep(2000);
 
-        // If the following checks pass, it means that auditing happened
+        // If the following checks pass, it means that audit happened
         // within 2 seconds of second bookie going down and it didn't
         // wait for 7 more seconds. Hence the second bookie failure doesn't
         // delay the audit
@@ -447,6 +447,70 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         assertTrue("Bookie " + shutdownBookie1 + shutdownBookie2
                 + " are not listed in the ledger as missing replicas :" + data,
                 data.contains(shutdownBookie1) && data.contains(shutdownBookie2));
+    }
+
+    /**
+     * Test audit of bookies is delayed during rolling upgrade scenario:
+     * a bookies goes down and comes up, the next bookie go down and up and so on.
+     * At any time only one bookie is down.
+     */
+    @Test(timeout=60000)
+    public void testDelayedAuditWithRollingUpgrade() throws Exception {
+        // wait for the periodic bookie check to finish
+        Thread.sleep(1000);
+
+        // create a ledger with a bunch of entries
+        LedgerHandle lh1 = createAndAddEntriesToLedger();
+        Long ledgerId = lh1.getId();
+        LOG.debug("Created ledger : " + ledgerId);
+        ledgerList.add(ledgerId);
+        lh1.close();
+
+        CountDownLatch underReplicaLatch = registerUrLedgerWatcher(ledgerList.size());
+
+        // wait for 5 seconds before starting the recovery work when a bookie fails
+        baseConf.setLostBookieRecoveryDelay(5);
+
+        // shutdown a non auditor bookie to avoid an election
+        int idx1 = getShutDownNonAuditorBookieIdx("");
+        ServerConfiguration conf1 = bsConfs.get(idx1);
+        String shutdownBookie1 = shutdownBookie(idx1);
+
+        // wait for 2 seconds and there shouldn't be any under replicated ledgers
+        // because we have delayed the start of audit by 5 seconds
+        assertFalse("audit of lost bookie isn't delayed", underReplicaLatch.await(2, TimeUnit.SECONDS));
+        assertEquals("under replicated ledgers identified when it was not expected", 0,
+                urLedgerList.size());
+
+        // restart the bookie we shut down above
+        bs.add(startBookie(conf1));
+
+        // Now to simulate the rolling upgrade, bring down a bookie different from
+        // the one we brought down/up above.
+        String shutdownBookie2 = shutDownNonAuditorBookie(shutdownBookie1);
+
+        // since the first bookie that was brought down/up has come up, there is only
+        // one bookie down at this time. Hence the lost bookie check shouldn't start
+        // immediately; it will start 5 seconds after the second bookie went down
+        assertFalse("audit of lost bookie isn't delayed", underReplicaLatch.await(2, TimeUnit.SECONDS));
+        assertEquals("under replicated ledgers identified when it was not expected", 0,
+                urLedgerList.size());
+
+        // wait for a total of 6 seconds(2+4) for the ledgers to get reported as under replicated
+        Thread.sleep(4000);
+
+        // If the following checks pass, it means that auditing happened
+        // after lostBookieRecoveryDelay during rolling upgrade as expected
+        assertTrue("Ledger is not marked as underreplicated:" + ledgerId,
+                urLedgerList.contains(ledgerId));
+        Map<Long, String> urLedgerData = getUrLedgerData(urLedgerList);
+        String data = urLedgerData.get(ledgerId);
+        assertTrue("Bookie " + shutdownBookie1 + "wrongly listed as missing the ledger: " + data,
+                   !data.contains(shutdownBookie1));
+        assertTrue("Bookie " + shutdownBookie2
+                   + " is not listed in the ledger as missing replicas :" + data,
+                   data.contains(shutdownBookie2));
+        LOG.info("*****************Test Complete");
     }
 
     /**
@@ -595,5 +659,23 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
             bkIndexDownBookie = indexOf - 1;
         }
         return shutdownBookie(bkIndexDownBookie);
+    }
+
+    private int getShutDownNonAuditorBookieIdx(String exclude) throws Exception {
+        // shutdown bookie which is not an auditor
+        int indexOf = bs.indexOf(getAuditorBookie());
+        int bkIndexDownBookie = 0;
+        for (int i = 0; i < bs.size(); i++) {
+            if (i == indexOf || bs.get(i).getLocalAddress().toString().equals(exclude)) {
+                continue;
+            }
+            bkIndexDownBookie = i;
+            break;
+        }
+        return bkIndexDownBookie;
+    }
+
+    private String shutDownNonAuditorBookie(String exclude) throws Exception {
+        return shutdownBookie(getShutDownNonAuditorBookieIdx(exclude));
     }
 }
