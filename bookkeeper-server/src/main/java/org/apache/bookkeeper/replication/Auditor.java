@@ -101,13 +101,18 @@ public class Auditor implements BookiesListener {
     private final Counter numBookieAuditsDelayed;
     private final Counter numDelayedBookieAuditsCancelled;
     private volatile Future<?> auditTask;
+    private final long auditorPeriodicCheckInterval;
+    private final long bookieCheckInterval;
+    private volatile boolean isBookieCheckFirstTime;
 
     public Auditor(final String bookieIdentifier, ServerConfiguration conf,
                    ZooKeeper zkc, StatsLogger statsLogger) throws UnavailableException {
         this.conf = conf;
         this.bookieIdentifier = bookieIdentifier;
+        this.auditorPeriodicCheckInterval = conf.getAuditorPeriodicCheckInterval();
+        this.bookieCheckInterval = conf.getAuditorPeriodicBookieCheckInterval();
         this.statsLogger = statsLogger;
-
+        isBookieCheckFirstTime = true;
         numUnderReplicatedLedger = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS);
         uRLPublishTimeForLostBookies = this.statsLogger
                 .getOpStatsLogger(ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE);
@@ -243,6 +248,51 @@ public class Auditor implements BookiesListener {
             });
     }
 
+    private final Runnable CHECK_ALL_LEDGERS = new Runnable() {
+        public void run() {
+            boolean isAuditorPeriodicCheckOkToRunNow = conf.isAuditorPeriodicCheckOkToRunNow(conf.getLocalTime(),
+                    conf.getDayOfWeek());
+            if (isAuditorPeriodicCheckOkToRunNow) {
+                try {
+                    doCheckAllLedgers();
+                } finally {
+                    executor.schedule(CHECK_ALL_LEDGERS, conf.getAuditorPeriodicCheckInterval(), TimeUnit.SECONDS);
+                }
+            } else {
+                executor.schedule(CHECK_ALL_LEDGERS, conf.getAuditorPeriodicCheckRetryInterval(), TimeUnit.SECONDS);
+            }
+        }
+
+        public void doCheckAllLedgers() {
+            try {
+                
+                if (!ledgerUnderreplicationManager.isLedgerReplicationEnabled()) {
+                    LOG.info("Ledger replication disabled, skipping");
+                    return;
+                }
+
+                Stopwatch stopwatch = new Stopwatch().start();
+                checkAllLedgers();
+                checkAllLedgersTime.registerSuccessfulEvent(stopwatch.stop().elapsedMillis(),
+                                                            TimeUnit.MILLISECONDS);
+            } catch (KeeperException ke) {
+                LOG.error("Exception while running periodic check", ke);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.error("Interrupted while running periodic check", ie);
+            } catch (BKAuditException bkae) {
+                LOG.error("Exception while running periodic check", bkae);
+            } catch (BKException bke) {
+                LOG.error("Exception running periodic check", bke);
+            } catch (IOException ioe) {
+                LOG.error("I/O exception running periodic check", ioe);
+            } catch (ReplicationException.UnavailableException ue) {
+                LOG.error("Underreplication manager unavailable "
+                          +"running periodic check", ue);
+            }
+        }
+    };
+    
     public void start() {
         LOG.info("I'm starting as Auditor Bookie. ID: {}", bookieIdentifier);
         // on startup watching available bookie and based on the
@@ -252,40 +302,10 @@ public class Auditor implements BookiesListener {
                 return;
             }
 
-            long interval = conf.getAuditorPeriodicCheckInterval();
-
-            if (interval > 0) {
+            if (auditorPeriodicCheckInterval > 0) {
                 LOG.info("Auditor periodic ledger checking enabled"
-                         + " 'auditorPeriodicCheckInterval' {} seconds", interval);
-                executor.scheduleAtFixedRate(new Runnable() {
-                        public void run() {
-                            try {
-                                if (!ledgerUnderreplicationManager.isLedgerReplicationEnabled()) {
-                                    LOG.info("Ledger replication disabled, skipping");
-                                    return;
-                                }
-
-                                Stopwatch stopwatch = new Stopwatch().start();
-                                checkAllLedgers();
-                                checkAllLedgersTime.registerSuccessfulEvent(stopwatch.stop().elapsedMillis(),
-                                                                            TimeUnit.MILLISECONDS);
-                            } catch (KeeperException ke) {
-                                LOG.error("Exception while running periodic check", ke);
-                            } catch (InterruptedException ie) {
-                                Thread.currentThread().interrupt();
-                                LOG.error("Interrupted while running periodic check", ie);
-                            } catch (BKAuditException bkae) {
-                                LOG.error("Exception while running periodic check", bkae);
-                            } catch (BKException bke) {
-                                LOG.error("Exception running periodic check", bke);
-                            } catch (IOException ioe) {
-                                LOG.error("I/O exception running periodic check", ioe);
-                            } catch (ReplicationException.UnavailableException ue) {
-                                LOG.error("Underreplication manager unavailable "
-                                          +"running periodic check", ue);
-                            }
-                        }
-                    }, interval, interval, TimeUnit.SECONDS);
+                         + " 'auditorPeriodicCheckInterval' {} seconds", auditorPeriodicCheckInterval);
+                executor.schedule(CHECK_ALL_LEDGERS, auditorPeriodicCheckInterval, TimeUnit.SECONDS);
             } else {
                 LOG.info("Periodic checking disabled");
             }
@@ -297,15 +317,14 @@ public class Auditor implements BookiesListener {
                 submitShutdownTask();
             }
 
-            long bookieCheckInterval = conf.getAuditorPeriodicBookieCheckInterval();
             if (bookieCheckInterval == 0) {
                 LOG.info("Auditor periodic bookie checking disabled, running once check now anyhow");
-                executor.submit(BOOKIE_CHECK);
             } else {
-                LOG.info("Auditor periodic bookie checking enabled"
-                         + " 'auditorPeriodicBookieCheckInterval' {} seconds", bookieCheckInterval);
-                executor.scheduleAtFixedRate(BOOKIE_CHECK, 0, bookieCheckInterval, TimeUnit.SECONDS);
+                LOG.info(
+                        "Auditor periodic bookie checking enabled" + " 'auditorPeriodicBookieCheckInterval' {} seconds",
+                        bookieCheckInterval);
             }
+            executor.submit(BOOKIE_CHECK);
         }
     }
 
@@ -342,7 +361,7 @@ public class Auditor implements BookiesListener {
      * @param shutDownTask
      *      A boolean that indicates whether or not to schedule shutdown task on any failure
      */
-    private void startAudit(boolean shutDownTask) {
+    void startAudit(boolean shutDownTask) {
         try {
             auditBookies();
             shutDownTask = false;
@@ -392,19 +411,21 @@ public class Auditor implements BookiesListener {
                       + "Will retry after a period");
             return;
         }
+        try {
+            List<String> availableBookies = getAvailableBookies();
+            // find lost bookies
+            Set<String> knownBookies = ledgerDetails.keySet();
+            Collection<String> lostBookies = CollectionUtils.subtract(knownBookies, availableBookies);
 
-        List<String> availableBookies = getAvailableBookies();
-        // find lost bookies
-        Set<String> knownBookies = ledgerDetails.keySet();
-        Collection<String> lostBookies = CollectionUtils.subtract(knownBookies,
-                availableBookies);
-
-        bookieToLedgersMapCreationTime.registerSuccessfulEvent(stopwatch.elapsedMillis(), TimeUnit.MILLISECONDS);
-        if (lostBookies.size() > 0) {
-            handleLostBookies(lostBookies, ledgerDetails);
-            uRLPublishTimeForLostBookies.registerSuccessfulEvent(stopwatch.stop().elapsedMillis(), TimeUnit.MILLISECONDS);
+            bookieToLedgersMapCreationTime.registerSuccessfulEvent(stopwatch.elapsedMillis(), TimeUnit.MILLISECONDS);
+            if (lostBookies.size() > 0) {
+                handleLostBookies(lostBookies, ledgerDetails);
+                uRLPublishTimeForLostBookies.registerSuccessfulEvent(stopwatch.stop().elapsedMillis(),
+                        TimeUnit.MILLISECONDS);
+            }
+        } finally {
+            isBookieCheckFirstTime = false;
         }
-
     }
 
     private Map<String, Set<Long>> generateBookie2LedgersIndex()
@@ -639,17 +660,30 @@ public class Auditor implements BookiesListener {
     }
 
     private final Runnable BOOKIE_CHECK = new Runnable() {
-            public void run() {
-                if (auditTask == null) {
-                    // if due to a lost bookie an audit task was scheduled,
-                    // let us not run this periodic bookie check now, if we
-                    // went ahead, we'll report under replication and the user
-                    // wanted to avoid that(with lostBookieRecoveryDelay option)
-                    startAudit(true);
-                } else {
-                    LOG.info("Audit already scheduled; skipping periodic bookie check");
+        public void run() {
+            boolean isAuditorPeriodicBookieCheckOkToRunNow = conf.isAuditorPeriodicBookieCheckOkToRunNow(conf.getLocalTime(),
+                    conf.getDayOfWeek());
+            if (isAuditorPeriodicBookieCheckOkToRunNow || isBookieCheckFirstTime) {                
+                try {
+                    if (auditTask == null) {
+                        // if due to a lost bookie an audit task was scheduled,
+                        // let us not run this periodic bookie check now, if we
+                        // went ahead, we'll report under replication and the user
+                        // wanted to avoid that(with lostBookieRecoveryDelay option)
+                        startAudit(true);
+                    } else {
+                        LOG.info("Audit already scheduled; skipping periodic bookie check");
+                    }
+                } finally {
+                    if (bookieCheckInterval != 0) {
+                        executor.schedule(BOOKIE_CHECK, bookieCheckInterval, TimeUnit.SECONDS);
+                    }
                 }
+            } else {
+                executor.schedule(BOOKIE_CHECK, conf.getAuditorPeriodicBookieCheckRetryInterval(), TimeUnit.SECONDS);
+                return;
             }
-        };
+        }
+    };
 
 }

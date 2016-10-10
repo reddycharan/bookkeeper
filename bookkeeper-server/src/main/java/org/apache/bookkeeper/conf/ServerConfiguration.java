@@ -106,7 +106,12 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String DISK_USAGE_LWM_THRESHOLD = "diskUsageLwmThreshold";
     protected final static String DISK_CHECK_INTERVAL = "diskCheckInterval";
     protected final static String AUDITOR_PERIODIC_CHECK_INTERVAL = "auditorPeriodicCheckInterval";
+    protected final static String AUDITOR_PERIODIC_CHECK_OKTORUNNOW = "isAuditorPeriodicCheckOkToRunNow";
+    protected final static String AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL = "auditorPeriodicCheckRetryInterval";
     protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_INTERVAL = "auditorPeriodicBookieCheckInterval";
+    protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW = "isAuditorPeriodicBookieCheckOkToRunNow";
+    protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL = "auditorPeriodicBookieCheckRetryInterval";    
+    
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
     protected final static String LOST_BOOKIE_RECOVERY_DELAY = "lostBookieRecoveryDelay";
 
@@ -1401,6 +1406,53 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * isAuditorPeriodicCheckOkToRunNow support configuration override for specific time range so it is possible to
+     * enable/disable AuditorPeriodicCheck depending on the system date/time. So if the auditorPeriodicCheck is scheduled
+     * to execute now, but if isAuditorPeriodicCheckOkToRunNow is false, then Auditor will reschedule periodiccheck after
+     * AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL
+     * 
+     * @return boolean value 
+     */
+    public boolean isAuditorPeriodicCheckOkToRunNow() {
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_CHECK_OKTORUNNOW), true);
+    }
+
+    public boolean isAuditorPeriodicCheckOkToRunNow(LocalTime now, DayOfWeek day) {
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_CHECK_OKTORUNNOW, now, day), true);
+    }
+
+    /**
+     * setter to enable/disable AuditorPeriodicCheckOkToRunNow. If it is disabled then Auditor will retry after 
+     * AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL.
+     * 
+     * @param enabled
+     * @return
+     */
+    public ServerConfiguration setAuditorPeriodicCheckOkToRunNow(boolean enabled) {
+        setProperty(AUDITOR_PERIODIC_CHECK_OKTORUNNOW, enabled);
+        return this;
+    }
+
+    /**
+     * as mentioned above, if isAuditorPeriodicCheckOkToRunNow is false when it is time to execute PeriodicCheck,
+     * then Auditor will reschedule it to execute after AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL. This is the setter
+     * method for it.
+     * 
+     * @param retryInterval
+     */
+    public void setAuditorPeriodicCheckRetryInterval(long retryInterval) {
+        setProperty(AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL, retryInterval);
+    }
+
+    /**
+     * gets the AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL
+     * @return
+     */
+    public long getAuditorPeriodicCheckRetryInterval() {
+        return getLong(AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL, 3600);
+    }
+
+    /**
      * Set the interval between auditor bookie checks.
      * The auditor bookie check, checks ledger metadata to see which bookies
      * contain entries for each ledger. If a bookie which should contain entries
@@ -1421,6 +1473,52 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public long getAuditorPeriodicBookieCheckInterval() {
         return getLong(AUDITOR_PERIODIC_BOOKIE_CHECK_INTERVAL, 86400);
+    }
+
+    /**
+     * isAuditorPeriodicBookieCheckOkToRunNow support configuration override for specific time range so it is possible to
+     * enable/disable AuditorPeriodicBookieCheck depending on the system date/time. So if the AuditorPeriodicBookieCheck is scheduled
+     * to execute now, but if isAuditorPeriodicBookieCheckOkToRunNow is false, then Auditor will reschedule periodicbookiecheck after
+     * AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL
+     * 
+     * @return boolean value 
+     */
+    public boolean isAuditorPeriodicBookieCheckOkToRunNow() {
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW), true);
+    }
+
+    public boolean isAuditorPeriodicBookieCheckOkToRunNow(LocalTime now, DayOfWeek day) {
+        return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW, now, day),
+                true);
+    }
+
+    /**
+     * setter to enable/disable AuditorPeriodicBookieCheckOkToRunNow. If it is disabled then Auditor will retry after 
+     * AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL.
+     * @param enabled
+     * @return
+     */
+    public ServerConfiguration setAuditorPeriodicBookieCheckOkToRunNow(boolean enabled) {
+        setProperty(AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW, enabled);
+        return this;
+    }
+
+    /**
+     * as mentioned above, if isAuditorPeriodicBookieCheckOkToRunNow is false when it is time to execute PeriodicBookieCheck,
+     * then Auditor will reschedule it to execute after AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL. This is the setter
+     * method for it.
+     * @param retryInterval
+     */
+    public void setAuditorPeriodicBookieCheckRetryInterval(long retryInterval) {
+        setProperty(AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL, retryInterval);
+    }
+
+    /**
+     * gets the AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL
+     * @return
+     */
+    public long getAuditorPeriodicBookieCheckRetryInterval() {
+        return getLong(AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL, 3600);
     }
 
     /**
