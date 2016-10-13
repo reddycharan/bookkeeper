@@ -192,6 +192,10 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         this.authProviderFactory = authProviderFactory;
         this.extRegistry = extRegistry;
 
+        StringBuilder nameBuilder = new StringBuilder();
+        nameBuilder.append(addr.getHostName().replace('.', '_').replace('-', '_'))
+            .append("_").append(addr.getPort());
+
         this.statsLogger = parentStatsLogger.scope(BookKeeperClientStats.CHANNEL_SCOPE)
             .scope(generateAddressScope(addr));
         this.pcbcPool = pcbcPool;

@@ -270,21 +270,21 @@ class BookieWatcher implements Watcher, ChildrenCallback {
      * @return list of bookies for new ensemble.
      * @throws BKNotEnoughBookiesException
      */
-    public ArrayList<BookieSocketAddress> newEnsemble(int ensembleSize, int writeQuorumSize)
+    public ArrayList<BookieSocketAddress> newEnsemble(int ensembleSize, int writeQuorumSize, int ackQuorumSize)
             throws BKNotEnoughBookiesException {
 		long startTime = MathUtils.nowInNano();
         try {
             // we try to only get from the healthy bookies first
-            ArrayList<BookieSocketAddress> socketAddresses = placementPolicy.newEnsemble(ensembleSize, writeQuorumSize,
-							new HashSet<BookieSocketAddress>(quarantinedBookies.asMap().keySet()));
             newEnsembleTimer.registerSuccessfulEvent(MathUtils.nowInNano() - startTime, TimeUnit.NANOSECONDS);
-            return socketAddresses;
+            return placementPolicy.newEnsemble(ensembleSize,
+                    writeQuorumSize, ackQuorumSize, new HashSet<BookieSocketAddress>(
+                    quarantinedBookies.asMap().keySet()));
         } catch (BKNotEnoughBookiesException e) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Not enough healthy bookies available, using quarantined bookies");
             }
             newEnsembleTimer.registerFailedEvent(MathUtils.nowInNano() - startTime, TimeUnit.NANOSECONDS);
-            return placementPolicy.newEnsemble(ensembleSize, writeQuorumSize, EMPTY_SET);
+            return placementPolicy.newEnsemble(ensembleSize, writeQuorumSize, ackQuorumSize, EMPTY_SET);
         }
     }
 
@@ -297,7 +297,9 @@ class BookieWatcher implements Watcher, ChildrenCallback {
      * @return the bookie to replace.
      * @throws BKNotEnoughBookiesException
      */
-	public BookieSocketAddress replaceBookie(List<BookieSocketAddress> existingBookies, int bookieIdx)
+    public BookieSocketAddress replaceBookie(int ensembleSize, int writeQuorumSize, int ackQuorumSize,
+                                             List<BookieSocketAddress> existingBookies, int bookieIdx,
+                                             Set<BookieSocketAddress> excludeBookies)
             throws BKNotEnoughBookiesException {
 		long startTime = MathUtils.nowInNano();
         BookieSocketAddress addr = existingBookies.get(bookieIdx);
@@ -306,16 +308,17 @@ class BookieWatcher implements Watcher, ChildrenCallback {
             // we exclude the quarantined bookies also first
             Set<BookieSocketAddress> existingAndQuarantinedBookies = new HashSet<BookieSocketAddress>(existingBookies);
             existingAndQuarantinedBookies.addAll(quarantinedBookies.asMap().keySet());
-            bookieSocketAddress = placementPolicy.replaceBookie(addr, existingAndQuarantinedBookies);
             replaceBookieTimer.registerSuccessfulEvent(MathUtils.nowInNano() - startTime, TimeUnit.NANOSECONDS);
+            return placementPolicy.replaceBookie(ensembleSize, writeQuorumSize, ackQuorumSize,
+                    existingAndQuarantinedBookies, addr, excludeBookies);
         } catch (BKNotEnoughBookiesException e) {
             if (logger.isDebugEnabled()) {
                 logger.debug("Not enough healthy bookies available, using quarantined bookies");
             }
             replaceBookieTimer.registerFailedEvent(MathUtils.nowInNano() - startTime, TimeUnit.NANOSECONDS);
-            bookieSocketAddress = placementPolicy.replaceBookie(addr, new HashSet<BookieSocketAddress>(existingBookies));
+            return placementPolicy.replaceBookie(ensembleSize, writeQuorumSize, ackQuorumSize,
+                    new HashSet<BookieSocketAddress>(existingBookies), addr, excludeBookies);
         }
-		return bookieSocketAddress;
     }
 
     /**

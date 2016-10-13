@@ -1,6 +1,7 @@
 package org.apache.bookkeeper.client;
 
 import static org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy.REPP_DNS_RESOLVER_CLASS;
+import static org.apache.bookkeeper.feature.SettableFeatureProvider.DISABLE_ALL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -9,20 +10,25 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
+import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.CommonConfigurationKeys;
+import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.net.ScriptBasedMapping;
 import org.apache.bookkeeper.util.Shell;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Optional;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * In this testsuite, ScriptBasedMapping is used as DNS_RESOLVER_CLASS for
@@ -38,18 +44,25 @@ import org.slf4j.LoggerFactory;
  * For now this Testsuite works only on Unix based OS.
  */
 public class TestRackawareEnsemblePlacementPolicyUsingScript {
+    
     static final Logger LOG = LoggerFactory.getLogger(TestRackawareEnsemblePlacementPolicyUsingScript.class);
 
+    HashedWheelTimer timer;
     RackawareEnsemblePlacementPolicy repp;
-    Configuration conf = new CompositeConfiguration();
+    ClientConfiguration conf = new ClientConfiguration();
 
     @Before
     public void setUp() throws Exception {
         conf.setProperty(REPP_DNS_RESOLVER_CLASS, ScriptBasedMapping.class.getName());
         conf.setProperty(CommonConfigurationKeys.NET_TOPOLOGY_SCRIPT_FILE_NAME_KEY,
                 "src/test/resources/networkmappingscript.sh");
+        timer = new HashedWheelTimer(
+                new ThreadFactoryBuilder().setNameFormat("TestTimer-%d").build(),
+                conf.getTimeoutTimerTickDurationMs(), TimeUnit.MILLISECONDS,
+                conf.getTimeoutTimerNumTicks());
+        
         repp = new RackawareEnsemblePlacementPolicy();
-        repp.initialize(conf);
+        repp.initialize(conf, Optional.<DNSToSwitchMapping>absent(), timer, DISABLE_ALL, null);
     }
 
     @After
@@ -77,7 +90,7 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         addrs.add(addr4);
         repp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
         // replace node under r2
-        BookieSocketAddress replacedBookie = repp.replaceBookie(addr2, new HashSet<BookieSocketAddress>());
+        BookieSocketAddress replacedBookie = repp.replaceBookie(1, 1, 1, new HashSet<BookieSocketAddress>(), addr2, new HashSet<BookieSocketAddress>());
         assertEquals(addr3, replacedBookie);
     }
 
@@ -99,7 +112,7 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         // replace node under r2
         Set<BookieSocketAddress> excludedAddrs = new HashSet<BookieSocketAddress>();
         excludedAddrs.add(addr1);
-        BookieSocketAddress replacedBookie = repp.replaceBookie(addr2, excludedAddrs);
+        BookieSocketAddress replacedBookie = repp.replaceBookie(1, 1, 1, new HashSet<BookieSocketAddress>(), addr2, excludedAddrs);
 
         assertFalse(addr1.equals(replacedBookie));
         assertTrue(addr3.equals(replacedBookie) || addr4.equals(replacedBookie));
@@ -126,7 +139,7 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         excludedAddrs.add(addr3);
         excludedAddrs.add(addr4);
         try {
-            repp.replaceBookie(addr2, excludedAddrs);
+            repp.replaceBookie(1, 1, 1, new HashSet<BookieSocketAddress>(), addr2, excludedAddrs);
             fail("Should throw BKNotEnoughBookiesException when there is not enough bookies");
         } catch (BKNotEnoughBookiesException bnebe) {
             // should throw not BKNotEnoughBookiesException
@@ -148,9 +161,9 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         addrs.add(addr4);
         repp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
         try {
-            ArrayList<BookieSocketAddress> ensemble = repp.newEnsemble(3, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble = repp.newEnsemble(3, 2, 2, new HashSet<BookieSocketAddress>());
             assertEquals(0, getNumCoveredWriteQuorums(ensemble, 2));
-            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, 2, new HashSet<BookieSocketAddress>());
             assertEquals(0, getNumCoveredWriteQuorums(ensemble2, 2));
         } catch (BKNotEnoughBookiesException bnebe) {
             fail("Should not get not enough bookies exception even there is only one rack.");
@@ -172,10 +185,10 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         addrs.add(addr4);
         repp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
         try {
-            ArrayList<BookieSocketAddress> ensemble = repp.newEnsemble(3, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble = repp.newEnsemble(3, 2, 2, new HashSet<BookieSocketAddress>());
             int numCovered = getNumCoveredWriteQuorums(ensemble, 2);
             assertTrue(numCovered == 2);
-            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, 2, new HashSet<BookieSocketAddress>());
             numCovered = getNumCoveredWriteQuorums(ensemble2, 2);
             assertTrue(numCovered == 2);
         } catch (BKNotEnoughBookiesException bnebe) {
@@ -206,9 +219,9 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         addrs.add(addr8);
         repp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
         try {
-            ArrayList<BookieSocketAddress> ensemble1 = repp.newEnsemble(3, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble1 = repp.newEnsemble(3, 2, 2, new HashSet<BookieSocketAddress>());
             assertEquals(3, getNumCoveredWriteQuorums(ensemble1, 2));
-            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, new HashSet<BookieSocketAddress>());
+            ArrayList<BookieSocketAddress> ensemble2 = repp.newEnsemble(4, 2, 2, new HashSet<BookieSocketAddress>());
             assertEquals(4, getNumCoveredWriteQuorums(ensemble2, 2));
         } catch (BKNotEnoughBookiesException bnebe) {
             fail("Should not get not enough bookies exception.");
@@ -218,6 +231,7 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
     /**
      * Test for BOOKKEEPER-633
      */
+
     @Test(timeout = 60000)
     public void testRemoveBookieFromCluster() {
         ignoreTestIfItIsWindowsOS();
@@ -253,4 +267,5 @@ public class TestRackawareEnsemblePlacementPolicyUsingScript {
         }
         return numCoveredWriteQuorums;
     }
+    
 }

@@ -74,7 +74,7 @@ public class BookieSocketAddress {
 	}
 
     // Public getters
-    public String getHostname() {
+    public String getHostName() {
         return hostname;
     }
 
