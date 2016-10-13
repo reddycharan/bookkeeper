@@ -180,11 +180,13 @@ class BKProxyWorker implements Runnable {
                 }
                 totalBytesRead += bytesRead;
             } catch (IOException e) {
-                LOG.error("Exception in read. BKProxyWorker: "
-                        + bkProxyWorkerId
-                        + " req: " + BKPConstants.getReqRespString(reqId)
+                LOG.error("Exception in read. BKProxyWorker: " + bkProxyWorkerId
+                        + " exception: " + e);
+                if (reqId != BKPConstants.UnInitialized) {
+                    LOG.error(" req: " + BKPConstants.getReqRespString(reqId)
                         + " respId: " + BKPConstants.getReqRespString(respId)
-                        + " ledgerId: " + extentId, e);
+                        + " ledgerId: " + extentId);
+                }
                 throw e;
             }
         }
@@ -207,9 +209,12 @@ class BKProxyWorker implements Runnable {
             LOG.error("Exception in write. BKProxyWorker: " + bkProxyWorkerId
                     + " bytes remaining: " + buf.remaining()
                     + " bytes written: " + (bytesToWrite - buf.remaining())
-                    + " req: " + BKPConstants.getReqRespString(reqId)
+                    + " exception: " + e);
+            if (reqId != BKPConstants.UnInitialized) {
+                LOG.error( " req: " + BKPConstants.getReqRespString(reqId)
                     + " respId: " + BKPConstants.getReqRespString(respId)
-                    + " ledgerId: " + extentId, e);
+                    + " ledgerId: " + extentId);
+            }
             throw e;
         }
 
@@ -769,7 +774,7 @@ class BKProxyWorker implements Runnable {
                             + reqSpecific
                             + " ElapsedMicroSecs: " + MathUtils.elapsedMicroSec(startTime)
                             + " Error: {} extentId: {}", errorCode, extentId);
-                    LOG.error("Exception: ", e);
+                    LOG.error("Exception: " + e);
                     resp.put(BKPConstants.SF_ServerInternalError);
                     resp.flip();
                     clientChannelWrite(resp);
@@ -796,13 +801,13 @@ class BKProxyWorker implements Runnable {
             }
 
         } catch (IOException e) {
-            LOG.error("IOException in worker processing:", e);
+            LOG.error("IOException in worker processing: " + e);
         } finally {
             proxyWorkerPoolCounter.dec();
             try {
                 clientChannel.close();
             } catch (IOException e) {
-                LOG.error("Exception while closing client channel:", e);
+                LOG.error("Exception while closing client channel: " + e);
             }
             LOG.info("Ending BKProxyWorkerID - "+ bkProxyWorkerId);
         }

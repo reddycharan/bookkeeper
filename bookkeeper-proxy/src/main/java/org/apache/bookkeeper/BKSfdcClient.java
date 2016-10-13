@@ -231,17 +231,22 @@ public class BKSfdcClient {
 
         if (errorCode != BKPConstants.SF_ErrorInProgress) {
             // IO Finished.
+            long lac = elm.getWriteLedgerHandle(extentId).getLastAddConfirmed();
             lpd.deleteLedgerAsyncWriteStatus(fragmentId);
             if (errorCode == BKPConstants.SF_OK) {
                 // Success; Do some sanity check.
                 long actualEntryId = laws.getActualEntryId();
                 long expectedEntryId = laws.getExpectedEntryId();
                 if (actualEntryId != expectedEntryId) {
-                    LOG.error("expecting entryId: " + expectedEntryId + "but bk returned entryId: " + actualEntryId +
-                              " On ledger: " + extentId);                    
+                    LOG.error("AsyncWrite failed. Expecting entryId: {} but bk returned entryId: {} on Ledger: {} with LAC: {}",
+                            new Object [] {expectedEntryId, actualEntryId, extentId, lac});
                     throw BKException.create(Code.UnexpectedConditionException);
                 }
-            }            
+            } else {
+                // IO Failed
+                LOG.error("AsyncWrite failed. Extent: {} Fragment: {} LAC: {} error: {}",
+                        new Object [] {extentId, fragmentId, lac, errorCode});
+            }
         }
         return laws;
     }
