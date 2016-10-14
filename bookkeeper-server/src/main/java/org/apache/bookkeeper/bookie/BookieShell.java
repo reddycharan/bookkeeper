@@ -41,6 +41,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Enumeration;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 import org.apache.bookkeeper.bookie.BookieException.InvalidCookieException;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
@@ -491,6 +492,8 @@ public class BookieShell implements Tool {
 
         public ListUnderreplicatedCmd() {
             super(CMD_LISTUNDERREPLICATED);
+            opts.addOption("missingreplica", true, "Bookie Id of missing replica");
+            opts.addOption("excludingmissingreplica", true, "Bookie Id of missing replica to ignore");
         }
 
         @Override
@@ -500,16 +503,30 @@ public class BookieShell implements Tool {
 
         @Override
         String getDescription() {
-            return "List ledgers marked as underreplicated";
+            return "List ledgers marked as underreplicated, with optional options to specify missingreplica (BookieId) and to exclude missingreplica";
         }
 
         @Override
         String getUsage() {
-            return "listunderreplicated";
+            return "listunderreplicated [[-missingreplica <bookieaddress>] [-excludingmissingreplica <bookieaddress>]]";
         }
 
         @Override
         int runCmd(CommandLine cmdLine) throws Exception {
+
+            final String includingBookieId = cmdLine.getOptionValue("missingreplica");
+            final String excludingBookieId = cmdLine.getOptionValue("excludingmissingreplica");
+
+            Predicate<List<String>> predicate = null;
+            if (!StringUtils.isBlank(includingBookieId) && !StringUtils.isBlank(excludingBookieId)) {
+                predicate = replicasList -> (replicasList.contains(includingBookieId)
+                        && !replicasList.contains(excludingBookieId));
+            } else if (!StringUtils.isBlank(includingBookieId)) {
+                predicate = replicasList -> replicasList.contains(includingBookieId);
+            } else if (!StringUtils.isBlank(excludingBookieId)) {
+                predicate = replicasList -> !replicasList.contains(excludingBookieId);
+            }
+
             ZooKeeper zk = null;
             try {
                 zk = ZooKeeperClient.newBuilder()
@@ -518,7 +535,7 @@ public class BookieShell implements Tool {
                         .build();
                 LedgerManagerFactory mFactory = LedgerManagerFactory.newLedgerManagerFactory(bkConf, zk);
                 LedgerUnderreplicationManager underreplicationManager = mFactory.newLedgerUnderreplicationManager();
-                Iterator<Long> iter = underreplicationManager.listLedgersToRereplicate();
+                Iterator<Long> iter = underreplicationManager.listLedgersToRereplicate(predicate);
                 while (iter.hasNext()) {
                     System.out.println(ledgerIdFormatter.formatLedgerId(iter.next()));
                 }
