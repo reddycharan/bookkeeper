@@ -72,19 +72,17 @@ echo "Synced all files"
 #If either one of them isn't present, that means we need to create a changelist file because 
 #at least one will be checked in.
 echo "Checking for $PROXY_INSTALL_DIR/$PROXY_IMAGE and $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE"
-if [[ ! -f $PROXY_INSTALL_DIR/$PROXY_IMAGE || ! -f $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE ]]; then
-  echo "Creating p4 check-in file."
-    # Create a temp file that will be used to set up the changelist
-  p4infile=$WORKSPACE/p4change_$$.txt
-  if [ -e $p4infile ]
-  then
-    rm $p4infile
-  fi
 
-  if [ -e $p4infile ]
-  then
-    echo "Could not delete $p4infile" && exit -1
-  fi
+echo "Creating p4 check-in file."
+  # Create a temp file that will be used to set up the changelist
+p4infile=$WORKSPACE/p4change_$$.txt
+if [ -e $p4infile ]; then
+  rm $p4infile
+fi
+
+if [ -e $p4infile ]; then
+  echo "Could not delete $p4infile" && exit -1
+fi
 
   # Create an input file that is used for the changelist specification -- left-aligned. 
   echo "
@@ -102,9 +100,7 @@ Description:
   Job: Publish-SFStore-Gold-Image
   Build number: ${CURRENT_VERSION}
     " > $p4infile
-else
-  echo "Proxy and/or SFstore image present. No new version to add. Exiting" && exit -1;
-fi
+
 
 if [ -d $PROXY_INSTALL_DIR ];then
    cd $PROXY_INSTALL_DIR
@@ -113,38 +109,40 @@ else
    exit -1;
 fi
 
-# Proxy image not present so we know it's new. Mark for add and proceed. 
-if [ ! -f $PROXY_INSTALL_DIR/$PROXY_IMAGE ]; then
-  # Create the changelist
-  changelist=`cat $p4infile | p4 change -i | awk '{print $2}'`
 
-  echo "Changelist>"$changelist"<"
-    p4 add -c $changelist $PROXY_IMAGE
-    #Edit property file
-    p4 edit -c $changelist $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
-    #Update the version in the file
-    echo "Version found: `grep bookkeeper.version < $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE`"
-    sed -i.backup "s/\s\{0,\}bookkeeper.version\s\{0,\}=.*$/bookkeeper.version=${CURRENT_VERSION}/" $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
-    echo "Updated version to: `grep bookkeeper.version < $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE`"
-    cp $ARTIFACT_DIR/$PROXY_IMAGE $PROXY_INSTALL_DIR/$PROXY_IMAGE
-    ls -l $PROXY_INSTALL_DIR
-    echo "Submitting proxy changelist"
-    # Submit changelist of Proxy first. If it succeeds, then we can continue to sfstore. If not, halt. 
-    
-    #p4 submit -c $changelist
-    if [ "$?" -ne 0 ];then
-       p4 remove $PROXY_IMAGE
-       p4 remove $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
-       p4 change -d $changelist
-       echo "Failed to submit $PROXY_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Exiting." && exit -1
-    else
-      #Remove back-up that we created since we successfully updated this. 
-      rm $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE.backup
-    fi
-    echo "Successfully submitted $PROXY_IMAGE to p4"
+# Create the changelist
+changelist=`cat $p4infile | p4 change -i | awk '{print $2}'`
+echo "Changelist>"$changelist"<"
+
+#If it already exists, mark it as edit and CP the new one in its place. Else, add. 
+if [ -f $PROXY_INSTALL_DIR/$PROXY_IMAGE ]; then
+  p4 edit -c $changelist $PROXY_INSTALL_DIR/$PROXY_IMAGE
 else
-  echo "$PROXY_IMAGE already present in p4. Ignoring this version."
+  p4 add -c $changelist $PROXY_IMAGE
 fi
+#Edit property file
+p4 edit -c $changelist $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
+#Update the version in the file
+echo "Version found: `grep bookkeeper.version < $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE`"
+sed -i.backup "s/\s\{0,\}bookkeeper.version\s\{0,\}=.*$/bookkeeper.version=${CURRENT_VERSION}/" $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
+echo "Updated version to: `grep bookkeeper.version < $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE`"
+cp $ARTIFACT_DIR/$PROXY_IMAGE $PROXY_INSTALL_DIR/$PROXY_IMAGE
+ls -l $PROXY_INSTALL_DIR
+echo "Submitting proxy changelist"
+# Submit changelist of Proxy first. If it succeeds, then we can continue to sfstore. If not, halt. 
+
+#p4 submit -c $changelist
+if [ "$?" -ne 0 ];then
+   p4 remove $PROXY_IMAGE
+   p4 remove $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
+   p4 change -d $changelist
+   echo "Failed to submit $PROXY_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Exiting." && exit -1
+else
+  #Remove back-up that we created since we successfully updated this. 
+  rm $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE.backup
+fi
+echo "Successfully submitted $PROXY_IMAGE to p4"
+
 
 if [ -d $SFSTORE_INSTALL_DIR ];then
    cd $SFSTORE_INSTALL_DIR
@@ -152,40 +150,38 @@ else
    echo "ERROR: $SFSTORE_DEST_DIR not found. Something wrong." && exit -1
 fi
 
-# SFStore image isn't present so we know it's new. Mark for add and proceed. `
-if [ ! -f $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE ]; then
-  #Swap PROXY_IMAGE with $SFSTORE_IMAGE
-  sed -i.backup "s/$PROXY_IMAGE/$SFSTORE_IMAGE/" $p4infile
+#Swap PROXY_IMAGE with $SFSTORE_IMAGE
+sed -i.backup "s/$PROXY_IMAGE/$SFSTORE_IMAGE/" $p4infile
 
-  # Create the changelist
-  changelist=`cat $p4infile | p4 change -i | awk '{print $2}'`
-    
-  echo "Sfstore changelist>"$changelist"<"
-    
-    #Add image
-    p4 add -c $changelist $SFSTORE_IMAGE
-    #Edit property file
-    p4 edit -c $changelist $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
-    #Update the version in the file
-    echo "Version found: `grep BOOKKEEPER_VERSION < $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE`"
-    echo "Updating version in property file: $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE"
-    sed -i.backup "s/\s\{0,\}BOOKKEEPER_VERSION\s\{0,\}=.*$/BOOKKEEPER_VERSION=${CURRENT_VERSION}/" $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
-    echo "Copying artifact from $ARTIFACT_DIR/$SFSTORE_IMAGE to $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE"
-    cp $ARTIFACT_DIR/$SFSTORE_IMAGE $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE
-    ls -l $SFSSTORE_INSTALL_DIR
-    echo "Submitting sfstore changelist"
-    #p4 submit -c $changelist
-    if [ "$?" -ne 0 ];then
-       echo "Failed to submit $SFSTORE_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Proceeding with script for clean-up."
-       p4 remove $SFSTORE_IMAGE
-       p4 remove $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
-       p4 change -d $changelist
-    else
-      rm $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE.backup 
-      echo "Successfully submitted $SFSTORE_IMAGE to p4"
-    fi
+# Create the changelist
+changelist=`cat $p4infile | p4 change -i | awk '{print $2}'`
+echo "Sfstore changelist>"$changelist"<"
+
+#If it already exists, mark it as edit and CP the new one in its place. Else, add. 
+if [ -f $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE ]; then
+  p4 edit -c $changelist $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE
 else
-  echo "$SFSTORE_IMAGE already exists in p4. Ignoring this version."
+  p4 add -c $changelist $SFSTORE_IMAGE
+fi
+#Edit property file
+p4 edit -c $changelist $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
+#Update the version in the file
+echo "Version found: `grep BOOKKEEPER_VERSION < $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE`"
+echo "Updating version in property file: $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE"
+sed -i.backup "s/\s\{0,\}BOOKKEEPER_VERSION\s\{0,\}=.*$/BOOKKEEPER_VERSION=${CURRENT_VERSION}/" $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
+echo "Copying artifact from $ARTIFACT_DIR/$SFSTORE_IMAGE to $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE"
+cp $ARTIFACT_DIR/$SFSTORE_IMAGE $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE
+ls -l $SFSSTORE_INSTALL_DIR
+echo "Submitting sfstore changelist"
+#p4 submit -c $changelist
+if [ "$?" -ne 0 ];then
+   echo "Failed to submit $SFSTORE_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Proceeding with script for clean-up."
+   p4 remove $SFSTORE_IMAGE
+   p4 remove $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
+   p4 change -d $changelist
+else
+  rm $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE.backup 
+  echo "Successfully submitted $SFSTORE_IMAGE to p4"
 fi
 
 if [ -e $p4infile ]; then
