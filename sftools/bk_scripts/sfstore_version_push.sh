@@ -173,7 +173,7 @@ echo "Copying artifact from $ARTIFACT_DIR/$SFSTORE_IMAGE to $SFSTORE_INSTALL_DIR
 cp $ARTIFACT_DIR/$SFSTORE_IMAGE $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE
 ls -l $SFSSTORE_INSTALL_DIR
 echo "Submitting sfstore changelist"
-#p4 submit -c $changelist
+p4 submit -c $changelist
 if [ "$?" -ne 0 ];then
    echo "Failed to submit $SFSTORE_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Proceeding with script for clean-up."
    p4 remove $SFSTORE_IMAGE
