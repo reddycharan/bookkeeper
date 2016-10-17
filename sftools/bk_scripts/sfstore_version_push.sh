@@ -131,7 +131,7 @@ ls -l $PROXY_INSTALL_DIR
 echo "Submitting proxy changelist"
 # Submit changelist of Proxy first. If it succeeds, then we can continue to sfstore. If not, halt. 
 
-#p4 submit -c $changelist
+p4 submit -c $changelist
 if [ "$?" -ne 0 ];then
    p4 remove $PROXY_IMAGE
    p4 remove $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
