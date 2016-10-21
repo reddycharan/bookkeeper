@@ -25,6 +25,8 @@ import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.util.ReflectionUtils;
+import org.apache.bookkeeper.zookeeper.BoundExponentialBackoffRetryPolicy;
+import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -34,6 +36,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +72,7 @@ public class BKProxyMain implements Runnable {
     private ServerSocketChannel serverChannel;
     private final BookKeeperProxyConfiguration bkpConf;
     private BookKeeper bk = null;
+    private ZooKeeper zkc;
     private ThreadPoolExecutor proxyWorkerExecutor;
     private StatsProvider statsProvider;
     private StatsLogger statsLogger;
@@ -136,11 +140,20 @@ public class BKProxyMain implements Runnable {
                     .setReadHandleCacheLen(bkpConf.getReadHandleCacheLen())
                     .setReadHandleTTL(bkpConf.getReadHandleTTL())
                     .build();
-
+            // base time for exponential back-off is set to at least 1sec below; could be higher
+            // if conf.getZkTimeout()/10 > 1sec. If the base back-off time happens to be 1sec, the
+            // retry back-off times will be chosen randomly between 0 to 2secs the first retry,
+            // between 0 to 4sec for the second retry, 0 to 8secs for the third and so on.
+            this.zkc = ZooKeeperClient.newBuilder().connectString(bkpConf.getZkServers())
+                    .sessionTimeoutMs(bkpConf.getZkTimeout())
+                    .operationRetryPolicy(
+                            new BoundExponentialBackoffRetryPolicy(Math.max(1000, bkpConf.getZkTimeout() / 10),
+                                    bkpConf.getZkTimeout(), bkpConf.getZkOpRetryCount()))
+                    .statsLogger(statsLogger).build();
             if (statsProvider != null) {
-                bk = BookKeeper.forConfig(bkpConf).setStatsLogger(statsLogger).build();
+                bk = BookKeeper.forConfig(bkpConf).setStatsLogger(statsLogger).setZookeeper(zkc).build();
             } else {
-                bk = new BookKeeper(bkpConf);
+                bk = BookKeeper.forConfig(bkpConf).setZookeeper(zkc).build();
             }
 
             while (!proxyWorkerExecutor.isShutdown()) {
@@ -167,8 +180,13 @@ public class BKProxyMain implements Runnable {
                     }
 
                     try {
-                        proxyWorkerExecutor.submit(new BKProxyWorker(bkpConf, sock, bk, elm, byteBufSharedPool,
-                                bkProxyWorkerNo.getAndIncrement(), statsLogger.scope(PROXY_WORKER_SCOPE)));
+                        BKProxyWorker bkProxyWorker = BKProxyWorker.newBuilder().setBKPConfig(bkpConf)
+                                .setClientSocketChannel(sock).setBookKeeperClient(bk).setZooKeeperClient(zkc)
+                                .setLedgerMap(elm).setByteBufPool(byteBufSharedPool)
+                                .setBKProxyWorkerId(bkProxyWorkerNo.getAndIncrement())
+                                .setStatsLogger(statsLogger.scope(PROXY_WORKER_SCOPE)).build();
+
+                        proxyWorkerExecutor.submit(bkProxyWorker);
                         proxyWorkerPoolCounter.inc();
                     } catch (RejectedExecutionException rejException) {
                         LOG.error("ProxyWorkerExecutor has rejected new task. Current number of active Threads: "
@@ -229,6 +247,14 @@ public class BKProxyMain implements Runnable {
                     bk.close();
                 } catch (InterruptedException | BKException e) {
                     LOG.warn("Got Exception while closing the BK Client", e);
+                }
+            }
+            if(zkc != null){
+                LOG.info("Closing ZooKeeper Client...");
+                try {
+                    zkc.close();
+                } catch (InterruptedException e) {
+                    LOG.warn("Got InterruptedException while closing Zookeeper Client", e);
                 }
             }
         }

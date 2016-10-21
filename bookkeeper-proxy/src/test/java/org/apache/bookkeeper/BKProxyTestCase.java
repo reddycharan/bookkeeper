@@ -139,7 +139,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
                                     +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerReadCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n";
         executeTestcase(testDefinition);
     }
-    
+
     /**
      * In this testcase various operations are tried with negative ledgerid
      * @throws IOException
@@ -167,12 +167,16 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void fourLettersCommandTest() throws IOException, InterruptedException {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   NUMOFTHREADS + "-2\n"
+                                    +   NUMOFTHREADS + "-4\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
-                                    +   NUMOFSLOTS + "-1\n"
+                                    +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   THREADDETAILS + "-Thread4-BKP1\n"
+                                    +   NUMOFSLOTS + "-2\n"
                                     +   BKPOPERATION + "-0-Thread1-"+Operation.FourLettersReq+"-ruok-imok\n"
-                                    +   BKPOPERATION + "-0-Thread2-"+Operation.FourLettersReq+"-ruok-imok\n";
+                                    +   BKPOPERATION + "-0-Thread2-"+Operation.FourLettersReq+"-ruok-imok\n"
+                                    +   BKPOPERATION + "-1-Thread3-"+Operation.FourLettersReq+"-pver-"+BKPConstants.SFS_CURRENT_VERSION+"\n"
+                                    +   BKPOPERATION + "-1-Thread4-"+Operation.FourLettersReq+"-zkok-"+CommandExecutor.ZK_CONNECTED_STRING+"\n";
         executeTestcase(testDefinition);
     }
 

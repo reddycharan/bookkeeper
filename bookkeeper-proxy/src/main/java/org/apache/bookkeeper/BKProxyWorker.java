@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.bookkeeper.BKExtentLedgerMap.BKExtentLedgerMapBuilder;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
@@ -19,6 +20,7 @@ import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
 import org.apache.bookkeeper.util.MathUtils;
+import org.apache.zookeeper.ZooKeeper;
 import org.eclipse.jetty.util.log.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,7 @@ class BKProxyWorker implements Runnable {
 
     private final BookKeeperProxyConfiguration bkpConfig;
     SocketChannel clientChannel;
+    ZooKeeper zkc;
     BKSfdcClient bksc;
     byte reqId = BKPConstants.UnInitialized;
     byte respId = BKPConstants.UnInitialized;
@@ -120,7 +123,66 @@ class BKProxyWorker implements Runnable {
     private final OpStatsLogger ledgerWriteHist;
     private final OpStatsLogger ledgerListGetTimer;
 
-    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock, BookKeeper bk,
+    public static class BKProxyWorkerBuilder {
+        private BookKeeperProxyConfiguration bkpConfig;
+        private SocketChannel sSock;
+        private BookKeeper bk;
+        private ZooKeeper zkc;
+        private BKExtentLedgerMap elm;
+        private BKByteBufferPool byteBufPool;
+        private long bkProxyWorkerId;
+        private StatsLogger statsLogger;
+
+        public BKProxyWorkerBuilder setBKPConfig(BookKeeperProxyConfiguration bkpConfig) {
+            this.bkpConfig = bkpConfig;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setClientSocketChannel(SocketChannel sSock) {
+            this.sSock = sSock;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setBookKeeperClient(BookKeeper bk) {
+            this.bk = bk;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setZooKeeperClient(ZooKeeper zkc) {
+            this.zkc = zkc;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setLedgerMap(BKExtentLedgerMap elm) {
+            this.elm = elm;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setByteBufPool(BKByteBufferPool byteBufPool) {
+            this.byteBufPool = byteBufPool;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setBKProxyWorkerId(long bkProxyWorkerId) {
+            this.bkProxyWorkerId = bkProxyWorkerId;
+            return this;
+        }
+
+        public BKProxyWorkerBuilder setStatsLogger(StatsLogger statsLogger) {
+            this.statsLogger = statsLogger;
+            return this;
+        }
+
+        public BKProxyWorker build() throws IOException {
+            return new BKProxyWorker(bkpConfig, sSock, bk, zkc, elm, byteBufPool, bkProxyWorkerId, statsLogger);
+        }
+    }
+
+    public static BKProxyWorkerBuilder newBuilder() {
+        return new BKProxyWorkerBuilder();
+    }
+
+    public BKProxyWorker(BookKeeperProxyConfiguration bkpConfig, SocketChannel sSock, BookKeeper bk, ZooKeeper zkc,
             BKExtentLedgerMap elm, BKByteBufferPool byteBufPool, long bkProxyWorkerId, StatsLogger statsLogger)
             throws IOException {
         this.bkpConfig = bkpConfig;
@@ -164,6 +226,7 @@ class BKProxyWorker implements Runnable {
             }
             throw e;
         }
+        this.zkc = zkc;
         this.bksc = new BKSfdcClient(bkpConfig, bk, elm, byteBufPool, statsLogger);
     }
 
@@ -312,7 +375,7 @@ class BKProxyWorker implements Runnable {
                     clientChannelRead(req, req.remaining());
                     String commandString = new String(req.array(), 0, 4);
                     CommandExecutor commandExecutor = new CommandExecutor();
-                    if (commandExecutor.execute(commandString, clientChannel, bkpConfig)) {
+                    if (commandExecutor.execute(commandString, clientChannel, bkpConfig, zkc)) {
                         break;
                     }
                     req.limit(req.capacity());
