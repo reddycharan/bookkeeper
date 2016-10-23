@@ -222,8 +222,7 @@ public class BKExtentLedgerMap {
     }
 
     public void removeReadLedger(BKExtentId extentId) {
-        LOG.debug("Closing (non-)recovery read ledger handle for extentId {} if present",
-                extentId);
+        LOG.debug("Closing read ledger handle for extentId {} if present", extentId);
         readLhLru.invalidate(extentId);
     }
 
