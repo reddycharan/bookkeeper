@@ -174,7 +174,7 @@ public class Auditor implements BookiesListener {
             executor.submit(new Runnable() {
                     public void run() {
                         synchronized (Auditor.this) {
-                            executor.shutdown();
+                            executor.shutdownNow();
                         }
                     }
                 });
