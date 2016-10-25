@@ -181,8 +181,11 @@ public class BKSfdcClient {
     }
 
     public void ledgerWriteClose(BKExtentId extentId) throws BKException, InterruptedException {
+        LedgerHandle lh = elm.getWriteLedgerHandle(extentId);
+        if (lh != null) {
         LOG.info("Closing extentId: {} when it's LAC: {}",
-                extentId, elm.getWriteLedgerHandle(extentId).getLastAddConfirmed());
+               extentId, lh.getLastAddConfirmed());
+        }
         // Closes and removes write ledger handle from cache.
         elm.removeWriteLedger(extentId);
     }
