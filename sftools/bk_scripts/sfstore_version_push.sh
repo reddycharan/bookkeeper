@@ -14,6 +14,9 @@ ARTIFACT_DIR=$WORKSPACE
 echo "P4CLIENT: $P4CLIENT"
 echo "P4USER: $P4USER"
 
+#Enable error checking so we can perform our own cleanup
+set +o errexit
+
 # SFM does not use blt but Ubuntu uses it.
 if [ -d $HOME/blt ]; then
     echo "Using BLT directory"
@@ -133,9 +136,11 @@ echo "Submitting proxy changelist"
 
 p4 submit -c $changelist
 if [ "$?" -ne 0 ];then
-   p4 remove $PROXY_IMAGE
-   p4 remove $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
+   p4 revert $PROXY_IMAGE
+   p4 revert $INSTALL_BASE_DIR/$PROXY_PROP_DIR/$PROXY_PROP_FILE
    p4 change -d $changelist
+   #Remove it locally. If it's in p4, it will be re-imported and edited; else, it's new so we add.
+   rm $PROXY_INSTALL_DIR/$PROXY_IMAGE
    echo "Failed to submit $PROXY_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Exiting." && exit -1
 else
   #Remove back-up that we created since we successfully updated this. 
@@ -176,9 +181,11 @@ echo "Submitting sfstore changelist"
 p4 submit -c $changelist
 if [ "$?" -ne 0 ];then
    echo "Failed to submit $SFSTORE_IMAGE. Cannot proceed with $SFSTORE_IMAGE check-in. Proceeding with script for clean-up."
-   p4 remove $SFSTORE_IMAGE
-   p4 remove $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
+   p4 revert $SFSTORE_IMAGE
+   p4 revert $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
    p4 change -d $changelist
+   #Remove it locally. If it's in p4, it will be re-imported and edited; else, it's new so we add.
+   rm $SFSTORE_INSTALL_DIR/$SFSTORE_IMAGE
 else
   rm $INSTALL_BASE_DIR/$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE.backup 
   echo "Successfully submitted $SFSTORE_IMAGE to p4"
