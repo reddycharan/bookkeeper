@@ -163,8 +163,10 @@ class JournalChannel implements Closeable {
 
             bc = new BufferedChannel(fc, writeBufferSize);
             forceWrite(true);
-            nextPrealloc = this.preAllocSize;
-            fc.write(zeros, nextPrealloc - journalAlignSize);
+            if (preAllocSize > 0) {
+                nextPrealloc = this.preAllocSize;
+                fc.write(zeros, nextPrealloc - journalAlignSize);
+            }
         } else {  // open an existing file
             randomAccessFile = new RandomAccessFile(fn, "r");
             fc = randomAccessFile.getChannel();
@@ -230,6 +232,9 @@ class JournalChannel implements Closeable {
     }
 
     void preAllocIfNeeded(long size) throws IOException {
+        if (preAllocSize <= 0) {
+            return;
+        }
         if (bc.position() + size > nextPrealloc) {
             nextPrealloc += preAllocSize;
             zeros.clear();
