@@ -572,6 +572,14 @@ public class Bookie extends BookieCriticalThread {
         return indexDirsManager;
     }
 
+    public long getTotalDiskSpace() {
+        return getLedgerDirsManager().getTotalDiskSpace();
+    }
+
+    public long getTotalFreeSpace() {
+        return getLedgerDirsManager().getTotalFreeSpace();
+    }
+
     public static File getCurrentDirectory(File dir) {
         return new File(dir, BookKeeperConstants.CURRENT_DIR);
     }
@@ -622,7 +630,6 @@ public class Bookie extends BookieCriticalThread {
                                     new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()), 
                                     ledgerDirsManager);
         this.ledgerMonitor.init();
-        
         if (null == idxDirs) {
             this.idxMonitor = this.ledgerMonitor;
         } else {

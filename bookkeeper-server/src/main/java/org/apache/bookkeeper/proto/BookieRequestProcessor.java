@@ -40,6 +40,7 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_LAC;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
 
 
 public class BookieRequestProcessor implements RequestProcessor {
@@ -76,6 +77,7 @@ public class BookieRequestProcessor implements RequestProcessor {
     final OpStatsLogger readEntryStats;
     final OpStatsLogger writeLacStats;
     final OpStatsLogger readLacStats;
+    final OpStatsLogger getBookieInfoStats;
 
     public BookieRequestProcessor(ServerConfiguration serverCfg, Bookie bookie,
                                   StatsLogger statsLogger) {
@@ -95,6 +97,7 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.readRequestStats = statsLogger.getOpStatsLogger(READ_ENTRY_REQUEST);
         this.writeLacStats = statsLogger.getOpStatsLogger(WRITE_LAC);
         this.readLacStats = statsLogger.getOpStatsLogger(READ_LAC);
+        this.getBookieInfoStats = statsLogger.getOpStatsLogger(GET_BOOKIE_INFO);
     }
 
     @Override
@@ -138,6 +141,9 @@ public class BookieRequestProcessor implements RequestProcessor {
                     break;
                 case READ_LAC:
                     processReadLacRequestV3(r,c);
+                    break;
+                case GET_BOOKIE_INFO:
+                    processGetBookieInfoRequestV3(r,c);
                     break;
                 default:
                     LOG.info("Unknown operation type {}", header.getOperation());
@@ -204,6 +210,15 @@ public class BookieRequestProcessor implements RequestProcessor {
             readLac.run();
         } else {
             readThreadPool.submit(readLac);
+        }
+    }
+
+    private void processGetBookieInfoRequestV3(final BookkeeperProtocol.Request r, final Channel c) {
+        GetBookieInfoProcessorV3 getBookieInfo = new GetBookieInfoProcessorV3(r, c, this);
+        if (null == readThreadPool) {
+            getBookieInfo.run();
+        } else {
+            readThreadPool.submit(getBookieInfo);
         }
     }
 

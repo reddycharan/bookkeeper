@@ -32,6 +32,7 @@ public interface BookKeeperClientStats {
 	public final static String READ_OP = "READ_ENTRY";
 	public final static String WRITE_LAC_OP = "WRITE_LAC";
 	public final static String READ_LAC_OP = "READ_LAC";
+	public final static String GET_BOOKIE_INFO_OP = "GET_BOOKIE_INFO";
 
 	// Client operations
 	public final static String CREATE_OP = "LEDGER_CREATE";
@@ -48,6 +49,7 @@ public interface BookKeeperClientStats {
 	public final static String TIMEOUT_ADD = "TIMEOUT_ADD_ENTRY";
 	public final static String TIMEOUT_WRITE_LAC = "TIMEOUT_WRITE_LAC";
 	public final static String TIMEOUT_READ_LAC = "TIMEOUT_READ_LAC";
+	public final static String TIMEOUT_GET_BOOKIE_INFO = "TIMEOUT_GET_BOOKIE_INFO";
 	public final static String NETTY_EXCEPTION_CNT = "NETTY_EXCEPTION_CNT";
 	public final static String CLIENT_LOCK_TIME = "CLIENT_LOCK_TIME";
 	public final static String CLIENT_CONNECT_TIMER = "CLIENT_CONNECT_TIMER";

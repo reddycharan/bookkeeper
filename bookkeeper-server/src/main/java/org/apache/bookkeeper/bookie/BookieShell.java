@@ -23,11 +23,13 @@ import static com.google.common.base.Charsets.UTF_8;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,15 +42,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Enumeration;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.bookie.BookieException.InvalidCookieException;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogScanner;
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.client.BKException;
-import org.apache.bookkeeper.client.LedgerEntry;
+import org.apache.bookkeeper.client.BookieInfoReader;
+import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
@@ -64,7 +68,10 @@ import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
 import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.apache.bookkeeper.proto.BookieClient;
+import org.apache.bookkeeper.proto.BookkeeperProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
 import org.apache.bookkeeper.replication.AuditorElector;
 import org.apache.bookkeeper.util.EntryFormatter;
 import org.apache.bookkeeper.util.IOUtils;
@@ -74,6 +81,7 @@ import org.apache.bookkeeper.util.Tool;
 import org.apache.bookkeeper.versioning.Version;
 import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+
 import com.google.protobuf.ByteString;
 
 import org.apache.commons.io.FileUtils;
@@ -83,6 +91,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.MissingArgumentException;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -129,6 +138,7 @@ public class BookieShell implements Tool {
     static final String CMD_EXPANDSTORAGE = "expandstorage";
     static final String CMD_UPDATELEDGER = "updateledgers";
     static final String CMD_DELETELEDGER = "deleteledger";
+    static final String CMD_BOOKIEINFO = "bookieinfo";
     static final String CMD_HELP = "help";
 
     final ServerConfiguration bkConf = new ServerConfiguration();
@@ -1722,6 +1732,74 @@ public class BookieShell implements Tool {
     }
 
     /**
+     * Command to retrieve bookie information like free disk space, etc from all
+     * the bookies in the cluster.
+     */
+    class BookieInfoCmd extends MyCommand {
+        Options lOpts = new Options();
+
+        BookieInfoCmd() {
+            super(CMD_BOOKIEINFO);
+        }
+
+        @Override
+        String getDescription() {
+            return "Retrieve bookie info such as free and total disk space";
+        }
+
+        @Override
+        String getUsage() {
+            return "bookieinfo";
+        }
+
+        @Override
+        Options getOptions() {
+            return lOpts;
+        }
+
+        String getReadable(long val) {
+            String unit[] = {"", "KB", "MB", "GB", "TB" };
+            int cnt = 0;
+            double d = val;
+            while (d > 1000 && cnt < unit.length-1) {
+                d = d/1000;
+                cnt++;
+            }
+            DecimalFormat df = new DecimalFormat("#.###");
+            df.setRoundingMode(RoundingMode.DOWN);
+            return cnt > 0 ? "(" + df.format(d) + unit[cnt] + ")" : unit[cnt];
+        }
+
+        @Override
+        public int runCmd(CommandLine cmdLine) throws Exception {
+            ClientConfiguration clientConf = new ClientConfiguration(bkConf);
+            clientConf.setDiskWeightBasedPlacementEnabled(true);
+            BookKeeper bk = new BookKeeper(clientConf);
+
+            Map<BookieSocketAddress, BookieInfo> map = bk.getBookieInfo();
+            if (map.size() == 0) {
+                System.out.println("Failed to retrieve bookie information from any of the bookies");
+                bk.close();
+                return 0;
+            }
+
+            System.out.println("Free disk space info:");
+            long totalFree = 0, total=0;
+            for (Map.Entry<BookieSocketAddress, BookieInfo> e : map.entrySet()) {
+                BookieInfo bInfo = e.getValue();
+                System.out.println(e.getKey() + ":\tFree: " + bInfo.getFreeDiskSpace() +  getReadable(bInfo.getFreeDiskSpace()) +
+                        "\tTotal: " + bInfo.getTotalDiskSpace() +  getReadable(bInfo.getTotalDiskSpace()));
+                totalFree += bInfo.getFreeDiskSpace();
+                total += bInfo.getTotalDiskSpace();
+            }
+            System.out.println("Total free disk space in the cluster:\t" + totalFree + getReadable(totalFree));
+            System.out.println("Total disk capacity in the cluster:\t" + total + getReadable(total));
+            bk.close();
+            return 0;
+        }
+    }
+
+    /**
      * A facility for reporting update ledger progress.
      */
     public interface UpdateLedgerNotifier {
@@ -1751,6 +1829,7 @@ public class BookieShell implements Tool {
         commands.put(CMD_EXPANDSTORAGE, new ExpandStorageCmd());
         commands.put(CMD_UPDATELEDGER, new UpdateLedgerCmd());
         commands.put(CMD_DELETELEDGER, new DeleteLedgerCmd());
+        commands.put(CMD_BOOKIEINFO, new BookieInfoCmd());
         commands.put(CMD_HELP, new HelpCmd());
     }
 

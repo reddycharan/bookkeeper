@@ -77,6 +77,11 @@ public class ClientConfiguration extends AbstractConfiguration {
     protected final static String BOOKIE_ERROR_THRESHOLD_PER_INTERVAL = "bookieErrorThresholdPerInterval";
     protected final static String BOOKIE_QUARANTINE_TIME_SECONDS = "bookieQuarantineTimeSeconds";
 
+    // Bookie info poll interval
+    protected final static String DISK_WEIGHT_BASED_PLACEMENT_ENABLED = "diskWeightBasedPlacementEnabled";
+    protected final static String GET_BOOKIE_INFO_INTERVAL_SECONDS = "getBookieInfoIntervalSeconds";
+    protected final static String BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT = "bookieMaxMultipleForWeightBasedPlacement";
+
     // Number Woker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
 
@@ -938,6 +943,66 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public ClientConfiguration setBookieQuarantineTime(int quarantineTime, TimeUnit unit) {
         setProperty(BOOKIE_QUARANTINE_TIME_SECONDS, unit.toSeconds(quarantineTime));
+        return this;
+    }
+
+    /**
+     * Get the time interval between successive calls for bookie get info. Default is 24 hours.
+     *
+     * @return
+     */
+    public int getGetBookieInfoIntervalSeconds() {
+        return getInt(GET_BOOKIE_INFO_INTERVAL_SECONDS, 24*60*60);
+    }
+
+    /**
+     * Return whether disk weight based placement policy is enabled
+     * @return
+     */
+    public boolean getDiskWeightBasedPlacementEnabled() {
+        return getBoolean(DISK_WEIGHT_BASED_PLACEMENT_ENABLED, false);
+    }
+
+
+    /**
+     * Returns the max multiple to use for nodes with very high weight
+     * @return max multiple
+     */
+    public int getBookieMaxWeightMultipleForWeightBasedPlacement() {
+        return getInt(BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT, 3);
+    }
+
+    /**
+     * Set whether or not disk weight based placement is enabled.
+     *
+     * @param isEnabled - boolean indicating enabled or not
+     * @return client configuration
+     */
+    public ClientConfiguration setDiskWeightBasedPlacementEnabled(boolean isEnabled) {
+        setProperty(DISK_WEIGHT_BASED_PLACEMENT_ENABLED, isEnabled);
+        return this;
+    }
+
+    /**
+     * Set the time interval between successive polls for bookie get info.
+     *
+     *
+     * @param pollInterval
+     * @param unit
+     * @return client configuration
+     */
+    public ClientConfiguration setGetBookieInfoIntervalSeconds(int pollInterval, TimeUnit unit) {
+        setProperty(GET_BOOKIE_INFO_INTERVAL_SECONDS, unit.toSeconds(pollInterval));
+        return this;
+    }
+
+    /**
+     * Set the max multiple to use for nodes with very high weight
+     * @param multiple
+     * @return client configuration
+     */
+    public ClientConfiguration setBookieMaxWeightMultipleForWeightBasedPlacement(int multiple) {
+        setProperty(BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT, multiple);
         return this;
     }
 

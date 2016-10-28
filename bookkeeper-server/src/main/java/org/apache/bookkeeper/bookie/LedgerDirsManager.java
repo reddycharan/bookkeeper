@@ -120,7 +120,35 @@ public class LedgerDirsManager {
     public ConcurrentMap<File, Float> getDiskUsages() {
         return diskUsages;
     }
-    
+
+    /**
+     * Calculate the total amount of free space available
+     * in all of the ledger directories put together.
+     *
+     * @return totalDiskSpace in bytes
+     */
+    public long getTotalFreeSpace() {
+        long totalFreeSpace = 0;
+        for (File dir: this.ledgerDirectories) {
+            totalFreeSpace += dir.getFreeSpace();
+        }
+        return totalFreeSpace;
+    }
+
+    /**
+     * Calculate the total amount of free space available
+     * in all of the ledger directories put together.
+     *
+     * @return freeDiskSpace in bytes
+     */
+    public long getTotalDiskSpace() {
+        long totalDiskSpace = 0;
+        for (File dir: this.ledgerDirectories) {
+            totalDiskSpace += dir.getTotalSpace();
+        }
+        return totalDiskSpace;
+    }
+
     /**
      * Get only writable ledger dirs.
      */
