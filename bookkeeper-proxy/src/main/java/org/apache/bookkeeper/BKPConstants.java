@@ -121,7 +121,7 @@ public final class BKPConstants {
         }
     }
 
-    static byte getRespId(byte reqId) {
+    public static byte getRespId(byte reqId) {
         switch (reqId) {
         case LedgerStatReq:
             return LedgerStatResp;
