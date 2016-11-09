@@ -363,15 +363,19 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                     String parent = queue.remove();
                     try {
                         for (String c : zkc.getChildren(parent, false)) {
-                            String child = parent + "/" + c;
-                            if (c.startsWith("urL")) {
-                                long ledgerId = getLedgerId(child);
-                                if ((predicate == null)
-                                        || predicate.test(getLedgerUnreplicationInfo(ledgerId).getReplicaList())) {
-                                    curBatch.add(ledgerId);
+                            try {
+                                String child = parent + "/" + c;
+                                if (c.startsWith("urL")) {
+                                    long ledgerId = getLedgerId(child);
+                                    if ((predicate == null)
+                                            || predicate.test(getLedgerUnreplicationInfo(ledgerId).getReplicaList())) {
+                                        curBatch.add(ledgerId);
+                                    }
+                                } else {
+                                    queue.add(child);
                                 }
-                            } else {
-                                queue.add(child);
+                            } catch (KeeperException.NoNodeException nne) {
+                                // ignore
                             }
                         }
                     } catch (InterruptedException ie) {
