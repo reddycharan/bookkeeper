@@ -366,9 +366,6 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
      */
     @Test(timeout=60000)
     public void testDelayedAuditOfLostBookies() throws Exception {
-        // wait for a second so that the initial periodic check finishes
-        // TODO: come up with better way to wait for auditor to finish its run
-        Thread.sleep(1000);
         _testDelayedAuditOfLostBookies();
     }
 
@@ -389,7 +386,6 @@ public class AuditorLedgerCheckerTest extends MultiLedgerManagerTestCase {
         startAuditorElectors();
 
         // wait for a second so that the initial periodic check finishes
-        // TODO: come up with better way to wait for auditor to finish its run
         Thread.sleep(1000);
 
         // the delaying of audit should just work despite the fact

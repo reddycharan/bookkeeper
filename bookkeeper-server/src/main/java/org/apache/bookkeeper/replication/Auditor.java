@@ -221,6 +221,7 @@ public class Auditor implements BookiesListener {
                         if (bookiesToBeAudited.size() == 0) {
                             return;
                         }
+
                         knownBookies.removeAll(bookiesToBeAudited);
                         if (conf.getLostBookieRecoveryDelay() == 0) {
                             startAudit(false);
