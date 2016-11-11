@@ -1,5 +1,6 @@
 package org.apache.bookkeeper;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
@@ -76,9 +77,9 @@ public class LedgerAsyncWriteStatus {
         latch.countDown();
     }
 
-    public byte getResult() {
+    public byte getResult() throws IOException {
         if (inProgress) {
-            return BKPConstants.SF_ErrorInProgress;
+            return BKPConstants.SF_StatusInProgress;
         }
         // Finished execution.
         return BKPConstants.convertBKtoSFerror(bkError);

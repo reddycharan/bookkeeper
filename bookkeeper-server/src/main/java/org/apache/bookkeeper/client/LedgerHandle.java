@@ -526,22 +526,15 @@ public class LedgerHandle implements AutoCloseable {
 
         // Little sanity check
         if (firstEntry < 0 || firstEntry > lastEntry) {
-            cb.readComplete(BKException.Code.ReadException, this, null, ctx);
+            LOG.error("IncorrectParameterException on ledgerId:{} firstEntry:{} lastEntry:{}",
+                    new Object[] {ledgerId, firstEntry, lastEntry});
+            cb.readComplete(BKException.Code.IncorrectParameterException, this, null, ctx);
             return;
         }
 
-        // Check  if need to send explicit readLastConfirmed
-        if (firstEntry > lastAddConfirmed || lastEntry > lastAddConfirmed) {
-            try {
-                readLac();
-            } catch (BKException | InterruptedException e) {
-                // This is optional and if we can't read LAC that is fine.
-                LOG.info("Attempted to Read LAC, but nothing found");
-            }
-        }
-
-        // Check if we got LAC update to satisfy this request.
         if (lastEntry > lastAddConfirmed) {
+            LOG.error("ReadException on ledgerId:{} firstEntry:{} lastEntry:{}",
+                    new Object[] {ledgerId, firstEntry, lastEntry});
             cb.readComplete(BKException.Code.ReadException, this, null, ctx);
             return;
         }

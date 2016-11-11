@@ -48,7 +48,6 @@ public class LedgerAsyncWriteStatusReqBKPOperation extends BKPOperationExtension
         if (expectedReturnStatus == BKPConstants.SF_OK) {
             expectedAsyncWriteStatus = Byte.valueOf(operationParameters[7]);
         }
-
         LedgerAsyncWriteStatusReqBKPOperation lawsOperation = new LedgerAsyncWriteStatusReqBKPOperation(protocolVersion,
                 timeSlot, threadId, requestType, extentId, fragmentID, timeout, BKPConstants.LedgerAsyncWriteStatusResp,
                 expectedReturnStatus, expectedAsyncWriteStatus);
@@ -61,7 +60,7 @@ public class LedgerAsyncWriteStatusReqBKPOperation extends BKPOperationExtension
         if (getExpectedReturnStatus() == BKPConstants.SF_OK) {
             // Validate the AsyncWrite completion status
             getByteFromResponseAndVerify(clientSocketChannel, this.expectedAsyncWriteStatus, "AsyncWriteStatus");
-            if (this.expectedAsyncWriteStatus == BKPConstants.SF_ErrorInProgress) {
+            if (this.expectedAsyncWriteStatus == BKPConstants.SF_StatusInProgress) {
                 // If in progress, time should be set to 0.
                 getLongFromResponseAndVerify(clientSocketChannel, 0, "CompletinTime");
             } else {

@@ -1,11 +1,15 @@
 package org.apache.bookkeeper;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.bookkeeper.client.BKException.Code;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class BKPConstants {
+    private final static Logger LOG = LoggerFactory.getLogger(BKPConstants.class);
     // Requests
     public static final byte LedgerStatReq = 1;
     public static final byte LedgerDeleteReq = 2;
@@ -43,26 +47,28 @@ public final class BKPConstants {
 
     // Error Codes
     public static final byte SF_OK = 0;
-    public static final byte SF_Error = 10;
-    public static final byte SF_ServerInternalError = 11;
-    public static final byte SF_OutOfMemory = 12;
-    public static final byte SF_ErrorChecksum = 13;
-    public static final byte SF_ErrorReadOnly = 14;
-    public static final byte SF_ErrorBadRequest = 15;
-    public static final byte SF_ErrorNotFound = 16;
-    public static final byte SF_ErrorWrite = 17;
-    public static final byte SF_ErrorRead = 18;
-    public static final byte SF_ShortREAD = 19;
-    public static final byte SF_ErrorExist = 20;
-    public static final byte SF_ServerTimeout = 21;
-    public static final byte SF_ErrorExtentClosed = 22;
-    public static final byte SF_ErrorAuth = 23;
-    public static final byte SF_ErrorServerInterrupt = 24;
-    public static final byte SF_ErrorMetaDataServer = 25;
-    public static final byte SF_ErrorServerQuorum = 26;
-    public static final byte SF_ErrorNotFoundClosed = 27;
-    public static final byte SF_ErrorInProgress = 28;
-    public static final byte SF_ErrorUnknownVersion = 29;
+    public static final byte SF_Error = 1; // Default error
+    public static final byte SF_ErrorFenced = 10;
+    public static final byte SF_ErrorChecksum = 11;
+    public static final byte SF_ErrorReadOnly = 12;
+    public static final byte SF_ErrorIncorrectParameter = 13;
+    public static final byte SF_ErrorNoSuchExtent = 14;
+    public static final byte SF_ErrorWrite = 15;
+    public static final byte SF_ErrorRead = 16;
+    public static final byte SF_ShortRead = 17;
+    public static final byte SF_ErrorExist = 18;
+    public static final byte SF_ServerTimeout = 19;
+    public static final byte SF_ErrorExtentClosed = 20;
+    public static final byte SF_ErrorAuth = 21;
+    public static final byte SF_ErrorServerInterrupt = 22;
+    public static final byte SF_ErrorMetaDataServer = 23;
+    public static final byte SF_ErrorServerQuorum = 24;
+    public static final byte SF_ErrorNoSuchFragmentClosed = 25;
+    public static final byte SF_StatusInProgress = 26;
+    public static final byte SF_ErrorUnknownVersion = 27;
+    public static final byte SF_ErrorIllegalOperation = 28;
+    public static final byte SF_ErrorNoSuchFragment = 29;
+
 
     // Defines
     public static final int EXTENTID_SIZE = 16;
@@ -73,14 +79,14 @@ public final class BKPConstants {
     public static final int ASYNC_STAT_REQ_SIZE = 8;
     public static final long NO_ENTRY = -1;
     public static final byte UnInitialized = -1;
-    // Version bumped to 2 due to change in LedgerStat response
-    public static final short SFS_CURRENT_VERSION = 2;
+    // Version bumped to 3 due to change in ErrorCode response
+    public static final short SFS_CURRENT_VERSION = 3;
     public static final short LEDGER_LIST_BATCH_SIZE = 100;
 
     // Configuration values
     public static final long INFINITY = -1;
 
-    public static final byte convertBKtoSFerror(int BKerror) {
+    public static final byte convertBKtoSFerror(int BKerror) throws IOException {
         switch (BKerror) {
         case Code.OK:
             return BKPConstants.SF_OK;
@@ -97,16 +103,19 @@ public final class BKPConstants {
         case Code.WriteException:
             return BKPConstants.SF_ErrorWrite;
         case Code.NoSuchEntryException:
+            return BKPConstants.SF_ErrorNoSuchFragment;
         case Code.NoSuchLedgerExistsException:
-            return BKPConstants.SF_ErrorNotFound;
+            return BKPConstants.SF_ErrorNoSuchExtent;
         case Code.LedgerClosedNoSuchEntryException:
-            return BKPConstants.SF_ErrorNotFoundClosed;
+            return BKPConstants.SF_ErrorNoSuchFragmentClosed;
         case Code.IncorrectParameterException:
+            return BKPConstants.SF_ErrorIncorrectParameter;
         case Code.IllegalOpException:
-            return BKPConstants.SF_ErrorBadRequest;
+            return BKPConstants.SF_ErrorIllegalOperation;
         case Code.InterruptedException:
             return BKPConstants.SF_ErrorServerInterrupt;
         case Code.LedgerFencedException:
+            return BKPConstants.SF_ErrorFenced;
         case Code.WriteOnReadOnlyBookieException:
             return BKPConstants.SF_ErrorReadOnly;
         case Code.UnauthorizedAccessException:
@@ -117,7 +126,8 @@ public final class BKPConstants {
         case Code.DuplicateEntryIdException:
             return BKPConstants.SF_ErrorExist;
         default:
-            return BKPConstants.SF_ServerInternalError;
+            LOG.error("Unmaped BK error: {}.", BKerror);
+            throw new IOException("Unmaped BK error");
         }
     }
 
