@@ -57,6 +57,9 @@ public interface BookKeeperServerStats {
     public final static String FLUSH_LATENCY = "FLUSH_LATENCY";
     public final static String CREATION_LATENCY = "CREATION_LATENCY";
     public final static String CB_THREAD_POOL_SIZE = "CB_THREAD_POOL_SIZE";
+    public final static String SYNC = "SYNC";
+    public final static String QUEUE_LATENCY = "QUEUE_LATENCY";
+    public final static String PROCESS_TIME_LATENCY = "PROCESS_TIME_LATENCY";
 
     // Ledger Storage Stats
     public final static String STORAGE_GET_OFFSET = "STORAGE_GET_OFFSET";

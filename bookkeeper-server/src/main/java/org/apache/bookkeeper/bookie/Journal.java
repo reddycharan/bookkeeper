@@ -331,7 +331,9 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
 
             try {
                 if (shouldForceWrite) {
+                    long startTime = MathUtils.nowInNano();
                     this.logFile.forceWrite(false);
+                    journalSyncStats.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                 }
                 lastLogMark.setCurLogMark(this.logId, this.lastFlushedPosition);
 
@@ -519,8 +521,11 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
 
     // Expose Stats
     private final OpStatsLogger journalAddEntryStats;
+    private final OpStatsLogger journalSyncStats;
     private final OpStatsLogger journalCreationStats;
     private final OpStatsLogger journalFlushStats;
+    private final OpStatsLogger journalProcessTimeStats;
+    private final OpStatsLogger journalQueueStats;
     private final OpStatsLogger forceWriteGroupingCountStats;
     private final OpStatsLogger forceWriteBatchEntriesStats;
     private final OpStatsLogger forceWriteBatchBytesStats;
@@ -575,6 +580,9 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
         flushEmptyQueueCounter = statsLogger.getCounter(NUM_FLUSH_EMPTY_QUEUE);
         journalWriteBytes = statsLogger.getCounter(WRITE_BYTES);
         journalCbThreadPoolSize = statsLogger.getCounter(CB_THREAD_POOL_SIZE);
+        journalSyncStats = statsLogger.getOpStatsLogger(SYNC);
+        journalQueueStats = statsLogger.getOpStatsLogger(QUEUE_LATENCY);
+        journalProcessTimeStats = statsLogger.getOpStatsLogger(PROCESS_TIME_LATENCY);
     }
 
     LastLogMark getLastLogMark() {
@@ -797,6 +805,8 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
             long lastFlushPosition = 0;
             boolean groupWhenTimeout = false;
 
+            long dequeueStartTime = 0L;
+
             QueueEntry qe = null;
             while (true) {
                 // new journal file to write
@@ -820,14 +830,26 @@ class Journal extends BookieCriticalThread implements CheckpointSource {
                 }
 
                 if (qe == null) {
+                    if (dequeueStartTime != 0) {
+                        journalProcessTimeStats.registerSuccessfulEvent(MathUtils.elapsedNanos(dequeueStartTime), TimeUnit.NANOSECONDS);
+                    }
+
                     if (toFlush.isEmpty()) {
                         qe = queue.take();
+                        dequeueStartTime = MathUtils.nowInNano();
+                        journalQueueStats.registerSuccessfulEvent(MathUtils.elapsedNanos(qe.enqueueTime), TimeUnit.NANOSECONDS);
                     } else {
                         long pollWaitTimeNanos = maxGroupWaitInNanos - MathUtils.elapsedNanos(toFlush.get(0).enqueueTime);
                         if (flushWhenQueueEmpty || pollWaitTimeNanos < 0) {
                             pollWaitTimeNanos = 0;
                         }
                         qe = queue.poll(pollWaitTimeNanos, TimeUnit.NANOSECONDS);
+                        dequeueStartTime = MathUtils.nowInNano();
+
+                        if (qe != null) {
+                            journalQueueStats.registerSuccessfulEvent(MathUtils.elapsedNanos(qe.enqueueTime), TimeUnit.NANOSECONDS);
+                        }
+
                         boolean shouldFlush = false;
                         // We should issue a forceWrite if any of the three conditions below holds good
                         // 1. If the oldest pending entry has been pending for longer than the max wait time
