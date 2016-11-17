@@ -82,6 +82,9 @@ class FileInfo {
     private int stateBits;
     private boolean needFlushHeader = false;
 
+    // lac
+    private Long lac = null;
+
     // file access mode
     protected String mode;
 
@@ -90,6 +93,17 @@ class FileInfo {
 
         this.masterKey = masterKey;
         mode = "rw";
+    }
+
+    synchronized Long getLastAddConfirmed() {
+        return lac;
+    }
+
+    synchronized long setLastAddConfirmed(long lac) {
+        if (null == this.lac || this.lac < lac) {
+            this.lac = lac;
+        }
+        return this.lac;
     }
 
     public File getLf() {

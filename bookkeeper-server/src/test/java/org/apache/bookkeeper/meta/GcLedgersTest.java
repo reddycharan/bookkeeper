@@ -419,5 +419,10 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         @Override
         public void addShutdownCallback(Runnable r) {
         }
+
+        @Override
+        public long getLastAddConfirmed(long ledgerId) throws IOException {
+            return 0;
+        }
     }
 }

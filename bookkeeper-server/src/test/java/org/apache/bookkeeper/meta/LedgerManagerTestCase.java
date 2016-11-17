@@ -162,6 +162,11 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
         }
 
         @Override
+        public long getLastAddConfirmed(long ledgerId) throws IOException {
+            return 0;
+        }
+
+        @Override
         public void flush() throws IOException {
         }
 
