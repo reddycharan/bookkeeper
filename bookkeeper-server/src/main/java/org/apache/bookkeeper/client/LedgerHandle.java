@@ -1142,7 +1142,9 @@ public class LedgerHandle implements AutoCloseable {
             newEnsemble.addAll(metadata.currentEnsemble);
             newBookie = bk.bookieWatcher.replaceBookie(metadata.getEnsembleSize(),
                     metadata.getWriteQuorumSize(),
-                    metadata.getAckQuorumSize(), newEnsemble,
+                    metadata.getAckQuorumSize(),
+                    metadata.getCustomMetadata(),
+                    newEnsemble,
                     bookieIndex, new HashSet<>(Arrays.asList(addr)));
 
 
