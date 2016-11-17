@@ -8,12 +8,15 @@
     	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}">
       <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
       <Policies>
-      	<TimeBasedTriggeringPolicy/>
+      	<!-- Rollover logs every 3 hours -->
+      	<TimeBasedTriggeringPolicy interval="3"/>
       </Policies>
       <DefaultRolloverStrategy>
       	<Delete basePath="${sys:bookkeeper.log.dir}">
       		<!-- Delete log files older than P[days]D old -->
       		<IfLastModified age="${sys:bookkeeper.log.max.fileAge}"/>
+      		<IfFileName glob="*.log" />
+      		<IfFileName glob="*.out" />
       	</Delete>
       </DefaultRolloverStrategy>
     </RollingFile>
