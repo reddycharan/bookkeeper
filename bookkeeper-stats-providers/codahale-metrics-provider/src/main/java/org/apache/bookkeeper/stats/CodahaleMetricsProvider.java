@@ -105,7 +105,7 @@ public class CodahaleMetricsProvider implements StatsProvider {
 
 					@Override
 					protected TimeUnit getRateUnit() {
-						return TimeUnit.MILLISECONDS;
+						return TimeUnit.SECONDS;
 					}
 
 					@Override
