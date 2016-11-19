@@ -374,11 +374,11 @@ public class IndexPersistenceMgr {
         }
     }
 
-    void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+    void setExplicitLac(long ledgerId, ByteBuffer lac) throws IOException {
         FileInfo fi = null;
         try {
             fi = getFileInfo(ledgerId, null);
-            fi.setLastAddConfirmed(lac);
+            fi.setExplicitLac(lac);
             return;
         } finally {
             if (null != fi) {
@@ -387,11 +387,11 @@ public class IndexPersistenceMgr {
         }
     }
 
-    public ByteBuffer getLastAddConfirmed(long ledgerId) {
+    public ByteBuffer getExplicitLac(long ledgerId) {
         FileInfo fi = null;
         try {
             fi = getFileInfo(ledgerId, null);
-            return fi.getLastAddConfirmed();
+            return fi.getExplicitLac();
         } catch (IOException e) {
             LOG.error("Exception during getLastAddConfirmed: {}", e);
             return null;

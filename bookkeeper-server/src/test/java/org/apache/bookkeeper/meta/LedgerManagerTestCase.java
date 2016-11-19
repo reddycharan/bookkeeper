@@ -203,11 +203,11 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
         }
 
 		@Override
-		public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
+		public void setExplicitlac(long ledgerId, ByteBuffer lac) throws IOException {
 		}
 
 		@Override
-		public ByteBuffer getLastAddConfirmed(long ledgerId) {
+		public ByteBuffer getExplicitLac(long ledgerId) {
 			return null;
 		}
 

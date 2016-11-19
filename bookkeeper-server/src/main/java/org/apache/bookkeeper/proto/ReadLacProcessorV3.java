@@ -64,7 +64,7 @@ class ReadLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
         ByteBuffer lac;
         try {
             lastEntry = requestProcessor.bookie.readEntry(ledgerId, BookieProtocol.LAST_ADD_CONFIRMED);
-            lac = requestProcessor.bookie.getLastAddConfirmed(ledgerId);
+            lac = requestProcessor.bookie.getExplicitLac(ledgerId);
             if (lac != null) {
                 readLacResponse.setLacBody(ByteString.copyFrom(lac));
                 readLacResponse.setLastEntryBody(ByteString.copyFrom(lastEntry));

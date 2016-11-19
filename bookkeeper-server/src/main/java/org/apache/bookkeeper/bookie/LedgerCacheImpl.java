@@ -127,12 +127,12 @@ public class LedgerCacheImpl implements LedgerCache {
         return indexPersistenceManager.isFenced(ledgerId);
     }
 
-    public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
-        indexPersistenceManager.updateLastAddConfirmed(ledgerId, lac);
+    public void setExplicitLac(long ledgerId, ByteBuffer lac) throws IOException {
+        indexPersistenceManager.setExplicitLac(ledgerId, lac);
     }
 
-    public ByteBuffer getLastAddConfirmed(long ledgerId) {
-        return indexPersistenceManager.getLastAddConfirmed(ledgerId);
+    public ByteBuffer getExplicitLac(long ledgerId) {
+        return indexPersistenceManager.getExplicitLac(ledgerId);
     }
 
     @Override

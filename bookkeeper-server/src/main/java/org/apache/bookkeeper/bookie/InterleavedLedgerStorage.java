@@ -236,12 +236,12 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         return ledgerCache.isFenced(ledgerId);
     }
 
-    public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException {
-        ledgerCache.updateLastAddConfirmed(ledgerId, lac);
+    public void setExplicitlac(long ledgerId, ByteBuffer lac) throws IOException {
+        ledgerCache.setExplicitLac(ledgerId, lac);
     }
 
-    public ByteBuffer getLastAddConfirmed(long ledgerId) {
-        return ledgerCache.getLastAddConfirmed(ledgerId);
+    public ByteBuffer getExplicitLac(long ledgerId) {
+        return ledgerCache.getExplicitLac(ledgerId);
     }
 
     @Override

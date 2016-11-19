@@ -329,11 +329,11 @@ public class TestSyncThread {
         }
 
         @Override
-        public void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) {
+        public void setExplicitlac(long ledgerId, ByteBuffer lac) {
         }
 
         @Override
-        public ByteBuffer getLastAddConfirmed(long ledgerId) {
+        public ByteBuffer getExplicitLac(long ledgerId) {
             return null;
         }
 

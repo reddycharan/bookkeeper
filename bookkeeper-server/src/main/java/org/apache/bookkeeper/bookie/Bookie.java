@@ -1295,14 +1295,14 @@ public class Bookie extends BookieCriticalThread {
         }
     }
 
-    public void lastAddConfirmedUpdate(ByteBuffer entry, Object ctx, byte[] masterKey)
+    public void setExplicitLac(ByteBuffer entry, Object ctx, byte[] masterKey)
             throws IOException, BookieException {
         try {
             long ledgerId = entry.getLong();
             LedgerDescriptor handle = handles.getHandle(ledgerId, masterKey);
             entry.rewind();
             synchronized (handle) {
-                handle.updateLastAddConfirmed(entry);
+                handle.setExplicitLac(entry);
             }
         } catch (NoWritableLedgerDirException e) {
             transitionToReadOnlyMode();
@@ -1310,12 +1310,11 @@ public class Bookie extends BookieCriticalThread {
         }
     }
 
-
-    public ByteBuffer getLastAddConfirmed(long ledgerId) throws IOException, Bookie.NoLedgerException {
+    public ByteBuffer getExplicitLac(long ledgerId) throws IOException, Bookie.NoLedgerException {
         ByteBuffer lac;
         LedgerDescriptor handle = handles.getReadOnlyHandle(ledgerId);
         synchronized (handle) {
-            lac = handle.getLastAddConfirmed();
+            lac = handle.getExplicitLac();
         }
         return lac;
     }

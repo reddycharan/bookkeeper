@@ -145,7 +145,7 @@ public interface LedgerStorage {
      */
     BKMBeanInfo getJMXBean();
 
-    void updateLastAddConfirmed(long ledgerId, ByteBuffer lac) throws IOException;
+    void setExplicitlac(long ledgerId, ByteBuffer lac) throws IOException;
 
-    ByteBuffer getLastAddConfirmed(long ledgerId);
+    ByteBuffer getExplicitLac(long ledgerId);
 }

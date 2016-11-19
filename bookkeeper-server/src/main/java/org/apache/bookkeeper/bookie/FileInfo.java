@@ -62,7 +62,7 @@ class FileInfo {
 
     private FileChannel fc;
     private File lf;
-    private ByteBuffer lastAddConfirmed = null;
+    private ByteBuffer explicitLac = null;
 
     byte[] masterKey;
 
@@ -100,27 +100,27 @@ class FileInfo {
         return sizeSinceLastwrite;
     }
 
-    public ByteBuffer getLastAddConfirmed() {
-        LOG.debug("fileInfo:GetLac: {}", lastAddConfirmed);
+    public ByteBuffer getExplicitLac() {
+        LOG.debug("fileInfo:GetLac: {}", explicitLac);
         ByteBuffer retLac = null;
         synchronized(this) {
-            if (lastAddConfirmed != null) {
-                lastAddConfirmed.rewind();
-                retLac = ByteBuffer.wrap(lastAddConfirmed.array());
+            if (explicitLac != null) {
+                explicitLac.rewind();
+                retLac = ByteBuffer.wrap(explicitLac.array());
             }
         }
         return retLac;
     }
 
-    public void setLastAddConfirmed(ByteBuffer lac) {
+    public void setExplicitLac(ByteBuffer lac) {
         synchronized(this) {
-            if (lastAddConfirmed == null) {
-                lastAddConfirmed = ByteBuffer.allocate(lac.capacity());
+            if (explicitLac == null) {
+                explicitLac = ByteBuffer.allocate(lac.capacity());
             }
-            lastAddConfirmed.put(lac);
-            lastAddConfirmed.rewind();
+            explicitLac.put(lac);
+            explicitLac.rewind();
         }
-        LOG.debug("fileInfo:SetLac: {}", lastAddConfirmed);
+        LOG.debug("fileInfo:SetLac: {}", explicitLac);
     }
 
     synchronized public void readHeader() throws IOException {

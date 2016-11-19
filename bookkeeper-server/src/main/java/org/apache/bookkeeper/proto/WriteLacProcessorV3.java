@@ -68,7 +68,7 @@ class WriteLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
         byte[] masterKey = writeLacRequest.getMasterKey().toByteArray();
 
         try {
-            requestProcessor.bookie.lastAddConfirmedUpdate(lacToAdd, channel, masterKey);
+            requestProcessor.bookie.setExplicitLac(lacToAdd, channel, masterKey);
             status = StatusCode.EOK;
         } catch (IOException e) {
             logger.error("Error saving lac {} for ledger:{}",
