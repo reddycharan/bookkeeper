@@ -42,6 +42,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.FileUtils;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
@@ -121,7 +122,7 @@ public class LocalBookKeeper {
         LOG.debug("ZooKeeper server up: {}", b);
     }
 
-    private void initializeZookeeper() throws IOException {
+    private void initializeZookeeper(AbstractConfiguration conf) throws IOException {
         LOG.info("Instantiate ZK Client");
         //initialize the zk client with values
         try {
@@ -129,8 +130,8 @@ public class LocalBookKeeper {
                     .connectString(InetAddress.getLoopbackAddress().getHostAddress() + ":" + ZooKeeperDefaultPort)
                     .sessionTimeoutMs(zkSessionTimeOut)
                     .build();
-            zkc.create("/ledgers", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-            zkc.create("/ledgers/available", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            zkc.create(conf.getZkLedgersRootPath(), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            zkc.create(conf.getZkAvailableBookiesPath(), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             // No need to create an entry for each requested bookie anymore as the
             // BookieServers will register themselves with ZooKeeper on startup.
         } catch (KeeperException e) {
@@ -393,7 +394,7 @@ public class LocalBookKeeper {
         }
 
         lb.runZookeeper(1000, zkPath);
-        lb.initializeZookeeper();        
+        lb.initializeZookeeper(conf);        
         
         Class<? extends StatsProvider> statsProviderClass = null;
         StatsProvider statsProvider = null;
