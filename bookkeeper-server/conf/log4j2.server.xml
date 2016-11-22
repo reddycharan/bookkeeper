@@ -5,7 +5,8 @@
       <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
     </Console>
     <RollingFile name="BOOKKEEPER-SERVER" fileName="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.file}"
-    	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}">
+    	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}"
+    	immediateFlush="false">
       <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
       <Policies>
       	<!-- Rollover logs every 3 hours -->
@@ -22,7 +23,7 @@
     </RollingFile>
   </Appenders>
   <Loggers>
-    <Root level="${sys:bookkeeper.log.level}">
+    <Root level="${sys:bookkeeper.log.level}" includeLocation="true">
       <AppenderRef ref="BOOKKEEPER-SERVER"/>
       <AppenderRef ref="CONSOLE"/>
     </Root>

@@ -254,6 +254,8 @@ OPTS="$OPTS -Dbookkeeper.log.dir=$BOOKIE_LOG_DIR"
 OPTS="$OPTS -Dbookkeeper.log.file=$BOOKIE_LOG_FILE"
 OPTS="$OPTS -Dbookkeeper.log.pattern=$BOOKIE_LOG_FILE_PATTERN"
 OPTS="$OPTS -Dbookkeeper.log.max.fileAge=$BOOKIE_LOG_MAX_AGE"
+#Make all loggers asynchronous
+OPTS="$OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
 
 if [ $COMMAND == "shell" ]; then
     OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog"
