@@ -508,6 +508,10 @@ public class LedgerCacheTest {
         FlushTestSortedLedgerStorage flushTestSortedLedgerStorage = (FlushTestSortedLedgerStorage) bookie.ledgerStorage;
         EntryMemTable memTable = flushTestSortedLedgerStorage.memTable;
 
+        // this bookie.addEntry call is required. FileInfo for Ledger 1 would be created with this call.
+        // without the fileinfo, 'flushTestSortedLedgerStorage.addEntry' calls will fail because of BOOKKEEPER-965 change.
+        bookie.addEntry(generateEntry(1, 1), new Bookie.NopWriteCallback(), null, "passwd".getBytes());
+        
         flushTestSortedLedgerStorage.addEntry(generateEntry(1, 2));
         assertFalse("Bookie is expected to be in ReadWrite mode", bookie.isReadOnly());
         assertTrue("EntryMemTable SnapShot is expected to be empty", memTable.snapshot.isEmpty());
@@ -515,7 +519,7 @@ public class LedgerCacheTest {
         // set flags, so that FlushTestSortedLedgerStorage simulates FlushFailure scenario
         flushTestSortedLedgerStorage.setInjectMemTableSizeLimitReached(true);
         flushTestSortedLedgerStorage.setInjectFlushException(true);
-        flushTestSortedLedgerStorage.addEntry(generateEntry(2, 2));
+        flushTestSortedLedgerStorage.addEntry(generateEntry(1, 2));
         Thread.sleep(1000);
 
         // since we simulated sizeLimitReached, snapshot shouldn't be empty
@@ -525,7 +529,7 @@ public class LedgerCacheTest {
         flushTestSortedLedgerStorage.setInjectMemTableSizeLimitReached(false);
         flushTestSortedLedgerStorage.setInjectFlushException(false);
 
-        flushTestSortedLedgerStorage.addEntry(generateEntry(3, 2));
+        flushTestSortedLedgerStorage.addEntry(generateEntry(1, 3));
         Thread.sleep(1000);
         // since we expect memtable flush to succeed, memtable snapshot should be empty
         assertTrue("EntryMemTable SnapShot is expected to be empty, because of successful flush",
