@@ -248,6 +248,7 @@
                 <exclude>**/TestBackwardCompat.java</exclude>
                 <exclude>**/TestFencing.java</exclude>
                 <exclude>**/BookieRecoveryTest.java</exclude>
+                <exclude>**/BookieClientTest.java</exclude>
               </excludes>
             </configuration>
 	  </plugin>
