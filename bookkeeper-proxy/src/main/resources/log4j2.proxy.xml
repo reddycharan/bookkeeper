@@ -25,7 +25,6 @@
   <Loggers>
     <Root level="${sys:bkproxy.log.level}" includeLocation="true">
       <AppenderRef ref="BOOKKEEPER-PROXY"/>
-      <AppenderRef ref="CONSOLE"/>
     </Root>
   </Loggers>
 </Configuration>

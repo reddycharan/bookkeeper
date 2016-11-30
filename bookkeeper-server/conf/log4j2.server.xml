@@ -25,7 +25,6 @@
   <Loggers>
     <Root level="${sys:bookkeeper.log.level}" includeLocation="true">
       <AppenderRef ref="BOOKKEEPER-SERVER"/>
-      <AppenderRef ref="CONSOLE"/>
     </Root>
   </Loggers>
 </Configuration>
