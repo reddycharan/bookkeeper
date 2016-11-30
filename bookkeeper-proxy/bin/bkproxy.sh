@@ -171,9 +171,9 @@ PROD_SPECIFIC_GC_OPTS=" -XX:InitiatingHeapOccupancyPercent=40"
 DEV_SPECIFIC_OPTS=" "
 VPOD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages "
 PROD_SPECIFIC_OPTS=" -XX:+UseLinuxPosixThreadCPUClocks -XX:+UseLargePages"
+LOG4J_OPTS="-Dlog4j.configurationFile=log4j2.proxy.xml"
 #Make all loggers asynchronous
-LOG4J_OPTS="-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
-LOG4J_OPTS="$LOG4J_OPTS -Dlog4j.configurationFile=${BKPROXY_HOME}/src/main/resources/log4j2.proxy.xml"
+LOG4J_OPTS="$LOG4J_OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
 echo "Using this config file: ${BKPROXY_HOME}/src/main/resources/log4j2.proxy.xml"
 JAVA_OPTS="${JAVA_OPTS} ${LOG4J_OPTS}"
 
