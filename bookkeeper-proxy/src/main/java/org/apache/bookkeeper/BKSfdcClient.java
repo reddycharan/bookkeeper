@@ -236,7 +236,6 @@ public class BKSfdcClient {
 
         if (errorCode != BKPConstants.SF_ErrorInProgress) {
             // IO Finished.
-            long lac = elm.getWriteLedgerHandle(extentId).getLastAddConfirmed();
             lpd.deleteLedgerAsyncWriteStatus(fragmentId);
             if (errorCode == BKPConstants.SF_OK) {
                 // Success; Do some sanity check.
@@ -244,16 +243,40 @@ public class BKSfdcClient {
                 long expectedEntryId = laws.getExpectedEntryId();
                 if (actualEntryId != expectedEntryId) {
                     LOG.error("AsyncWrite failed. Expecting entryId: {} but bk returned entryId: {} on Ledger: {} with LAC: {}",
-                            new Object [] {expectedEntryId, actualEntryId, extentId, lac});
+                            new Object [] {expectedEntryId, actualEntryId, extentId, tryGetLastAddConfirmed(extentId)});
                     throw BKException.create(Code.UnexpectedConditionException);
                 }
             } else {
                 // IO Failed
                 LOG.error("AsyncWrite failed. Extent: {} Fragment: {} LAC: {} error: {}",
-                        new Object [] {extentId, fragmentId, lac, errorCode});
+                        new Object [] {extentId, fragmentId, tryGetLastAddConfirmed(extentId), errorCode});
             }
         }
         return laws;
+    }
+
+    // this method tries to use writeHandle for LAC, if it doesn't contains writeHandle
+    // then it does openLedgerNoRecovery. If the ledger is deleted alltogether then
+    // it returns -1
+    private long tryGetLastAddConfirmed(BKExtentId extentId) {
+        long lac = -1;
+        LedgerHandle lh = elm.getWriteLedgerHandle(extentId);
+        // if extent is writeclosed concurrently, then it is possible that
+        // there wont be writeHandle in elm
+        if (lh != null) {
+            lac = lh.getLastAddConfirmed();
+        } else {
+            try {
+                LedgerHandle rlh = bk.openLedgerNoRecovery(extentId.asLong(), digestType, password.getBytes());
+                lac = rlh.getLastAddConfirmed();
+                rlh.close();
+            } catch (BKException | InterruptedException e) {
+                // it is possible that ledger is concurrently deleted.
+                LOG.error("Got Exception: {} while trying to openLedger for reading LAC of Ledger: {}",
+                        new Object[] { e, extentId.asLong() });
+            }
+        }
+        return lac;
     }
 
     public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata,

@@ -44,6 +44,7 @@ class BKProxyWorker implements Runnable {
     private final LedgerIdFormatter ledgerIdFormatter;
     private final BKExtentIdFactory extentIdFactory;
     private final BKByteBufferPool byteBufPool;
+    private CommandExecutor commandExecutor;
 
 	public abstract class OpStatEntry {
 
@@ -228,6 +229,7 @@ class BKProxyWorker implements Runnable {
         }
         this.zkc = zkc;
         this.bksc = new BKSfdcClient(bkpConfig, bk, elm, byteBufPool, statsLogger);
+        this.commandExecutor = new CommandExecutor();
     }
 
     private int clientChannelRead(ByteBuffer buf, int expectedSize) throws IOException {
@@ -373,8 +375,7 @@ class BKProxyWorker implements Runnable {
                     
                     req.limit(4);
                     clientChannelRead(req, req.remaining());
-                    String commandString = new String(req.array(), 0, 4);
-                    CommandExecutor commandExecutor = new CommandExecutor();
+                    String commandString = new String(req.array(), 0, 4);                     
                     if (commandExecutor.execute(commandString, clientChannel, bkpConfig, zkc)) {
                         break;
                     }
