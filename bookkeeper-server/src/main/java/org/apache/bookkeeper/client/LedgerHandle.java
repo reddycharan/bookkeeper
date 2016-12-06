@@ -178,15 +178,15 @@ public class LedgerHandle implements AutoCloseable {
         return lastAddConfirmed;
     }
 
-    public long getExplicitLastAddConfirmed() {
+    private long getExplicitLastAddConfirmed() {
         return explicitLastAddConfirmed;
     }
 
-    public void setExplicitLastAddConfirmed(long explicitLastAddConfirmed) {
+    private void setExplicitLastAddConfirmed(long explicitLastAddConfirmed) {
         this.explicitLastAddConfirmed = explicitLastAddConfirmed;
     }
 
-    public long getPiggyBackedLastAddConfirmed() {
+    private long getPiggyBackedLastAddConfirmed() {
         return piggyBackedLastAddConfirmed;
     }
 
@@ -990,7 +990,7 @@ public class LedgerHandle implements AutoCloseable {
         return ctx.getlastConfirmed();
     }
 
-    public void readLac() throws InterruptedException, BKException {
+    private void readLac() throws InterruptedException, BKException {
         synchronized (this) {
             if (metadata.isClosed()) {
                 lastAddConfirmed = metadata.getLastEntryId();
