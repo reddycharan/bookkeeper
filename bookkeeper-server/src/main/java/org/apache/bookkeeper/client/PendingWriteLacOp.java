@@ -23,10 +23,8 @@ import java.util.Set;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddLacCallback;
 import org.apache.bookkeeper.net.BookieSocketAddress;
-import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.stats.OpStatsLogger;
-import org.apache.bookkeeper.util.MathUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +49,7 @@ class PendingWriteLacOp implements WriteLacCallback {
 
     DistributionSchedule.AckSet ackSet;
     boolean completed = false;
+    int lastSeenError = BKException.Code.WriteException;
 
     LedgerHandle lh;
     OpStatsLogger putLacOpLogger;
@@ -90,20 +89,26 @@ class PendingWriteLacOp implements WriteLacCallback {
             return;
         }
 
+        if (BKException.Code.OK != rc) {
+            lastSeenError = rc;
+        }
+
         // We got response.
         receivedResponseSet.remove(bookieIndex);
 
-        if (rc != BKException.Code.OK) {
-            LOG.warn("WriteLac did not succeed: Ledger {} on {}", new Object [] {ledgerId, addr });
-            if (receivedResponseSet.isEmpty()) {
-                // We have heard back from all bookies and is not had success from
-                // at least AckQuorum number of bookies. So it is considered a failure.
+        if (rc == BKException.Code.OK) {
+            if (ackSet.addBookieAndCheck(bookieIndex) && !completed) {
                 completed = true;
-                cb.addLacComplete(BKException.Code.WriteException , lh, ctx);
+                cb.addLacComplete(rc, lh, ctx);
+                return;
             }
-        } else if (ackSet.addBookieAndCheck(bookieIndex) && !completed) {
+        } else {
+            LOG.warn("WriteLac did not succeed: Ledger {} on {}", new Object[] { ledgerId, addr });
+        }
+        
+        if(receivedResponseSet.isEmpty()){
             completed = true;
-            cb.addLacComplete(rc, lh, ctx);
+            cb.addLacComplete(lastSeenError, lh, ctx);
         }
     }
 }
