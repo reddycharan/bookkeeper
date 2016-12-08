@@ -133,7 +133,7 @@ class PendingReadLacOp implements ReadLacCallback {
             completed = true;
             LOG.debug("Read LAC complete with enough validResponse for ledger: {} LAC: {}",
                     ledgerId, maxLac);
-            cb.getLacComplete(rc, maxLac);
+            cb.getLacComplete(BKException.Code.OK, maxLac);
             return;
         }
 
