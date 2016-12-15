@@ -31,13 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-
-import static java.util.concurrent.TimeUnit.*;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -63,8 +59,6 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
  * Ledger handle contains ledger metadata and is used to access the read and
  * write operations to a ledger.
@@ -78,15 +72,12 @@ public class LedgerHandle implements AutoCloseable {
     final long ledgerId;
     long lastAddPushed;
     volatile long lastAddConfirmed;
-    volatile long explicitLastAddConfirmed;
-    volatile long piggyBackedLastAddConfirmed;
 
     long length;
     final DigestManager macManager;
     final DistributionSchedule distributionSchedule;
 
     final RateLimiter throttler;
-    private ScheduledExecutorService lastAddConfirmedUpdateScheduler = null;
 
     /**
      * Invalid entry id. This value is returned from methods which
@@ -96,6 +87,7 @@ public class LedgerHandle implements AutoCloseable {
 
     final AtomicInteger blockAddCompletions = new AtomicInteger(0);
     Queue<PendingAddOp> pendingAddOps;
+    ExplicitLacFlushPolicy explicitLacFlushPolicy;
 
     final Counter ensembleChangeCounter;
     final Counter lacUpdateHitsCounter;
@@ -110,10 +102,10 @@ public class LedgerHandle implements AutoCloseable {
 
 
         if (metadata.isClosed()) {
-            lastAddConfirmed = lastAddPushed = piggyBackedLastAddConfirmed = explicitLastAddConfirmed = metadata.getLastEntryId();
+            lastAddConfirmed = lastAddPushed = metadata.getLastEntryId();
             length = metadata.getLength();
         } else {
-            lastAddConfirmed = lastAddPushed = piggyBackedLastAddConfirmed = explicitLastAddConfirmed = INVALID_ENTRY_ID;
+            lastAddConfirmed = lastAddPushed = INVALID_ENTRY_ID;
             length = 0;
         }
 
@@ -142,12 +134,14 @@ public class LedgerHandle implements AutoCloseable {
                                                   return pendingAddOps.size();
                                               }
                                           });
+        initializeExplicitLacFlushPolicy();
+    }
 
+    protected void initializeExplicitLacFlushPolicy() {
         if (!metadata.isClosed() && !(this instanceof ReadOnlyLedgerHandle) && bk.getExplicitLacInterval() > 0) {
-            String explictLastAddConfirmedExecutorName = String.format("LastAddConfirmedUpdateTimer-%d-%s", ledgerId, "%d");
-            lastAddConfirmedUpdateScheduler = Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder().setNameFormat(explictLastAddConfirmedExecutorName).build());
-            explictLastAddConfirmedUpdate(this);
-            LOG.debug("Created explicit LAC scheduled updater: {}", explictLastAddConfirmedExecutorName);
+            explicitLacFlushPolicy = new ExplicitLacFlushPolicy.ExplicitLacFlushPolicyImpl(this);
+        } else {
+            explicitLacFlushPolicy = ExplicitLacFlushPolicy.VOID_EXPLICITLAC_FLUSH_POLICY;
         }
     }
 
@@ -174,18 +168,6 @@ public class LedgerHandle implements AutoCloseable {
      */
     public long getLastAddConfirmed() {
         return lastAddConfirmed;
-    }
-
-    public long getExplicitLastAddConfirmed() {
-        return explicitLastAddConfirmed;
-    }
-
-    public void setExplicitLastAddConfirmed(long explicitLastAddConfirmed) {
-        this.explicitLastAddConfirmed = explicitLastAddConfirmed;
-    }
-
-    public long getPiggyBackedLastAddConfirmed() {
-        return piggyBackedLastAddConfirmed;
     }
 
     /**
@@ -312,10 +294,9 @@ public class LedgerHandle implements AutoCloseable {
 
         asyncClose(new SyncCloseCallback(), counter);
 
+        explicitLacFlushPolicy.stopExplicitLacFlush();
+        
         SynchCallbackUtils.waitForResult(counter);
-        if(this.lastAddConfirmedUpdateScheduler != null) {
-            this.lastAddConfirmedUpdateScheduler.shutdownNow();
-        }
     }
 
     /**
@@ -521,20 +502,18 @@ public class LedgerHandle implements AutoCloseable {
      * @param ctx
      *          control object
      */
-    public void asyncReadEntries(long firstEntry, long lastEntry,
-                                 ReadCallback cb, Object ctx) {
-
+    public void asyncReadEntries(long firstEntry, long lastEntry, ReadCallback cb, Object ctx) {
         // Little sanity check
         if (firstEntry < 0 || firstEntry > lastEntry) {
             LOG.error("IncorrectParameterException on ledgerId:{} firstEntry:{} lastEntry:{}",
-                    new Object[] {ledgerId, firstEntry, lastEntry});
+                    new Object[] { ledgerId, firstEntry, lastEntry });
             cb.readComplete(BKException.Code.IncorrectParameterException, this, null, ctx);
             return;
         }
 
         if (lastEntry > lastAddConfirmed) {
             LOG.error("ReadException on ledgerId:{} firstEntry:{} lastEntry:{}",
-                    new Object[] {ledgerId, firstEntry, lastEntry});
+                    new Object[] { ledgerId, firstEntry, lastEntry });
             cb.readComplete(BKException.Code.ReadException, this, null, ctx);
             return;
         }
@@ -722,28 +701,6 @@ public class LedgerHandle implements AutoCloseable {
         doAsyncAddEntry(op, data, offset, length, cb, ctx);
     }
 
-    /**
-     * Make a LastAddUpdate request.
-     *
-     */
-    void asyncLastAddConfirmedUpdate(final long lastAddConfirmedUpdate) {
-        final LastAddConfirmedCallback cb = LastAddConfirmedCallback.instance;
-        final PendingWriteLacOp op = new PendingWriteLacOp(LedgerHandle.this, cb, null);
-        op.setLac(lastAddConfirmedUpdate);
-        try {
-            LOG.debug("Sending Explicit LAC: {}", lastAddConfirmedUpdate);
-            bk.mainWorkerPool.submit(new SafeRunnable() {
-                @Override
-                public void safeRun() {
-                    ChannelBuffer toSend = macManager.computeDigestAndPackageForSendingLac(lastAddConfirmed);
-                    op.initiate(toSend);
-                }
-            });
-        } catch (RejectedExecutionException e) {
-            cb.addLacComplete(bk.getReturnRc(BKException.Code.InterruptedException), LedgerHandle.this, null);
-        }
-    }
-
     void doAsyncAddEntry(final PendingAddOp op, final byte[] data, final int offset, final int length,
                          final AddCallback cb, final Object ctx) {
 
@@ -870,17 +827,6 @@ public class LedgerHandle implements AutoCloseable {
         new ReadLastConfirmedOp(this, innercb).initiate();
     }
 
-    public void asyncReadLac(final ReadLastConfirmedCallback cb, final Object ctx) {
-        PendingReadLacOp.LacCallback innercb = new PendingReadLacOp.LacCallback() {
-
-            @Override
-            public void getLacComplete(int rc, long lac) {
-                cb.readLastConfirmedComplete(rc, lac, ctx);
-            }
-        };
-        new PendingReadLacOp(this, innercb).initiate();
-    }
-
     /**
      * Obtains asynchronously the last confirmed write from a quorum of bookies.
      * It is similar as
@@ -989,33 +935,6 @@ public class LedgerHandle implements AutoCloseable {
         return ctx.getlastConfirmed();
     }
 
-    public void readLac() throws InterruptedException, BKException {
-        synchronized (this) {
-            if (metadata.isClosed()) {
-                lastAddConfirmed = metadata.getLastEntryId();
-                length = metadata.getLength();
-                return;
-            }
-        }
-        LastConfirmedCtx ctx = new LastConfirmedCtx();
-        asyncReadLac(new SyncReadLastConfirmedCallback(), ctx );
-        synchronized(ctx) {
-            while (!ctx.ready()) {
-                ctx.wait();
-            }
-        }
-        if (ctx.getRC() != BKException.Code.OK) {
-            throw BKException.create(ctx.getRC());
-        }
-        // Must be a success, set lastAddConfirmed
-        long receivedLac = ctx.getlastConfirmed();
-        LOG.debug("Current LAC: {} ; Received LAC: {}", lastAddConfirmed, receivedLac);
-        if (receivedLac > lastAddConfirmed) {
-            // Update lastAddConfirmed
-            lastAddConfirmed = receivedLac;
-        }
-    }
-
     /**
      * Obtains synchronously the last confirmed write from a quorum of bookies.
      * It is similar as {@link #readLastConfirmed()}, but it doesn't wait all the responses
@@ -1038,6 +957,86 @@ public class LedgerHandle implements AutoCloseable {
             }
         }
         if (ctx.getRC() != BKException.Code.OK) throw BKException.create(ctx.getRC());
+        return ctx.getlastConfirmed();
+    }
+
+    /**
+     * Obtains asynchronously the explicit last add confirmed from a quorum of
+     * bookies. This call obtains the the explicit last add confirmed each
+     * bookie has received for this ledger and returns the maximum. If in the
+     * write LedgerHandle, explicitLAC feature is not enabled then this will
+     * return {@link #INVALID_ENTRY_ID INVALID_ENTRY_ID}. If the read explicit
+     * lastaddconfirmed is greater than getLastAddConfirmed, then it updates the
+     * lastAddConfirmed of this ledgerhandle. If the ledger has been closed, it
+     * returns the value of the last add confirmed from the metadata.
+     *
+     * @see #getLastAddConfirmed()
+     * 
+     * @param cb
+     *          callback to return read explicit last confirmed
+     * @param ctx
+     *          callback context
+     */
+    public void asyncReadExplicitLastConfirmed(final ReadLastConfirmedCallback cb, final Object ctx) {
+        boolean isClosed;
+        synchronized (this) {
+            isClosed = metadata.isClosed();
+            if (isClosed) {
+                lastAddConfirmed = metadata.getLastEntryId();
+                length = metadata.getLength();
+            }
+        }
+        if (isClosed) {
+            cb.readLastConfirmedComplete(BKException.Code.OK, lastAddConfirmed, ctx);
+            return;
+        }
+
+        PendingReadLacOp.LacCallback innercb = new PendingReadLacOp.LacCallback() {
+
+            @Override
+            public void getLacComplete(int rc, long lac) {
+                if (rc == BKException.Code.OK) {
+                    // here we are trying to update lac only but not length 
+                    updateLastConfirmed(lac, 0);
+                    cb.readLastConfirmedComplete(rc, lac, ctx);
+                } else {
+                    cb.readLastConfirmedComplete(rc, INVALID_ENTRY_ID, ctx);
+                }
+            }
+        };
+        new PendingReadLacOp(this, innercb).initiate();
+    }
+
+    /**
+     * Obtains synchronously the explicit last add confirmed from a quorum of
+     * bookies. This call obtains the the explicit last add confirmed each
+     * bookie has received for this ledger and returns the maximum. If in the
+     * write LedgerHandle, explicitLAC feature is not enabled then this will
+     * return {@link #INVALID_ENTRY_ID INVALID_ENTRY_ID}. If the read explicit
+     * lastaddconfirmed is greater than getLastAddConfirmed, then it updates the
+     * lastAddConfirmed of this ledgerhandle. If the ledger has been closed, it
+     * returns the value of the last add confirmed from the metadata.
+     *
+     * @see #getLastAddConfirmed()
+     *
+     * @return The entry id of the explicit last confirmed write or
+     *         {@link #INVALID_ENTRY_ID INVALID_ENTRY_ID} if no entry has been
+     *         confirmed or if explicitLAC feature is not enabled in write
+     *         LedgerHandle.
+     * @throws InterruptedException
+     * @throws BKException
+     */
+    public long readExplicitLastConfirmed() throws InterruptedException, BKException {
+        LastConfirmedCtx ctx = new LastConfirmedCtx();
+        asyncReadExplicitLastConfirmed(new SyncReadLastConfirmedCallback(), ctx);
+        synchronized (ctx) {
+            while (!ctx.ready()) {
+                ctx.wait();
+            }
+        }
+        if (ctx.getRC() != BKException.Code.OK) {
+            throw BKException.create(ctx.getRC());
+        }
         return ctx.getlastConfirmed();
     }
 
@@ -1090,37 +1089,12 @@ public class LedgerHandle implements AutoCloseable {
             }
 
             pendingAddOps.remove();
-            piggyBackedLastAddConfirmed = lastAddConfirmed;
+            explicitLacFlushPolicy.updatePiggyBackedLac(lastAddConfirmed);
             lastAddConfirmed = pendingAddOp.entryId;
 
             pendingAddOp.submitCallback(BKException.Code.OK);
         }
 
-    }
-
-    private void explictLastAddConfirmedUpdate(final LedgerHandle lh) {
-        int explicitLacIntervalInSec = bk.getExplicitLacInterval();
-        final Runnable updateLacTask = new Runnable() {
-            @Override
-            public void run() {
-                if (lh.getExplicitLastAddConfirmed() < lh.getPiggyBackedLastAddConfirmed()) {
-                    LOG.debug("ledgerid: {}", lh.getId() );
-                    LOG.debug("explicitLac:{} piggybackLac:{}", lh.getExplicitLastAddConfirmed(), lh.getPiggyBackedLastAddConfirmed() );
-                    lh.setExplicitLastAddConfirmed(lh.getPiggyBackedLastAddConfirmed());
-                    return;
-                }
-
-                // explicitLastAddConfirmed >= piggybackedLastAddConfirmed
-                if (lh.getLastAddConfirmed() > lh.getExplicitLastAddConfirmed()) {
-                    // Send Explicit LAC
-                    LOG.debug("ledgerid: {}", lh.getId() );
-                    asyncLastAddConfirmedUpdate(lh.getLastAddConfirmed());
-                    lh.setExplicitLastAddConfirmed(lh.getLastAddConfirmed());
-                    LOG.debug("After sending explict LAC lac: {}  explicitLac:{}", lh.getLastAddConfirmed(), lh.getExplicitLastAddConfirmed());
-                }
-            }
-        };
-        this.lastAddConfirmedUpdateScheduler.scheduleAtFixedRate(updateLacTask, explicitLacIntervalInSec, explicitLacIntervalInSec, SECONDS);
     }
 
     ArrayList<BookieSocketAddress> replaceBookieInMetadata(final BookieSocketAddress addr, final int bookieIndex)
@@ -1470,7 +1444,7 @@ public class LedgerHandle implements AutoCloseable {
     }
 
     static class LastAddConfirmedCallback implements AddLacCallback {
-        static LastAddConfirmedCallback instance = new LastAddConfirmedCallback();
+        static final LastAddConfirmedCallback INSTANCE = new LastAddConfirmedCallback();
         /**
          * Implementation of callback interface for synchronous read method.
          *
@@ -1486,7 +1460,7 @@ public class LedgerHandle implements AutoCloseable {
         @Override
         public void addLacComplete(int rc, LedgerHandle lh, Object ctx) {
             if (rc != BKException.Code.OK) {
-                LOG.warn("LastAddConfirmedUpdate failed: " + BKException.getMessage(rc));
+                LOG.warn("LastAddConfirmedUpdate failed: {} ", BKException.getMessage(rc));
             } else {
                 LOG.debug("Callback LAC Updated for: {} ", lh.getId());
             }
