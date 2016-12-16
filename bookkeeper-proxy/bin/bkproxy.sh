@@ -175,7 +175,7 @@ LOG4J_OPTS="-Dlog4j.configurationFile=log4j2.proxy.xml"
 #Make all loggers asynchronous
 LOG4J_OPTS="$LOG4J_OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
 echo "Using this config file: ${BKPROXY_HOME}/src/main/resources/log4j2.proxy.xml"
-JAVA_OPTS="${JAVA_OPTS} ${LOG4J_OPTS}"
+JAVA_OPTS="${JAVA_OPTS} ${LOG4J_OPTS} ${GC_OPTS}"
 
 #####################
 # Parse arguments
