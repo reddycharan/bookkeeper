@@ -16,6 +16,6 @@
 # script relies on this formatting. If you do need to change, please update that script as well.
 #
 SFSTORE_MAJOR_VERSION=1
-SFSTORE_MINOR_VERSION=10
+SFSTORE_MINOR_VERSION=11
 SFSTORE_PATCH_VERSION=0
 APACHE_BOOKKEEPER_VERSION=4.5.0
