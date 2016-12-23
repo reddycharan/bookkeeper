@@ -1,0 +1,48 @@
+ipRange: 10.246.244.0/26
+roles:
+  sfstore: 20
+racks:
+  f24-40:
+    subnet: 10.246.244.40/29
+    hosts:
+    - shared1-sfstore1-11-phx.ops.sfdc.net
+    - shared1-sfstore1-12-phx.ops.sfdc.net
+    - shared1-sfstore1-2-phx.ops.sfdc.net
+  g24-40:
+    subnet: 10.246.244.0/29
+    hosts:
+    - shared1-sfstore1-13-phx.ops.sfdc.net
+    - shared1-sfstore1-3-phx.ops.sfdc.net
+    - shared1-sfstore1-4-phx.ops.sfdc.net
+  m49-40:
+    subnet: 10.246.244.24/29
+    hosts:
+    - shared1-sfstore1-19-phx.ops.sfdc.net
+    - shared1-sfstore1-14-phx.ops.sfdc.net
+    - shared1-sfstore1-8-phx.ops.sfdc.net
+  m50-40:
+    subnet: 10.246.244.8/29
+    hosts:
+    - shared1-sfstore1-10-phx.ops.sfdc.net
+    - shared1-sfstore1-15-phx.ops.sfdc.net
+    - shared1-sfstore1-7-phx.ops.sfdc.net
+  p30-40:
+    subnet: 10.246.244.48/29
+    hosts:
+    - shared1-sfstore1-20-phx.ops.sfdc.net
+    - shared1-sfstore1-9-phx.ops.sfdc.net
+  q32-40:
+    subnet: 10.246.244.32/29
+    hosts:
+    - shared1-sfstore1-16-phx.ops.sfdc.net
+    - shared1-sfstore1-5-phx.ops.sfdc.net
+  q33-40:
+    subnet: 10.246.244.16/29
+    hosts:
+    - shared1-sfstore1-1-phx.ops.sfdc.net
+    - shared1-sfstore1-17-phx.ops.sfdc.net
+    - shared1-sfstore1-18-phx.ops.sfdc.net
+  r36-40:
+    subnet: 10.246.244.56/29
+    hosts:
+    - shared1-sfstore1-6-phx.ops.sfdc.net

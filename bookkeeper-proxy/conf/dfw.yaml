@@ -1,0 +1,48 @@
+ipRange: 10.247.244.0/26
+roles:
+  sfstore: 20
+racks:
+  g32-dh2:
+    subnet: 10.247.244.56/29
+    hosts:
+    - shared1-sfstore1-9-dfw.ops.sfdc.net
+  g35-dh2:
+    subnet: 10.247.244.48/29
+    hosts:
+    - shared1-sfstore1-20-dfw.ops.sfdc.net
+    - shared1-sfstore1-11-dfw.ops.sfdc.net
+    - shared1-sfstore1-2-dfw.ops.sfdc.net
+  q09-dh2:
+    subnet: 10.247.244.24/29
+    hosts:
+    - shared1-sfstore1-7-dfw.ops.sfdc.net
+  r39-dh2:
+    subnet: 10.247.244.40/29
+    hosts:
+    - shared1-sfstore1-10-dfw.ops.sfdc.net
+  r41-dh2:
+    subnet: 10.247.244.16/29
+    hosts:
+    - shared1-sfstore1-12-dfw.ops.sfdc.net
+    - shared1-sfstore1-13-dfw.ops.sfdc.net
+    - shared1-sfstore1-4-dfw.ops.sfdc.net
+  s31-dh2:
+    subnet: 10.247.244.8/29
+    hosts:
+    - shared1-sfstore1-14-dfw.ops.sfdc.net
+    - shared1-sfstore1-15-dfw.ops.sfdc.net
+    - shared1-sfstore1-6-dfw.ops.sfdc.net
+    - shared1-sfstore1-8-dfw.ops.sfdc.net
+  s33-dh2:
+    subnet: 10.247.244.32/29
+    hosts:
+    - shared1-sfstore1-16-dfw.ops.sfdc.net
+    - shared1-sfstore1-17-dfw.ops.sfdc.net
+    - shared1-sfstore1-5-dfw.ops.sfdc.net
+  s35-dh2:
+    subnet: 10.247.244.0/29
+    hosts:
+    - shared1-sfstore1-18-dfw.ops.sfdc.net
+    - shared1-sfstore1-19-dfw.ops.sfdc.net
+    - shared1-sfstore1-1-dfw.ops.sfdc.net
+    - shared1-sfstore1-3-dfw.ops.sfdc.net
