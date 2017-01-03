@@ -1,0 +1,43 @@
+---
+- hosts: PRD
+  user: sfdc
+  become: yes
+  become_method: sudo
+  tasks:
+   - name: sysctl commands
+     sysctl:
+      name: "{{ item.name }}"
+      value: "{{ item.value }}"
+      sysctl_set: yes
+      reload: yes
+     with_items:
+      - { name: "vm.swappiness", value: "1" }
+      - { name: "vm.overcommit_memory", value: "0" }
+      - { name: "vm.nr_hugepages", value: "20480" }
+      - { name: "vm.zone_reclaim_mode", value: "0" }
+      - { name: "vm.max_map_count", value: "1048575" }
+      - { name: "net.core.rmem_max", value: "67108864" }
+      - { name: "net.core.wmem_max", value: "67108864" }
+      - { name: "net.ipv4.tcp_rmem", value: "4096 87380 33554432" }
+      - { name: "net.ipv4.tcp_wmem", value: "4096 87380 33554432" }
+      - { name: "net.core.netdev_max_backlog", value: "30000" }
+      - { name: "net.ipv4.tcp_congestion_control", value: "htcp"}
+      - { name: "net.ipv4.tcp_mtu_probing", value: "1"}
+   - name:  echo deadline | tee /sys/block/sdf/queue/scheduler
+     command:  echo deadline | tee /sys/block/sdf/queue/scheduler
+   - name:  echo deadline | tee /sys/block/sde/queue/scheduler
+     command:  echo deadline | tee /sys/block/sde/queue/scheduler
+   - name: swapon -a
+     command: swapon -a
+   - name: echo never > /sys/kernel/mm/redhat_transparent_hugepage/enabled
+     command: echo never > /sys/kernel/mm/redhat_transparent_hugepage/enabled
+   - name: echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag
+     command: echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag
+   - name: echo never > /sys/kernel/mm/transparent_hugepage/enabled
+     command: echo never > /sys/kernel/mm/transparent_hugepage/enabled
+   - name: echo never > /sys/kernel/mm/transparent_hugepage/defrag
+     command: echo never > /sys/kernel/mm/transparent_hugepage/defrag
+   - name: touch /tmp/update_sfstore_kernel_parameters-flag
+     command: touch /tmp/update_sfstore_kernel_parameters-flag
+   - name: swapoff -a
+     command: swapoff -a
