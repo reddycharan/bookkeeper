@@ -1,5 +1,8 @@
 package org.apache.bookkeeper;
 
+import static org.apache.bookkeeper.BKProxyStats.PROXY_WORKER_SCOPE;
+import static org.apache.bookkeeper.BKProxyStats.WORKER_POOL_COUNT;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,6 +11,7 @@ import java.net.MalformedURLException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.AccessControlException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -35,14 +39,11 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.bookkeeper.BKProxyStats.WORKER_POOL_COUNT;
-import static org.apache.bookkeeper.BKProxyStats.PROXY_WORKER_SCOPE;
 
 /*
  * BKProxyMain implements runnable method and when Thread is spawned it starts ServerSocketChannel on the provided bkProxyPort.
@@ -90,6 +91,7 @@ public class BKProxyMain implements Runnable {
 
     public BKProxyMain(BookKeeperProxyConfiguration bkpConf) {
         this.bkpConf = bkpConf;
+		bkpConf.validateUser();
         proxyWorkerExecutor = new ThreadPoolExecutor(bkpConf.getCorePoolSize(), bkpConf.getWorkerThreadLimit(),
                 bkpConf.getCorePoolKeepAliveTime(), TimeUnit.MILLISECONDS, new SynchronousQueue<Runnable>());
         Class<? extends StatsProvider> statsProviderClass = null;

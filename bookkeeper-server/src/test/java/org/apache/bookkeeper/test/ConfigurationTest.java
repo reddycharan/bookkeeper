@@ -20,13 +20,15 @@
  */
 package org.apache.bookkeeper.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.security.AccessControlException;
+
 import org.apache.bookkeeper.conf.AbstractConfiguration;
-import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-
+import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.junit.Assert;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class ConfigurationTest {
 
@@ -66,4 +68,85 @@ public class ConfigurationTest {
         assertEquals("zookeeper connect string doesn't match in client configuration",
                      "server1:port1,server2:port2", clientConf.getZkServers());
     }
+
+	@Test(timeout = 60000)
+	public void testUserPermittedToStart() {
+		ServerConfiguration conf = new ServerConfiguration();
+		String userString = "";
+
+		// Comma @ end
+		try {
+			userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi, " + System.getProperty("user.name") + ",";
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+		} catch (AccessControlException ace) {
+			Assert.fail("Current user is in permittedStartupUsers, but startup failed.");
+		}
+
+		// Multiple commas
+		try {
+			userString = "jerrySeinfeld,elaineBennis,,,kramer,,soupNazi," + System.getProperty("user.name");
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+		} catch (AccessControlException ace) {
+			Assert.fail("Current user is in permittedStartupUsers, but startup failed.");
+		}
+
+		// Comma beginning
+		try {
+			userString = ",jerrySeinfeld,elaineBennis,kramer,soupNazi," + System.getProperty("user.name");
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+		} catch (AccessControlException ace) {
+			Assert.fail("Current user is in permittedStartupUsers, but startup failed.");
+		}
+	}
+
+	@Test(timeout = 60000)
+	public void testUserNotPermittedToStart() {
+		ServerConfiguration conf = new ServerConfiguration();
+		try {
+			// Comma @ end
+			String userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi,";
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+			Assert.fail("Current user started process but was not approved to." + "Current user: "
+					+ System.getProperty("user.name") + "\t Users: " + userString);
+		} catch (AccessControlException ace) {
+			// Expected! Success!
+		}
+
+		try {
+			// Commas in middle
+			String userString = "jerrySeinfeld,,elaineBennis,kramer,,soupNazi";
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+			Assert.fail("Current user started process but was not approved to." + "Current user: "
+					+ System.getProperty("user.name") + "\t Users: " + userString);
+		} catch (AccessControlException ace) {
+			// Expected! Success!
+		}
+
+		try {
+			// Commas @ beginning
+			String userString = ",jerrySeinfeld,elaineBennis,kramer,soupNazi";
+			conf.setPermittedStartupUsers(userString);
+			conf.validateUser();
+			Assert.fail("Current user started process but was not approved to." + "Current user: "
+					+ System.getProperty("user.name") + "\t Users: " + userString);
+		} catch (AccessControlException ace) {
+			// Expected! Success!
+		}
+	}
+
+	@Test(timeout = 60000)
+	public void testUserPermittedToStartEmptyConfigString() {
+		try {
+	        ServerConfiguration conf = new ServerConfiguration();
+			conf.setPermittedStartupUsers("   ");
+			conf.validateUser();
+		} catch (AccessControlException ace) {
+			Assert.fail("Empty permittedStartupUsers property caused user to fail BkProxyMain start.");
+		}
+	}
 }

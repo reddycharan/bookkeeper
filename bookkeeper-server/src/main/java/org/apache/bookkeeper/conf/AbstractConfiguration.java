@@ -18,26 +18,27 @@
 package org.apache.bookkeeper.conf;
 
 import java.net.URL;
+import java.security.AccessControlException;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.bookkeeper.feature.Feature;
+import org.apache.bookkeeper.meta.LedgerManagerFactory;
+import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.SystemConfiguration;
-import org.apache.bookkeeper.feature.Feature;
-import org.apache.bookkeeper.meta.LedgerManagerFactory;
-import org.apache.bookkeeper.util.ReflectionUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,8 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     // Metastore settings, only being used when LEDGER_MANAGER_FACTORY_CLASS is MSLedgerManagerFactory
     protected final static String METASTORE_IMPL_CLASS = "metastoreImplClass";
     protected final static String METASTORE_MAX_ENTRIES_PER_SCAN = "metastoreMaxEntriesPerScan";
+
+    protected final static String PERMITTED_STARTUP_USERS = "permittedStartupUsers";
 
     private volatile Map<DayOfWeek, List<DailyRange>> dailyRanges = null;
     private final Object rangesLock = new Object();
@@ -255,6 +258,44 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     protected String getPropertyNameForFirstActiveTimerange(String propName) {
         return getPropertyNameForFirstActiveTimerange(propName, getLocalTime(), getDayOfWeek());
     }
+
+	// Ensure the current user can start-up the process if it's restricted
+	public void validateUser() throws AccessControlException {
+		if (containsKey("permittedStartupUsers")) {
+			String currentUser = System.getProperty("user.name");
+			String[] propertyValue = getPermittedStartupUsers();
+			// Even if no actual string is present, getStringArray puts one
+			// element of empty string in [0]
+			// Empty space; just return
+			if (propertyValue.length == 1 && propertyValue[0].trim().length() == 0) {
+				return;
+			}
+			for (String s : propertyValue) {
+				if (s.trim().equals(currentUser)) {
+					return;
+				}
+			}
+			String errorMsg = "System cannot start because current user isn't in permittedStartupUsers."
+					+ " Current user: " + currentUser + " permittedStartupUsers: " + Arrays.toString(propertyValue);
+			System.err.println(errorMsg);
+			LOG.error(errorMsg);
+			throw new AccessControlException(errorMsg);
+		}
+	}
+
+    /*
+	 * Limit who can start the application to prevent future permission errors.
+	 */
+	public void setPermittedStartupUsers(String s) {
+		setProperty(PERMITTED_STARTUP_USERS, s.split(","));
+	}
+
+	/*
+	 * Get comma-delimited list of users specified in this property
+	 */
+	public String[] getPermittedStartupUsers() {
+		return getStringArray(PERMITTED_STARTUP_USERS);
+	}
 
     @VisibleForTesting
     protected String getPropertyNameForFirstActiveTimerange(String propName, LocalTime now, DayOfWeek dayOfWeek) {

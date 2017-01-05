@@ -1,13 +1,11 @@
 package org.apache.bookkeeper.proxyclient;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.bookkeeper.BKPConstants;
@@ -119,6 +117,35 @@ public class BKProxyClientTest extends BookKeeperClusterTestCase {
                         && createdExtentIdsWrapperList.containsAll(extentIdsListWrapperList));
         proxyClient.close();
     }
+
+	@Test(timeout = 60000)
+	public void testUserPermittedToStart() {
+		String userString = "";
+		BookKeeperProxyConfiguration thisBKPConfig = new BookKeeperProxyConfiguration(commonBKProxyConfig);
+		thisBKPConfig.setBKProxyPort(5555);
+		try {
+			userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi, " + System.getProperty("user.name");
+			thisBKPConfig.setPermittedStartupUsers(userString);
+			BKProxyMain bkProxy = new BKProxyMain(thisBKPConfig);
+		} catch (AccessControlException ace) {
+			Assert.fail("Current user is in permittedStartupUsers, but startup failed.");
+		}
+	}
+
+	@Test(timeout = 60000)
+	public void testUserNotPermittedToStart() {
+		try {
+			BookKeeperProxyConfiguration thisBKPConfig = new BookKeeperProxyConfiguration(commonBKProxyConfig);
+			thisBKPConfig.setBKProxyPort(5555);
+			String userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi";
+			thisBKPConfig.setPermittedStartupUsers(userString);
+			BKProxyMain bkProxy = new BKProxyMain(thisBKPConfig);
+			Assert.fail("Current user started process but was not approved to." + "Current user: "
+					+ System.getProperty("user.name") + "\t Users: " + userString);
+		} catch (AccessControlException ace) {
+			// Expected! Success!
+		}
+	}
 
     @Test(timeout = 60000)
     public void fragmentsWriteReadTest() throws IOException, InterruptedException {

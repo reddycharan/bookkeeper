@@ -20,16 +20,20 @@
  */
 package org.apache.bookkeeper.proto;
 
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_SCOPE;
+import static org.apache.bookkeeper.replication.ReplicationStats.REPLICATION_SCOPE;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.UnknownHostException;
 
 import org.apache.bookkeeper.bookie.Bookie;
-import org.apache.bookkeeper.bookie.ReadOnlyBookie;
 import org.apache.bookkeeper.bookie.BookieCriticalThread;
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.ExitCode;
+import org.apache.bookkeeper.bookie.ReadOnlyBookie;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.jmx.BKMBeanRegistry;
 import org.apache.bookkeeper.net.BookieSocketAddress;
@@ -52,10 +56,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.BOOKIE_SCOPE;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_SCOPE;
-import static org.apache.bookkeeper.replication.ReplicationStats.REPLICATION_SCOPE;
 
 /**
  * Implements the server-side part of the BookKeeper protocol.
@@ -92,6 +92,7 @@ public class BookieServer {
             throws IOException, KeeperException, InterruptedException,
             BookieException, UnavailableException, CompatibilityException {
         this.conf = conf;
+		conf.validateUser();
         this.statsLogger = statsLogger;
         this.bookie = newBookie(conf);
         this.requestProcessor = new BookieRequestProcessor(conf, bookie,
