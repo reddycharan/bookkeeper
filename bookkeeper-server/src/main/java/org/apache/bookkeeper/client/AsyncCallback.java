@@ -34,8 +34,25 @@ public interface AsyncCallback {
          *          context object
          */
         void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx);
-    }
 
+        /**
+         * Callback declaration
+         *
+         * @param rc
+         *          return code
+         * @param lh
+         *          ledger handle
+         * @param entryId
+         *          entry identifier
+         * @param qwcLatency
+         *          QuorumWriteComplete Latency
+         * @param ctx
+         *          context object
+         */
+        default void addCompleteAdv(int rc, LedgerHandle lh, long entryId, long qwcLatency, Object ctx){
+            addComplete(rc, lh, entryId, ctx);
+        }
+    }
     public interface AddLacCallback {
         /**
          * Callback declaration

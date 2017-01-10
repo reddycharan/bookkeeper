@@ -13,7 +13,7 @@ import org.apache.bookkeeper.client.BKException.Code;
 public class LedgerAsyncWriteStatus {
     private volatile boolean inProgress = true;
     private volatile int bkError = Code.UnexpectedConditionException;
-    private long completionTime = 0;
+    private long qwcLatency = 0; // Quorum Write Completion
     private volatile long actualEntryId; // EntryId number we received from BK client
     private final long expectingEntryId; // entryId number we will be expecting
     private final int fragmentId;
@@ -52,7 +52,7 @@ public class LedgerAsyncWriteStatus {
         return this.actualEntryId;
     }
 
-    public void setComplete(int result, long entryId) {
+    public void setComplete(int result, long qwcLatency, long entryId) {
         this.bkError = result;
         this.actualEntryId = entryId;
         this.inProgress = false;
@@ -70,10 +70,8 @@ public class LedgerAsyncWriteStatus {
             } else {
                 osl.markSuccess();
             }
-            if (osl instanceof OpStatEntryTimer) {
-                this.completionTime = ((OpStatEntryTimer) osl).getElapsedTime();
-            }
         }
+        this.qwcLatency = qwcLatency;
         latch.countDown();
     }
 
@@ -85,7 +83,7 @@ public class LedgerAsyncWriteStatus {
         return BKPConstants.convertBKtoSFerror(bkError);
     }
 
-    public long getCompletionTime() {
-        return this.completionTime;
+    public long getCompletionLatency() {
+        return this.qwcLatency;
     }
 }

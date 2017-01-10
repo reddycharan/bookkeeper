@@ -586,7 +586,7 @@ class BKProxyWorker implements Runnable {
                         laws = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
                         resp.put(BKPConstants.SF_OK); //RC of the request to get the status.
                         resp.put(laws.getResult()); // RC of the actual async IO
-                        resp.putLong(laws.getCompletionTime()); // IO Completion Time.
+                        resp.putLong(laws.getCompletionLatency()); // IO Completion Time.
                         resp.flip();
                         clientChannelWrite(resp);
                         break;

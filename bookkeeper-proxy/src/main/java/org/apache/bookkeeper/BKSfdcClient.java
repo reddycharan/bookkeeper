@@ -432,9 +432,14 @@ public class BKSfdcClient {
          *          control object
          */
         @Override
-        public void addComplete(int rc, LedgerHandle lh, long entry, Object ctx) {
+        public void addCompleteAdv(int rc, LedgerHandle lh, long entry, long qwcLatency, Object ctx) {
             LedgerAsyncWriteStatus asyncStatus = (LedgerAsyncWriteStatus) ctx;
-            asyncStatus.setComplete(rc, entry);
+            asyncStatus.setComplete(rc, qwcLatency, entry);
+        }
+
+        @Override
+        public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+            LOG.error("addComplete.. should never reach here");
         }
     }
 }

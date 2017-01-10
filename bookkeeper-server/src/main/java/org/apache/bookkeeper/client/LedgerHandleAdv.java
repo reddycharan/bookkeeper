@@ -146,8 +146,8 @@ public class LedgerHandleAdv extends LedgerHandle {
         op.setEntryId(entryId);
         if ((entryId <= this.lastAddConfirmed) || pendingAddOps.contains(op)) {
             LOG.error("Trying to re-add duplicate entryid:{}", entryId);
-            cb.addComplete(BKException.Code.DuplicateEntryIdException,
-                    LedgerHandleAdv.this, entryId, ctx);
+            cb.addCompleteAdv(BKException.Code.DuplicateEntryIdException,
+                    LedgerHandleAdv.this, entryId, 0, ctx);
             return;
         }       
         doAsyncAddEntry(op, data, offset, length, cb, ctx);
@@ -193,8 +193,8 @@ public class LedgerHandleAdv extends LedgerHandle {
                     @Override
                     public void safeRun() {
                         LOG.warn("Attempt to add to closed ledger: {}", ledgerId);
-                        cb.addComplete(BKException.Code.LedgerClosedException,
-                                LedgerHandleAdv.this, op.getEntryId(), ctx);
+                        cb.addCompleteAdv(BKException.Code.LedgerClosedException,
+                                LedgerHandleAdv.this, op.getEntryId(), 0, ctx);
                     }
                     @Override
                     public String toString() {
@@ -202,8 +202,8 @@ public class LedgerHandleAdv extends LedgerHandle {
                     }
                 });
             } catch (RejectedExecutionException e) {
-                cb.addComplete(bk.getReturnRc(BKException.Code.InterruptedException),
-                        LedgerHandleAdv.this, op.getEntryId(), ctx);
+                cb.addCompleteAdv(bk.getReturnRc(BKException.Code.InterruptedException),
+                        LedgerHandleAdv.this, op.getEntryId(), 0, ctx);
             }
             return;
         }
@@ -218,8 +218,8 @@ public class LedgerHandleAdv extends LedgerHandle {
                 }
             });
         } catch (RejectedExecutionException e) {
-            cb.addComplete(bk.getReturnRc(BKException.Code.InterruptedException),
-                    LedgerHandleAdv.this, op.getEntryId(), ctx);
+            cb.addCompleteAdv(bk.getReturnRc(BKException.Code.InterruptedException),
+                    LedgerHandleAdv.this, op.getEntryId(), 0, ctx);
         }
     }
 

@@ -33,8 +33,8 @@ import org.jboss.netty.util.Timeout;
 import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This represents a pending add operation. When it has got success from all
@@ -61,6 +61,7 @@ class PendingAddOp implements WriteCallback, TimerTask {
     LedgerHandle lh;
     boolean isRecoveryAdd = false;
     long requestTimeNanos;
+    long qwcLatency; // Quorum Write Completion Latency after response from quorum bookies.
 
     final int timeoutSec;
     Timeout timeout = null;
@@ -75,6 +76,7 @@ class PendingAddOp implements WriteCallback, TimerTask {
         this.ackSet = lh.distributionSchedule.getAckSet();
         this.addOpLogger = lh.bk.getAddOpLogger();
         this.timeoutSec = lh.bk.getConf().getAddEntryQuorumTimeout();
+        this.qwcLatency = 0; // Set only on quorum write complete. Default to 0 on failure.
     }
 
     /**
@@ -222,6 +224,7 @@ class PendingAddOp implements WriteCallback, TimerTask {
 
         if (ackSet.addBookieAndCheck(bookieIndex) && !completed) {
             completed = true;
+            this.qwcLatency = MathUtils.elapsedNanos(requestTimeNanos);
 
             LOG.debug("Complete (lid:{}, eid:{}).", ledgerId, entryId);
             // when completed an entry, try to send success add callbacks in order
@@ -241,7 +244,11 @@ class PendingAddOp implements WriteCallback, TimerTask {
         } else {
             addOpLogger.registerSuccessfulEvent(latencyNanos, TimeUnit.NANOSECONDS);
         }
-        cb.addComplete(rc, lh, entryId, ctx);
+        if (lh instanceof LedgerHandleAdv) {
+            cb.addCompleteAdv(rc, lh, entryId, qwcLatency, ctx);
+        } else {
+            cb.addComplete(rc, lh, entryId, ctx);
+        }
     }
 
     @Override
