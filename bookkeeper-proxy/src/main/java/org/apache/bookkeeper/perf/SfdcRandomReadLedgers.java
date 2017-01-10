@@ -38,20 +38,14 @@ import com.google.common.util.concurrent.RateLimiter;
 public class SfdcRandomReadLedgers {
     static final Logger LOG = LoggerFactory.getLogger(SfdcRandomReadLedgers.class);
 
-    static { //lazy hack
-        org.apache.log4j.BasicConfigurator.configure();
-        org.apache.log4j.Logger.getRootLogger().setLevel(org.apache.log4j.Level.WARN);
-        org.apache.log4j.Logger.getLogger(SfdcRandomReadLedgers.class).setLevel(org.apache.log4j.Level.INFO);
-    }
-
     private static String name(String s) {
         return MetricRegistry.name(SfdcRandomReadLedgers.class, s);
     }
 
     private static volatile boolean finish = false;
-    
+
     private static final MetricRegistry metrics = new MetricRegistry();
-    
+
     private static final Timer readLatency = metrics.timer(name("readLatency"));
     private static final Meter bytesRate = metrics.meter(name("bytesRate"));
 
@@ -64,7 +58,7 @@ public class SfdcRandomReadLedgers {
             .convertDurationsTo(TimeUnit.MICROSECONDS)
             .build();
 
-    
+
     private static void usage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
         ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -78,7 +72,7 @@ public class SfdcRandomReadLedgers {
             pw.close();
         }
     }
-    
+
     // http://stackoverflow.com/questions/2546078/java-random-long-number-in-0-x-n-range
     static long nextLong(Random rng, long n) {
         long bits, val;
@@ -88,7 +82,7 @@ public class SfdcRandomReadLedgers {
         } while (bits-val+(n-1) < 0L);
         return val;
      }
-    
+
     public static void main(String[] args) throws Exception {
         final Options options = new Options();
 
@@ -130,10 +124,10 @@ public class SfdcRandomReadLedgers {
                 .build();
 
         final BKSfdcClient bksc = new BKSfdcClient(bkConfig, bk, elm, null, null);
-        
+
         consoleReporter.start(30, TimeUnit.SECONDS);
         jmxReporter.start();
-        
+
         final List<AbstractMap.SimpleEntry<BKExtentId, Integer>> ledgerInfo = Lists.newArrayList();
         for(long ledger: bksc.ledgerList()) {
             BKExtentId extentId = new BKExtentIdByteArray(ledger);
@@ -145,7 +139,7 @@ public class SfdcRandomReadLedgers {
                 continue;
             }
             if(lac > 0) {
-                AbstractMap.SimpleEntry<BKExtentId, Integer> tuple = 
+                AbstractMap.SimpleEntry<BKExtentId, Integer> tuple =
                         new AbstractMap.SimpleEntry<BKExtentId, Integer>(extentId, lac);
                 ledgerInfo.add(tuple);
             }
@@ -153,13 +147,13 @@ public class SfdcRandomReadLedgers {
 
         final RateLimiter rateLimiter = RateLimiter.create(maxQps, warmup, TimeUnit.SECONDS);
         ExecutorService pool = Executors.newFixedThreadPool(numOfThreads);
-        
+
         for(int i = 0; i < numOfThreads; ++i) {
             pool.execute(new Runnable() {
                 @Override
                 public void run() {
                     LOG.info("Thread is starting");
-                    
+
                     final BKSfdcClient bkscT = new BKSfdcClient(bkConfig, bk, elm, null, null);
 
                     final int numberOfLedgers = ledgerInfo.size();
@@ -168,7 +162,7 @@ public class SfdcRandomReadLedgers {
                         final int n = random.nextInt(numberOfLedgers);
                         BKExtentId ledgerId = ledgerInfo.get(n).getKey();
                         int ledgerLac = ledgerInfo.get(n).getValue();
-                        
+
                         int fragmentToRead = random.nextInt(ledgerLac);
 
                         rateLimiter.acquire();
@@ -187,7 +181,7 @@ public class SfdcRandomReadLedgers {
                 }
             });
         }
-        
+
         pool.shutdown();
         try {
           if (!pool.awaitTermination(runTime, TimeUnit.SECONDS)) {
@@ -200,13 +194,13 @@ public class SfdcRandomReadLedgers {
           pool.shutdownNow();
           Thread.currentThread().interrupt();
         }
-        
+
         consoleReporter.report();
-        
+
         LOG.info("shutting down reporters and bookie");
         consoleReporter.stop();
         jmxReporter.stop();
-        
+
         bk.close();
     }
 

@@ -24,9 +24,9 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 /*
  * Perf test runner. Takes name of properties file as a parameter.
  * Props file defines number of threads and scenarios to execute.
- * 
+ *
  * Prop file example:
- * 
+ *
  * scenario1.name=blah
  * scenario1.class=org.apache.bookkeeper.perf.blah
  * scenario1.threads=5
@@ -37,12 +37,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 public class End2EndPerfTest {
     static final Logger LOG = LoggerFactory.getLogger(End2EndPerfTest.class);
 
-    static { //lazy hack
-        org.apache.log4j.BasicConfigurator.configure();
-        org.apache.log4j.Logger.getRootLogger().setLevel(org.apache.log4j.Level.WARN);
-        org.apache.log4j.Logger.getLogger(SfdcGenerateLedger.class).setLevel(org.apache.log4j.Level.INFO);
-    }
-    
     public static abstract class TestScenario implements Runnable {
         final Properties props;
         final private RateLimiter throttler;
@@ -50,20 +44,20 @@ public class End2EndPerfTest {
         final String scenarioName;
 
         private final Counter scenariosRunning;
-        
+
         private final Timer scenarioLatency;
 
         abstract public void setUp() throws Exception;
         abstract public void tearDown();
         abstract public boolean next() throws Exception;
 
-        
+
         public TestScenario(String scenarioName, Properties props, MetricRegistry metrics, RateLimiter throttler) {
             this.scenarioName = scenarioName;
             this.props = props;
             this.throttler = throttler;
             this.metrics = metrics;
-            
+
             scenarioLatency = metrics.timer(buildMetricName("scenarioLatency"));
             scenariosRunning = metrics
                     .counter(MetricRegistry.name(End2EndPerfTest.class, "scenariosRunning"));
@@ -72,7 +66,7 @@ public class End2EndPerfTest {
         public String buildMetricName(String name) {
             return MetricRegistry.name(this.getClass(), scenarioName, name);
         }
-        
+
         public void acquire() {
             if(throttler != null) {
                 throttler.acquire();
@@ -88,7 +82,7 @@ public class End2EndPerfTest {
                 LOG.error("Unexpected exception in setUp of scenario {}", scenarioName, e);
                 return;
             }
-            
+
             try {
                 while(true) {
                     acquire();
@@ -125,7 +119,7 @@ public class End2EndPerfTest {
     public static final String scenarioThrottleProp = "throttle";
     public static final String scenarioClassProp = "class";
     public static final String scenarioConfigPrefix = "config";
-    
+
     private static final int MAX_SCENARIOS = 255;
 
     public static void main(String[] args) throws Exception {
@@ -172,7 +166,7 @@ public class End2EndPerfTest {
             return false;
         }
         final int threadNum = Integer.parseInt(props.getProperty(scenarioId + "." + scenarioThreadProp, "1"));
-        
+
         if (threadNum < 1) {
             return false;
         }

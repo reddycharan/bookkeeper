@@ -67,6 +67,12 @@
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
     </dependency>
+    <!-- Handle zookeeper dependency of log4j1.2 on test -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>log4j-over-slf4j</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
     <!-- Binding for Log4J -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -103,6 +109,10 @@
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -119,6 +129,10 @@
         <exclusion>
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>log4j</groupId>
+          <artifactId>log4j</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -350,7 +364,7 @@
             </goals>
             <configuration>
               <outputDirectory>${project.libdir}</outputDirectory>
-	      <includeScope>runtime</includeScope>
+              <includeScope>runtime</includeScope>
             </configuration>
           </execution>
         </executions>
@@ -358,8 +372,8 @@
       <plugin>
         <artifactId>maven-clean-plugin</artifactId>
         <version>2.5</version>
-	<configuration>
-	  <filesets>
+        <configuration>
+          <filesets>
             <fileset>
               <directory>${project.libdir}</directory>
               <followSymlinks>false</followSymlinks>
@@ -371,7 +385,7 @@
               </includes>
             </fileset>
           </filesets>
-	</configuration>
+        </configuration>
       </plugin>
     </plugins>
   </build>

@@ -36,21 +36,15 @@ public class SfdcRandomReadRaw {
     static final Logger LOG = LoggerFactory.getLogger(SfdcRandomReadRaw.class);
 
     final static int ENTRY_SIZE = 64 * 1024;
-    
-    static { //lazy hack
-        org.apache.log4j.BasicConfigurator.configure();
-        org.apache.log4j.Logger.getRootLogger().setLevel(org.apache.log4j.Level.WARN);
-        org.apache.log4j.Logger.getLogger(SfdcRandomReadRaw.class).setLevel(org.apache.log4j.Level.INFO);
-    }
 
     private static String name(String s) {
         return MetricRegistry.name(SfdcRandomReadRaw.class, s);
     }
 
     private static volatile boolean finish = false;
-    
+
     private static final MetricRegistry metrics = new MetricRegistry();
-    
+
     private static final Timer readLatency = metrics.timer(name("readLatency"));
     private static final Meter bytesRate = metrics.meter(name("bytesRate"));
 
@@ -63,7 +57,7 @@ public class SfdcRandomReadRaw {
             .convertDurationsTo(TimeUnit.MICROSECONDS)
             .build();
 
-    
+
     private static void usage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
         ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -77,7 +71,7 @@ public class SfdcRandomReadRaw {
             pw.close();
         }
     }
-    
+
     private static int readFc(FileChannel fc, ByteBuffer bb, long start) throws IOException {
         int total = 0;
         int rc = 0;
@@ -92,7 +86,7 @@ public class SfdcRandomReadRaw {
         }
         return total;
     }
-    
+
     // http://stackoverflow.com/questions/2546078/java-random-long-number-in-0-x-n-range
     static long nextLong(Random rng, long n) {
         long bits, val;
@@ -102,7 +96,7 @@ public class SfdcRandomReadRaw {
         } while (bits-val+(n-1) < 0L);
         return val;
      }
-    
+
     public static void main(String[] args) throws Exception {
         final Options options = new Options();
 
@@ -129,7 +123,7 @@ public class SfdcRandomReadRaw {
         }
 
         final File[] dataFiles;
-        try { 
+        try {
             final File dataDir = new File(cmdLine.getOptionValue("d"));
             dataFiles = dataDir.listFiles(new FilenameFilter() {
                 @Override
@@ -146,7 +140,7 @@ public class SfdcRandomReadRaw {
             LOG.error("Problem finding data files in {}" , cmdLine.getOptionValue("d"));
             return;
         }
-        
+
         final int runTime = Integer.parseInt(cmdLine.getOptionValue("r", "600"));
         final int numOfThreads = Integer.parseInt(cmdLine.getOptionValue("t", "" + Runtime.getRuntime().availableProcessors()));
         final double maxQps = Double.parseDouble(cmdLine.getOptionValue("q", "1000000"));
@@ -156,10 +150,10 @@ public class SfdcRandomReadRaw {
             LOG.error("not enough files {} for requested thread count {}", dataFiles.length, numOfThreads);
             return;
         }
-        
+
         consoleReporter.start(30, TimeUnit.SECONDS);
         jmxReporter.start();
-        
+
         final RateLimiter rateLimiter = RateLimiter.create(maxQps, warmup, TimeUnit.SECONDS);
         ExecutorService pool = Executors.newFixedThreadPool(numOfThreads);
 
@@ -171,15 +165,15 @@ public class SfdcRandomReadRaw {
                 public void run() {
                     LOG.info("Thread is starting");
                     final int myId = threadId.getAndIncrement();
-                    
+
                     final FileChannel[] fileInfos = new FileChannel[dataFiles.length / numOfThreads];
                     final long[] numEntries = new long[fileInfos.length];
-                    
+
                     final byte[] dataArr = new byte[ENTRY_SIZE];
                     final ByteBuffer data = ByteBuffer.wrap(dataArr);
-                    
-                    for(int i = myId, idx = 0; 
-                            i < dataFiles.length && idx < fileInfos.length; 
+
+                    for(int i = myId, idx = 0;
+                            i < dataFiles.length && idx < fileInfos.length;
                             i += numOfThreads, idx++) {
                         final FileChannel fc;
                         try {
@@ -188,10 +182,10 @@ public class SfdcRandomReadRaw {
                             LOG.error("Failed to open file", e);
                             return;
                         }
-                        numEntries[idx] = dataFiles[i].length() / ENTRY_SIZE; 
+                        numEntries[idx] = dataFiles[i].length() / ENTRY_SIZE;
                         fileInfos[idx] = fc;
                     }
-                    
+
                     final int numberOfFiles = fileInfos.length;
                     final Random random = new SecureRandom();
                     while(!finish) {
@@ -212,7 +206,7 @@ public class SfdcRandomReadRaw {
                             ct.stop();
                         }
                     }
-                    
+
                     for(FileChannel fc: fileInfos) {
                         try {
                             fc.close();
@@ -223,7 +217,7 @@ public class SfdcRandomReadRaw {
                 }
             });
         }
-        
+
         pool.shutdown();
         try {
           if (!pool.awaitTermination(runTime, TimeUnit.SECONDS)) {
@@ -236,9 +230,9 @@ public class SfdcRandomReadRaw {
           pool.shutdownNow();
           Thread.currentThread().interrupt();
         }
-        
+
         consoleReporter.report();
-        
+
         LOG.info("shutting down reporters and bookie");
         consoleReporter.stop();
         jmxReporter.stop();
