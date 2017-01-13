@@ -64,11 +64,14 @@ p4 sync -f //$PROXY_PROP_DIR/$PROXY_PROP_FILE
 if [ "$?" -ne 0 ];then
    echo "Failed to do P4 sync for $PROXY_PROP_FILE. You may have to check p4 setup" && exit -1;
 fi
+# Immediately revert it, in case someone has this held in another file since we use the same user
+p4 revert //$PROXY_PROP_DIR/$PROXY_PROP_FILE
 
 p4 sync -f //$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
 if [ "$?" -ne 0 ];then
    echo "Failed to do P4 sync for $SFSTORE_PROP_FILE. You may have to check p4 setup" && exit -1;
 fi
+p4 revert //$SFSTORE_PROP_DIR/$SFSTORE_PROP_FILE
 
 echo "Synced all files"
 
