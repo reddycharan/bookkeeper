@@ -48,6 +48,7 @@ public class NioServerSocketChannelManager extends ChannelManager {
 
         ServerBootstrap bootstrap = new ServerBootstrap(channelFactory);
         bootstrap.setPipelineFactory(bookiePipelineFactory);
+        bootstrap.setOption("child.keepAlive", true);
         bootstrap.setOption("child.tcpNoDelay", conf.getServerTcpNoDelay());
         bootstrap.setOption("child.soLinger", 2);
 
