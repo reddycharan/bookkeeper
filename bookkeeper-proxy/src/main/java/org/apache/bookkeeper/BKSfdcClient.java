@@ -280,7 +280,7 @@ public class BKSfdcClient {
     }
 
     public void ledgerPutEntry(BKExtentId extentId, int fragmentId, ByteBuffer bdata,
-            Queue<OpStatEntry> asyncStatQueue) throws BKException, InterruptedException {
+            Queue<OpStatEntry> asyncStatQueue, ByteBuffer bufBorrowed) throws BKException, InterruptedException {
 
         long entryId;
         LedgerHandle lh = null;
@@ -330,7 +330,7 @@ public class BKSfdcClient {
             LedgerAsyncWriteStatus laws;
             ProxyAddCallback callback = new ProxyAddCallback();
             // Create LedgerAsyncWaitStatus object.
-            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId, bdata, asyncStatQueue);
+            laws = lpd.createLedgerAsyncWriteStatus(fragmentId, tmpEntryId, bufBorrowed, asyncStatQueue);
             lh.asyncAddEntry(tmpEntryId, bdata.array(), 0, bdata.limit(), callback, laws);
         } else {
             // Try to catch out-of-sequence addEntry.

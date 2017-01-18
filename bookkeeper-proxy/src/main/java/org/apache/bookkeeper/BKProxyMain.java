@@ -117,7 +117,7 @@ public class BKProxyMain implements Runnable {
         poolConfig.setMaxIdle(bkpConf.getByteBufferPoolSizeMaxIdle());
         LOG.info("Byte Buffer Pool Max Idle: " + poolConfig.getMaxIdle());
 
-        BKByteBufferPoolFactory poolFactory = new BKByteBufferPoolFactory(bkpConf.getMaxFragSize());
+        BKByteBufferPoolFactory poolFactory = new BKByteBufferPoolFactory(bkpConf.getByteBufferPoolBufferSize());
         this.byteBufSharedPool = new BKByteBufferPool(poolFactory, poolConfig, statsLogger);
     }
 

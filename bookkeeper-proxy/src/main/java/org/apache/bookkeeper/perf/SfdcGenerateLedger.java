@@ -201,7 +201,7 @@ public class SfdcGenerateLedger {
                         rateLimiter.acquire();
                         final Timer.Context ct = writeLatency.time();
                         try {
-                            bkscT.ledgerPutEntry(extIds[ledgerNum], fragmentIds[ledgerNum], bdata, null);
+                            bkscT.ledgerPutEntry(extIds[ledgerNum], fragmentIds[ledgerNum], bdata, null, null);
                             bytesRate.mark(data64k.length);
                         } catch (Exception e) {
                             finish = true;

@@ -15,16 +15,17 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     protected static final int BKPROXY_PORT_DEF = 5555;
 
     private static final int SIZE_64K = 64 * 1024;
+    private static final int SIZE_128K = 128 * 1024;
     private static final int SIZE_1M = 1024 * 1024;
 
     protected static final String SERVERCHANNEL_RECEIVE_BUFFER_SIZE_STR = "serverChannelReceiveBufferSize";
-    protected static final int SERVERCHANNEL_RECEIVE_BUFFER_SIZE_DEF = SIZE_64K;
+    protected static final int SERVERCHANNEL_RECEIVE_BUFFER_SIZE_DEF = SIZE_128K;
 
     protected static final String CLIENTCHANNEL_RECEIVE_BUFFER_SIZE_STR = "clientChannelReceiveBufferSize";
-    protected static final int CLIENTCHANNEL_RECEIVE_BUFFER_SIZE_DEF = SIZE_64K;
+    protected static final int CLIENTCHANNEL_RECEIVE_BUFFER_SIZE_DEF = SIZE_128K;
 
     protected static final String CLIENTCHANNEL_SEND_BUFFER_SIZE_STR = "clientChannelSendBufferSize";
-    protected static final int CLIENTCHANNEL_SEND_BUFFER_SIZE_DEF = SIZE_64K;
+    protected static final int CLIENTCHANNEL_SEND_BUFFER_SIZE_DEF = SIZE_128K;
 
     protected static final String WORKER_THREAD_LIMIT_STR = "workerThreadLimit";
     protected static final int WORKER_THREAD_LIMIT_DEF = 1000;
@@ -68,7 +69,11 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
     
     // max # of byteBuffers in the shared pool; idle and available to be borrowed, puts an upperbound on unused space
     protected static final String BYTE_BUFFER_POOL_SIZE_MAX_IDLE_STR = "byteBufferPoolSizeMaxIdle";
-    protected static final int BYTE_BUFFER_POOL_SIZE_MAX_IDLE_DEF = 100;
+    protected static final int BYTE_BUFFER_POOL_SIZE_MAX_IDLE_DEF = 500;
+    // Buffers size in the buffer pool.
+    // Setting it to 64k as most of the data extents are 64k.
+    protected static final String BYTE_BUFFER_POOL_BUFFER_SIZE_STR = "byteBufferPoolBufferSize";
+    protected static final int  BYTE_BUFFER_POOL_BUFFER_SIZE_DEF = SIZE_64K;
 
     protected static final String STATS_PROVIDER_CLASS = "statsProviderClass";
     protected static final String CODAHALE_STATS_OUTPUT_FREQUENCY="codahaleStatsOutputFrequency";
@@ -260,10 +265,20 @@ public class BookKeeperProxyConfiguration extends ClientConfiguration {
         return getInt(BYTE_BUFFER_POOL_SIZE_MAX_IDLE_STR, BYTE_BUFFER_POOL_SIZE_MAX_IDLE_DEF);
     }
 
+    public BookKeeperProxyConfiguration setByteBufferPoolBufferSize(int byteBufferPoolBufferSize) {
+        setProperty(BYTE_BUFFER_POOL_BUFFER_SIZE_STR, byteBufferPoolBufferSize);
+        return this;
+    }
+
+    public int getByteBufferPoolBufferSize() {
+        return getInt(BYTE_BUFFER_POOL_BUFFER_SIZE_STR, BYTE_BUFFER_POOL_BUFFER_SIZE_DEF);
+    }
+
     public Class<? extends StatsProvider> getStatsProviderClass()
         throws ConfigurationException {
         return ReflectionUtils.getClass(this, STATS_PROVIDER_CLASS,
                                         NullStatsProvider.class, StatsProvider.class,
                                         defaultLoader);
     }
+
 }

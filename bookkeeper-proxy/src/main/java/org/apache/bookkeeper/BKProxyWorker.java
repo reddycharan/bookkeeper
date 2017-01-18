@@ -248,11 +248,13 @@ class BKProxyWorker implements Runnable {
             }
         }
 
-        LOG.debug("clientChannelRead - Read bytes: " + bytesRead
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("clientChannelRead - Read bytes: " + bytesRead
                 + " BKProxyWorker: " + bkProxyWorkerId
                 + " req: " + BKPConstants.getReqRespString(reqId)
                 + " respId: " + BKPConstants.getReqRespString(respId)
                 + " ledgerId: " + extentId);
+        }
         return totalBytesRead;
     }
 
@@ -270,11 +272,13 @@ class BKProxyWorker implements Runnable {
             throw e;
         }
 
-        LOG.debug("clientChannelWrite wrote bytes:" + bytesToWrite
-        + " BKProxyWorker: " + bkProxyWorkerId
-        + " req: " + BKPConstants.getReqRespString(reqId)
-        + " respId: " + BKPConstants.getReqRespString(respId)
-        + " ledgerId: " + extentId);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("clientChannelWrite wrote bytes:" + bytesToWrite
+                + " BKProxyWorker: " + bkProxyWorkerId
+                + " req: " + BKPConstants.getReqRespString(reqId)
+                + " respId: " + BKPConstants.getReqRespString(respId)
+                + " ledgerId: " + extentId);
+        }
     }
 
     private void markStats(Queue<OpStatEntry> opStatQueue, boolean isFail) {
@@ -327,6 +331,11 @@ class BKProxyWorker implements Runnable {
 
         String clientConn = "";
         String reqSpecific = "";
+        int fragmentId = -1;
+        int timeout = 0;
+        int rSize = 0;
+        int wSize = 0;
+
 
         try {
             clientConn = this.clientChannel.getRemoteAddress().toString();
@@ -337,7 +346,9 @@ class BKProxyWorker implements Runnable {
         try {
             Thread.currentThread().setName(
                     "BKProxyWorker" + bkProxyWorkerId + ":[" + clientConn + "]:");
-            LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Starting BKProxyWorkerId - " + bkProxyWorkerId);
+            }
 
             while (!Thread.interrupted()) {
                 boolean exceptionOccurred = false;
@@ -349,6 +360,11 @@ class BKProxyWorker implements Runnable {
                     resp.clear();
                     reqId = BKPConstants.UnInitialized;
                     respId = BKPConstants.UnInitialized;
+                    fragmentId = -1;
+                    timeout = 0;
+                    rSize = 0;
+                    wSize = 0;
+
                     reqSpecific = "";
 
                     // Four Letter cmd for ProxyStatus.
@@ -409,7 +425,9 @@ class BKProxyWorker implements Runnable {
                     errorCode = BKPConstants.SF_OK;
                     switch (reqId) {
                     case (BKPConstants.LedgerStatReq): {
-						LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
+                        }
 
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerStatTimer, startTime));
@@ -427,7 +445,9 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerListGetReq): {
-						LOG.debug("Request: {}", BKPConstants.getReqRespString(reqId));
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("Request: {}", BKPConstants.getReqRespString(reqId));
+                        }
 
                         // this response is used only if an exception
                         // happens in the catch clauses below
@@ -449,7 +469,9 @@ class BKProxyWorker implements Runnable {
                         int batch = 0;
                         for (Long pId : iterable) {
                             if (extentIdList.size() == BKPConstants.LEDGER_LIST_BATCH_SIZE) {
-                                LOG.debug(String.format("Sending batch {} of extentIds", batch++));
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.debug(String.format("Sending batch {} of extentIds", batch++));
+                                }
                                 sendExtentIdList(extentIdList, respBuf, listBuf);
                             }
                             extentIdList.add(pId);
@@ -469,7 +491,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerWriteCloseReq): {
 						LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerWriteCloseTimer, startTime));
 
@@ -496,7 +517,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerOpenRecoverReq): {
 						LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerRecoveryReadTimer, startTime));
 
@@ -510,7 +530,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerReadCloseReq): {
 						LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerReadCloseTimer, startTime));
 
@@ -524,7 +543,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerDeleteReq): {
 						LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerDeletionTimer, startTime));
 
@@ -538,7 +556,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerDeleteAllReq): {
 						LOG.info("Request: {}", BKPConstants.getReqRespString(reqId));
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerDeleteAllTimer, startTime));
 
@@ -553,7 +570,6 @@ class BKProxyWorker implements Runnable {
                     case (BKPConstants.LedgerCreateReq): {                        
 						LOG.info("Request: {} for extentId: {}", BKPConstants.getReqRespString(reqId), extentId);
 
-                        errorCode = BKPConstants.SF_OK;
                         resp.put(respId);
                         opStatQueue.add(new OpStatEntryTimer(ledgerCreationTimer, startTime));
 
@@ -570,8 +586,6 @@ class BKProxyWorker implements Runnable {
                         LedgerAsyncWriteStatus laws;
                         respId = BKPConstants.LedgerAsyncWriteStatusResp;
                         resp.put(respId);
-                        int fragmentId;
-                        int timeout;
 
                         asreq.clear();
                         clientChannelRead(asreq, asreq.capacity());
@@ -579,9 +593,11 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = asreq.getInt();
                         timeout = asreq.getInt(); // msecs
-                        reqSpecific = String.format(" Frag No: %d, Timeout: %d", fragmentId, timeout);
-						LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
-								extentId + reqSpecific);
+                        if (LOG.isDebugEnabled()) {
+                            reqSpecific = String.format(" Frag No: %d, Timeout: %d", fragmentId, timeout);
+                            LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
+                                      extentId + reqSpecific);
+                        }
                         opStatQueue.add(new OpStatEntryTimer(ledgerAsyncPutStatusTimer, startTime));
                         laws = bksc.ledgerAsyncWriteStatus(extentId, fragmentId, timeout);
                         resp.put(BKPConstants.SF_OK); //RC of the request to get the status.
@@ -594,9 +610,6 @@ class BKProxyWorker implements Runnable {
 
                     case (BKPConstants.LedgerWriteEntryReq): {
                         ByteBuffer wcByteBuf;
-                        errorCode = BKPConstants.SF_OK;
-                        int fragmentId;
-                        int wSize;
 
                         resp.put(respId);
 
@@ -606,12 +619,18 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
-                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
-						LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
-								extentId + reqSpecific);
-
-                        bufBorrowed = byteBufPool.borrowBuffer();
-                        wcByteBuf = bufBorrowed;
+                        if (LOG.isDebugEnabled()) {
+                            reqSpecific = String.format(" Frag No.: %d, wSize=%d", fragmentId, wSize);
+                            LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
+                                      extentId + reqSpecific);
+                        }
+                        if (wSize > bkpConfig.getByteBufferPoolBufferSize()) {
+                            wcByteBuf = ByteBuffer.allocate(wSize);
+                            bufBorrowed = null;
+                        } else {
+                            bufBorrowed = byteBufPool.borrowBuffer();
+                            wcByteBuf = bufBorrowed;
+                        }
 
                         if (wSize > bkpConfig.getMaxFragSize()) {
                             errorCode = BKPConstants.SF_ErrorIncorrectParameter;
@@ -641,7 +660,7 @@ class BKProxyWorker implements Runnable {
                         opStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
 
                         // null param form opStatQueue indicates sync write
-                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, null);
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, null, bufBorrowed);
 
                         resp.put(errorCode);
                         resp.flip();
@@ -655,10 +674,6 @@ class BKProxyWorker implements Runnable {
                         ByteBuffer wcByteBuf;
                         respId = BKPConstants.LedgerAsyncWriteEntryResp;
 
-                        errorCode = BKPConstants.SF_OK;
-                        int fragmentId;
-                        int wSize;
-
                         resp.put(respId);
 
                         ewreq.clear();
@@ -667,12 +682,19 @@ class BKProxyWorker implements Runnable {
 
                         fragmentId = ewreq.getInt();
                         wSize = ewreq.getInt();
-                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, wSize);
-						LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
-								extentId + reqSpecific);
 
-                        bufBorrowed = byteBufPool.borrowBuffer();
-                        wcByteBuf = bufBorrowed;
+                        if (LOG.isDebugEnabled()) {
+                            reqSpecific = String.format(" Frag No.: %d, sSize=%d", fragmentId, wSize);
+                            LOG.debug("Request: {} extentId: {}", BKPConstants.getReqRespString(reqId),
+								extentId + reqSpecific);
+                        }
+                        if (wSize > bkpConfig.getByteBufferPoolBufferSize()) {
+                            wcByteBuf = ByteBuffer.allocate(wSize);
+                            bufBorrowed = null;
+                        } else {
+                            bufBorrowed = byteBufPool.borrowBuffer();
+                            wcByteBuf = bufBorrowed;
+                        }
 
                         if (wSize > bkpConfig.getMaxFragSize()) {
                             errorCode = BKPConstants.SF_ErrorIncorrectParameter;
@@ -703,7 +725,7 @@ class BKProxyWorker implements Runnable {
                         asyncWriteStatQueue.add(new OpStatEntryValue(ledgerWriteHist, (long) wcByteBuf.limit()));
 
                         // send StatQueue for Async write.
-                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, asyncWriteStatQueue);
+                        bksc.ledgerPutEntry(extentId, fragmentId, wcByteBuf, asyncWriteStatQueue, bufBorrowed);
 
                         // borrowed buffer will be released by asyncWriteStatus
                         bufBorrowed = null;
@@ -716,9 +738,6 @@ class BKProxyWorker implements Runnable {
                     }
 
                     case (BKPConstants.LedgerReadEntryReq): {
-                        errorCode = BKPConstants.SF_OK;
-                        int fragmentId;
-                        int bufSize;
                         ByteBuffer ledgerEntry = null;
 
                         resp.put(respId);
@@ -727,21 +746,23 @@ class BKProxyWorker implements Runnable {
                         clientChannelRead(erreq, erreq.capacity());
                         erreq.flip();
                         fragmentId = erreq.getInt();
-                        bufSize = erreq.getInt();
+                        rSize = erreq.getInt();
 
                         // Exclude the client reads above
                         startTime = MathUtils.nowInNano();
-                        reqSpecific = String.format(" Frag No.: %d, Size=%d", fragmentId, bufSize);
 
-						LOG.debug("Request: {} extentId: {}" + BKPConstants.getReqRespString(reqId),
-								extentId + reqSpecific);
+                        if (LOG.isDebugEnabled()) {
+                            reqSpecific = String.format(" Frag No.: %d, rSize=%d", fragmentId, rSize);
+                            LOG.debug("Request: {} extentId: {}" + BKPConstants.getReqRespString(reqId),
+                                      extentId + reqSpecific);
+                        }
 
                         // Now get the fragment/entry
-                        ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, bufSize);
+                        ledgerEntry = bksc.ledgerGetEntry(extentId, fragmentId, rSize);
                         opStatQueue.add(new OpStatEntryTimer(ledgerGetTimer, startTime));
                         opStatQueue.add(new OpStatEntryValue(ledgerReadHist, (long) ledgerEntry.position()));
 
-                        if (bufSize < ledgerEntry.position()) {
+                        if (rSize < ledgerEntry.position()) {
                             errorCode = BKPConstants.SF_ShortRead;
                             resp.put(errorCode);
                             resp.flip();
@@ -775,6 +796,8 @@ class BKProxyWorker implements Runnable {
                     // the loop, which will close the clientChannel and exit this worker thread.
                     exceptionOccurred = true;
                     errorCode = BKPConstants.convertBKtoSFerror(e.getCode());
+                    reqSpecific = String.format(" FragNo.: {}, wSize: {} rSize: {} timeout: {}",
+                            fragmentId, wSize, rSize, timeout);
                     LOG.error("BKException on Req: "
                               + BKPConstants.getReqRespString(reqId)
                               + reqSpecific
@@ -810,6 +833,9 @@ class BKProxyWorker implements Runnable {
         } catch (Exception e) {
             LOG.error("Generic Exception: ", e);
             if (reqId != BKPConstants.UnInitialized) {
+                reqSpecific = String.format("FragNo.: {}, wSize: {} rSize: {} timeout: {}",
+                        fragmentId, wSize, rSize, timeout);
+
                 LOG.error("Exception on Req: "
                         + BKPConstants.getReqRespString(reqId)
                         + reqSpecific

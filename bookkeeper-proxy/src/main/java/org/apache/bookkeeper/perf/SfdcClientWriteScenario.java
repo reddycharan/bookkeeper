@@ -100,7 +100,7 @@ public class SfdcClientWriteScenario extends TestScenario {
         buffData.rewind();
         final Timer.Context ct = writeLatency.time();
         try {
-            bkSfdc.ledgerPutEntry(extId, ++fragmentId, buffData, null);
+            bkSfdc.ledgerPutEntry(extId, ++fragmentId, buffData, null, null);
         } finally {
             ct.stop();
         }
