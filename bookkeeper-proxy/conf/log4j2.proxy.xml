@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="${sys:bkproxy.log.level}">
+<Configuration status="${sys:bkproxy.log.level}" monitorInterval="15">
   <Appenders>
     <Console name="CONSOLE" target="SYSTEM_OUT">
       <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
