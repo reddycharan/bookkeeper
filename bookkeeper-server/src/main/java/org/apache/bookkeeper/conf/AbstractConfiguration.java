@@ -53,13 +53,13 @@ import com.google.common.collect.Sets;
 public abstract class AbstractConfiguration extends CompositeConfiguration {
 
     static final Logger LOG = LoggerFactory.getLogger(AbstractConfiguration.class);
-    public static final String READ_SYSTEM_PROPERTIES_PROPERTY
-                            = "org.apache.bookkeeper.conf.readsystemproperties";
+    public static final String IGNORE_SYSTEM_PROPERTIES_PROPERTY
+                            = "org.apache.bookkeeper.conf.ignoresystemproperties";
     /**
-     * Enable the use of System Properties, which was the default behaviour till 4.4.0
+     * Disable the use of System Properties, which is the default behaviour
      */
-    private static final boolean READ_SYSTEM_PROPERTIES
-                                    = Boolean.getBoolean(READ_SYSTEM_PROPERTIES_PROPERTY);
+    private static final boolean IGNORE_SYSTEM_PROPERTIES
+                                   = Boolean.getBoolean(IGNORE_SYSTEM_PROPERTIES_PROPERTY);
 
     protected static final ClassLoader defaultLoader;
     static {
@@ -82,19 +82,19 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     protected final static String METASTORE_MAX_ENTRIES_PER_SCAN = "metastoreMaxEntriesPerScan";
 
     private volatile Map<DayOfWeek, List<DailyRange>> dailyRanges = null;
-    private final Object rangesLock = new Object(); 
-    
+    private final Object rangesLock = new Object();
+
     private final static String propForRangePattern = "%s@%s";
     private final static String timerangePattern = "timerange%d";
     private final static String timerangeStart = ".start";
     private final static String timerangeEnd = ".end";
     private final static String timerangeDays = ".days";
-    
+
     private final Clock localClock = Clock.systemDefaultZone();
 
     protected AbstractConfiguration() {
         super();
-        if (READ_SYSTEM_PROPERTIES) {
+        if (!IGNORE_SYSTEM_PROPERTIES) {
             // add configuration for system properties
             addConfiguration(new SystemConfiguration());
         }
@@ -105,7 +105,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
         public final String name;
         public final LocalTime start;
         public final LocalTime end;
-        
+
         public DailyRange(String name, LocalTime start, LocalTime end) {
             if (start.isAfter(end)) {
                 throw new IllegalArgumentException(
@@ -123,7 +123,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
             return String.format("%s: from %s to %s", name, start.toString(), end.toString());
         }
     }
-    
+
     public LocalTime getLocalTime() {
         return LocalTime.from(localClock.instant().atZone(ZoneId.systemDefault())).truncatedTo(ChronoUnit.MINUTES);
     }
@@ -136,7 +136,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
         loadDailyRangesIfNeeded();
         return dailyRanges;
     }
-    
+
     // helper to format available ranges
     protected static String rangesToString(Map<DayOfWeek, List<DailyRange>> ranges) {
         if (ranges == null) {
@@ -177,7 +177,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
                         if (!this.containsKey(startKey) || !this.containsKey(endKey)) {
                             break;
                         }
-                        
+
                         try {
                             for (DayOfWeek day : parseDays(this.getStringArray(rangeName + timerangeDays))) {
                                 LocalTime start = LocalTime.parse(this.getString(startKey));
@@ -189,7 +189,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
                             break;
                         }
                     }
-                    
+
                     // let's make it all immutable.
                     for (DayOfWeek dow : DayOfWeek.values()) {
                         ranges.put(dow, ImmutableList.copyOf(ranges.get(dow)));
@@ -200,7 +200,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
             }
         }
     }
-    
+
     private static Set<DayOfWeek> parseDays(String[] values) {
         final Set<DayOfWeek> days;
         if (values == null || values.length == 0) {
@@ -221,7 +221,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
 
     private static List<String> getActiveDailyRanges(Map<DayOfWeek, List<DailyRange>> ranges, LocalTime now,
             DayOfWeek dayOfWeek) {
-        ImmutableList.Builder<String> result = ImmutableList.builder(); 
+        ImmutableList.Builder<String> result = ImmutableList.builder();
         List<DailyRange> todaysRanges = ranges.get(dayOfWeek);
         for (DailyRange dr : todaysRanges) {
             // includes start time, excludes end time.
@@ -251,7 +251,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
             }
         }
     }
-    
+
     protected String getPropertyNameForFirstActiveTimerange(String propName) {
         return getPropertyNameForFirstActiveTimerange(propName, getLocalTime(), getDayOfWeek());
     }
@@ -287,7 +287,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
      *          Other Configuration
      */
     public void loadConf(AbstractConfiguration baseConf) {
-        addConfiguration(baseConf); 
+        addConfiguration(baseConf);
     }
 
     /**
@@ -309,7 +309,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
      */
     @Deprecated
     public void setLedgerManagerType(String lmType) {
-        setProperty(LEDGER_MANAGER_TYPE, lmType); 
+        setProperty(LEDGER_MANAGER_TYPE, lmType);
     }
 
     /**

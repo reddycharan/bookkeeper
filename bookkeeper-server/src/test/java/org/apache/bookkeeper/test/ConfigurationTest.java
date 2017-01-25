@@ -30,12 +30,6 @@ import static org.junit.Assert.*;
 
 public class ConfigurationTest {
 
-    static {
-        // this property is read when AbstractConfiguration class is loaded.
-        // this test will work as expected only using a new JVM (or classloader) for the test
-        System.setProperty(AbstractConfiguration.READ_SYSTEM_PROPERTIES_PROPERTY, "true");
-    }
-
     @Test(timeout=60000)
     public void testConfigurationOverwrite() {
         System.clearProperty("zkServers");
