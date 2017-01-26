@@ -272,6 +272,10 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
 			Assert.fail("Bookkeeper should not have started since current user isn't in permittedStartupUsers");
 		} catch (AccessControlException buae) {
 			// Expected
+		} finally {
+			if (bs1 != null && bs1.isRunning()) {
+				bs1.shutdown();
+			}
 		}
 	}
 
@@ -382,6 +386,11 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
             Assert.assertTrue("Should be caused by a bind exception",
                               ce.getCause() instanceof BindException);            
         }
+		finally {
+			if (bs != null && bs1.isRunning()) {
+				bs1.shutdown();
+			}
+		}
     }
 
     /**
