@@ -37,6 +37,7 @@ import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.bookkeeper.util.EntryFormatter;
 import org.apache.bookkeeper.util.StringEntryFormatter;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
+import static org.apache.bookkeeper.conf.ClientConfiguration.CLIENT_AUTH_PROVIDER_FACTORY_CLASS;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -102,6 +103,8 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     private final static String timerangeDays = ".days";
     
     private final Clock localClock = Clock.systemDefaultZone();
+    // Client auth provider factory class name. It must be configured on Bookies to for the Auditor
+    protected final static String CLIENT_AUTH_PROVIDER_FACTORY_CLASS = "clientAuthProviderFactoryClass";
 
     protected AbstractConfiguration() {
         super();
@@ -554,5 +557,28 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
         //Return override if present; else, generic.
         return this.containsKey(clusterProperty) ? super.getProperty(clusterProperty) :
             super.getProperty(name);
+    }
+
+    /**
+     * Set the client authentication provider factory class name. If this is not set, no authentication will be used
+     *
+     * @param factoryClass
+     *            the client authentication provider factory class name
+     * @return client configuration
+     */
+    public AbstractConfiguration setClientAuthProviderFactoryClass(
+            String factoryClass) {
+        setProperty(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, factoryClass);
+        return this;
+    }
+
+    /**
+     * Get the client authentication provider factory class name. If this returns null, no authentication will take
+     * place.
+     *
+     * @return the client authentication provider factory class name or null.
+     */
+    public String getClientAuthProviderFactoryClass() {
+        return getString(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, null);
     }
 }

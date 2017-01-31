@@ -22,6 +22,11 @@ package org.apache.bookkeeper.proto;
 
 import io.netty.channel.Channel;
 
+import com.google.protobuf.ByteString;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
+import org.apache.bookkeeper.auth.AuthToken;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.processor.RequestProcessor;
@@ -139,6 +144,18 @@ public class BookieRequestProcessor implements RequestProcessor {
                     break;
                 case GET_BOOKIE_INFO:
                     processGetBookieInfoRequestV3(r,c);
+                case AUTH:
+                    LOG.info("Ignoring auth operation from client {}",c.remoteAddress());
+                    BookkeeperProtocol.AuthMessage message = BookkeeperProtocol.AuthMessage
+                        .newBuilder()
+                        .setAuthPluginName(AuthProviderFactoryFactory.authenticationDisabledPluginName)
+                        .setPayload(ByteString.copyFrom(AuthToken.NULL.getData()))
+                        .build();
+                    BookkeeperProtocol.Response.Builder authResponse =
+                            BookkeeperProtocol.Response.newBuilder().setHeader(r.getHeader())
+                            .setStatus(BookkeeperProtocol.StatusCode.EOK)
+                            .setAuthResponse(message);
+                    c.write(authResponse.build());
                     break;
                 default:
                     LOG.info("Unknown operation type {}", header.getOperation());

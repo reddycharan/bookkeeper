@@ -66,11 +66,17 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.bookkeeper.net.BookieSocketAddress;
+import java.net.SocketAddress;
+import java.util.Collection;
+import java.util.Collections;
+import org.apache.bookkeeper.auth.BookKeeperPrincipal;
+import org.apache.bookkeeper.bookie.BookieConnectionPeer;
 
 /**
  * Netty server for serving bookie requests
  */
 class BookieNettyServer {
+
     private final static Logger LOG = LoggerFactory.getLogger(BookieNettyServer.class);
 
     final static int maxMessageSize = 0xfffff;
@@ -95,7 +101,7 @@ class BookieNettyServer {
         this.requestProcessor = processor;
 
         ExtensionRegistry registry = ExtensionRegistry.newInstance();
-        authProviderFactory = AuthProviderFactoryFactory.newBookieAuthProviderFactory(conf, registry);
+        authProviderFactory = AuthProviderFactoryFactory.newBookieAuthProviderFactory(conf);
 
         responseEncoder = new BookieProtoEncoding.ResponseEncoder(registry);
         requestDecoder = new BookieProtoEncoding.RequestDecoder(registry);
@@ -172,6 +178,82 @@ class BookieNettyServer {
         }
     }
 
+    void start() {
+        isRunning.set(true);
+    }
+
+    void shutdown() {
+        LOG.info("Shutting down BookieNettyServer");
+        isRunning.set(false);
+        allChannels.close().awaitUninterruptibly();
+
+        if (eventLoopGroup != null) {
+            eventLoopGroup.shutdownGracefully();
+        }
+        if (jvmEventLoopGroup != null) {
+            jvmEventLoopGroup.shutdownGracefully();
+            LocalBookiesRegistry.registerLocalBookieAddress(bookieAddress);
+        }
+
+        authProviderFactory.close();
+    }
+
+    class BookieSideConnectionPeerContextHandler extends ChannelInboundHandlerAdapter {
+
+        final BookieConnectionPeer connectionPeer;
+        volatile Channel channel;
+        volatile BookKeeperPrincipal authorizedId = BookKeeperPrincipal.ANONYMOUS;
+
+        public BookieSideConnectionPeerContextHandler() {
+            this.connectionPeer = new BookieConnectionPeer() {
+                @Override
+                public SocketAddress getRemoteAddr() {
+                    Channel c = channel;
+                    if (c != null) {
+                        return c.remoteAddress();
+                    } else {
+                        return null;
+                    }
+                }
+
+                @Override
+                public Collection<Object> getProtocolPrincipals() {
+                    return Collections.emptyList();
+                }
+
+                @Override
+                public void disconnect() {
+                    Channel c = channel;
+                    if (c != null) {
+                        c.close();
+                    }
+                    LOG.info("authplugin disconnected channel {}", channel);
+                }
+
+                @Override
+                public BookKeeperPrincipal getAuthorizedId() {
+                    return authorizedId;
+                }
+
+                @Override
+                public void setAuthorizedId(BookKeeperPrincipal principal) {
+                    LOG.info("connection {} authenticated as {}", channel, principal);
+                    authorizedId = principal;
+                }
+
+            };
+        }
+
+        public BookieConnectionPeer getConnectionPeer() {
+            return connectionPeer;
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            channel = ctx.channel();
+        }
+    }
+
     private void listenOn(InetSocketAddress address, BookieSocketAddress bookieAddress) throws InterruptedException {
         if (!conf.isDisableServerSocketBind()) {
             ServerBootstrap bootstrap = new ServerBootstrap();
@@ -198,6 +280,7 @@ class BookieNettyServer {
                         }
                     }
     
+                    BookieSideConnectionPeerContextHandler contextHandler = new BookieSideConnectionPeerContextHandler();
                     ChannelPipeline pipeline = ch.pipeline();
 
                     pipeline.addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(maxMessageSize, 0, 4, 0, 4));
@@ -205,8 +288,10 @@ class BookieNettyServer {
 
                     pipeline.addLast("bookieProtoDecoder", requestDecoder);
                     pipeline.addLast("bookieProtoEncoder", responseEncoder);
-                    pipeline.addLast("bookieAuthHandler", new AuthHandler.ServerSideHandler(authProviderFactory));
 
+                    pipeline.addLast("bookieAuthHandler",
+                            new AuthHandler.ServerSideHandler(contextHandler.getConnectionPeer(), authProviderFactory));
+    
                     ChannelInboundHandler requestHandler = isRunning.get()
                             ? new BookieRequestHandler(conf, requestProcessor, allChannels) : new RejectRequestHandler();
                     pipeline.addLast("bookieRequestHandler", requestHandler);
@@ -246,6 +331,7 @@ class BookieNettyServer {
                         }
                     }
 
+                    BookieSideConnectionPeerContextHandler contextHandler = new BookieSideConnectionPeerContextHandler();
                     ChannelPipeline pipeline = ch.pipeline();
 
                     pipeline.addLast("lengthbaseddecoder", new LengthFieldBasedFrameDecoder(maxMessageSize, 0, 4, 0, 4));
@@ -253,11 +339,12 @@ class BookieNettyServer {
 
                     pipeline.addLast("bookieProtoDecoder", requestDecoder);
                     pipeline.addLast("bookieProtoEncoder", responseEncoder);
-                    pipeline.addLast("bookieAuthHandler", new AuthHandler.ServerSideHandler(authProviderFactory));
+                    pipeline.addLast("bookieAuthHandler", new AuthHandler.ServerSideHandler(contextHandler.getConnectionPeer(), authProviderFactory));
 
                     ChannelInboundHandler requestHandler = isRunning.get()
                             ? new BookieRequestHandler(conf, requestProcessor, allChannels) : new RejectRequestHandler();
                     pipeline.addLast("bookieRequestHandler", requestHandler);
+                    pipeline.addLast("contextHandler", contextHandler);
 
                 }
             });
@@ -327,7 +414,8 @@ class BookieNettyServer {
                 return false;
             }
             CleanupChannelGroup other = (CleanupChannelGroup) o;
-            return other.closed.get() == closed.get() && super.equals(other);
+            return other.closed.get() == closed.get()
+                && super.equals(other);
         }
 
         @Override

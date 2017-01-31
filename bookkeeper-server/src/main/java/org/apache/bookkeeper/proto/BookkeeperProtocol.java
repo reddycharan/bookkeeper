@@ -10996,8 +10996,7 @@ public final class BookkeeperProtocol {
 
   public interface AuthMessageOrBuilder extends
       // @@protoc_insertion_point(interface_extends:AuthMessage)
-      com.google.protobuf.GeneratedMessage.
-          ExtendableMessageOrBuilder<AuthMessage> {
+      com.google.protobuf.MessageOrBuilder {
 
     /**
      * <code>required string authPluginName = 1;</code>
@@ -11012,23 +11011,25 @@ public final class BookkeeperProtocol {
      */
     com.google.protobuf.ByteString
         getAuthPluginNameBytes();
+
+    /**
+     * <code>required bytes payload = 2;</code>
+     */
+    boolean hasPayload();
+    /**
+     * <code>required bytes payload = 2;</code>
+     */
+    com.google.protobuf.ByteString getPayload();
   }
   /**
    * Protobuf type {@code AuthMessage}
-   *
-   * <pre>
-   **
-   * Extendible message which auth mechanisms
-   * can use to carry their payload.
-   * </pre>
    */
   public static final class AuthMessage extends
-      com.google.protobuf.GeneratedMessage.ExtendableMessage<
-        AuthMessage> implements
+      com.google.protobuf.GeneratedMessage implements
       // @@protoc_insertion_point(message_implements:AuthMessage)
       AuthMessageOrBuilder {
     // Use AuthMessage.newBuilder() to construct.
-    private AuthMessage(com.google.protobuf.GeneratedMessage.ExtendableBuilder<org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, ?> builder) {
+    private AuthMessage(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
       this.unknownFields = builder.getUnknownFields();
     }
@@ -11076,6 +11077,11 @@ public final class BookkeeperProtocol {
               com.google.protobuf.ByteString bs = input.readBytes();
               bitField0_ |= 0x00000001;
               authPluginName_ = bs;
+              break;
+            }
+            case 18: {
+              bitField0_ |= 0x00000002;
+              payload_ = input.readBytes();
               break;
             }
           }
@@ -11160,8 +11166,24 @@ public final class BookkeeperProtocol {
       }
     }
 
+    public static final int PAYLOAD_FIELD_NUMBER = 2;
+    private com.google.protobuf.ByteString payload_;
+    /**
+     * <code>required bytes payload = 2;</code>
+     */
+    public boolean hasPayload() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required bytes payload = 2;</code>
+     */
+    public com.google.protobuf.ByteString getPayload() {
+      return payload_;
+    }
+
     private void initFields() {
       authPluginName_ = "";
+      payload_ = com.google.protobuf.ByteString.EMPTY;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -11173,7 +11195,7 @@ public final class BookkeeperProtocol {
         memoizedIsInitialized = 0;
         return false;
       }
-      if (!extensionsAreInitialized()) {
+      if (!hasPayload()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -11184,13 +11206,12 @@ public final class BookkeeperProtocol {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
-      com.google.protobuf.GeneratedMessage
-        .ExtendableMessage<org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage>.ExtensionWriter extensionWriter =
-          newExtensionWriter();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         output.writeBytes(1, getAuthPluginNameBytes());
       }
-      extensionWriter.writeUntil(536870912, output);
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeBytes(2, payload_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -11204,7 +11225,10 @@ public final class BookkeeperProtocol {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(1, getAuthPluginNameBytes());
       }
-      size += extensionsSerializedSize();
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(2, payload_);
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -11285,16 +11309,9 @@ public final class BookkeeperProtocol {
     }
     /**
      * Protobuf type {@code AuthMessage}
-     *
-     * <pre>
-     **
-     * Extendible message which auth mechanisms
-     * can use to carry their payload.
-     * </pre>
      */
     public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.ExtendableBuilder<
-          org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage, Builder> implements
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
         // @@protoc_insertion_point(builder_implements:AuthMessage)
         org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessageOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
@@ -11331,6 +11348,8 @@ public final class BookkeeperProtocol {
         super.clear();
         authPluginName_ = "";
         bitField0_ = (bitField0_ & ~0x00000001);
+        payload_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
 
@@ -11363,6 +11382,10 @@ public final class BookkeeperProtocol {
           to_bitField0_ |= 0x00000001;
         }
         result.authPluginName_ = authPluginName_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.payload_ = payload_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -11384,7 +11407,9 @@ public final class BookkeeperProtocol {
           authPluginName_ = other.authPluginName_;
           onChanged();
         }
-        this.mergeExtensionFields(other);
+        if (other.hasPayload()) {
+          setPayload(other.getPayload());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -11394,7 +11419,7 @@ public final class BookkeeperProtocol {
           
           return false;
         }
-        if (!extensionsAreInitialized()) {
+        if (!hasPayload()) {
           
           return false;
         }
@@ -11492,6 +11517,41 @@ public final class BookkeeperProtocol {
   }
   bitField0_ |= 0x00000001;
         authPluginName_ = value;
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString payload_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>required bytes payload = 2;</code>
+       */
+      public boolean hasPayload() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required bytes payload = 2;</code>
+       */
+      public com.google.protobuf.ByteString getPayload() {
+        return payload_;
+      }
+      /**
+       * <code>required bytes payload = 2;</code>
+       */
+      public Builder setPayload(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000002;
+        payload_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bytes payload = 2;</code>
+       */
+      public Builder clearPayload() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        payload_ = getDefaultInstance().getPayload();
         onChanged();
         return this;
       }
@@ -11628,18 +11688,18 @@ public final class BookkeeperProtocol {
       " \001(\014\022\025\n\rlastEntryBody\030\004 \001(\014\"f\n\025GetBookie",
       "InfoResponse\022\033\n\006status\030\001 \002(\0162\013.StatusCod" +
       "e\022\031\n\021totalDiskCapacity\030\002 \001(\003\022\025\n\rfreeDisk" +
-      "Space\030\003 \001(\003\"0\n\013AuthMessage\022\026\n\016authPlugin" +
-      "Name\030\001 \002(\t*\t\010\350\007\020\200\200\200\200\002*F\n\017ProtocolVersion" +
-      "\022\017\n\013VERSION_ONE\020\001\022\017\n\013VERSION_TWO\020\002\022\021\n\rVE" +
-      "RSION_THREE\020\003*\206\001\n\nStatusCode\022\007\n\003EOK\020\000\022\016\n" +
-      "\tENOLEDGER\020\222\003\022\r\n\010ENOENTRY\020\223\003\022\014\n\007EBADREQ\020" +
-      "\224\003\022\010\n\003EIO\020\365\003\022\010\n\003EUA\020\366\003\022\020\n\013EBADVERSION\020\367\003" +
-      "\022\014\n\007EFENCED\020\370\003\022\016\n\tEREADONLY\020\371\003*\225\001\n\rOpera" +
-      "tionType\022\016\n\nREAD_ENTRY\020\001\022\r\n\tADD_ENTRY\020\002\022",
-      "\024\n\020RANGE_READ_ENTRY\020\003\022\023\n\017RANGE_ADD_ENTRY" +
-      "\020\004\022\010\n\004AUTH\020\005\022\r\n\tWRITE_LAC\020\006\022\014\n\010READ_LAC\020" +
-      "\007\022\023\n\017GET_BOOKIE_INFO\020\010B\037\n\033org.apache.boo" +
-      "kkeeper.protoH\001"
+      "Space\030\003 \001(\003\"6\n\013AuthMessage\022\026\n\016authPlugin" +
+      "Name\030\001 \002(\t\022\017\n\007payload\030\002 \002(\014*F\n\017ProtocolV" +
+      "ersion\022\017\n\013VERSION_ONE\020\001\022\017\n\013VERSION_TWO\020\002" +
+      "\022\021\n\rVERSION_THREE\020\003*\206\001\n\nStatusCode\022\007\n\003EO" +
+      "K\020\000\022\016\n\tENOLEDGER\020\222\003\022\r\n\010ENOENTRY\020\223\003\022\014\n\007EB" +
+      "ADREQ\020\224\003\022\010\n\003EIO\020\365\003\022\010\n\003EUA\020\366\003\022\020\n\013EBADVERS" +
+      "ION\020\367\003\022\014\n\007EFENCED\020\370\003\022\016\n\tEREADONLY\020\371\003*\225\001\n" +
+      "\rOperationType\022\016\n\nREAD_ENTRY\020\001\022\r\n\tADD_EN",
+      "TRY\020\002\022\024\n\020RANGE_READ_ENTRY\020\003\022\023\n\017RANGE_ADD" +
+      "_ENTRY\020\004\022\010\n\004AUTH\020\005\022\r\n\tWRITE_LAC\020\006\022\014\n\010REA" +
+      "D_LAC\020\007\022\023\n\017GET_BOOKIE_INFO\020\010B\037\n\033org.apac" +
+      "he.bookkeeper.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -11736,7 +11796,7 @@ public final class BookkeeperProtocol {
     internal_static_AuthMessage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_AuthMessage_descriptor,
-        new java.lang.String[] { "AuthPluginName", });
+        new java.lang.String[] { "AuthPluginName", "Payload", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

@@ -102,6 +102,9 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Sets;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ExtensionRegistry;
+import java.util.Collection;
+import org.apache.bookkeeper.auth.BookKeeperPrincipal;
+import org.apache.bookkeeper.client.ClientConnectionPeer;
 
 /**
  * This class manages all details of connection to a particular bookie. It also
@@ -157,6 +160,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private volatile Queue<GenericCallback<PerChannelBookieClient>> pendingOps =
             new ArrayDeque<GenericCallback<PerChannelBookieClient>>();
     volatile Channel channel = null;
+    private final ClientConnectionPeer connectionPeer;
+    private volatile BookKeeperPrincipal authorizedId = BookKeeperPrincipal.ANONYMOUS;
 
     enum ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED, CLOSED
@@ -214,7 +219,46 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         this.statsLogger = parentStatsLogger.scope(BookKeeperClientStats.CHANNEL_SCOPE)
             .scope(generateAddressScope(addr));
         this.pcbcPool = pcbcPool;
-        
+
+        this.connectionPeer = new ClientConnectionPeer() {
+
+            @Override
+            public SocketAddress getRemoteAddr() {
+                Channel c = channel;
+                if (c != null) {
+                    return c.remoteAddress();
+                } else {
+                    return null;
+                }
+            }
+
+            @Override
+            public Collection<Object> getProtocolPrincipals() {
+                return Collections.emptyList();
+            }
+
+            @Override
+            public void disconnect() {
+                Channel c = channel;
+                if (c != null) {
+                    c.close();
+                }
+                LOG.info("authplugin disconnected channel {}", channel);
+            }
+
+            @Override
+            public void setAuthorizedId(BookKeeperPrincipal principal) {
+                authorizedId = principal;
+                LOG.info("connection {} authenticated as {}", channel, principal);
+            }
+
+            @Override
+            public BookKeeperPrincipal getAuthorizedId() {
+                return authorizedId;
+            }
+
+        };
+
         readEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.READ_OP);
         addEntryOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.ADD_OP);
         writeLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.WRITE_LAC_OP);
@@ -228,11 +272,11 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         exceptionCounter = statsLogger.getCounter(BookKeeperClientStats.NETTY_EXCEPTION_CNT);
         connectTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_CONNECT_TIMER);
     }
-    
+
     private String generateAddressScope(BookieSocketAddress addr) {
         StringBuilder nameBuilder = new StringBuilder();
-    	return nameBuilder.append(addr.getFullyQualifiedDomainName().replace('.', '_').replace('-', '_'))
-        .append("_").append(addr.getPort()).toString();
+        return nameBuilder.append(addr.getFullyQualifiedDomainName().replace('.', '_').replace('-', '_')).append("_")
+                .append(addr.getPort()).toString();
     }
 
     private void completeOperation(GenericCallback<PerChannelBookieClient> op, int rc) {
@@ -297,7 +341,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 pipeline.addLast("lengthprepender", new LengthFieldPrepender(4));
                 pipeline.addLast("bookieProtoEncoder", new BookieProtoEncoding.RequestEncoder(extRegistry));
                 pipeline.addLast("bookieProtoDecoder", new BookieProtoEncoding.ResponseDecoder(extRegistry));
-                pipeline.addLast("authHandler", new AuthHandler.ClientSideHandler(authProviderFactory, txnIdGenerator));
+                pipeline.addLast("authHandler",
+                        new AuthHandler.ClientSideHandler(authProviderFactory, txnIdGenerator, connectionPeer));
                 pipeline.addLast("mainhandler", PerChannelBookieClient.this);
             }
         });
