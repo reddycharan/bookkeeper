@@ -20,6 +20,7 @@ package org.apache.bookkeeper.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -152,6 +153,29 @@ public class DiskChecker {
         } else {
             return checkDiskFull(dir.getParentFile());
         }
+    }
+
+    /**
+     * calculates and returns the disk usage factor in the provided list of dirs
+     * 
+     * @param dirs
+     *            list of directories
+     * @return disk usage factor in the provided list of dirs
+     */
+    public float getTotalDiskUsage(List<File> dirs) {
+        if (dirs == null || dirs.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "list argument of getTotalDiskUsage is not supposed to be null or empty");
+        }
+        long totalUsableSpace = 0;
+        long totalSpace = 0;
+        for (File dir : dirs) {
+            totalUsableSpace += dir.getUsableSpace();
+            totalSpace += dir.getTotalSpace();
+        }
+        float free = (float) totalUsableSpace / (float) totalSpace;
+        float used = 1f - free;
+        return used;
     }
 
     /**

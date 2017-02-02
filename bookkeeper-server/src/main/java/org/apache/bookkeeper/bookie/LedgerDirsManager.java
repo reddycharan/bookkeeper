@@ -164,6 +164,13 @@ public class LedgerDirsManager {
         return writableLedgerDirectories;
     }
 
+    /**
+     * returns true if the writableLedgerDirs list has entries
+     */
+    public boolean hasWritableLedgerDirs() {
+        return !writableLedgerDirectories.isEmpty();
+    }
+
     public List<File> getWritableLedgerDirsForNewLog()
         throws NoWritableLedgerDirException {
 
