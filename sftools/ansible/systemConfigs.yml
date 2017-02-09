@@ -24,20 +24,20 @@
       - { name: "net.ipv4.tcp_congestion_control", value: "htcp"}
       - { name: "net.ipv4.tcp_mtu_probing", value: "1"}
    - name:  echo deadline | tee /sys/block/sdf/queue/scheduler
-     command:  echo deadline | tee /sys/block/sdf/queue/scheduler
+     shell:  echo deadline | tee /sys/block/sdf/queue/scheduler
    - name:  echo deadline | tee /sys/block/sde/queue/scheduler
-     command:  echo deadline | tee /sys/block/sde/queue/scheduler
+     shell:  echo deadline | tee /sys/block/sde/queue/scheduler
    - name: swapon -a
-     command: swapon -a
+     shell: swapon -a
    - name: echo never > /sys/kernel/mm/redhat_transparent_hugepage/enabled
-     command: echo never > /sys/kernel/mm/redhat_transparent_hugepage/enabled
+     shell: echo never > /sys/kernel/mm/redhat_transparent_hugepage/enabled
    - name: echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag
-     command: echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag
+     shell: echo never > /sys/kernel/mm/redhat_transparent_hugepage/defrag
    - name: echo never > /sys/kernel/mm/transparent_hugepage/enabled
-     command: echo never > /sys/kernel/mm/transparent_hugepage/enabled
+     shell: echo never > /sys/kernel/mm/transparent_hugepage/enabled
    - name: echo never > /sys/kernel/mm/transparent_hugepage/defrag
-     command: echo never > /sys/kernel/mm/transparent_hugepage/defrag
+     shell: echo never > /sys/kernel/mm/transparent_hugepage/defrag
    - name: touch /tmp/update_sfstore_kernel_parameters-flag
-     command: touch /tmp/update_sfstore_kernel_parameters-flag
+     shell: touch /tmp/update_sfstore_kernel_parameters-flag
    - name: swapoff -a
-     command: swapoff -a
+     shell: swapoff -a
