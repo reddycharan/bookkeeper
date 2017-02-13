@@ -491,6 +491,16 @@ public class BookKeeper implements AutoCloseable {
         return bookieClient;
     }
 
+    /**
+     * Retrieves BookieInfo from all the RW bookies in the cluster. It sends requests
+     * to all the bookies in parallel and returns the info from the bookies that responded.
+     * If there was an error in reading from any bookie, nothing will be returned for
+     * that bookie in the map.
+     * @return map
+     *             A map of bookieSocketAddress to its BookiInfo
+     * @throws BKException
+     * @throws InterruptedException
+     */
     public Map<BookieSocketAddress, BookieInfo> getBookieInfo() {
         return bookieInfoReader.getBookieInfo();
     }

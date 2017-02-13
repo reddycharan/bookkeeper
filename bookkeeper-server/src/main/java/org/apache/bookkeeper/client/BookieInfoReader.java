@@ -52,8 +52,8 @@ public class BookieInfoReader {
     private final AtomicBoolean refreshBookieList = new AtomicBoolean();
 
     public static class BookieInfo implements WeightedObject {
-        private long freeDiskSpace;
-        private long totalDiskSpace;
+        private final long freeDiskSpace;
+        private final long totalDiskSpace;
         public BookieInfo() {
             this(0L, 0L);
         }
@@ -219,7 +219,7 @@ public class BookieInfoReader {
         instanceRunning.set(false);
     }
 
-    public Map<BookieSocketAddress, BookieInfo> getBookieInfo() {
+    Map<BookieSocketAddress, BookieInfo> getBookieInfo() {
         BookieClient bkc = bk.getBookieClient();
         final AtomicInteger totalSent = new AtomicInteger();
         final AtomicInteger totalCompleted = new AtomicInteger();

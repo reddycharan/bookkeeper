@@ -457,7 +457,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
         Map<BookieSocketAddress, Long> selectionCounts = new HashMap<BookieSocketAddress, Long>();
         selectionCounts.put(addr3, 0L);
         selectionCounts.put(addr4, 0L);
-        int numTries = 10000;
+        int numTries = 50000;
         BookieSocketAddress replacedBookie;
         for (int i = 0; i < numTries; i++) {
             // replace node under r2
@@ -466,7 +466,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             selectionCounts.put(replacedBookie, selectionCounts.get(replacedBookie)+1);
         }
         double observedMultiple = ((double)selectionCounts.get(addr4)/(double)selectionCounts.get(addr3));
-        assertTrue("Weights not being honored", Math.abs(observedMultiple-multiple) < 1);
+        assertTrue("Weights not being honored " + observedMultiple, Math.abs(observedMultiple-multiple) < 1);
     }
 
     @Test(timeout = 60000)
@@ -506,7 +506,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
         selectionCounts.put(addr2, 0L);
         selectionCounts.put(addr3, 0L);
         selectionCounts.put(addr4, 0L);
-        int numTries = 10000;
+        int numTries = 50000;
         BookieSocketAddress replacedBookie;
         for (int i = 0; i < numTries; i++) {
             // addr2 is on /r2 and this is the only one on this rack. So the replacement
@@ -524,8 +524,9 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
         LOG.info("oM1 " + observedMultiple1 + " oM2 " + observedMultiple2);
         assertTrue("Weights not being honored expected " + maxMultiple + " observed " + observedMultiple1,
                 Math.abs(observedMultiple1-maxMultiple) < 1);
-        assertTrue("Weights not being honored expected " + (maxMultiple/2) + " observed " + observedMultiple2,
-                Math.abs(observedMultiple2-3) < 1);
+        double expected = (medianWeight*maxMultiple)/bookieInfoMap.get(addr3).getWeight();// expected multiple for addr3
+        assertTrue("Weights not being honored expected " + expected + " observed " + observedMultiple2,
+                Math.abs(observedMultiple2-expected) < 1);
     }
 
     @Test(timeout = 60000)
@@ -595,7 +596,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             // will come from other racks. However, the weight should be honored in such
             // selections as well
             ensemble = repp.newEnsemble(3, 2, 2, null, excludeList);
-            assertTrue("Rackaware selection not happening", getNumCoveredWriteQuorums(ensemble, 2) >= 2);
+            assertTrue("Rackaware selection not happening " + getNumCoveredWriteQuorums(ensemble, 2), getNumCoveredWriteQuorums(ensemble, 2) >= 2);
             for (BookieSocketAddress b : ensemble) {
                 selectionCounts.put(b, selectionCounts.get(b)+1);
             }
@@ -606,9 +607,9 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
         double observedMultiple1 = ((double)selectionCounts.get(addr5)/(double)selectionCounts.get(addr2));
         double observedMultiple2 = ((double)selectionCounts.get(addr9)/(double)selectionCounts.get(addr6));
         assertTrue("Weights not being honored expected 2 observed " + observedMultiple1,
-                Math.abs(observedMultiple1-4.0) < 0.5);
+                Math.abs(observedMultiple1-maxMultiple) < 0.5);
         assertTrue("Weights not being honored expected 4 observed " + observedMultiple2,
-                Math.abs(observedMultiple2-4.0) < 0.5);
+                Math.abs(observedMultiple2-maxMultiple) < 0.5);
     }
 
     @Test(timeout = 60000)

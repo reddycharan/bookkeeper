@@ -81,6 +81,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     protected final static String DISK_WEIGHT_BASED_PLACEMENT_ENABLED = "diskWeightBasedPlacementEnabled";
     protected final static String GET_BOOKIE_INFO_INTERVAL_SECONDS = "getBookieInfoIntervalSeconds";
     protected final static String BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT = "bookieMaxMultipleForWeightBasedPlacement";
+    protected final static String GET_BOOKIE_INFO_TIMEOUT_SECS = "getBookieInfoTimeoutSecs";
 
     // Number Woker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
@@ -973,6 +974,14 @@ public class ClientConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * Return the timeout value for getBookieInfo request
+     * @return
+     */
+    public int getBookieInfoTimeout() {
+        return getInteger(GET_BOOKIE_INFO_TIMEOUT_SECS, 5);
+    }
+
+    /**
      * Set whether or not disk weight based placement is enabled.
      *
      * @param isEnabled - boolean indicating enabled or not
@@ -1003,6 +1012,16 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public ClientConfiguration setBookieMaxWeightMultipleForWeightBasedPlacement(int multiple) {
         setProperty(BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT, multiple);
+        return this;
+    }
+
+    /**
+     * Set the timeout value in secs for the GET_BOOKIE_INFO request
+     * @param timeout
+     * @return client configuration
+     */
+    public ClientConfiguration setGetBookieInfoTimeout(int timeoutSecs) {
+        setProperty(GET_BOOKIE_INFO_TIMEOUT_SECS, timeoutSecs);
         return this;
     }
 
