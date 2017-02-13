@@ -62,6 +62,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import io.netty.handler.ssl.SslHandler;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -69,6 +70,11 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.security.cert.Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import org.apache.bookkeeper.auth.BookKeeperPrincipal;
 import org.apache.bookkeeper.bookie.BookieConnectionPeer;
 
@@ -96,7 +102,7 @@ class BookieNettyServer {
     final BookieProtoEncoding.RequestDecoder requestDecoder;
 
     BookieNettyServer(ServerConfiguration conf, RequestProcessor processor)
-            throws IOException, KeeperException, BookieException {
+        throws IOException, KeeperException, InterruptedException, BookieException {
         this.conf = conf;
         this.requestProcessor = processor;
 
@@ -178,26 +184,6 @@ class BookieNettyServer {
         }
     }
 
-    void start() {
-        isRunning.set(true);
-    }
-
-    void shutdown() {
-        LOG.info("Shutting down BookieNettyServer");
-        isRunning.set(false);
-        allChannels.close().awaitUninterruptibly();
-
-        if (eventLoopGroup != null) {
-            eventLoopGroup.shutdownGracefully();
-        }
-        if (jvmEventLoopGroup != null) {
-            jvmEventLoopGroup.shutdownGracefully();
-            LocalBookiesRegistry.registerLocalBookieAddress(bookieAddress);
-        }
-
-        authProviderFactory.close();
-    }
-
     class BookieSideConnectionPeerContextHandler extends ChannelInboundHandlerAdapter {
 
         final BookieConnectionPeer connectionPeer;
@@ -218,7 +204,27 @@ class BookieNettyServer {
 
                 @Override
                 public Collection<Object> getProtocolPrincipals() {
-                    return Collections.emptyList();
+                    Channel c = channel;
+                    if (c == null) {
+                        return Collections.emptyList();
+                    } else {
+                        SslHandler ssl = c.pipeline().get(SslHandler.class);
+                        if (ssl == null) {
+                            return Collections.emptyList();
+                        }
+                        try {
+                            Certificate[] certificates = ssl.engine().getSession().getPeerCertificates();
+                            if (certificates == null) {
+                                return Collections.emptyList();
+                            }
+                            List<Object> result = new ArrayList<>();
+                            result.addAll(Arrays.asList(certificates));
+                            return result;
+                        } catch (SSLPeerUnverifiedException err) {
+                            return Collections.emptyList();
+                        }
+
+                    }
                 }
 
                 @Override
@@ -241,6 +247,15 @@ class BookieNettyServer {
                     authorizedId = principal;
                 }
 
+                @Override
+                public boolean isSecure() {
+                    Channel c = channel;
+                    if (c == null) {
+                        return false;
+                    } else {
+                        return c.pipeline().get("ssl") != null;
+                    }
+                }
             };
         }
 
@@ -296,6 +311,7 @@ class BookieNettyServer {
                             ? new BookieRequestHandler(conf, requestProcessor, allChannels) : new RejectRequestHandler();
                     pipeline.addLast("bookieRequestHandler", requestHandler);
 
+                    pipeline.addLast("contextHandler", contextHandler);
                 }
             });
 
@@ -373,9 +389,11 @@ class BookieNettyServer {
             }
         }
         if (jvmEventLoopGroup != null) {
-            jvmEventLoopGroup.shutdownGracefully();
             LocalBookiesRegistry.unregisterLocalBookieAddress(bookieAddress);
+            jvmEventLoopGroup.shutdownGracefully();
         }
+
+        authProviderFactory.close();
     }
 
     private static class RejectRequestHandler extends ChannelInboundHandlerAdapter {

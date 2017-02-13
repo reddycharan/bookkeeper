@@ -30,6 +30,7 @@ import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang.StringUtils;
 
+
 /**
  * Configuration settings for client side
  */
@@ -84,6 +85,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     protected final static String GET_BOOKIE_INFO_INTERVAL_SECONDS = "getBookieInfoIntervalSeconds";
     protected final static String BOOKIE_MAX_MULTIPLE_FOR_WEIGHTED_PLACEMENT = "bookieMaxMultipleForWeightBasedPlacement";
     protected final static String GET_BOOKIE_INFO_TIMEOUT_SECS = "getBookieInfoTimeoutSecs";
+    protected final static String START_TLS_TIMEOUT_SECS = "startTLSTimeoutSecs";
 
     // Number Woker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
@@ -108,6 +110,17 @@ public class ClientConfiguration extends AbstractConfiguration {
      * This client will act as a system client, like the {@link Auditor}
      */
     public final static String CLIENT_ROLE_SYSTEM = "system";
+
+    // Client auth provider factory class name. It must be configured on Bookies to for the Auditor
+    protected final static String CLIENT_AUTH_PROVIDER_FACTORY_CLASS = "clientAuthProviderFactoryClass";
+
+    // Client SSL
+    protected final static String SSL_KEYSTORE_TYPE = "clientKeyStoreType";
+    protected final static String SSL_KEYSTORE = "clientKeyStore";
+    protected final static String SSL_KEYSTORE_PASSWORD_PATH = "clientKeyStorePasswordPath";
+    protected final static String SSL_TRUSTSTORE_TYPE = "clientTrustStoreType";
+    protected final static String SSL_TRUSTSTORE = "clientTrustStore";
+    protected final static String SSL_TRUSTSTORE_PASSWORD_PATH = "clientTrustStorePasswordPath";
 
     /**
      * Construct a default client-side configuration
@@ -1048,6 +1061,14 @@ public class ClientConfiguration extends AbstractConfiguration {
     }
 
     /**
+     * Return the timeout value for startTLS request
+     * @return
+     */
+    public int getStartTLSTimeout() {
+        return getInteger(START_TLS_TIMEOUT_SECS, 10);
+    }
+
+    /**
      * Set whether or not disk weight based placement is enabled.
      *
      * @param isEnabled - boolean indicating enabled or not
@@ -1092,26 +1113,128 @@ public class ClientConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Set the client authentication provider factory class name.
-     * If this is not set, no authentication will be used
-     * 
-     * @param factoryClass
-     *            the client authentication provider factory class name
+     * Set the timeout value in secs for the START_TLS request
+     * @param timeout
      * @return client configuration
      */
-    public ClientConfiguration setClientAuthProviderFactoryClass(
-            String factoryClass) {
-        setProperty(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, factoryClass);
+    public ClientConfiguration setStartTLSTimeout(int timeoutSecs) {
+        setProperty(START_TLS_TIMEOUT_SECS, timeoutSecs);
         return this;
     }
 
     /**
-     * Get the client authentication provider factory class name. If this returns null, no authentication will take
-     * place.
+     * Get the keystore type for client. Default is JKS.
      * 
-     * @return the client authentication provider factory class name or null
+     * @return
      */
-    public String getClientAuthProviderFactoryClass() {
-        return getString(CLIENT_AUTH_PROVIDER_FACTORY_CLASS, null);
+    public String getSSLKeyStoreType() {
+        return getString(SSL_KEYSTORE_TYPE, "JKS");
+    }
+
+
+    /**
+     * Set the keystore type for client.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLKeyStoreType(String arg) {
+        setProperty(SSL_KEYSTORE_TYPE, arg);
+        return this;
+    }
+
+    /**
+     * Get the keystore path for the client.
+     * 
+     * @return
+     */
+    public String getSSLKeyStore() {
+        return getString(SSL_KEYSTORE, null);
+    }
+
+    /**
+     * Set the keystore path for the client.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLKeyStore(String arg) {
+        setProperty(SSL_KEYSTORE, arg);
+        return this;
+    }
+
+    /**
+     * Get the path to file containing keystore password, if the client keystore is password protected. Default is null.
+     * 
+     * @return
+     */
+    public String getSSLKeyStorePasswordPath() {
+        return getString(SSL_KEYSTORE_PASSWORD_PATH, null);
+    }
+
+    /**
+     * Set the path to file containing keystore password, if the client keystore is password protected.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLKeyStorePasswordPath(String arg) {
+        setProperty(SSL_KEYSTORE_PASSWORD_PATH, arg);
+        return this;
+    }
+
+    /**
+     * Get the truststore type for client. Default is JKS.
+     * 
+     * @return
+     */
+    public String getSSLTrustStoreType() {
+        return getString(SSL_TRUSTSTORE_TYPE, "JKS");
+    }
+
+    /**
+     * Set the truststore type for client.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLTrustStoreType(String arg) {
+        setProperty(SSL_TRUSTSTORE_TYPE, arg);
+        return this;
+    }
+
+    /**
+     * Get the truststore path for the client.
+     * 
+     * @return
+     */
+    public String getSSLTrustStore() {
+        return getString(SSL_TRUSTSTORE, null);
+    }
+
+    /**
+     * Set the truststore path for the client.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLTrustStore(String arg) {
+        setProperty(SSL_TRUSTSTORE, arg);
+        return this;
+    }
+
+    /**
+     * Get the path to file containing truststore password, if the client truststore is password protected. Default is
+     * null.
+     * 
+     * @return
+     */
+    public String getSSLTrustStorePasswordPath() {
+        return getString(SSL_TRUSTSTORE_PASSWORD_PATH, null);
+    }
+
+    /**
+     * Set the path to file containing truststore password, if the client truststore is password protected.
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLTrustStorePasswordPath(String arg) {
+        setProperty(SSL_TRUSTSTORE_PASSWORD_PATH, arg);
+        return this;
     }
 }

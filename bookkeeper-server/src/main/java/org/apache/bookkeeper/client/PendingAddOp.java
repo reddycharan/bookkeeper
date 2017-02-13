@@ -251,7 +251,7 @@ class PendingAddOp implements WriteCallback, TimerTask {
         }
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Submit callback (lid:{}, eid: {}). rc:{}", new Object[] { lh.getId(), entryId, rc });
+            LOG.debug("Submit callback (lid:{}, eid: {}). rc:{}", lh.getId(), entryId, rc);
         }
 
         long latencyNanos = MathUtils.elapsedNanos(requestTimeNanos);

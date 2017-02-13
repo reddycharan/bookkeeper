@@ -41,6 +41,7 @@ import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
+import org.apache.bookkeeper.ssl.SecurityException;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
@@ -258,114 +259,114 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         }
     }
 
-	/**
-	 * Verify user cannot start if user is in permittedStartupUsers conf list
-	 * BKException BKUnauthorizedAccessException if cannot start
-	 */
-	@Test(timeout = 20000)
-	public void testUserNotPermittedToStart() throws Exception {
-		File tmpDir = createTempDir("bookie", "test");
+    /**
+     * Verify user cannot start if user is in permittedStartupUsers conf list BKException BKUnauthorizedAccessException
+     * if cannot start
+     */
+    @Test(timeout = 20000)
+    public void testUserNotPermittedToStart() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
 
-		ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
-		int port = 12555;
-		conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
-				.setLedgerDirNames(new String[] { tmpDir.getPath() });
-		String userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi,,newman,";
-		conf.setPermittedStartupUsers(userString);
-		BookieServer bs1 = null;
-		try {
-			bs1 = new BookieServer(conf);
-			Assert.fail("Bookkeeper should not have started since current user isn't in permittedStartupUsers");
-		} catch (AccessControlException buae) {
-			// Expected
-		} finally {
-			if (bs1 != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
-	}
+        ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
+        int port = 12555;
+        conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
+                .setLedgerDirNames(new String[] { tmpDir.getPath() });
+        String userString = "jerrySeinfeld,elaineBennis,kramer,soupNazi,,newman,";
+        conf.setPermittedStartupUsers(userString);
+        BookieServer bs1 = null;
+        try {
+            bs1 = new BookieServer(conf);
+            Assert.fail("Bookkeeper should not have started since current user isn't in permittedStartupUsers");
+        } catch (AccessControlException buae) {
+            // Expected
+        } finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
+    }
 
-	/**
-	 * Verify user cannot start if user is in permittedStartupUsers conf list
-	 * BKException BKUnauthorizedAccessException if cannot start
-	 */
-	@Test(timeout = 20000)
-	public void testUserPermittedToStart() throws Exception {
-		File tmpDir = createTempDir("bookie", "test");
+    /**
+     * Verify user cannot start if user is in permittedStartupUsers conf list BKException BKUnauthorizedAccessException
+     * if cannot start
+     */
+    @Test(timeout = 20000)
+    public void testUserPermittedToStart() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
 
-		ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
-		int port = 12555;
-		conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
-				.setLedgerDirNames(new String[] { tmpDir.getPath() });
-		// Comma at front
-		String userString = ",jerrySeinfeld, elaineBennis,kramer, " + System.getProperty("user.name");
-		conf.setPermittedStartupUsers(userString);
-		BookieServer bs1 = null;
-		try {
-			bs1 = new BookieServer(conf);
-			bs1.start();
-		} catch (AccessControlException buae) {
-			Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
-		} finally {
-			if (bs1 != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
+        ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
+        int port = 12555;
+        conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
+                .setLedgerDirNames(new String[] { tmpDir.getPath() });
+        // Comma at front
+        String userString = ",jerrySeinfeld, elaineBennis,kramer, " + System.getProperty("user.name");
+        conf.setPermittedStartupUsers(userString);
+        BookieServer bs1 = null;
+        try {
+            bs1 = new BookieServer(conf);
+            bs1.start();
+        } catch (AccessControlException buae) {
+            Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
+        } finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
 
-		// Multiple commas
-		userString = "jerrySeinfeld,,,elaineBennis,,peterman234," + System.getProperty("user.name") + ",puddy";
-		conf.setPermittedStartupUsers(userString);
-		try {
-			bs1 = new BookieServer(conf);
-			bs1.start();
-		} catch (AccessControlException buae) {
-			Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
-		} finally {
-			if (bs1 != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
+        // Multiple commas
+        userString = "jerrySeinfeld,,,elaineBennis,,peterman234," + System.getProperty("user.name") + ",puddy";
+        conf.setPermittedStartupUsers(userString);
+        try {
+            bs1 = new BookieServer(conf);
+            bs1.start();
+        } catch (AccessControlException buae) {
+            Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
+        } finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
 
-		// Comma at end
-		userString = "jerrySeinfeld,elaineBennis,peterman234," + System.getProperty("user.name") + ",puddy,";
-		conf.setPermittedStartupUsers(userString);
-		try {
-			bs1 = new BookieServer(conf);
-			bs1.start();
-		} catch (AccessControlException buae) {
-			Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
-		} finally {
-			if (bs1 != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
-	}
+        // Comma at end
+        userString = "jerrySeinfeld,elaineBennis,peterman234," + System.getProperty("user.name") + ",puddy,";
+        conf.setPermittedStartupUsers(userString);
+        try {
+            bs1 = new BookieServer(conf);
+            bs1.start();
+        } catch (AccessControlException buae) {
+            Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
+        } finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
+    }
 
-	/**
-	 * Verify user can start if user is not in permittedStartupUsers but it is
-	 * empty BKException BKUnauthorizedAccessException if cannot start
-	 */
-	@Test(timeout = 20000)
-	public void testUserPermittedToStartWithEmptyProperty() throws Exception {
-		File tmpDir = createTempDir("bookie", "test");
+    /**
+     * Verify user can start if user is not in permittedStartupUsers but it is empty BKException
+     * BKUnauthorizedAccessException if cannot start
+     */
+    @Test(timeout = 20000)
+    public void testUserPermittedToStartWithEmptyProperty() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
 
-		ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
-		int port = 12555;
-		conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
-				.setLedgerDirNames(new String[] { tmpDir.getPath() });
-		conf.setPermittedStartupUsers(" ");
-		BookieServer bs1 = null;
-		try {
-			bs1 = new BookieServer(conf);
-			bs1.start();
-		} catch (AccessControlException buae) {
-			Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
-		} finally {
-			if (bs1 != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
-	}
+        ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
+        int port = 12555;
+        conf.setZkServers(null).setBookiePort(port).setJournalDirName(tmpDir.getPath())
+                .setLedgerDirNames(new String[] { tmpDir.getPath() });
+        conf.setPermittedStartupUsers(" ");
+        BookieServer bs1 = null;
+        try {
+            bs1 = new BookieServer(conf);
+            bs1.start();
+        } catch (AccessControlException buae) {
+            Assert.fail("Bookkeeper should have started since current user is in permittedStartupUsers");
+        } finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
+    }
 
     /**
      * Verify duplicate bookie server startup. Should throw
@@ -394,11 +395,11 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
             Assert.assertTrue("BKServer allowed duplicate Startups!",
                     e.getMessage().contains("bind"));
         }
-		finally {
-			if (bs != null && bs1.isRunning()) {
-				bs1.shutdown();
-			}
-		}
+        finally {
+            if (bs1 != null && bs1.isRunning()) {
+                bs1.shutdown();
+            }
+        }
     }
 
     /**
@@ -531,7 +532,7 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         ServerConfiguration conf;
 
         public MockBookieServer(ServerConfiguration conf) throws IOException, KeeperException, InterruptedException,
-                BookieException, UnavailableException, CompatibilityException {
+                BookieException, UnavailableException, CompatibilityException, SecurityException {
             super(conf);
             this.conf = conf;
         }

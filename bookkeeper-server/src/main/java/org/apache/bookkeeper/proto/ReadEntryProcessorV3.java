@@ -119,16 +119,16 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             }
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
-            LOG.error("No ledger found while reading entry:{} from ledger: {}", new Object[] {entryId, ledgerId, e});
+            LOG.error("No ledger found while reading entry:{} from ledger: {}", entryId, ledgerId, e);
         } catch (Bookie.NoEntryException e) {
             status = StatusCode.ENOENTRY;
-            LOG.error("No entry found while reading entry:{} from ledger:{}. status:{}", new Object[] {entryId, ledgerId, status, e});
+            LOG.error("No entry found while reading entry:{} from ledger:{}. status:{}", entryId, ledgerId, status, e);
         } catch (IOException e) {
             status = StatusCode.EIO;
-            LOG.error("IOException while reading entry:{} from ledger:{}", new Object[] {entryId, ledgerId, e});
+            LOG.error("IOException while reading entry:{} from ledger:{}", entryId, ledgerId, e);
         } catch (BookieException e) {
-            LOG.error("Unauthorized access to ledger:{} while reading entry:{} in request from address: {}",
-                    new Object[] { ledgerId, entryId, channel.remoteAddress(), e });
+            LOG.error("Unauthorized access to ledger:{} while reading entry:{} in request from address: {}", ledgerId,
+                    entryId, channel.remoteAddress(), e);
             status = StatusCode.EUA;
         }
 

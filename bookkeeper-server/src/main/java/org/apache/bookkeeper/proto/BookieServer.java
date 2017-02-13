@@ -41,6 +41,9 @@ import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.bookkeeper.replication.AutoRecoveryMain;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
+import org.apache.bookkeeper.ssl.SecurityException;
+import org.apache.bookkeeper.ssl.SecurityHandlerFactory;
+import org.apache.bookkeeper.ssl.SecurityProviderFactoryFactory;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
@@ -84,19 +87,24 @@ public class BookieServer {
 
     public BookieServer(ServerConfiguration conf) throws IOException,
             KeeperException, InterruptedException, BookieException,
-            UnavailableException, CompatibilityException {
+            UnavailableException, CompatibilityException, SecurityException {
         this(conf, NullStatsLogger.INSTANCE);
     }
 
     public BookieServer(ServerConfiguration conf, StatsLogger statsLogger)
             throws IOException, KeeperException, InterruptedException,
-            BookieException, UnavailableException, CompatibilityException {
+            BookieException, UnavailableException, CompatibilityException, SecurityException {
         this.conf = conf;
 		conf.validateUser();
         this.statsLogger = statsLogger;
         this.bookie = newBookie(conf);
+        final SecurityHandlerFactory shFactory;
+
+        shFactory = SecurityProviderFactoryFactory
+                .getSecurityProviderFactory(conf.getSSLProviderFactoryClass());
         this.requestProcessor = new BookieRequestProcessor(conf, bookie,
-                statsLogger.scope(SERVER_SCOPE));
+                statsLogger.scope(SERVER_SCOPE), shFactory);
+
         this.nettyServer = new BookieNettyServer(this.conf, requestProcessor);
         isAutoRecoveryDaemonEnabled = conf.isAutoRecoveryDaemonEnabled();
         if (isAutoRecoveryDaemonEnabled) {
@@ -160,11 +168,11 @@ public class BookieServer {
     }
 
     public synchronized void shutdown() {
-        LOG.info("Shutting down BookieServer");
-        this.nettyServer.shutdown();
         if (!running) {
             return;
         }
+        LOG.info("Shutting down BookieServer");
+        this.nettyServer.shutdown();
         exitCode = bookie.shutdown();
         if (isAutoRecoveryDaemonEnabled && this.autoRecoveryMain != null) {
             this.autoRecoveryMain.shutdown();

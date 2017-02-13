@@ -51,19 +51,8 @@ class BookieRequestHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        LOG.info("Channel connected: {}", ctx.channel());
-
-        final SslHandler sslHandler = ctx.pipeline().get(SslHandler.class);
-        if (sslHandler != null) {
-            sslHandler.handshakeFuture().addListener(new GenericFutureListener<Future<? super Channel>>() {
-
-                @Override
-                public void operationComplete(Future<? super Channel> future) throws Exception {
-                    LOG.info("Session is protected by: {}", sslHandler.engine().getSession().getCipherSuite());
-                }
-
-            });
-        }
+        LOG.info("Channel connected  {}", ctx.channel());
+        super.channelActive(ctx);
     }
 
     @Override
