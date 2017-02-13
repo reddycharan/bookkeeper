@@ -20,8 +20,10 @@
  */
 package org.apache.bookkeeper.client;
 
+import io.netty.buffer.ByteBuf;
+
 public class DummyDigestManager extends DigestManager {
-    private static byte[] retval = new byte[] {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x6, 0x07};
+    private static final byte[] dummyDigest = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x6, 0x07 };
 
     public DummyDigestManager(long ledgerId) {
         super(ledgerId);
@@ -33,12 +35,12 @@ public class DummyDigestManager extends DigestManager {
     }
 
     @Override
-    void update(byte[] data, int offset, int length) {
-        // Nothing to do
+    void update(ByteBuf buffer) {
+        // nothing to do
     }
 
     @Override
-    byte[] getValueAndReset() {
-        return retval;
+    void populateValueAndReset(ByteBuf buffer) {
+        buffer.writeBytes(dummyDigest);
     }
 }

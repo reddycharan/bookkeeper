@@ -128,11 +128,15 @@
           <groupId>log4j</groupId>
           <artifactId>log4j</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
-      <artifactId>netty</artifactId>
+      <artifactId>netty-all</artifactId>
       <version>${netty.version}</version>
       <scope>compile</scope>
     </dependency>

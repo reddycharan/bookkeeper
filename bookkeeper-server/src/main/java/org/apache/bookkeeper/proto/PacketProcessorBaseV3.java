@@ -20,6 +20,10 @@
  */
 package org.apache.bookkeeper.proto;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.proto.BookkeeperProtocol.BKPacketHeader;
@@ -29,9 +33,6 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SafeRunnable;
-import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
-import org.jboss.netty.channel.ChannelFutureListener;
 
 public abstract class PacketProcessorBaseV3 extends SafeRunnable {
 
@@ -50,7 +51,7 @@ public abstract class PacketProcessorBaseV3 extends SafeRunnable {
 
     protected void sendResponse(StatusCode code, Object response, OpStatsLogger statsLogger) {
         final long writeStartNanos = System.nanoTime();
-        final ChannelFuture onSend = channel.write(response);
+        final ChannelFuture onSend = channel.writeAndFlush(response);
         onSend.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {

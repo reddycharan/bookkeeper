@@ -344,11 +344,13 @@ public abstract class BookKeeperClusterTestCase {
         for (final BookieServer bookie : bs) {
             if (bookie.getLocalAddress().equals(addr)) {
                 bookie.suspendProcessing();
+                LOG.info("Bookie {} is asleep", bookie.getLocalAddress());
                 Thread sleeper = new Thread() {
                     public void run() {
                         try {
                             l.await();
                             bookie.resumeProcessing();
+                            LOG.info("Bookie {} is awake", bookie.getLocalAddress());
                         } catch (Exception e) {
                             LOG.error("Error suspending bookie", e);
                         }
@@ -448,6 +450,7 @@ public abstract class BookKeeperClusterTestCase {
             throws Exception {
         ServerConfiguration conf = newServerConfiguration();
         bsConfs.add(conf);
+        LOG.info("Starting new bookie on port: {}", conf.getBookiePort());
         bs.add(startBookie(conf));
 
         return conf.getBookiePort();

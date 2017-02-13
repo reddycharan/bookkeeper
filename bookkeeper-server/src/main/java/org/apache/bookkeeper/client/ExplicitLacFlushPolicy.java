@@ -27,9 +27,10 @@ import java.util.concurrent.ScheduledFuture;
 
 import org.apache.bookkeeper.client.LedgerHandle.LastAddConfirmedCallback;
 import org.apache.bookkeeper.util.SafeRunnable;
-import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.buffer.ByteBuf;
 
 interface ExplicitLacFlushPolicy {
     void stopExplicitLacFlush();
@@ -130,8 +131,7 @@ interface ExplicitLacFlushPolicy {
                 lh.bk.mainWorkerPool.submit(new SafeRunnable() {
                     @Override
                     public void safeRun() {
-                        ChannelBuffer toSend = lh.macManager
-                                .computeDigestAndPackageForSendingLac(lh.getLastAddConfirmed());
+                        ByteBuf toSend = lh.macManager.computeDigestAndPackageForSendingLac(lh.getLastAddConfirmed());
                         op.initiate(toSend);
                     }
                 });
