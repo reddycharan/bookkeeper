@@ -20,6 +20,7 @@
  */
 package org.apache.bookkeeper.proto;
 
+import io.netty.channel.Channel;
 
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -27,7 +28,6 @@ import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
-import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,7 +145,7 @@ public class BookieRequestProcessor implements RequestProcessor {
                     BookkeeperProtocol.Response.Builder response =
                             BookkeeperProtocol.Response.newBuilder().setHeader(r.getHeader())
                             .setStatus(BookkeeperProtocol.StatusCode.EBADREQ);
-                    c.write(response.build());
+                    c.writeAndFlush(response.build());
                     if (statsEnabled) {
                         bkStats.getOpStats(BKStats.STATS_UNKNOWN).incrementFailedOps();
                     }
@@ -163,7 +163,7 @@ public class BookieRequestProcessor implements RequestProcessor {
                     break;
                 default:
                     LOG.error("Unknown op type {}, sending error", r.getOpCode());
-                    c.write(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADREQ, r));
+                    c.writeAndFlush(ResponseBuilder.buildErrorResponse(BookieProtocol.EBADREQ, r));
                     if (statsEnabled) {
                         bkStats.getOpStats(BKStats.STATS_UNKNOWN).incrementFailedOps();
                     }

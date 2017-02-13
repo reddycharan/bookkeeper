@@ -34,7 +34,8 @@ import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.commons.configuration.Configuration;
 import com.google.common.collect.Lists;
-import org.jboss.netty.util.HashedWheelTimer;
+
+import io.netty.util.HashedWheelTimer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
