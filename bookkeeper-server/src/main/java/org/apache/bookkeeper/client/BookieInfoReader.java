@@ -76,7 +76,7 @@ public class BookieInfoReader {
         }
     }
 
-    public BookieInfoReader(BookKeeper bk,
+    BookieInfoReader(BookKeeper bk,
                           ClientConfiguration conf,
                           ScheduledExecutorService scheduler) {
         this.bk = bk;
@@ -88,7 +88,7 @@ public class BookieInfoReader {
             @Override
             public void run() {
                 LOG.debug("Running periodic BookieInfo scan");
-                getBookieInfo(null);
+                getReadWriteBookieInfo(null);
             }
         }, 0, conf.getGetBookieInfoIntervalSeconds(), TimeUnit.SECONDS);
     }
@@ -96,19 +96,19 @@ public class BookieInfoReader {
         scheduler.submit(new Runnable() {
             @Override
             public void run() {
-                getBookieInfo(newBookies);
+                getReadWriteBookieInfo(newBookies);
             }
         });
     }
-    public void availableBookiesChanged(Set<BookieSocketAddress> newBookies) {
+    void availableBookiesChanged(Set<BookieSocketAddress> newBookies) {
         LOG.info("Scheduling bookie info read due to changes in available bookies.");
         submitTask(newBookies);
     }
 
     /*
-     * This routine is responsible for issuing bookieInfoGet messages to all the bookies.
+     * This routine is responsible for issuing bookieInfoGet messages to all the read write bookies.
      * instanceRunning will be true until we have sent the bookieInfoGet requests to
-     * all the bookies and have processed all the callbacks. Only then is it reset to
+     * all the readwrite bookies and have processed all the callbacks. Only then is it reset to
      * false. At that time, if any pending tasks are queued, they are scheduled by the
      * last callback processing task. isQueued variable is used to indicate the pending
      * tasks. refreshBookieList is used to indicate that we need to read we need to explicitly
@@ -116,7 +116,7 @@ public class BookieInfoReader {
      * queued ops.
      */
     @SuppressWarnings("unchecked")
-    void getBookieInfo(Collection<BookieSocketAddress> newBookiesList) {
+    void getReadWriteBookieInfo(Collection<BookieSocketAddress> newBookiesList) {
         if (instanceRunning.get() == false) {
             instanceRunning.compareAndSet(false, true);
         } else {
@@ -219,7 +219,7 @@ public class BookieInfoReader {
         instanceRunning.set(false);
     }
 
-    Map<BookieSocketAddress, BookieInfo> getBookieInfo() {
+    Map<BookieSocketAddress, BookieInfo> getBookieInfo() throws BKException, InterruptedException {
         BookieClient bkc = bk.getBookieClient();
         final AtomicInteger totalSent = new AtomicInteger();
         final AtomicInteger totalCompleted = new AtomicInteger();
@@ -229,12 +229,9 @@ public class BookieInfoReader {
                          BookkeeperProtocol.GetBookieInfoRequest.Flags.FREE_DISK_SPACE_VALUE;
 
         Collection<BookieSocketAddress> bookies;
-        try {
-            bookies = bk.bookieWatcher.getBookies();
-        } catch (BKException e) {
-            LOG.error("Failed to get bookie list: ", e);
-            return map;
-        }
+        bookies = bk.bookieWatcher.getBookies();
+        bookies.addAll(bk.bookieWatcher.getReadOnlyBookies());
+
         totalSent.set(bookies.size());
         for (BookieSocketAddress b : bookies) {
             bkc.getBookieInfo(b, requested, new GetBookieInfoCallback() {
@@ -257,6 +254,7 @@ public class BookieInfoReader {
             latch.await();
         } catch (InterruptedException e) {
             LOG.error("Received InterruptedException ", e);
+            throw e;
         }
         return map;
     }

@@ -167,16 +167,20 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void fourLettersCommandTest() throws IOException, InterruptedException {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   NUMOFTHREADS + "-4\n"
+                                    +   NUMOFTHREADS + "-6\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
                                     +   THREADDETAILS + "-Thread3-BKP1\n"
                                     +   THREADDETAILS + "-Thread4-BKP1\n"
+                                    +   THREADDETAILS + "-Thread5-BKP1\n"
+                                    +   THREADDETAILS + "-Thread6-BKP1\n"
                                     +   NUMOFSLOTS + "-2\n"
-                                    +   BKPOPERATION + "-0-Thread1-"+Operation.FourLettersReq+"-ruok-imok\n"
-                                    +   BKPOPERATION + "-0-Thread2-"+Operation.FourLettersReq+"-ruok-imok\n"
-                                    +   BKPOPERATION + "-1-Thread3-"+Operation.FourLettersReq+"-pver-"+BKPConstants.SFS_CURRENT_VERSION+"\n"
-                                    +   BKPOPERATION + "-1-Thread4-"+Operation.FourLettersReq+"-zkok-"+CommandExecutor.ZK_CONNECTED_STRING+"\n";
+                                    +   BKPOPERATION + "-0-Thread1-"+Operation.FourLettersReq+"-"+CommandExecutor.RUOKCMD+"-"+CommandExecutor.IMOK_STRING+"\n"
+                                    +   BKPOPERATION + "-0-Thread2-"+Operation.FourLettersReq+"-"+CommandExecutor.RUOKCMD+"-"+CommandExecutor.IMOK_STRING+"\n"
+                                    +   BKPOPERATION + "-1-Thread3-"+Operation.FourLettersReq+"-"+CommandExecutor.PVERCMD+"-"+BKPConstants.SFS_CURRENT_VERSION+"\n"
+                                    +   BKPOPERATION + "-1-Thread4-"+Operation.FourLettersReq+"-"+CommandExecutor.ZKOKCMD+"-"+CommandExecutor.ZK_CONNECTED_STRING+"\n"
+                                    +   BKPOPERATION + "-1-Thread5-"+Operation.FourLettersReq+"-"+CommandExecutor.BKOKCMD+"-"+CommandExecutor.ALLBOOKIESOK_STRING+"\n"
+                                    +   BKPOPERATION + "-1-Thread6-"+Operation.FourLettersReq+"-"+CommandExecutor.BKOKCMD+"-"+CommandExecutor.ALLBOOKIESOK_STRING+"\n";
         executeTestcase(testDefinition);
     }
 

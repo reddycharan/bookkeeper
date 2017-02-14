@@ -380,7 +380,7 @@ class BKProxyWorker implements Runnable {
                     req.limit(4);
                     clientChannelRead(req, req.remaining());
                     String commandString = new String(req.array(), 0, 4);                     
-                    if (commandExecutor.execute(commandString, clientChannel, bkpConfig, zkc)) {
+                    if (commandExecutor.execute(commandString, clientChannel, bkpConfig, bksc.bk, zkc)) {
                         break;
                     }
                     req.limit(req.capacity());

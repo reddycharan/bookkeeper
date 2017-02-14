@@ -9,7 +9,7 @@ public class FourLetterCommandOperation extends BKPOperationExtension {
 
     private final String fourLetterCommand;
     private final String expectedResponse;
-    private static final int RESPONSEBUFFERSIZE = 10;
+    private static final int RESPONSEBUFFERSIZE = 30;
 
     public FourLetterCommandOperation(short protocolVersion, int timeSlot, String threadId, byte requestType,
             byte[] extentId, byte responseType, byte expectedReturnStatus, String fourLetterCommand,
