@@ -64,7 +64,7 @@ public class BKProxyClientTest extends BookKeeperClusterTestCase {
             bkProxy.shutdown();
         }
     }
-
+    
     @Test(timeout = 60000)
     public void basicTestWithExtentCreateAndClose() throws IOException, InterruptedException {
         addAndStartBKP(5555);
@@ -228,6 +228,38 @@ public class BKProxyClientTest extends BookKeeperClusterTestCase {
         Assert.assertTrue("ExtentIds List should be of size 2",
                 proxyClient.getExtentsList().getExtentIdsList().size() == 0);
         proxyClient.close();
+    }
+
+    // this testcase is required to validated the fix of W-3712829
+    @Test(timeout = 60000)
+    public void recoverOpenAlreadyRecoveredOpenInOtherProxy() throws IOException, InterruptedException {
+        addAndStartBKP(5555);
+        addAndStartBKP(9999);
+        BKProxyClient proxyClient1 = new BKProxyClient("localhost", 5555);
+        BKProxyClient proxyClient2 = new BKProxyClient("localhost", 9999);
+        proxyClient1.init();
+        proxyClient2.init();
+
+        CreateExtentReturnValue createExtentReturnValue = proxyClient1.createExtent();
+        Assert.assertTrue("Extent should be created successfully",
+                createExtentReturnValue.getReturnCode() == BKPConstants.SF_OK);
+        byte[] extentId = createExtentReturnValue.getExtentId();
+        proxyClient1.writeFragment(extentId, 1, "hello".getBytes());
+        proxyClient1.writeFragment(extentId, 2, "world".getBytes());
+        ReadFragmentReturnValue readFragmentReturnValue = proxyClient1.readFragment(extentId, 1);
+        Assert.assertTrue("Fragment should be created successfully",
+                readFragmentReturnValue.getReturnCode() == BKPConstants.SF_OK);
+
+        ReturnValue retValue = proxyClient2.openExtentForRecoverRead(extentId);
+        Assert.assertTrue("should be openrecovered successfully", retValue.getReturnCode() == BKPConstants.SF_OK);
+
+        retValue = proxyClient1.createExtent(extentId);
+        Assert.assertTrue("ledger should not be created with the existing ledgerid",
+                retValue.getReturnCode() == BKPConstants.SF_ErrorExist);
+        retValue = proxyClient1.openExtentForRecoverRead(extentId);
+        Assert.assertTrue("should be openrecovered successfully", retValue.getReturnCode() == BKPConstants.SF_OK);
+        proxyClient1.close();
+        proxyClient2.close();
     }
 
     static final class PrimitiveByteArrayWrapper {

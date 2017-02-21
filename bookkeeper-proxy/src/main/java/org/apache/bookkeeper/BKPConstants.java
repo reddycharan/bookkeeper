@@ -86,7 +86,7 @@ public final class BKPConstants {
     // Configuration values
     public static final long INFINITY = -1;
 
-    public static final byte convertBKtoSFerror(int BKerror) throws IOException {
+    public static final byte convertBKtoSFerror(int BKerror) {
         switch (BKerror) {
         case Code.OK:
             return BKPConstants.SF_OK;
@@ -126,8 +126,8 @@ public final class BKPConstants {
         case Code.DuplicateEntryIdException:
             return BKPConstants.SF_ErrorExist;
         default:
-            LOG.error("Unmaped BK error: {}.", BKerror);
-            throw new IOException("Unmaped BK error");
+            LOG.error("Unmapped BK error: {}", BKerror);
+            throw new RuntimeException("Unmapped BK error");
         }
     }
 

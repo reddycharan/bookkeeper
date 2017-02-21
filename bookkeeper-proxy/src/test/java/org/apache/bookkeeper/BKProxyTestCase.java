@@ -1436,6 +1436,35 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         executeTestcase(testDefinition);
     }
 
+    /**
+     * this testcase is required to validated the fix of W-3712829
+     *
+     * Ledger is created in BKP1, it is recoveropened in BKP2, and then there should be no issue in recover opening in BKP1
+     * 
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    @Test
+    public void recoverOpenAlreadyRecoveredOpenInOtherProxy() throws IOException, InterruptedException {
+
+        TestScenarioState.getCurrentTestScenarioState().getCommonBKPConfig().setExplictLacInterval(2);
+
+        String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
+                                    +   BKPDETAILS + "-BKP2-7777\n"
+                                    +   NUMOFTHREADS + "-2\n"
+                                    +   THREADDETAILS + "-Thread1-BKP1\n"
+                                    +   THREADDETAILS + "-Thread2-BKP2\n"
+                                    +   NUMOFSLOTS + "-7\n"
+                                    +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-2-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-2-10-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-3-Thread1-"+BKPConstants.LedgerReadEntryReq+"-ext1-1-1000-"+BKPConstants.SF_OK+"-10\n"
+                                    +   BKPOPERATION + "-4-Thread2-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_ErrorExist+"\n"
+                                    +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerOpenRecoverReq+"-ext1-"+BKPConstants.SF_OK+"\n";
+
+        executeTestcase(testDefinition);
+    }
 
     public void executeTestcase(String testDefinition) throws IOException, InterruptedException {
         TestScenarioState currentTestScenario = TestScenarioState.getCurrentTestScenarioState();

@@ -89,7 +89,11 @@ public class BKSfdcClient {
         if (elm.getWriteLedgerHandle(extentId) != null) {
             LOG.warn("Recovery-read when a Write ledger handle exists for extentId {}",
                 extentId);
-            elm.removeWriteLedger(extentId);
+            try {
+                elm.removeWriteLedger(extentId);
+            } catch (BKException e) {
+                LOG.warn("Got Exception while trying to close WriteLedgerhandle: ", e);
+            }
         }
 
         LedgerHandle lh = elm.getRecoveryReadLedgerHandle(extentId);
