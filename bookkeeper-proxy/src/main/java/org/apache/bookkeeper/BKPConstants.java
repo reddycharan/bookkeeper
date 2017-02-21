@@ -121,6 +121,7 @@ public final class BKPConstants {
         case Code.UnauthorizedAccessException:
             return BKPConstants.SF_ErrorAuth;
         case Code.AddEntryQuorumTimeoutException:
+        case Code.TimeoutException:
             return BKPConstants.SF_ServerTimeout;
         case Code.LedgerExistException:
         case Code.DuplicateEntryIdException:

@@ -795,7 +795,7 @@ class BKProxyWorker implements Runnable {
                     // the loop, which will close the clientChannel and exit this worker thread.
                     exceptionOccurred = true;
                     errorCode = BKPConstants.convertBKtoSFerror(e.getCode());
-                    reqSpecific = String.format(" FragNo.: {}, wSize: {} rSize: {} timeout: {}",
+                    reqSpecific = String.format(" FragNo.: %d, wSize: %d rSize: %d timeout: %d",
                             fragmentId, wSize, rSize, timeout);
                     LOG.error("BKException on Req: "
                               + BKPConstants.getReqRespString(reqId)
