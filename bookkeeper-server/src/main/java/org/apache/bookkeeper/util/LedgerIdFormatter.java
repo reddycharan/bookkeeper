@@ -2,7 +2,9 @@ package org.apache.bookkeeper.util;
 
 import java.util.UUID;
 
-import org.apache.commons.configuration.Configuration;
+import org.apache.bookkeeper.conf.AbstractConfiguration;
+import org.apache.bookkeeper.util.ReflectionUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,16 +15,10 @@ public abstract class LedgerIdFormatter {
 
     private final static Logger LOG = LoggerFactory.getLogger(LedgerIdFormatter.class);
 
-    protected Configuration conf;
-
-    public void setConf(Configuration conf) {
-        this.conf = conf;
-    }
-
     /**
      * Formats the LedgerId according to the type of the Formatter and return it
      * in String format
-     * 
+     *
      * @param ledgerId
      * @return
      */
@@ -31,26 +27,41 @@ public abstract class LedgerIdFormatter {
     /**
      * converts the ledgeridString, which is in format of the type of formatter,
      * to the long value
-     * 
+     *
      * @param ledgerIdString
      * @return
      */
     public abstract long readLedgerId(String ledgerIdString);
 
+    // Used by BKExtentIdByteArray
     public final static LedgerIdFormatter LONG_LEDGERID_FORMATTER = new LongLedgerIdFormatter();
 
-    public static LedgerIdFormatter newLedgerIdFormatter(Configuration conf, String clsProperty) {
-        String cls = conf.getString(clsProperty, LongLedgerIdFormatter.class.getName());
-        ClassLoader classLoader = LedgerIdFormatter.class.getClassLoader();
+    public static LedgerIdFormatter newLedgerIdFormatter(AbstractConfiguration conf) {
         LedgerIdFormatter formatter;
         try {
-            Class aCls = classLoader.loadClass(cls);
-            formatter = (LedgerIdFormatter) aCls.newInstance();
-            formatter.setConf(conf);
+            formatter = ReflectionUtils.newInstance(conf.getLedgerIdFormatterClass());
         } catch (Exception e) {
-            LOG.warn("No formatter class found : " + cls, e);
-            LOG.warn("Using Default Long LedgerId Formatter.");
-            formatter = LONG_LEDGERID_FORMATTER;
+            LOG.warn("No formatter class found", e);
+            LOG.warn("Using Default UUID Formatter.");
+            formatter = new UUIDLedgerIdFormatter();
+        }
+        return formatter;
+    }
+
+    public static LedgerIdFormatter newLedgerIdFormatter(String opt, AbstractConfiguration conf) {
+        LedgerIdFormatter formatter;
+        if ("hex".equals(opt)) {
+                formatter = new LedgerIdFormatter.HexLedgerIdFormatter();
+        }
+        else if ("uuid".equals(opt)) {
+            formatter = new LedgerIdFormatter.UUIDLedgerIdFormatter();
+        }
+        else if ("long".equals(opt)) {
+            formatter = new LedgerIdFormatter.LongLedgerIdFormatter();
+        }
+        else {
+            LOG.warn("specified unexpected ledgeridformat {}, so default LedgerIdFormatter is used", opt);
+            formatter = newLedgerIdFormatter(conf);
         }
         return formatter;
     }

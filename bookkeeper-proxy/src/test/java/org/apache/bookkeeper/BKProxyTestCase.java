@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
 import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.util.LedgerIdFormatter.UUIDLedgerIdFormatter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -99,7 +100,7 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
         TestScenarioState currentScenario = TestScenarioState.getCurrentTestScenarioState();
         currentTestScenarioExceptions = new ArrayList<Throwable>();
         currentScenario.getCommonBKPConfig().setZkServers(zkUtil.getZooKeeperConnectString());
-        currentScenario.getCommonBKPConfig().setProperty("ledgerIdFormatterClass", "org.apache.bookkeeper.util.LedgerIdFormatter$UUIDLedgerIdFormatter");
+        currentScenario.getCommonBKPConfig().setLedgerIdFormatterClass(UUIDLedgerIdFormatter.class);
     }
 
     @After

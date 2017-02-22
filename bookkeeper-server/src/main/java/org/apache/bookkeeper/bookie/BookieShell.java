@@ -108,8 +108,9 @@ public class BookieShell implements Tool {
 
     static final Logger LOG = LoggerFactory.getLogger(BookieShell.class);
 
-    static final String ENTRY_FORMATTER_CLASS = "entryFormatterClass";
-    static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
+    static final String CONF_OPT = "conf";
+    static final String ENTRY_FORMATTER_OPT = "entryformat";
+    static final String LEDGERID_FORMATTER_OPT = "ledgeridformat";
 
     static final String CMD_METAFORMAT = "metaformat";
     static final String CMD_BOOKIEFORMAT = "bookieformat";
@@ -141,7 +142,7 @@ public class BookieShell implements Tool {
 
     EntryLogger entryLogger = null;
     Journal journal = null;
-    EntryFormatter formatter;
+    EntryFormatter entryFormatter;
     LedgerIdFormatter ledgerIdFormatter;
 
     int pageSize;
@@ -1196,8 +1197,8 @@ public class BookieShell implements Tool {
             return opts;
         }
     }
-    
-    
+
+
     /**
      * Command to print help message
      */
@@ -1936,16 +1937,14 @@ public class BookieShell implements Tool {
         } else {
             indexDirectories = Bookie.getCurrentDirectories(bkConf.getIndexDirs());
         }
-        formatter = EntryFormatter.newEntryFormatter(bkConf, ENTRY_FORMATTER_CLASS);
-        ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkConf, LEDGERID_FORMATTER_CLASS);
-        LOG.debug("Using entry formatter {}", formatter.getClass().getName());
+
         pageSize = bkConf.getPageSize();
         entriesPerPage = pageSize / 8;
     }
 
     private void printShellUsage() {
         System.err.println(
-                "Usage: bookkeeper shell [localbookie [-<localbookieAddress>]] [ledgeridformat -<hex/long/uuid>] [-conf configuration] <command>");
+                "Usage: bookkeeper shell [-localbookie [<host:port>]] [-ledgeridformat <hex/long/uuid>] [-entryformat <hex/string>] [-conf configuration] <command>");
         System.err.println("where command is one of:");
         List<String> commandNames = new ArrayList<String>();
         for (MyCommand c : commands.values()) {
@@ -1963,6 +1962,7 @@ public class BookieShell implements Tool {
             printShellUsage();
             return -1;
         }
+
         String cmdName = args[0];
         Command cmd = commands.get(cmdName);
         if (null == cmd) {
@@ -1979,8 +1979,8 @@ public class BookieShell implements Tool {
     /**
      * Returns the sorted list of the files in the given folders with the given file extensions.
      * Sorting is done on the basis of CreationTime if the CreationTime is not available or if they are equal
-     * then sorting is done by LastModifiedTime  
-     * @param folderNames - array of folders which we need to look recursively for files with given extensions  
+     * then sorting is done by LastModifiedTime
+     * @param folderNames - array of folders which we need to look recursively for files with given extensions
      * @param extensions - the file extensions, which we are interested in
      * @return sorted list of files
      */
@@ -1993,7 +1993,7 @@ public class BookieShell implements Tool {
         Collections.sort(completeFilesList, new FilesTimeComparator());
         return completeFilesList;
     }
-    
+
     private static class FilesTimeComparator implements Comparator<File> {
         @Override
         public int compare(File file1, File file2) {
@@ -2005,11 +2005,11 @@ public class BookieShell implements Tool {
                 FileTime file1CreationTime = file1Attributes.creationTime();
                 FileTime file2CreationTime = file2Attributes.creationTime();
                 int compareValue = file1CreationTime.compareTo(file2CreationTime);
-                /* 
+                /*
                  * please check https://docs.oracle.com/javase/7/docs/api/java/nio/file/attribute/BasicFileAttributes.html#creationTime()
                  * So not all file system implementation store creation time, in that case creationTime()
-                 * method may return FileTime representing the epoch (1970-01-01T00:00:00Z). So in that case 
-                 * it would be better to compare lastModifiedTime 
+                 * method may return FileTime representing the epoch (1970-01-01T00:00:00Z). So in that case
+                 * it would be better to compare lastModifiedTime
                  */
                 if (compareValue == 0) {
                     FileTime file1LastModifiedTime = file1Attributes.lastModifiedTime();
@@ -2017,7 +2017,7 @@ public class BookieShell implements Tool {
                     compareValue = file1LastModifiedTime.compareTo(file2LastModifiedTime);
                 }
                 return compareValue;
-            } catch (IOException e) {                
+            } catch (IOException e) {
                 return 0;
             }
         }
@@ -2025,29 +2025,45 @@ public class BookieShell implements Tool {
 
     public static void main(String argv[]) throws Exception {
         BookieShell shell = new BookieShell();
-        if (argv.length <= 0) {
-            shell.printShellUsage();
-            System.exit(-1);
-        }
 
-        CompositeConfiguration conf = new CompositeConfiguration();
+        // handle some common options for multiple cmds
+        Options opts = new Options();
+        opts.addOption(CONF_OPT, true, "configuration file");
+        opts.addOption(LEDGERID_FORMATTER_OPT, true, "format of ledgerId");
+        opts.addOption(ENTRY_FORMATTER_OPT, true, "format of entries");
+        BasicParser parser = new BasicParser();
+        CommandLine cmdLine = parser.parse(opts, argv, true);
+
         // load configuration
-        if ("-conf".equals(argv[0])) {
-            if (argv.length <= 1) {
-                shell.printShellUsage();
-                System.exit(-1);
-            }
+        CompositeConfiguration conf = new CompositeConfiguration();
+        if (cmdLine.hasOption(CONF_OPT)) {
+            String val = cmdLine.getOptionValue(CONF_OPT);
             conf.addConfiguration(new PropertiesConfiguration(
-                                  new File(argv[1]).toURI().toURL()));
-
-            String[] newArgv = new String[argv.length - 2];
-            System.arraycopy(argv, 2, newArgv, 0, newArgv.length);
-            argv = newArgv;
+                                  new File(val).toURI().toURL()));
         }
-
-
         shell.setConf(conf);
-        int res = shell.run(argv);
+
+        // ledgerid format
+        if (cmdLine.hasOption(LEDGERID_FORMATTER_OPT)) {
+            String val = cmdLine.getOptionValue(LEDGERID_FORMATTER_OPT);
+            shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(val, shell.bkConf);
+        }
+        else {
+            shell.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(shell.bkConf);
+        }
+        LOG.debug("Using ledgerIdFormatter {}", shell.ledgerIdFormatter.getClass());
+
+        // entry format
+        if (cmdLine.hasOption(ENTRY_FORMATTER_OPT)) {
+            String val = cmdLine.getOptionValue(ENTRY_FORMATTER_OPT);
+            shell.entryFormatter = EntryFormatter.newEntryFormatter(val, shell.bkConf);
+        }
+        else {
+            shell.entryFormatter = EntryFormatter.newEntryFormatter(shell.bkConf);
+        }
+        LOG.debug("Using entry formatter {}", shell.entryFormatter.getClass());
+
+        int res = shell.run(cmdLine.getArgs());
         System.exit(res);
     }
 
@@ -2232,7 +2248,7 @@ public class BookieShell implements Tool {
 
     /**
      * Scan over an entry log file for a particular entry
-     * 
+     *
      * @param logId
      *          Entry Log File id.
      * @param ledgerId
@@ -2273,7 +2289,7 @@ public class BookieShell implements Tool {
 
     /**
      * Scan over an entry log file for entries in the given position range
-     * 
+     *
      * @param logId
      *          Entry Log File id.
      * @param rangeStartPos
@@ -2328,7 +2344,7 @@ public class BookieShell implements Tool {
                     + "or greater than the current log filesize.");
         }
     }
-    
+
     /**
      * Scan a journal file
      *
@@ -2364,10 +2380,10 @@ public class BookieShell implements Tool {
 
     /**
      * Format the entry into a readable format.
-     * 
-     * @param entry 
+     *
+     * @param entry
      *          ledgerentry to print
-     * @param printMsg 
+     * @param printMsg
      *          Whether printing the message body
      */
     private void formatEntry(LedgerEntry entry, boolean printMsg) {
@@ -2377,7 +2393,7 @@ public class BookieShell implements Tool {
         System.out
                 .println("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
         if (printMsg) {
-            formatter.formatEntry(entry.getEntry());
+            entryFormatter.formatEntry(entry.getEntry());
         }
     }
 
@@ -2428,7 +2444,7 @@ public class BookieShell implements Tool {
         try {
             byte[] ret = new byte[recBuff.remaining()];
             recBuff.get(ret);
-            formatter.formatEntry(ret);
+            entryFormatter.formatEntry(ret);
         } catch (Exception e) {
             System.out.println("N/A. Corrupted.");
         }
@@ -2483,7 +2499,7 @@ public class BookieShell implements Tool {
         }
         return defaultVal;
     }
-    
+
     private static boolean getOptionBooleanValue(CommandLine cmdLine, String option, boolean defaultVal) {
         if (cmdLine.hasOption(option)) {
             String val = cmdLine.getOptionValue(option);

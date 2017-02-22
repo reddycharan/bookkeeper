@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.apache.bookkeeper.BKPConstants;
 import org.apache.bookkeeper.BKProxyMain;
 import org.apache.bookkeeper.conf.BookKeeperProxyConfiguration;
+import org.apache.bookkeeper.util.LedgerIdFormatter.UUIDLedgerIdFormatter;
 import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.proxyclient.ReturnValue.AsyncWriteStatusReturnValue;
 import org.apache.bookkeeper.proxyclient.ReturnValue.CreateExtentReturnValue;
@@ -38,8 +39,7 @@ public class BKProxyClientTest extends BookKeeperClusterTestCase {
     public void testcaseSetup() throws InterruptedException {
         commonBKProxyConfig = new BookKeeperProxyConfiguration();
         commonBKProxyConfig.setZkServers(zkUtil.getZooKeeperConnectString());
-        commonBKProxyConfig.setProperty("ledgerIdFormatterClass",
-                "org.apache.bookkeeper.util.LedgerIdFormatter$UUIDLedgerIdFormatter");
+        commonBKProxyConfig.setLedgerIdFormatterClass(UUIDLedgerIdFormatter.class);
         bkProxiesMap = new HashMap<Integer, BKProxyMain>();
     }
 

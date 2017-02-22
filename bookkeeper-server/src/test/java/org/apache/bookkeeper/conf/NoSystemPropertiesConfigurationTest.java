@@ -26,10 +26,9 @@ import static org.junit.Assert.assertEquals;
  */
 public class NoSystemPropertiesConfigurationTest {
 
-    static {
+    static {  
         // this property is read when AbstractConfiguration class is loaded.
         // this test will work as expected only using a new JVM (or classloader) for the test
-        System.setProperty(AbstractConfiguration.IGNORE_SYSTEM_PROPERTIES_PROPERTY, "true");
         System.setProperty(ClientConfiguration.THROTTLE, "10");
     }
 

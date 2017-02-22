@@ -37,7 +37,6 @@ class BKProxyWorker implements Runnable {
     byte errorCode = BKPConstants.SF_OK;
     private BKExtentId extentId;
     private final long bkProxyWorkerId; 
-    private static final String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     private final LedgerIdFormatter ledgerIdFormatter;
     private final BKExtentIdFactory extentIdFactory;
     private final BKByteBufferPool byteBufPool;
@@ -187,7 +186,7 @@ class BKProxyWorker implements Runnable {
         this.clientChannel = sSock;
         this.byteBufPool = byteBufPool;
         this.bkProxyWorkerId = bkProxyWorkerId;
-        this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig, LEDGERID_FORMATTER_CLASS);
+        this.ledgerIdFormatter = LedgerIdFormatter.newLedgerIdFormatter(bkpConfig);
         this.extentIdFactory = new BKExtentIdByteArrayFactory();
         this.opStatQueue = new LinkedList<OpStatEntry>();
         this.proxyWorkerPoolCounter = statsLogger.getCounter(WORKER_POOL_COUNT);
