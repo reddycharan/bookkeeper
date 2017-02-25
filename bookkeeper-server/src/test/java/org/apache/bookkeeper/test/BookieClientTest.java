@@ -50,6 +50,7 @@ import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,6 +135,7 @@ public class BookieClientTest {
         }
     };
 
+    @Ignore("W-3535249 Community Bug - BOOKKEEPER-975")
     @Test(timeout=60000)
     public void testWriteGaps() throws Exception {
         final Object notifyObject = new Object();
