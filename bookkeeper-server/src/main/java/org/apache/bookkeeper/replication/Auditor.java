@@ -20,9 +20,19 @@
  */
 package org.apache.bookkeeper.replication;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -42,36 +52,21 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.replication.ReplicationException.BKAuditException;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
-import org.apache.bookkeeper.replication.ReplicationStats;
 import org.apache.bookkeeper.stats.Counter;
-import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.zookeeper.AsyncCallback;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.SettableFuture;
-
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.SettableFuture;
 
 /**
  * Auditor is a single entity in the entire Bookie cluster and will be watching
@@ -106,7 +101,8 @@ public class Auditor implements BookiesListener {
     private final long bookieCheckInterval;
     private volatile boolean isBookieCheckFirstTime;
     private Set<String> bookiesToBeAudited = Sets.newHashSet();
-
+    private volatile int lostBookieRecoveryDelayBeforeChange;
+    
     public Auditor(final String bookieIdentifier, ServerConfiguration conf,
                    ZooKeeper zkc, StatsLogger statsLogger) throws UnavailableException {
         this.conf = conf;
@@ -153,6 +149,15 @@ public class Auditor implements BookiesListener {
 
             this.bkc = new BookKeeper(new ClientConfiguration(conf), zkc);
             this.admin = new BookKeeperAdmin(bkc, statsLogger);
+            if (this.ledgerUnderreplicationManager
+                    .initializeLostBookieRecoveryDelay(conf.getLostBookieRecoveryDelay())) {
+                LOG.info("Initializing lostBookieRecoveryDelay zNode to the conif value: {}",
+                        conf.getLostBookieRecoveryDelay());
+            } else {
+                LOG.info(
+                        "Valid lostBookieRecoveryDelay zNode is available, so not creating lostBookieRecoveryDelay zNode as part of Auditor initialization ");
+            }
+            lostBookieRecoveryDelayBeforeChange = this.ledgerUnderreplicationManager.getLostBookieRecoveryDelay();
         } catch (CompatibilityException ce) {
             throw new UnavailableException(
                     "CompatibilityException while initializing Auditor", ce);
@@ -195,7 +200,8 @@ public class Auditor implements BookiesListener {
                 public void run() {
                     try {
                         waitIfLedgerReplicationDisabled();
-
+                        int lostBookieRecoveryDelay = Auditor.this.ledgerUnderreplicationManager
+                                .getLostBookieRecoveryDelay();
                         List<String> availableBookies = getAvailableBookies();
                         // casting to String, as knownBookies and availableBookies
                         // contains only String values
@@ -223,7 +229,7 @@ public class Auditor implements BookiesListener {
                         }
 
                         knownBookies.removeAll(bookiesToBeAudited);
-                        if (conf.getLostBookieRecoveryDelay() == 0) {
+                        if (lostBookieRecoveryDelay == 0) {
                             startAudit(false);
                             bookiesToBeAudited.clear();
                             return;
@@ -249,9 +255,9 @@ public class Auditor implements BookiesListener {
                                     auditTask = null;
                                     bookiesToBeAudited.clear();
                                 }
-                            }, conf.getLostBookieRecoveryDelay(), TimeUnit.SECONDS);
+                            }, lostBookieRecoveryDelay, TimeUnit.SECONDS);
                             numBookieAuditsDelayed.inc();
-                            LOG.info("Delaying bookie audit by " + conf.getLostBookieRecoveryDelay()
+                            LOG.info("Delaying bookie audit by " + lostBookieRecoveryDelay
                                      + "secs for " + bookiesToBeAudited.toString());
                         }
                     } catch (BKException bke) {
@@ -264,6 +270,64 @@ public class Auditor implements BookiesListener {
                     }
                 }
             });
+    }
+
+    synchronized Future<?> submitLostBookieRecoveryDelayChangedEvent() {
+        if (executor.isShutdown()) {
+            SettableFuture<Void> f = SettableFuture.<Void> create();
+            f.setException(new BKAuditException("Auditor shutting down"));
+            return f;
+        }
+        return executor.submit(new Runnable() {
+            int lostBookieRecoveryDelay = -1;
+            public void run() {
+                try {
+                    waitIfLedgerReplicationDisabled();
+                    lostBookieRecoveryDelay = Auditor.this.ledgerUnderreplicationManager
+                            .getLostBookieRecoveryDelay();
+                    // if there is pending auditTask, cancel the task. So that it can be rescheduled
+                    // after new lostBookieRecoveryDelay period
+                    if (auditTask != null) {
+                        LOG.info("lostBookieRecoveryDelay period has been changed so canceling the pending AuditTask");
+                        auditTask.cancel(false);                        
+                        numDelayedBookieAuditsCancelled.inc();
+                    }
+
+                    // if lostBookieRecoveryDelay is set to its previous value then consider it as
+                    // signal to trigger the Audit immediately.
+                    if ((lostBookieRecoveryDelay == 0)
+                            || (lostBookieRecoveryDelay == lostBookieRecoveryDelayBeforeChange)) {
+                        LOG.info(
+                                "lostBookieRecoveryDelay has been set to 0 or reset to its previos value, so starting AuditTask. "
+                                + "Current lostBookieRecoveryDelay: {}, previous lostBookieRecoveryDelay: {}",
+                                lostBookieRecoveryDelay, lostBookieRecoveryDelayBeforeChange);
+                        startAudit(false);
+                        auditTask = null;
+                        bookiesToBeAudited.clear();                        
+                    } else if (auditTask != null) {
+                        LOG.info("lostBookieRecoveryDelay has been set to {}, so rescheduling AuditTask accordingly",
+                                lostBookieRecoveryDelay);
+                        auditTask = executor.schedule(new Runnable() {
+                            public void run() {
+                                startAudit(false);
+                                auditTask = null;
+                                bookiesToBeAudited.clear();
+                            }
+                        }, lostBookieRecoveryDelay, TimeUnit.SECONDS);
+                        numBookieAuditsDelayed.inc();
+                    }                    
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    LOG.error("Interrupted while for LedgersReplication to be enabled ", ie);
+                } catch (UnavailableException ue) {
+                    LOG.error("Exception while reading from ZK", ue);
+                } finally{
+                    if (lostBookieRecoveryDelay != -1) {
+                        lostBookieRecoveryDelayBeforeChange = lostBookieRecoveryDelay;
+                    }
+                }
+            }
+        });
     }
 
     private final Runnable CHECK_ALL_LEDGERS = new Runnable() {
@@ -334,6 +398,14 @@ public class Auditor implements BookiesListener {
                 LOG.error("Couldn't get bookie list, exiting", bke);
                 submitShutdownTask();
             }
+            
+            try {
+                this.ledgerUnderreplicationManager
+                        .notifyLostBookieRecoveryDelayChanged(new LostBookieRecoveryDelayChangedCb());
+            } catch (UnavailableException ue) {
+                LOG.error("Exception while registering for LostBookieRecoveryDelay change notification", ue);
+                submitShutdownTask();
+            }
 
             if (bookieCheckInterval == 0) {
                 LOG.info("Auditor periodic bookie checking disabled, running once check now anyhow");
@@ -341,11 +413,24 @@ public class Auditor implements BookiesListener {
                 LOG.info(
                         "Auditor periodic bookie checking enabled" + " 'auditorPeriodicBookieCheckInterval' {} seconds",
                         bookieCheckInterval);
-            }
+            }            
             executor.submit(BOOKIE_CHECK);
         }
     }
 
+    private class LostBookieRecoveryDelayChangedCb implements GenericCallback<Void> {
+        @Override
+        public void operationComplete(int rc, Void result) {
+            try {
+                Auditor.this.ledgerUnderreplicationManager
+                        .notifyLostBookieRecoveryDelayChanged(LostBookieRecoveryDelayChangedCb.this);
+            } catch (UnavailableException ae) {
+                LOG.error("Exception while registering for a LostBookieRecoveryDelay notification", ae);
+            }
+            Auditor.this.submitLostBookieRecoveryDelayChangedEvent();
+        }
+    }
+    
     private void waitIfLedgerReplicationDisabled() throws UnavailableException,
             InterruptedException {
         ReplicationEnableCb cb = new ReplicationEnableCb();
@@ -704,4 +789,11 @@ public class Auditor implements BookiesListener {
         }
     };
 
+    int getLostBookieRecoveryDelayBeforeChange() {
+        return lostBookieRecoveryDelayBeforeChange;
+    }
+
+    Future<?> getAuditTask() {
+        return auditTask;
+    }
 }
