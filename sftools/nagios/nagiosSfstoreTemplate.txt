@@ -1,0 +1,75 @@
+define host {
+    use generic-host
+    host_name {{host}}
+    alias {{host}}
+    address {{host}}.ops.sfdc.net
+    hostgroups SFSTORE
+    register 1
+}
+
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_process_sfms
+      service_description     {{host}}_check_process_sfms
+      host_name               {{host}}
+      check_command           check_snmp_process!sfms!0!0
+      contact_groups          SfStore
+      register                1
+}
+
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_process_bookkeeper-server
+      service_description     {{host}}_check_process_bookkeeper-server
+      host_name               {{host}}
+      check_command           check_snmp_process!bookkeeper-server!0!0
+      contact_groups          SfStore
+      normal_check_interval   1
+}
+
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_disk_sfslogs
+      service_description     {{host}}_check_disk_sfslogs
+      host_name               {{host}}
+      check_command           check_snmp_disk!/sfs/sfslogs!85!95
+      contact_groups          SfStore
+      normal_check_interval   1
+      max_check_attempts      2
+      register                1
+}
+
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_disk_sfsbuild
+      service_description     {{host}}_check_disk_sfsbuild
+      host_name               {{host}}
+      check_command           check_snmp_disk!/sfs/sfsbuild!85!95
+      contact_groups          SfStore
+      normal_check_interval   1
+      max_check_attempts      2
+      register                1
+}
+
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_disk_sfsdump
+      service_description     {{host}}_check_disk_sfsdump
+      host_name               {{host}}
+      check_command           check_snmp_disk!/sfs/sfsdump!85!95
+      contact_groups          SfStore
+      normal_check_interval   1
+      max_check_attempts      2
+      register                1
+}
+define service{
+      use                     generic-pasv-svc
+      name                    {{host}}_check_disk_sfsdata
+      service_description     {{host}}_check_disk_sfsdata
+      host_name               {{host}}
+      check_command           check_snmp_disk!/sfs/sfsdata!85!95
+      contact_groups          SfStore
+      normal_check_interval   1
+      max_check_attempts      2
+      register                1
+}
