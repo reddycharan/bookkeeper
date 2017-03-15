@@ -174,4 +174,8 @@ class ReadOnlyLedgerHandle extends LedgerHandle implements LedgerMetadataListene
         return String.format("ReadOnlyLedgerHandle(lid = %d, id = %d)", ledgerId, super.hashCode());
     }
 
+    @Override
+    protected void initializeExplicitLacFlushPolicy() {
+        explicitLacFlushPolicy = ExplicitLacFlushPolicy.VOID_EXPLICITLAC_FLUSH_POLICY;
+    }
 }

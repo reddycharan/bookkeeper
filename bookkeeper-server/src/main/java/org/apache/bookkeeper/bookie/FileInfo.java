@@ -119,8 +119,11 @@ class FileInfo {
         ByteBuffer retLac = null;
         synchronized(this) {
             if (explicitLac != null) {
+                retLac = ByteBuffer.allocate(explicitLac.capacity());
+                explicitLac.rewind();//copy from the beginning
+                retLac.put(explicitLac);
                 explicitLac.rewind();
-                retLac = ByteBuffer.wrap(explicitLac.array());
+                retLac.flip();
             }
         }
         return retLac;
@@ -132,6 +135,11 @@ class FileInfo {
                 explicitLac = ByteBuffer.allocate(lac.capacity());
             }
             explicitLac.put(lac);
+            explicitLac.rewind();
+            
+            long ledgerId = explicitLac.getLong();            
+            long explicitLacValue = explicitLac.getLong();
+            setLastAddConfirmed(explicitLacValue);
             explicitLac.rewind();
         }
         LOG.debug("fileInfo:SetLac: {}", explicitLac);

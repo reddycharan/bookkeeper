@@ -35,7 +35,7 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class WriteLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
+class WriteLacProcessorV3 extends PacketProcessorBaseV3 {
     private final static Logger logger = LoggerFactory.getLogger(WriteLacProcessorV3.class);
 
     public WriteLacProcessorV3(Request request, Channel channel,
@@ -97,7 +97,7 @@ class WriteLacProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
     }
 
     @Override
-    public void run() {
+    public void safeRun() {
         WriteLacResponse writeLacResponse = getWriteLacResponse();
         if (null != writeLacResponse) {
             Response.Builder response = Response.newBuilder()

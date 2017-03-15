@@ -32,7 +32,7 @@ import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
+public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 {
     private final static Logger LOG = LoggerFactory.getLogger(GetBookieInfoProcessorV3.class);
 
     public GetBookieInfoProcessorV3(Request request, Channel channel,
@@ -73,7 +73,7 @@ public class GetBookieInfoProcessorV3 extends PacketProcessorBaseV3 implements R
     }
 
     @Override
-    public void run() {
+    public void safeRun() {
         GetBookieInfoResponse getBookieInfoResponse = getGetBookieInfoResponse();
         sendResponse(getBookieInfoResponse);
     }
