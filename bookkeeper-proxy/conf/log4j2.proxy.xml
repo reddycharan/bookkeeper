@@ -13,12 +13,15 @@
       	<TimeBasedTriggeringPolicy interval="3"/>
       </Policies>
       <DefaultRolloverStrategy>
-      	<Delete basePath="${sys:bkproxy.log.dir}">
-      		<!-- Delete log files older than P[days]D old -->
-      		<IfLastModified age="${sys:bkproxy.log.max.fileAge}"/>
-      		<IfFileName glob="*.log" />
-      		<IfFileName glob="*.out" />
-      	</Delete>
+	<Delete basePath="${sys:bkproxy.log.dir}" maxDepth="3">
+		<!-- Delete log files older than P[days]D old -->
+		<IfLastModified age="${sys:bkproxy.log.max.fileAge}" />
+		<IfAny>
+			<IfFileName regex=".*SNAP.*\.json" />
+			<IfFileName regex=".*\.log\.{0,1}.*" />
+			<IfFileName regex=".*\.out\.{0,1}.*" />
+		</IfAny>
+	</Delete>
       </DefaultRolloverStrategy>
     </RollingFile>
   </Appenders>
