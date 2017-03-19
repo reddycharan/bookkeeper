@@ -68,6 +68,7 @@ public final class BKPConstants {
     public static final byte SF_ErrorUnknownVersion = 27;
     public static final byte SF_ErrorIllegalOperation = 28;
     public static final byte SF_ErrorNoSuchFragment = 29;
+    public static final byte SF_ErrorRecovery = 30;
 
 
     // Defines
@@ -126,9 +127,11 @@ public final class BKPConstants {
         case Code.LedgerExistException:
         case Code.DuplicateEntryIdException:
             return BKPConstants.SF_ErrorExist;
+        case Code.LedgerRecoveryException:
+            return BKPConstants.SF_ErrorRecovery;
         default:
             LOG.error("Unmapped BK error: {}", BKerror);
-            throw new RuntimeException("Unmapped BK error");
+            throw new RuntimeException("Unmapped BK error: " + BKerror);
         }
     }
 
