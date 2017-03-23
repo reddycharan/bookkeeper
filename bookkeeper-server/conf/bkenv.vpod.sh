@@ -34,10 +34,17 @@
 # Logs location
 # BOOKIE_LOG_DIR=
 
+GC_OPTS = "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:+HeapDumpOnOutOfMemoryError"
+GC_OPTS = "$GC_OPTS -XX:G1HeapRegionSize=16M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:StringTableSize=1000003" 
+GC_OPTS = "$GC_OPTS -XX:InitiatingHeapOccupancyPercent=40"
+GC_OPTS ="$GC_OPTS -XX:+UseLargePages"
+GC_OPTS ="$GC_OPTS -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintClassHistogramBeforeFullGC -XX:+PrintClassHistogramAfterFullGC -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics"
+MEM_OPTS = "-Xms16G -Xmx16G"
+
 # Extra options to be passed to the jvm
 # In our VPOD setups, we presume 32GB of RAM
 # BOOKIE_EXTRA_OPTS=
-BOOKIE_EXTRA_OPTS="-Xms16G -Xmx16G -Xmn8G -Duser.timezone=UTC -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:+CMSScavengeBeforeRemark -XX:+CMSParallelInitialMarkEnabled -XX:+ParallelRefProcEnabled -XX:+UnlockDiagnosticVMOptions -XX:+CMSEdenChunksRecordAlways -XX:ParGCCardsPerStrideChunk=4096 -XX:StringTableSize=1000003 -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:-OmitStackTraceInFastThrow -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics "
+BOOKIE_EXTRA_OPTS="$MEM_OPTS $GC_OPTS -Duser.timezone=UTC -XX:+UnlockDiagnosticVMOptions -XX:-OmitStackTraceInFastThrow "
 
 # Add extra paths to the bookkeeper classpath
 # BOOKIE_EXTRA_CLASSPATH=
