@@ -38,6 +38,7 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_REQU
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SEND_RESPONSE;
 
 
 public class BookieRequestProcessor implements RequestProcessor {
@@ -75,6 +76,7 @@ public class BookieRequestProcessor implements RequestProcessor {
     final OpStatsLogger writeLacStats;
     final OpStatsLogger readLacStats;
     final OpStatsLogger getBookieInfoStats;
+    final OpStatsLogger sendResponse;
 
     public BookieRequestProcessor(ServerConfiguration serverCfg, Bookie bookie,
                                   StatsLogger statsLogger) {
@@ -91,6 +93,7 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.writeLacStats = statsLogger.getOpStatsLogger(WRITE_LAC);
         this.readLacStats = statsLogger.getOpStatsLogger(READ_LAC);
         this.getBookieInfoStats = statsLogger.getOpStatsLogger(GET_BOOKIE_INFO);
+        this.sendResponse = statsLogger.getOpStatsLogger(SEND_RESPONSE);
     }
 
     @Override
