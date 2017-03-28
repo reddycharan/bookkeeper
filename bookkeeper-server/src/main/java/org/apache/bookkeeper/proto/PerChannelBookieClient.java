@@ -243,6 +243,7 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     }
 
     private void connect() {
+        final long startTime = MathUtils.nowInNano();
         LOG.debug("Connecting to bookie: {}", addr);
 
         // Set up the ClientBootStrap so we can create a new Channel connection
@@ -267,6 +268,14 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
                 LOG.debug("Channel connected ({}) {}", future.isSuccess(), future.getChannel());
                 int rc;
                 Queue<GenericCallback<PerChannelBookieClient>> oldPendingOps;
+
+                /* We fill in the timer based on whether the connect operation itself succeeded regardless of
+                 * whether there was a race */
+                if (future.isSuccess()) {
+                    connectTimer.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
+                } else {
+                    connectTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
+                }
 
                 synchronized (PerChannelBookieClient.this) {
                     if (future.isSuccess() && state == ConnectionState.CONNECTING) {
@@ -314,7 +323,6 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
     }
 
     void connectIfNeededAndDoOp(GenericCallback<PerChannelBookieClient> op) {
-    	long startTime = MathUtils.nowInNano();
         boolean completeOpNow = false;
         int opRc = BKException.Code.OK;
         // common case without lock first
@@ -340,7 +348,6 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
                     if (state == ConnectionState.CONNECTING) {
                         // just return as connection request has already send
                         // and waiting for the response.
-                    	connectTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         return;
                     }
                     // switch state to connecting and do connection attempt
@@ -356,7 +363,6 @@ public class PerChannelBookieClient extends SimpleChannelHandler implements Chan
         if (completeOpNow) {
             completeOperation(op, opRc);
         }
-        connectTimer.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
     }
 
     void writeLac(final long ledgerId, final byte[] masterKey, final long lac, ChannelBuffer toSend, WriteLacCallback cb, Object ctx) {
