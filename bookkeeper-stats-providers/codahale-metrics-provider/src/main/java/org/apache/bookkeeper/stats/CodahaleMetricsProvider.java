@@ -19,6 +19,7 @@ package org.apache.bookkeeper.stats;
 import static com.codahale.metrics.MetricRegistry.name;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +40,11 @@ import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.codahale.metrics.servlets.MetricsServlet;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
@@ -64,6 +68,9 @@ public class CodahaleMetricsProvider implements StatsProvider {
             metrics.register(name("jvm.gc"), new GarbageCollectorMetricSet());
             metrics.register(name("jvm.memory"), new MemoryUsageGaugeSet());
             metrics.register(name("jvm.system"), new JvmSystemMetricSet());
+            metrics.register(name("jvm.threads"), new ThreadStatesGaugeSet());
+            metrics.register(name("jvm.buffers"), new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+            metrics.register(name("jvm.filedescriptors"), new FileDescriptorRatioGauge());
         }
     }
 
