@@ -22,6 +22,17 @@
 package org.apache.bookkeeper.bookie;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.INDEX_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LEDGER_SCOPE;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.RECOVERY_ADD_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_STATUS;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_BYTES;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,8 +56,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import org.apache.bookkeeper.bookie.Journal.JournalScanner;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
@@ -58,7 +67,6 @@ import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNS;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.NullStatsLogger;
@@ -88,18 +96,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
-
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.RECOVERY_ADD_ENTRY;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LEDGER_SCOPE;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.INDEX_SCOPE;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_STATUS;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_BYTES;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SCOPE;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Implements a bookie.
@@ -629,14 +626,32 @@ public class Bookie extends BookieCriticalThread {
         this.ledgerMonitor = new LedgerDirsMonitor(conf, 
                                     new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()), 
                                     ledgerDirsManager);
-        this.ledgerMonitor.init();
+        try {
+            this.ledgerMonitor.init();
+        } catch (NoWritableLedgerDirException nle) {
+            // start in read-only mode if no writable dirs and read-only allowed
+            if(!conf.isReadOnlyModeEnabled()) {
+                throw nle;
+            } else {
+                this.transitionToReadOnlyMode();
+            }
+        }
         if (null == idxDirs) {
             this.idxMonitor = this.ledgerMonitor;
         } else {
             this.idxMonitor = new LedgerDirsMonitor(conf, 
                                         new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()), 
                                         indexDirsManager);
-            this.idxMonitor.init();
+            try {
+                this.idxMonitor.init();
+            } catch (NoWritableLedgerDirException nle) {
+                // start in read-only mode if no writable dirs and read-only allowed
+                if(!conf.isReadOnlyModeEnabled()) {
+                    throw nle;
+                } else {
+                    this.transitionToReadOnlyMode();
+                }
+            }
         }
 
         // ZK ephemeral node for this Bookie.
@@ -664,16 +679,7 @@ public class Bookie extends BookieCriticalThread {
             }
         });
 
-        try {
-            ledgerStorage.initialize(conf, ledgerManager, ledgerDirsManager, indexDirsManager, journal, statsLogger);
-        } catch(NoWritableLedgerDirException nle) {
-            // start in read-only mode if no writable dirs and read-only allowed
-            if(!conf.isReadOnlyModeEnabled()) {
-                throw nle;
-            } else {
-                this.transitionToReadOnlyMode();
-            }
-        }
+        ledgerStorage.initialize(conf, ledgerManager, ledgerDirsManager, indexDirsManager, journal, statsLogger);
         syncThread = new SyncThread(conf, getLedgerDirsListener(),
                                     ledgerStorage, journal);
         handles = new HandleFactoryImpl(ledgerStorage);
@@ -1322,9 +1328,10 @@ public class Bookie extends BookieCriticalThread {
                 if (indexDirsManager != ledgerDirsManager) {
                     idxMonitor.shutdown();
                 }
-
-                // Shutdown the ZK client
-                if(zk != null) zk.close();
+            }
+            // Shutdown the ZK client
+            if (zk != null) {
+                zk.close();
             }
         } catch (InterruptedException ie) {
             LOG.error("Interrupted during shutting down bookie : ", ie);

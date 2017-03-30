@@ -185,16 +185,7 @@ class LedgerDirsMonitor extends BookieThread {
                 ldm.addToFilledDirs(dir);
             }
         }
-        try {
-            // there is no good reason to fail startup if all dirs are full
-            // as bookie can still serve requests in read-only mode.
-            // so let's send allDisksFull() and proceed
-            ldm.getWritableLedgerDirs();
-        } catch (NoWritableLedgerDirException e) {
-            for (LedgerDirsListener listener : ldm.getListeners()) {
-                listener.allDisksFull();
-            }
-        }
+        ldm.getWritableLedgerDirs();
     }
 }
 
