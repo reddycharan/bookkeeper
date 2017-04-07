@@ -642,16 +642,7 @@ public class Bookie extends BookieCriticalThread {
         String ledgerStorageClass = conf.getLedgerStorageClass();
         LOG.info("Using ledger storage: {}", ledgerStorageClass);
         ledgerStorage = LedgerStorageFactory.createLedgerStorage(ledgerStorageClass);
-        try {
-            ledgerStorage.initialize(conf, ledgerManager, ledgerDirsManager, indexDirsManager, journal, statsLogger);
-        } catch(NoWritableLedgerDirException nle) {
-            // start in read-only mode if no writable dirs and read-only allowed
-            if(!conf.isReadOnlyModeEnabled()) {
-                throw nle;
-            } else {
-                this.transitionToReadOnlyMode();
-            }
-        }
+        ledgerStorage.initialize(conf, ledgerManager, ledgerDirsManager, indexDirsManager, journal, statsLogger);
         syncThread = new SyncThread(conf, getLedgerDirsListener(),
                                     ledgerStorage, journal);
         handles = new HandleFactoryImpl(ledgerStorage);

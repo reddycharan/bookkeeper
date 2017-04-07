@@ -328,50 +328,25 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
     }
 
     /**
-     * Check disk full. Expected to fail on start.
+     * Check disk full. Expected to throw NoWritableLedgerDirException
+     * during bookie initialisation.
      */
     @Test(timeout = 30000)
-    public void testWithDiskFullReadOnlyDisabled() throws Exception {
+    public void testWithDiskFull() throws Exception {
         File tmpDir = createTempDir("DiskCheck", "test");
         long usableSpace = tmpDir.getUsableSpace();
         long totalSpace = tmpDir.getTotalSpace();
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
                 .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000).setJournalDirName(tmpDir.getPath())
-                .setLedgerDirNames(new String[] { tmpDir.getPath() })
-                .setDiskCheckInterval(1000)
-                .setReadOnlyModeEnabled(false);
-        conf.setDiskUsageThreshold((1.0f - ((float) usableSpace / (float) totalSpace)) * 0.999f);
-        conf.setDiskUsageWarnThreshold(0.0f);
+                .setLedgerDirNames(new String[] { tmpDir.getPath() });
+        conf.setDiskUsageThreshold((1f - ((float) usableSpace / (float) totalSpace)) - 0.05f);
+        conf.setDiskUsageWarnThreshold((1f - ((float) usableSpace / (float) totalSpace)) - 0.25f);
         try {
             new Bookie(conf);
-            fail("NoWritableLedgerDirException expected");
-        } catch(NoWritableLedgerDirException e) {
+        } catch (Exception e) {
             // expected
         }
-    }
-
-    /**
-     * Check disk full. Expected to start as read-only.
-     */
-    @Test(timeout = 30000)
-    public void testWithDiskFullReadOnlyEnabled() throws Exception {
-        File tmpDir = createTempDir("DiskCheck", "test");
-        long usableSpace = tmpDir.getUsableSpace();
-        long totalSpace = tmpDir.getTotalSpace();
-        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setZkServers(zkUtil.getZooKeeperConnectString())
-                .setZkTimeout(5000).setJournalDirName(tmpDir.getPath())
-                .setLedgerDirNames(new String[] { tmpDir.getPath() })
-                .setDiskCheckInterval(1000)
-                .setReadOnlyModeEnabled(true);
-        conf.setDiskUsageThreshold((1.0f - ((float) usableSpace / (float) totalSpace)) * 0.999f);
-        conf.setDiskUsageWarnThreshold(0.0f);
-        final Bookie bk = new Bookie(conf);
-        Thread.sleep((conf.getDiskCheckInterval() * 2) + 100);
-        
-        assertTrue(bk.isReadOnly());
-        bk.shutdown();
     }
 
     /**
