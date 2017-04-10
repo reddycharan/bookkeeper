@@ -87,6 +87,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     protected final static String METASTORE_MAX_ENTRIES_PER_SCAN = "metastoreMaxEntriesPerScan";
 
     protected final static String PERMITTED_STARTUP_USERS = "permittedStartupUsers";
+    protected final static String STAT_PREFIX="codahaleStatsPrefix";
 
     protected final static String LEDGERID_FORMATTER_CLASS = "ledgerIdFormatterClass";
     protected final static String ENTRY_FORMATTER_CLASS = "entryFormatterClass";
@@ -542,5 +543,9 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
                                         null, StringEntryFormatter.class,
                                         EntryFormatter.class.getClassLoader());
     }
+
+	public String getStatPrefix() {
+		return getString(STAT_PREFIX, "");
+	}
 
 }
