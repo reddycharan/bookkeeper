@@ -507,7 +507,6 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             };
             try (SubTreeCache.WatchGuard wg = subTreeCache.registerWatcherWithGuard(w)) {
                 waitIfLedgerReplicationDisabled();
-                subTreeCache.registerWatcher(w);
                 long ledger = getLedgerToRereplicateFromHierarchy(urLedgerPath, 0);
                 if (ledger != -1) {
                     return ledger;
