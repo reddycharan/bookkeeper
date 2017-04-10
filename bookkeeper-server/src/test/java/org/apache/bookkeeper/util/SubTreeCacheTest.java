@@ -45,7 +45,7 @@ public class SubTreeCacheTest {
 
         final Node root = new Node();
 
-        Node getPath(String path) throws KeeperException {
+        Node getNode(String path) throws KeeperException {
             String[] pathSegments = path.split("/");
             Node cur = root;
             for (String segment : pathSegments) {
@@ -63,7 +63,7 @@ public class SubTreeCacheTest {
         @Override
         public List<String> getChildren(
                 String path, Watcher watcher) throws InterruptedException, KeeperException {
-            Node node = getPath(path);
+            Node node = getNode(path);
 
             /* Enforce only one live watch per node */
             Assert.assertTrue(null == node.watcher);
@@ -72,20 +72,19 @@ public class SubTreeCacheTest {
             return new ArrayList<String>(node.children.keySet());
         }
 
-        public void createPath(String path) throws KeeperException {
+        public void createNode(String path) throws KeeperException {
             String[] segments = path.split("/");
             if (segments.length == 0) {
                 throw KeeperException.create(KeeperException.Code.NONODE);
             }
             String child = segments[segments.length - 1];
             String[] parentSegments = Arrays.copyOfRange(segments, 0, segments.length - 1);
-            Node parent = getPath(String.join("/", parentSegments));
+            Node parent = getNode(String.join("/", parentSegments));
             if (parent.children.containsKey(child)) {
                 throw KeeperException.create(KeeperException.Code.NODEEXISTS);
             } else {
                 parent.children.put(child, new Node());
                 if (null != parent.watcher) {
-                    Assert.assertFalse(null == parent.watcher);
                     parent.watcher.process(
                             new WatchedEvent(
                                     Watcher.Event.EventType.NodeCreated,
@@ -96,14 +95,15 @@ public class SubTreeCacheTest {
             }
         }
 
-        public void removePath(String path) throws KeeperException {
+        public void removeNode(String path) throws KeeperException {
             String[] segments = path.split("/");
             if (segments.length == 0) {
                 throw KeeperException.create(KeeperException.Code.NONODE);
             }
             String child = segments[segments.length - 1];
             String[] parentSegments = Arrays.copyOfRange(segments, 0, segments.length - 1);
-            Node parent = getPath(String.join("/", parentSegments));
+            String parentPath = String.join("/", parentSegments);
+            Node parent = getNode(parentPath);
             if (!parent.children.containsKey(child)) {
                 throw KeeperException.create(KeeperException.Code.NONODE);
             } else {
@@ -114,7 +114,7 @@ public class SubTreeCacheTest {
                     if (null != cNode.watcher) {
                         cNode.watcher.process(
                                 new WatchedEvent(
-                                        Watcher.Event.EventType.NodeCreated,
+                                        Watcher.Event.EventType.NodeChildrenChanged,
                                         Watcher.Event.KeeperState.SyncConnected,
                                         path));
                         cNode.watcher = null;
@@ -122,9 +122,9 @@ public class SubTreeCacheTest {
                     if (null != parent.watcher) {
                         parent.watcher.process(
                                 new WatchedEvent(
-                                        Watcher.Event.EventType.NodeCreated,
+                                        Watcher.Event.EventType.NodeDeleted,
                                         Watcher.Event.KeeperState.SyncConnected,
-                                        path));
+                                        parentPath));
                         parent.watcher = null;
                     }
                     parent.children.remove(child);
@@ -203,54 +203,54 @@ public class SubTreeCacheTest {
                         , "/b/a"
                 };
         for (String path : preCreate) {
-            tree.createPath(path);
+            tree.createNode(path);
         }
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testNoUpdate() throws Exception {
         TestWatch watch = setWatch();
         readAssertChildren("/a/a", new String[]{"a", "b"});
         assertNotFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testSingleCreate() throws Exception {
         TestWatch watch = setWatch();
         readAssertChildren("/a/a", new String[]{"a", "b"});
-        tree.createPath("/a/a/c");
+        tree.createNode("/a/a/c");
         assertFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testSingleRemoval() throws Exception {
         TestWatch watch = setWatch();
         readAssertChildren("/a/a", new String[]{"a", "b"});
-        tree.removePath("/a/a/b");
+        tree.removeNode("/a/a/b");
         assertFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testCancelation() throws Exception {
         TestWatch watch = setWatch();
         readAssertChildren("/a/a", new String[]{"a", "b"});
         cache.cancelWatcher(watch);
-        tree.createPath("/a/a/c");
+        tree.createNode("/a/a/c");
         assertNotFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testGuardCancelation() throws Exception {
         TestWatch watch;
         try (TestWatchGuard guard = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"a", "b"});
             watch = guard;
         }
-        tree.createPath("/a/a/c");
+        tree.createNode("/a/a/c");
         assertNotFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testGuardCancelationExceptional() throws Exception {
         TestWatch watch = null;
         try (TestWatchGuard guard = setWatchWithGuard()) {
@@ -258,11 +258,11 @@ public class SubTreeCacheTest {
             readAssertChildren("/z/a", new String[]{});
         } catch (Exception e) {
         }
-        tree.createPath("/a/a/c");
+        tree.createNode("/a/a/c");
         assertNotFired(watch);
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testDuplicateWatch() throws Exception {
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"a", "b"});
@@ -270,51 +270,51 @@ public class SubTreeCacheTest {
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"a", "b"});
             assertNotFired(watch);
-            tree.createPath("/a/a/e");
+            tree.createNode("/a/a/e");
             assertFired(watch);
         }
     }
 
-    @Test(expected = KeeperException.class)
+    @Test(timeout=5000, expected = KeeperException.class)
     public void testNoNode() throws Exception {
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/z/a", new String[]{});
         }
     }
 
-    @Test
+    @Test(timeout=5000)
     public void testRemoveEmptyNode() throws Exception {
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/a/a/a", new String[]{});
-            tree.removePath("/a/a/a");
+            tree.removeNode("/a/a/a");
             assertFired(watch);
         }
     }
 
-    @Test
+    @Test(timeout=5000)
     public void doubleWatch() throws Exception {
         try (TestWatchGuard watch1 = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"a", "b"});
             try (TestWatchGuard watch2 = setWatchWithGuard()) {
-                tree.createPath("/a/a/e");
+                tree.createNode("/a/a/e");
                 assertFired(watch1);
                 readAssertChildren("/a/b", new String[]{});
-                tree.createPath("/a/b/e");
+                tree.createNode("/a/b/e");
                 assertFired(watch2);
             }
         }
     }
 
-    @Test
+    @Test(timeout=5000)
     public void sequentialWatch() throws Exception {
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"a", "b"});
-            tree.removePath("/a/a/a");
+            tree.removeNode("/a/a/a");
             assertFired(watch);
         }
         try (TestWatchGuard watch = setWatchWithGuard()) {
             readAssertChildren("/a/a", new String[]{"b"});
-            tree.removePath("/a/a/b");
+            tree.removeNode("/a/a/b");
             assertFired(watch);
         }
     }

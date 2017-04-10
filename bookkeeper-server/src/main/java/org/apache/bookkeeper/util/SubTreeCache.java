@@ -62,13 +62,13 @@ public class SubTreeCache {
 
     private class SubTreeNode implements Watcher {
         String path;
-        List<String> children;
+        private List<String> children;
 
         SubTreeNode(String path) {
             this.path = path;
         }
 
-        void setChildren(List<String> children) {
+        private void setChildren(List<String> children) {
             this.children = children;
         }
 
@@ -80,7 +80,7 @@ public class SubTreeCache {
             }
         }
 
-        public List<String> getChildren() {
+        private List<String> getChildren() {
             return new ArrayList<String>(children);
         }
     }
@@ -109,7 +109,6 @@ public class SubTreeCache {
      * @return Children of path
      */
     public synchronized List<String> getChildren(String path) throws KeeperException, InterruptedException {
-        List<String> children;
         SubTreeNode node = cachedNodes.get(path);
         if (null == node) {
             node = new SubTreeNode(path);
