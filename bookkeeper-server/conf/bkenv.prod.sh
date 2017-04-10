@@ -39,8 +39,12 @@ GC_OPTS="$GC_OPTS -XX:G1HeapRegionSize=16M -XX:ParallelGCThreads=12 -XX:+Paralle
 GC_OPTS="$GC_OPTS -XX:InitiatingHeapOccupancyPercent=40"
 GC_OPTS="$GC_OPTS -XX:+UseLargePages"
 GC_OPTS="$GC_OPTS -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintClassHistogramBeforeFullGC -XX:+PrintClassHistogramAfterFullGC -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics"
-MEM_OPTS="-Xms31G -Xmx31G"
-
+#Bookie & autorecovery receive different memory allocations
+if [[ "$COMMAND" == "bookie" ]]; then
+    MEM_OPTS="-Xms31G -Xmx31G"
+elif [[ "$COMMAND" == "autorecovery" ]]; then
+    MEM_OPTS="-Xms4G -Xmx4G"
+fi
 # Extra options to be passed to the jvm
 # In production we presume we have > 256GB of RAM
 # BOOKIE_EXTRA_OPTS=

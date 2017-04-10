@@ -33,6 +33,7 @@ BINDIR=`dirname "$0"`
 BK_HOME=`cd $BINDIR/..;pwd`
 
 DEFAULT_CONF=$BK_HOME/conf/bk_server.conf
+DEFAULT_REPLICATION_CONF=$BK_HOME/conf/bk_replication.conf
 DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.server.xml
 # this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
 DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
@@ -212,6 +213,10 @@ if [ -z "$BOOKIE_CONF" ]; then
   BOOKIE_CONF=$DEFAULT_CONF
 fi
 
+if [ -z "$REPLICATION_CONF" ]; then
+  REPLICATION_CONF=$DEFAULT_REPLICATION_CONF
+fi
+
 if [ -z "$BOOKIE_LOG_CONF" ]; then
   BOOKIE_LOG_CONF=$DEFAULT_LOG_CONF
 fi
@@ -270,7 +275,7 @@ cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
   exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $@
+    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
 elif [ $COMMAND == "localbookie" ]; then
   NUMBER=$1
   shift

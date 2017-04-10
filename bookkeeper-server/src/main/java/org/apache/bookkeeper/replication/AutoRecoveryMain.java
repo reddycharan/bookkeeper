@@ -36,6 +36,8 @@ import org.apache.bookkeeper.replication.ReplicationException.CompatibilityExcep
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.stats.StatsProvider;
+import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
@@ -296,7 +298,19 @@ public class AutoRecoveryMain {
         }
 
         try {
-            final AutoRecoveryMain autoRecoveryMain = new AutoRecoveryMain(conf);
+			Class<? extends StatsProvider> statsProviderClass = conf.getStatsProviderClass();
+            StatsProvider statsProvider = null;
+            final AutoRecoveryMain autoRecoveryMain;
+            if (statsProviderClass != null) {
+            	statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+            	statsProvider.start(conf);
+            }
+            if (statsProvider != null) {
+                autoRecoveryMain = new AutoRecoveryMain(conf, statsProvider.getStatsLogger(conf.getStatPrefix()));
+            }
+            else {
+                autoRecoveryMain = new AutoRecoveryMain(conf);
+            }
             autoRecoveryMain.start();
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
