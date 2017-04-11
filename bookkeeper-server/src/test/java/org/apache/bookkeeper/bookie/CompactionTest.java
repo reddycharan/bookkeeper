@@ -51,6 +51,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.LedgerMetadataListener;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.util.DiskChecker;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.TestUtils;
 import org.apache.bookkeeper.versioning.Version;
@@ -210,7 +211,8 @@ public class CompactionTest extends BookKeeperClusterTestCase {
         conf.setGcWaitTime(60000);
         conf.setMinorCompactionInterval(120000);
         conf.setMajorCompactionInterval(240000);
-        LedgerDirsManager dirManager = new LedgerDirsManager(conf, conf.getLedgerDirs());
+        LedgerDirsManager dirManager = new LedgerDirsManager(conf, conf.getLedgerDirs(),
+                new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
         CheckpointSource cp = new CheckpointSource() {
             @Override
             public Checkpoint newCheckpoint() {
@@ -537,7 +539,8 @@ public class CompactionTest extends BookKeeperClusterTestCase {
             };
         final byte[] KEY = "foobar".getBytes();
         File log0 = new File(curDir, "0.log");
-        LedgerDirsManager dirs = new LedgerDirsManager(conf, conf.getLedgerDirs());
+        LedgerDirsManager dirs = new LedgerDirsManager(conf, conf.getLedgerDirs(),
+                new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
         assertFalse("Log shouldnt exist", log0.exists());
         InterleavedLedgerStorage storage = new InterleavedLedgerStorage();
         storage.initialize(conf, manager, dirs, dirs, checkpointSource, NullStatsLogger.INSTANCE);
@@ -655,7 +658,8 @@ public class CompactionTest extends BookKeeperClusterTestCase {
         Bookie.checkDirectoryStructure(curDir);
         conf.setLedgerDirNames(new String[] { tmpDir.toString() });
 
-        LedgerDirsManager dirs = new LedgerDirsManager(conf, conf.getLedgerDirs());
+        LedgerDirsManager dirs = new LedgerDirsManager(conf, conf.getLedgerDirs(),
+                new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
         final Set<Long> ledgers = Collections
                 .newSetFromMap(new ConcurrentHashMap<Long, Boolean>());
         LedgerManager manager = getLedgerManager(ledgers);
@@ -699,7 +703,8 @@ public class CompactionTest extends BookKeeperClusterTestCase {
         conf.setGcWaitTime(500);
         conf.setMinorCompactionInterval(1);
         conf.setMajorCompactionInterval(2);
-        LedgerDirsManager dirManager = new LedgerDirsManager(conf, conf.getLedgerDirs());
+        LedgerDirsManager dirManager = new LedgerDirsManager(conf, conf.getLedgerDirs(),
+                new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
         CheckpointSource cp = new CheckpointSource() {
             @Override
             public Checkpoint newCheckpoint() {

@@ -79,6 +79,7 @@ import org.apache.bookkeeper.replication.AuditorElector;
 import org.apache.bookkeeper.replication.BookieLedgerIndexer;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.util.BookKeeperConstants;
+import org.apache.bookkeeper.util.DiskChecker;
 import org.apache.bookkeeper.util.EntryFormatter;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.util.LedgerIdFormatter;
@@ -2492,7 +2493,8 @@ public class BookieShell implements Tool {
 
     private synchronized Journal getJournal() throws IOException {
         if (null == journal) {
-            journal = new Journal(bkConf, new LedgerDirsManager(bkConf, bkConf.getLedgerDirs()));
+            journal = new Journal(bkConf, new LedgerDirsManager(bkConf, bkConf.getLedgerDirs(),
+                    new DiskChecker(bkConf.getDiskUsageThreshold(), bkConf.getDiskUsageWarnThreshold())));
         }
         return journal;
     }

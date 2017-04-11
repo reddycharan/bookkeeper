@@ -143,7 +143,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String BOOKIE_AUTH_PROVIDER_FACTORY_CLASS = "bookieAuthProviderFactoryClass";
     
     protected final static String MIN_USABLESIZE_FOR_INDEXFILE_CREATION = "minUsableSizeForIndexFileCreation";
-
+    protected final static String ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION = "allowMultipleDirsUnderSamePartition";
     /**
      * Construct a default configuration object
      */
@@ -1943,4 +1943,26 @@ public class ServerConfiguration extends AbstractConfiguration {
         return this;
     }
 
+    /**
+     * returns whether it is allowed to have multiple ledger/index Directories in the same 
+     * filesystem partition
+     *
+     * @return  
+     */
+    public boolean isAllowMultipleDirsUnderSamePartition() {
+        return this.getBoolean(ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION, true);
+    }
+
+    /**
+     * Configure the Bookie to allow/disallow multiple ledger/index directories in the same 
+     * filesystem partition
+     *
+     * @param allow
+     *          
+     * @return server configuration object.
+     */
+    public ServerConfiguration setAllowMultipleDirsUnderSamePartition(boolean allow) {
+        this.setProperty(ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION, allow);
+        return this;
+    }
 }
