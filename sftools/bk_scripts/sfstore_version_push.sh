@@ -29,6 +29,18 @@ else
     INSTALL_BASE_DIR=$HOME
 fi
 
+if [ ! -d $PROXY_INSTALL_DIR ]; then
+    mkdir -p $PROXY_INSTALL_DIR
+fi
+
+if [ ! -d $SFSTORE_INSTALL_DIR]; then
+    mkdir -p $SFSTORE_INSTALL_DIR
+fi
+
+if [ ! -d $INSTALL_BASE_DIR ]; then
+    mkdir -p $INSTALL_BASE_DIR
+fi
+
 echo "Proxy install directory: $PROXY_DEST_DIR"
 echo "SFStore install directory: $SFSTORE_DEST_DIR"
 
