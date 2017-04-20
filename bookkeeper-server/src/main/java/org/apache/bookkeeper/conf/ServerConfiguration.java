@@ -153,6 +153,12 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     protected final static String ALLOW_MULTIPLEDIRS_UNDER_SAME_DISKPARTITION = "allowMultipleDirsUnderSameDiskPartition";
 
+    /*
+     * config specifying the number of active entrylogs per ledgerdir. if multiple active entrylogs is not required,
+     * then this can be set to 0, which is equivalent to saying only one activeentrylog at a time.
+     */
+    protected final static String NUMBER_OF_ACTIVE_ENTRYLOGS_PERLEDGERDIR = "numberOfActiveEntryLogsPerLedgerDir";
+    
     /**
      * Construct a default configuration object
      */
@@ -2064,6 +2070,26 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setAllowMultipleDirsUnderSameDiskPartition(boolean allow) {
         this.setProperty(ALLOW_MULTIPLEDIRS_UNDER_SAME_DISKPARTITION, allow);
+        return this;
+    }
+    
+    /**
+     * Gets the number of active entrylogs per LedgerDir. In the case of only one active entrylog this value will be 0
+     * 
+     * @return
+     */
+    public int getNumberOfActiveEntryLogsPerLedgerDir() {
+        return this.getInt(NUMBER_OF_ACTIVE_ENTRYLOGS_PERLEDGERDIR, 0);
+    }
+
+    /**
+     * Set the number of active entrylogs per LedgerDir. If multiple active EntryLogs is not required then set it to 0.
+     * 
+     * @param numberOfActiveEntryLogsPerLedgerDir
+     * @return
+     */
+    public ServerConfiguration setNumberOfActiveEntryLogsPerLedgerDir(int numberOfActiveEntryLogsPerLedgerDir) {
+        this.setProperty(NUMBER_OF_ACTIVE_ENTRYLOGS_PERLEDGERDIR, Integer.toString(numberOfActiveEntryLogsPerLedgerDir));
         return this;
     }
 }

@@ -107,14 +107,18 @@ public class BufferedChannel extends BufferedReadChannel {
      * @throws IOException if the write or sync operation fails.
      */
     public void flush(boolean shouldForceWrite) throws IOException {
-        synchronized (this) {
+        flush(shouldForceWrite, false);
+    }
+
+    public void flush(boolean shouldForceWrite, boolean forceMetadata) throws IOException {
+        synchronized(this) {
             flushInternal();
         }
         if (shouldForceWrite) {
-            forceWrite(false);
+            forceWrite(forceMetadata);
         }
     }
-
+    
     /**
      * Write any data in the buffer to the file and advance the writeBufferPosition.
      * Callers are expected to synchronize appropriately
@@ -200,5 +204,9 @@ public class BufferedChannel extends BufferedReadChannel {
     public synchronized void clear() {
         super.clear();
         writeBuffer.clear();
+    }
+
+    synchronized public int getNumOfBytesInWriteBuffer() {
+        return writeBuffer.position();
     }
 }

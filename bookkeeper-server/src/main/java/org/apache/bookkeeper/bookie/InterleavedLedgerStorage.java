@@ -103,9 +103,10 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     // Expose Stats
     private OpStatsLogger getOffsetStats;
     private OpStatsLogger getEntryStats;
+    protected int numberOfActiveEntryLogsPerLedgerDir;
 
     InterleavedLedgerStorage() {
-        activeLedgers = new SnapshotMap<Long, Boolean>();
+        activeLedgers = new SnapshotMap<Long, Boolean>();     
     }
 
     @Override
@@ -113,7 +114,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                            LedgerDirsManager ledgerDirsManager, LedgerDirsManager indexDirsManager,
                            CheckpointSource checkpointSource, StatsLogger statsLogger)
             throws IOException {
-
+        this.numberOfActiveEntryLogsPerLedgerDir = conf.getNumberOfActiveEntryLogsPerLedgerDir();
         this.checkpointSource = checkpointSource;
         entryLogger = new EntryLogger(conf, ledgerDirsManager, this);
         ledgerCache = new LedgerCacheImpl(conf, activeLedgers,
@@ -358,20 +359,25 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
     @Override
     public Checkpoint checkpoint(Checkpoint checkpoint) throws IOException {
-        Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
-        // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
-        if (lastCheckpoint.compareTo(checkpoint) > 0) {
-            return lastCheckpoint;
-        }
-        // we don't need to check somethingwritten since checkpoint
-        // is scheduled when rotate an entry logger file. and we could
-        // not set somethingWritten to false after checkpoint, since
-        // current entry logger file isn't flushed yet.
-        flushOrCheckpoint(true);
-        // after the ledger storage finished checkpointing, try to clear the done checkpoint
+        if (numberOfActiveEntryLogsPerLedgerDir == 0) {
+            Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
+            // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
+            if (lastCheckpoint.compareTo(checkpoint) > 0) {
+                return lastCheckpoint;
+            }
+            // we don't need to check somethingwritten since checkpoint
+            // is scheduled when rotate an entry logger file. and we could
+            // not set somethingWritten to false after checkpoint, since
+            // current entry logger file isn't flushed yet.
+            flushOrCheckpoint(true);
+            // after the ledger storage finished checkpointing, try to clear the done checkpoint
 
-        checkpointHolder.clearLastCheckpoint(lastCheckpoint);
-        return lastCheckpoint;
+            checkpointHolder.clearLastCheckpoint(lastCheckpoint);
+            return lastCheckpoint;
+        } else {
+            flushOrCheckpoint(false);
+            return checkpoint;
+        }
     }
 
     @Override

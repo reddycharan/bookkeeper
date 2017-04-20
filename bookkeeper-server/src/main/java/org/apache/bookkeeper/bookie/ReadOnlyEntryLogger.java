@@ -43,7 +43,7 @@ public class ReadOnlyEntryLogger extends EntryLogger {
     }
 
     @Override
-    void createNewLog() throws IOException {
+    void createNewLog(int slot, boolean diskFull, boolean allDisksFull) throws IOException {
         throw new IOException("Can't create new entry log using a readonly entry logger.");
     }
 

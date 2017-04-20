@@ -147,10 +147,12 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
 
     @Override
     public Checkpoint checkpoint(final Checkpoint checkpoint) throws IOException {
-        Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
-        // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
-        if (lastCheckpoint.compareTo(checkpoint) > 0) {
-            return lastCheckpoint;
+        if (this.numberOfActiveEntryLogsPerLedgerDir == 0) {
+            Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
+            // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
+            if (lastCheckpoint.compareTo(checkpoint) > 0) {
+                return lastCheckpoint;
+            }
         }
         memTable.flush(this, checkpoint);
         return super.checkpoint(checkpoint);
@@ -186,17 +188,9 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
             public void run() {
                 try {
                     LOG.info("Started flushing mem table.");
-                    long logIdBeforeFlush = entryLogger.getCurrentLogId();
                     memTable.flush(SortedLedgerStorage.this);
-                    long logIdAfterFlush = entryLogger.getCurrentLogId();
                     // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
-                    // if a memory table is flushed spanning over two entry log files, we also roll log. this is
-                    // for performance consideration: since we don't wanna checkpoint a new log file that ledger
-                    // storage is writing to.
-                    if (entryLogger.reachEntryLogLimit(0) || logIdAfterFlush != logIdBeforeFlush) {
-                        entryLogger.rollLog();
-                        LOG.info("Rolling entry logger since it reached size limitation");
-                    }
+                    entryLogger.rollLogsIfEntryLogLimitReached();
                 } catch (IOException e) {
                     // TODO: if we failed to flush data, we should switch the bookie back to readonly mode
                     //       or shutdown it.
