@@ -25,16 +25,28 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
+import org.apache.bookkeeper.util.OrderedSafeExecutor;
+import org.apache.bookkeeper.util.SafeRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 
@@ -121,13 +133,17 @@ public class EntryMemTable {
     private final OpStatsLogger getEntryStats;
     private final Counter flushBytesCounter;
     private final Counter throttlingCounter;
+    private final OrderedSafeExecutor flushExecutor;
+    private final int memtableFlushTimeoutInSeconds;
 
     /**
-    * Constructor.
-    * @param conf Server configuration
-    */
+     * Constructor.
+     * 
+     * @param conf
+     *            Server configuration
+     */
     public EntryMemTable(final ServerConfiguration conf, final CheckpointSource source,
-                         final StatsLogger statsLogger) {
+            OrderedSafeExecutor flushExecutor, final StatsLogger statsLogger) {        
         this.checkpointSource = source;
         this.kvmap = newSkipList();
         this.snapshot = EntrySkipList.EMPTY_VALUE;
@@ -144,6 +160,8 @@ public class EntryMemTable {
         this.getEntryStats = statsLogger.getOpStatsLogger(SKIP_LIST_GET_ENTRY);
         this.flushBytesCounter = statsLogger.getCounter(SKIP_LIST_FLUSH_BYTES);
         this.throttlingCounter = statsLogger.getCounter(SKIP_LIST_THROTTLING);
+        this.flushExecutor = flushExecutor;
+        this.memtableFlushTimeoutInSeconds = conf.getMemtableFlushTimeoutInSeconds();
     }
 
     void dump() {
@@ -239,6 +257,14 @@ public class EntryMemTable {
      * Only this function change non-empty this.snapshot.
      */
     private long flushSnapshot(final SkipListFlusher flusher, Checkpoint checkpoint) throws IOException {
+        if (flushExecutor == null) {
+            return flushSnapshotSequentially(flusher, checkpoint);
+        } else {
+            return flushSnapshotParallelly(flusher, checkpoint);
+        }
+    }
+        
+    long flushSnapshotSequentially(final SkipListFlusher flusher, Checkpoint checkpoint) throws IOException {
         long size = 0;
         if (this.snapshot.compareTo(checkpoint) < 0) {
             long ledger, ledgerGC = -1;
@@ -266,6 +292,80 @@ public class EntryMemTable {
         return size;
     }
 
+    long flushSnapshotParallelly(final SkipListFlusher flusher, Checkpoint checkpoint) throws IOException {
+        AtomicLong flushedSize = new AtomicLong();
+        if (this.snapshot.compareTo(checkpoint) < 0) {
+            synchronized (this) {
+                EntrySkipList keyValues = this.snapshot;
+                if (keyValues.compareTo(checkpoint) < 0) {
+                    NavigableSet<EntryKey> keyValuesSet = keyValues.keySet();
+                    Map<Long, List<EntryKeyValue>> entryKeyValuesMap = new HashMap<Long, List<EntryKeyValue>>(); 
+
+                    for (EntryKey key : keyValuesSet) {
+                        EntryKeyValue kv = (EntryKeyValue) key;
+                        Long ledger = kv.getLedgerId();
+                        if (!entryKeyValuesMap.containsKey(ledger)) {
+                            entryKeyValuesMap.put(ledger, new LinkedList<EntryKeyValue>());
+                        }
+                        entryKeyValuesMap.get(ledger).add(kv);
+                    }
+                    
+                    CountDownLatch latch = new CountDownLatch(entryKeyValuesMap.size());
+                    AtomicBoolean isFlushThreadInterrupted = new AtomicBoolean(false);
+                    AtomicReference<Exception> exceptionWhileFlushingParallelly =  new AtomicReference<Exception>();
+                    Thread mainFlushThread = Thread.currentThread();
+                    
+                    for (Long ledgerId : entryKeyValuesMap.keySet()) {
+                        List<EntryKeyValue> entryKeyValuesOfALedger = entryKeyValuesMap.get(ledgerId);
+                        flushExecutor.submitOrdered(ledgerId, new SafeRunnable() {
+                            @Override
+                            public void safeRun() {
+                                for (EntryKeyValue entryKeyValue : entryKeyValuesOfALedger) {
+                                    try {
+                                        flusher.process(ledgerId, entryKeyValue.getEntryId(),
+                                                entryKeyValue.getValueAsByteBuffer());
+                                        flushedSize.addAndGet(entryKeyValue.getLength());
+                                    } catch (NoLedgerException exception) {
+                                        Logger.info(
+                                                "Got NoLedgerException while flushing entry: {}. The ledger must be deleted after this entry is added to the Memtable",
+                                                entryKeyValue);
+                                        break;
+                                    } catch (Exception exc) {
+                                        Logger.error(
+                                                "Got Exception while trying to flush process entry: " + entryKeyValue,
+                                                exc);
+                                        if (isFlushThreadInterrupted.compareAndSet(false, true)) {
+                                            exceptionWhileFlushingParallelly.set(exc);
+                                            mainFlushThread.interrupt();
+                                        }
+                                        // return without countdowning the latch since we got unexpected Exception
+                                        return;
+                                    }
+                                }
+                                latch.countDown();
+                            }
+                        });
+                    }
+                    
+                    try {
+                        while (!latch.await(memtableFlushTimeoutInSeconds, TimeUnit.SECONDS)) {
+                            Logger.error("Entrymemtable parallel flush has not completed in {0} secs, so waiting again",
+                                    memtableFlushTimeoutInSeconds);
+                        }
+                        assert (exceptionWhileFlushingParallelly.get() == null);
+                        flushBytesCounter.add(flushedSize.get());
+                        clearSnapshot(keyValues);
+                    } catch (InterruptedException ie) {
+                        Logger.error(
+                                "Got Interrupted exception while waiting for the flushexecutor to complete the entry flushes");
+                        throw new IOException("Failed to complete the flushSnapshotByParallelizing", exceptionWhileFlushingParallelly.get());
+                    }
+                }
+            }
+        }
+        return flushedSize.longValue();
+    }
+    
     /**
      * The passed snapshot was successfully persisted; it can be let go.
      * @param keyValues The snapshot to clean out.

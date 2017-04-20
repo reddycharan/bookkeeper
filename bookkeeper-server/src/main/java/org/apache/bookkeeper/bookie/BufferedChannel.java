@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import org.apache.bookkeeper.util.ZeroBuffer;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -38,22 +39,43 @@ public class BufferedChannel extends BufferedReadChannel {
     // The buffer used to write operations.
     protected final ByteBuffer writeBuffer;
     // The absolute position of the next write operation.
-    protected volatile long position;
+    protected final AtomicLong position;
 
-    // make constructor to be public for unit test
+    /*
+     * if unpersistedBytesBound is non-zero value, then after writing to writeBuffer, it will check if the
+     * unpersistedBytes is greater than unpersistedBytesBound and then calls flush method if it is greater.
+     * 
+     * It is a best-effort feature, since 'forceWrite' method is not
+     * synchronized and unpersistedBytes is reset in 'forceWrite' method before calling fileChannel.force
+     */
+    protected final long unpersistedBytesBound;
+    
+    /*
+     * it tracks the number of bytes which are not persisted yet by force writing the FileChannel. The unpersisted bytes
+     * could be in writeBuffer or in fileChannel system cache.
+     */
+    protected final AtomicLong unpersistedBytes;
+    
     public BufferedChannel(FileChannel fc, int capacity) throws IOException {
         // Use the same capacity for read and write buffers.
-        this(fc, capacity, capacity);
+        this(fc, capacity, 0l);
     }
 
-    public BufferedChannel(FileChannel fc, int writeCapacity, int readCapacity) throws IOException {
+    public BufferedChannel(FileChannel fc, int capacity, long unpersistedBytesBound) throws IOException {
+        // Use the same capacity for read and write buffers.
+        this(fc, capacity, capacity, unpersistedBytesBound);
+    }
+
+    public BufferedChannel(FileChannel fc, int writeCapacity, int readCapacity, long unpersistedBytesBound) throws IOException {
         super(fc, readCapacity);
         // Set the read buffer's limit to readCapacity.
         this.readBuffer.limit(readCapacity);
         this.writeCapacity = writeCapacity;
-        this.position = fc.position();
-        this.writeBufferStartPosition.set(position);
+        this.position = new AtomicLong(fc.position());
+        this.writeBufferStartPosition.set(position.get());
         this.writeBuffer = ByteBuffer.allocateDirect(writeCapacity);
+        this.unpersistedBytes = new AtomicLong(0);
+        this.unpersistedBytesBound = unpersistedBytesBound;
     }
 
     /**
@@ -64,23 +86,37 @@ public class BufferedChannel extends BufferedReadChannel {
      * @param src The source ByteBuffer which contains the data to be written.
      * @throws IOException if a write operation fails.
      */
-    synchronized public void write(ByteBuffer src) throws IOException {
+    public void write(ByteBuffer src) throws IOException {
         int copied = 0;
-        while(src.remaining() > 0) {
-            int truncated = 0;
-            if (writeBuffer.remaining() < src.remaining()) {
-                truncated = src.remaining() - writeBuffer.remaining();
-                src.limit(src.limit()-truncated);
+        boolean shouldForceWrite = false;
+        synchronized (this) {
+            while (src.remaining() > 0) {
+                int truncated = 0;
+                if (writeBuffer.remaining() < src.remaining()) {
+                    truncated = src.remaining() - writeBuffer.remaining();
+                    src.limit(src.limit() - truncated);
+                }
+                copied += src.remaining();
+                writeBuffer.put(src);
+                src.limit(src.limit() + truncated);
+                // if we have run out of buffer space, we should flush to the
+                // file
+                if (writeBuffer.remaining() == 0) {
+                    flushInternal();
+                }
             }
-            copied += src.remaining();
-            writeBuffer.put(src);
-            src.limit(src.limit()+truncated);
-            // if we have run out of buffer space, we should flush to the file
-            if (writeBuffer.remaining() == 0) {
-                flushInternal();
+            position.addAndGet(copied);
+            unpersistedBytes.addAndGet(copied);
+            if (unpersistedBytesBound > 0) {
+                if (unpersistedBytes.get() > unpersistedBytesBound) {
+                    flushInternal();
+                    shouldForceWrite = true;
+                }
             }
         }
-        position += copied;
+        if (shouldForceWrite) {
+            forceWrite(false);
+        }
     }
 
     /**
@@ -88,7 +124,7 @@ public class BufferedChannel extends BufferedReadChannel {
      * @return
      */
     public long position() {
-        return position;
+        return position.get();
     }
 
     /**
@@ -107,14 +143,18 @@ public class BufferedChannel extends BufferedReadChannel {
      * @throws IOException if the write or sync operation fails.
      */
     public void flush(boolean shouldForceWrite) throws IOException {
+        flush(shouldForceWrite, false);
+    }
+
+    public void flush(boolean shouldForceWrite, boolean forceMetadata) throws IOException {
         synchronized(this) {
             flushInternal();
         }
         if (shouldForceWrite) {
-            forceWrite(false);
+            forceWrite(forceMetadata);
         }
     }
-
+    
     /**
      * Write any data in the buffer to the file and advance the writeBufferPosition
      * Callers are expected to synchronize appropriately
@@ -135,6 +175,20 @@ public class BufferedChannel extends BufferedReadChannel {
         // the force write, any flush that happens after this may or may
         // not be flushed
         long positionForceWrite = writeBufferStartPosition.get();
+        /*
+         * since forceWrite method is not called in synchronized block, to make
+         * sure we are not undercounting unpersistedBytes, setting
+         * unpersistedBytes to the current number of bytes in writeBuffer.
+         * 
+         * since we are calling fileChannel.force, bytes which are written to
+         * filechannel (system filecache) will be persisted to the disk. So
+         * we dont need to consider those bytes for setting value to 
+         * unpersistedBytes.
+         * 
+         */
+        synchronized (this) {
+            unpersistedBytes.set(writeBuffer.position());
+        }
         fileChannel.force(forceMetadata);
         return positionForceWrite;
     }
@@ -200,5 +254,13 @@ public class BufferedChannel extends BufferedReadChannel {
     synchronized public void clear() {
         super.clear();
         writeBuffer.clear();
+    }
+
+    synchronized public int getNumOfBytesInWriteBuffer() {
+        return writeBuffer.position();
+    }
+    
+    long getUnpersistedBytes() {
+        return unpersistedBytes.get();
     }
 }

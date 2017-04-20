@@ -31,6 +31,7 @@ import org.apache.bookkeeper.bookie.EntryLogger.EntryLogListener;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -99,14 +100,15 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     GarbageCollectorThread gcThread;
 
     // this indicates that a write has happened since the last flush
-    private volatile boolean somethingWritten = false;
+    private AtomicBoolean somethingWritten = new AtomicBoolean(false);
 
     // Expose Stats
     private OpStatsLogger getOffsetStats;
     private OpStatsLogger getEntryStats;
+    protected boolean entryLogPerLedgerEnabled;
 
     InterleavedLedgerStorage() {
-        activeLedgers = new SnapshotMap<Long, Boolean>();
+        activeLedgers = new SnapshotMap<Long, Boolean>();     
     }
 
     @Override
@@ -115,6 +117,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                            CheckpointSource checkpointSource, StatsLogger statsLogger)
             throws IOException {
         this.conf = conf;
+        this.entryLogPerLedgerEnabled = conf.isEntryLogPerLedgerEnabled();
         this.checkpointSource = checkpointSource;
         entryLogger = new EntryLogger(conf, ledgerDirsManager, this);
         ledgerCache = new LedgerCacheImpl(conf, activeLedgers,
@@ -277,7 +280,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     }
 
     @Override
-    synchronized public long addEntry(ByteBuffer entry) throws IOException {
+    public long addEntry(ByteBuffer entry) throws IOException {
         long ledgerId = entry.getLong();
         long entryId = entry.getLong();
         long lac = entry.getLong();
@@ -366,28 +369,33 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
     @Override
     public Checkpoint checkpoint(Checkpoint checkpoint) throws IOException {
-        Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
-        // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
-        if (lastCheckpoint.compareTo(checkpoint) > 0) {
-            return lastCheckpoint;
-        }
-        // we don't need to check somethingwritten since checkpoint
-        // is scheduled when rotate an entry logger file. and we could
-        // not set somethingWritten to false after checkpoint, since
-        // current entry logger file isn't flushed yet.
-        flushOrCheckpoint(true);
-        // after the ledger storage finished checkpointing, try to clear the done checkpoint
+        if (!entryLogPerLedgerEnabled) {
+            Checkpoint lastCheckpoint = checkpointHolder.getLastCheckpoint();
+            // if checkpoint is less than last checkpoint, we don't need to do checkpoint again.
+            if (lastCheckpoint.compareTo(checkpoint) > 0) {
+                return lastCheckpoint;
+            }
+            // we don't need to check somethingwritten since checkpoint
+            // is scheduled when rotate an entry logger file. and we could
+            // not set somethingWritten to false after checkpoint, since
+            // current entry logger file isn't flushed yet.
+            flushOrCheckpoint(true);
+            // after the ledger storage finished checkpointing, try to clear the done checkpoint
 
-        checkpointHolder.clearLastCheckpoint(lastCheckpoint);
-        return lastCheckpoint;
+            checkpointHolder.clearLastCheckpoint(lastCheckpoint);
+            return lastCheckpoint;
+        } else {
+            flushOrCheckpoint(false);
+            return checkpoint;
+        }
     }
 
     @Override
     synchronized public void flush() throws IOException {
-        if (!somethingWritten) {
+        if (!somethingWritten.get()) {
             return;
         }
-        somethingWritten = false;
+        somethingWritten.set(false);
         flushOrCheckpoint(false);
     }
 
@@ -439,12 +447,12 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         processEntry(ledgerId, entryId, entry, true);
     }
 
-    synchronized protected void processEntry(long ledgerId, long entryId, ByteBuffer entry, boolean rollLog)
+    protected void processEntry(long ledgerId, long entryId, ByteBuffer entry, boolean rollLog)
             throws IOException {
         /*
          * Touch dirty flag
          */
-        somethingWritten = true;
+        somethingWritten.set(true);
 
         /*
          * Log the entry
