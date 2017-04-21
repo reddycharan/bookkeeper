@@ -1,0 +1,28 @@
+{
+    "namespace": "com.salesforce.storagecloud",
+	"type": "record",
+	"name": "BKProxyLogRecord",
+	"fields": [
+		{"name": "log_start_year", "type": "int"},
+		{"name": "log_start_month", "type": "int"},
+		{"name": "log_start_day", "type": "int"},
+		{"name": "log_start_hour", "type": "int"},
+		{"name": "log_start_min", "type": "int"},
+		{"name": "log_start_sec", "type": "int"},
+		{"name": "log_hostname", "type": "string"},
+		{"name": "log_filename", "type": "string"},
+
+		{"name": "time", "type": "long"},
+		{"name": "type", "type": "string"},
+		{"name": "thread", "type": "string"},
+		{"name": "src_file", "type": "string"},
+		{"name": "src_linenum", "type": "int"},
+		{"name": "corr_id", "type": "string"},
+		{"name": "extentid", "type": "string"},
+		{"name": "extentid_long", "type": "long"},
+		{"name": "fragmentid", "type": "long"},
+		{"name": "content", "type": ["null", "string"]},
+
+		{"name": "freeform_string", "type": ["null", "string"]}
+	]
+}

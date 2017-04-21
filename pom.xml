@@ -40,6 +40,7 @@
     <module>bookkeeper-proxy</module>
     <module>bookkeeper-benchmark</module>
     <module>bookkeeper-stats-providers</module>
+    <module>proxy-logparser</module>
   </modules>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
