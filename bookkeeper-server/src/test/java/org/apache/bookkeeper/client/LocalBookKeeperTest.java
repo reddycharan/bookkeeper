@@ -33,18 +33,18 @@ import org.junit.Test;
  * Tests of the main BookKeeper client using networkless comunication
  */
 public class LocalBookKeeperTest extends BaseTestCase {
-
-    protected ServerConfiguration newServerConfiguration() throws Exception {
+    
+    protected ServerConfiguration newServerConfiguration() throws Exception {       
         return super
                 .newServerConfiguration()
                 .setEnableLocalTransport(true);
     }
-
+        
     DigestType digestType;
-
+    
     public LocalBookKeeperTest(DigestType digestType) {
-        super(4);
-        this.digestType = digestType;
+        super(4);            
+        this.digestType=digestType;
     }
 
     @Test
@@ -56,7 +56,7 @@ public class LocalBookKeeperTest extends BaseTestCase {
         CountDownLatch l = new CountDownLatch(1);
         zkUtil.sleepServer(5, l);
         l.await();
-
+                
         BookKeeper bkc = new BookKeeper(conf);
         LedgerHandle h = bkc.createLedger(1,1,digestType, "testPasswd".getBytes());
         h.addEntry("test".getBytes());

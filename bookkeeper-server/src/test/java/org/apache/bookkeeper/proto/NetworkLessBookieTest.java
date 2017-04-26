@@ -32,9 +32,6 @@ import org.apache.bookkeeper.test.BaseTestCase;
 import org.junit.Assert;
 import org.junit.Test;
 
-import io.netty.channel.Channel;
-import io.netty.channel.local.LocalChannel;
-
 /**
  * Tests of the main BookKeeper client using networkless comunication
  */
@@ -71,11 +68,12 @@ public class NetworkLessBookieTest extends BaseTestCase {
         }
 
         for (BookieServer bk : bs) {
-            for (Channel channel : bk.nettyServer.allChannels) {
-                if (!(channel instanceof LocalChannel)) {
+            for (ChannelManager channel : bk.nettyServer.channels) {
+                if (! (channel instanceof VMLocalChannelManager)) {
                     Assert.fail();
                 }
             }
         }
     }
+
 }

@@ -19,12 +19,11 @@ package org.apache.bookkeeper.proto;
 
 import java.util.concurrent.TimeUnit;
 
-import io.netty.channel.Channel;
-
 import org.apache.bookkeeper.proto.BookieProtocol.Request;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SafeRunnable;
+import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +55,7 @@ abstract class PacketProcessorBase extends SafeRunnable {
     }
 
     protected void sendResponse(int rc, Object response, OpStatsLogger statsLogger) {
-        channel.writeAndFlush(response, channel.voidPromise());
+        channel.write(response);
         if (BookieProtocol.EOK == rc) {
             statsLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(enqueueNanos), TimeUnit.NANOSECONDS);
         } else {

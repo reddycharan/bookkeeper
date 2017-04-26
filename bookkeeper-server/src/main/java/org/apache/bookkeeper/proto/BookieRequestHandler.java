@@ -21,76 +21,72 @@
 package org.apache.bookkeeper.proto;
 
 import java.nio.channels.ClosedChannelException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.processor.RequestProcessor;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.ExceptionEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.group.ChannelGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 
 /**
  * Serverside handler for bookkeeper requests
  */
-class BookieRequestHandler extends ChannelInboundHandlerAdapter {
+class BookieRequestHandler extends SimpleChannelHandler {
 
     private final static Logger LOG = LoggerFactory.getLogger(BookieRequestHandler.class);
+    private final static String auditTag = " - AUDIT - ";
     private final RequestProcessor requestProcessor;
     private final ChannelGroup allChannels;
 
     BookieRequestHandler(ServerConfiguration conf, RequestProcessor processor, ChannelGroup allChannels) {
-        this.requestProcessor = processor;
-        this.allChannels = allChannels;
+	this.requestProcessor = processor;
+	this.allChannels = allChannels;
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        LOG.info("Channel connected: {}", ctx.channel());
-
-        final SslHandler sslHandler = ctx.pipeline().get(SslHandler.class);
-        if (sslHandler != null) {
-            sslHandler.handshakeFuture().addListener(new GenericFutureListener<Future<? super Channel>>() {
-
-                @Override
-                public void operationComplete(Future<? super Channel> future) throws Exception {
-                    LOG.info("Session is protected by: {}", sslHandler.engine().getSession().getCipherSuite());
-                }
-
-            });
-        }
+    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+	allChannels.add(ctx.getChannel());
     }
 
     @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        allChannels.add(ctx.channel());
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+	Throwable throwable = e.getCause();
+	if (throwable instanceof ClosedChannelException) {
+	    LOG.info("Client died before request could be completed", throwable);
+	    return;
+	}
+	LOG.error(auditTag + "Unhandled exception occurred in I/O thread or handler. Connection: {}" + "\tException: {}", e, throwable.getMessage());
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        LOG.info("Channels disconnected: {}", ctx.channel());
+    public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+	LOG.info(auditTag + "Channel connected {}", e);
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        if (cause instanceof ClosedChannelException) {
-            LOG.info("Client died before request could be completed", cause);
-            return;
-        }
-        LOG.error("Unhandled exception occurred in I/O thread or handler:", cause);
+    public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+	LOG.info(auditTag + "Channel disconnected {}.", e);
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (!(msg instanceof BookkeeperProtocol.Request || msg instanceof BookieProtocol.Request)) {
-            ctx.fireChannelRead(msg);
-            return;
-        }
-        requestProcessor.processRequest(msg, ctx.channel());
+    public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+	Object event = e.getMessage();
+	if (!(event instanceof BookkeeperProtocol.Request || event instanceof BookieProtocol.Request)) {
+	    ctx.sendUpstream(e);
+	    return;
+	}
+	requestProcessor.processRequest(event, ctx.getChannel());
     }
+
 }

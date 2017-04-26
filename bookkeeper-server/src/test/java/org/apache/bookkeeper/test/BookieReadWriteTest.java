@@ -264,7 +264,7 @@ public class BookieReadWriteTest extends MultiLedgerManagerMultiDigestTestCase
         }
     }
 
-    @Test(timeout=60000)
+    @Test
     public void testReadWriteAsyncSingleClient200() throws IOException {
         testReadWriteAsyncSingleClient(200);
     }

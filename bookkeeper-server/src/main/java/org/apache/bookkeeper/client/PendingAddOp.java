@@ -17,11 +17,6 @@
  */
 package org.apache.bookkeeper.client;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.Timeout;
-import io.netty.util.TimerTask;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +28,9 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SafeRunnable;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.util.Timeout;
+import org.jboss.netty.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +48,7 @@ import java.util.concurrent.RejectedExecutionException;
 class PendingAddOp implements WriteCallback, TimerTask {
     private final static Logger LOG = LoggerFactory.getLogger(PendingAddOp.class);
 
-    ByteBuf toSend;
+    ChannelBuffer toSend;
     AddCallback cb;
     Object ctx;
     long entryId;
@@ -171,14 +169,12 @@ class PendingAddOp implements WriteCallback, TimerTask {
         sendWriteRequest(bookieIndex);
     }
 
-    void initiate(ByteBuf toSend, int entryLength) {
+    void initiate(ChannelBuffer toSend, int entryLength) {
         if (timeoutSec > -1) {
             this.timeout = lh.bk.bookieClient.scheduleTimeout(this, timeoutSec, TimeUnit.SECONDS);
         }
         this.requestTimeNanos = MathUtils.nowInNano();
         this.toSend = toSend;
-        // Retain the buffer until all writes are complete
-        this.toSend.retain();
         this.entryLength = entryLength;
         for (int bookieIndex : writeSet) {
             sendWriteRequest(bookieIndex);
@@ -237,16 +233,9 @@ class PendingAddOp implements WriteCallback, TimerTask {
     }
 
     void submitCallback(final int rc) {
-        ReferenceCountUtil.release(toSend);
-
         if (null != timeout) {
             timeout.cancel();
         }
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Submit callback (lid:{}, eid: {}). rc:{}", new Object[] { lh.getId(), entryId, rc });
-        }
-
         long latencyNanos = MathUtils.elapsedNanos(requestTimeNanos);
         if (rc != BKException.Code.OK) {
             addOpLogger.registerFailedEvent(latencyNanos, TimeUnit.NANOSECONDS);

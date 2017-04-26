@@ -17,8 +17,6 @@
  */
 package org.apache.bookkeeper.proto;
 
-import io.netty.channel.Channel;
-
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -27,6 +25,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.util.MathUtils;
+import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,10 +76,7 @@ class WriteEntryProcessor extends PacketProcessorBase implements WriteCallback {
         } catch (BookieException e) {
             LOG.error("Unauthorized access to ledger " + add.getLedgerId(), e);
             rc = BookieProtocol.EUA;
-        } finally {
-            add.release();
         }
-
         if (rc != BookieProtocol.EOK) {
             requestProcessor.addEntryStats.registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos),
                     TimeUnit.NANOSECONDS);

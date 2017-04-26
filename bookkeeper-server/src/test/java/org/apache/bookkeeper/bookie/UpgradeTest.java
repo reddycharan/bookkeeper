@@ -23,7 +23,6 @@ package org.apache.bookkeeper.bookie;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import io.netty.buffer.ByteBuf;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -89,16 +88,15 @@ public class UpgradeTest extends BookKeeperClusterTestCase {
         long lastConfirmed = LedgerHandle.INVALID_ENTRY_ID;
 
         for (int i = 1; i <= numEntries; i++) {
-            ByteBuf packet = ClientUtil.generatePacket(ledgerId, i, lastConfirmed,
-                                                          i*data.length, data);
+            ByteBuffer packet = ClientUtil.generatePacket(ledgerId, i, lastConfirmed,
+                                                          i*data.length, data).toByteBuffer();
             lastConfirmed = i;
             ByteBuffer lenBuff = ByteBuffer.allocate(4);
-            lenBuff.putInt(packet.readableBytes());
+            lenBuff.putInt(packet.remaining());
             lenBuff.flip();
 
             bc.write(lenBuff);
-            bc.write(packet.nioBuffer());
-            packet.release();
+            bc.write(packet);
         }
         bc.flush(true);
 

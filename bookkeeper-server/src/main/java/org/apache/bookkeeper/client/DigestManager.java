@@ -18,18 +18,16 @@ package org.apache.bookkeeper.client;
  * limitations under the License.
  */
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
-
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBufferInputStream;
+import org.jboss.netty.buffer.ChannelBuffers;
 
 /**
  * This class takes an entry, attaches a digest to it and packages it with relevant
@@ -49,12 +47,11 @@ abstract class DigestManager {
     abstract int getMacCodeLength();
 
     void update(byte[] data) {
-        update(Unpooled.wrappedBuffer(data, 0, data.length));
+        update(data, 0, data.length);
     }
 
-    abstract void update(ByteBuf buffer);
-
-    abstract void populateValueAndReset(ByteBuf buffer);
+    abstract void update(byte[] data, int offset, int length);
+    abstract byte[] getValueAndReset();
 
     final int macCodeLength;
 
@@ -86,21 +83,26 @@ abstract class DigestManager {
      * @return
      */
 
-    public ByteBuf computeDigestAndPackageForSending(long entryId, long lastAddConfirmed, long length, byte[] data,
-            int doffset, int dlength) {
-        ByteBuf headersBuffer = PooledByteBufAllocator.DEFAULT.buffer(METADATA_LENGTH + macCodeLength);
-        headersBuffer.writeLong(ledgerId);
-        headersBuffer.writeLong(entryId);
-        headersBuffer.writeLong(lastAddConfirmed);
-        headersBuffer.writeLong(length);
+    public ChannelBuffer computeDigestAndPackageForSending(long entryId, long lastAddConfirmed, long length, byte[] data, int doffset, int dlength) {
 
-        ByteBuf dataBuffer = Unpooled.wrappedBuffer(data, doffset, dlength);
+        byte[] bufferArray = new byte[METADATA_LENGTH + macCodeLength];
+        ByteBuffer buffer = ByteBuffer.wrap(bufferArray);
+        buffer.putLong(ledgerId);
+        buffer.putLong(entryId);
+        buffer.putLong(lastAddConfirmed);
+        buffer.putLong(length);
+        buffer.flip();
 
-        update(headersBuffer);
-        update(dataBuffer);
-        populateValueAndReset(headersBuffer);
+        update(buffer.array(), 0, METADATA_LENGTH);
+        update(data, doffset, dlength);
+        byte[] digest = getValueAndReset();
 
-        return new CompositeByteBuf(PooledByteBufAllocator.DEFAULT, false, 2, headersBuffer, dataBuffer);
+        buffer.limit(buffer.capacity());
+        buffer.position(METADATA_LENGTH);
+        buffer.put(digest);
+        buffer.flip();
+
+        return ChannelBuffers.wrappedBuffer(ChannelBuffers.wrappedBuffer(buffer), ChannelBuffers.wrappedBuffer(data, doffset, dlength));
     }
 
     /**
@@ -110,27 +112,38 @@ abstract class DigestManager {
      * @return
      */
 
-    public ByteBuf computeDigestAndPackageForSendingLac(long lac) {
-        ByteBuf headersBuffer = PooledByteBufAllocator.DEFAULT.buffer(LAC_METADATA_LENGTH + macCodeLength);
-        headersBuffer.writeLong(ledgerId);
-        headersBuffer.writeLong(lac);
+    public ChannelBuffer computeDigestAndPackageForSendingLac(long lac) {
 
-        update(headersBuffer);
-        populateValueAndReset(headersBuffer);
+        byte[] bufferArray = new byte[LAC_METADATA_LENGTH + macCodeLength];
+        ByteBuffer buffer = ByteBuffer.wrap(bufferArray);
+        buffer.putLong(ledgerId);
+        buffer.putLong(lac);
+        buffer.flip();
 
-        return headersBuffer;
+        update(buffer.array(), 0, LAC_METADATA_LENGTH);
+        byte[] digest = getValueAndReset();
+
+        buffer.limit(buffer.capacity());
+        buffer.position(LAC_METADATA_LENGTH);
+        buffer.put(digest);
+        buffer.flip();
+
+        return ChannelBuffers.wrappedBuffer(ChannelBuffers.wrappedBuffer(buffer));
     }
 
-    private void verifyDigest(ByteBuf dataReceived) throws BKDigestMatchException {
+    private void verifyDigest(ChannelBuffer dataReceived) throws BKDigestMatchException {
         verifyDigest(LedgerHandle.INVALID_ENTRY_ID, dataReceived, true);
     }
 
-    private void verifyDigest(long entryId, ByteBuf dataReceived) throws BKDigestMatchException {
+    private void verifyDigest(long entryId, ChannelBuffer dataReceived) throws BKDigestMatchException {
         verifyDigest(entryId, dataReceived, false);
     }
 
-    private void verifyDigest(long entryId, ByteBuf dataReceived, boolean skipEntryIdCheck)
+    private void verifyDigest(long entryId, ChannelBuffer dataReceived, boolean skipEntryIdCheck)
             throws BKDigestMatchException {
+
+        ByteBuffer dataReceivedBuffer = dataReceived.toByteBuffer();
+        byte[] digest;
 
         if ((METADATA_LENGTH + macCodeLength) > dataReceived.readableBytes()) {
             logger.error("Data received is smaller than the minimum for this digest type. "
@@ -139,21 +152,17 @@ abstract class DigestManager {
                     this.getClass().getName(), dataReceived.readableBytes());
             throw new BKDigestMatchException();
         }
-        update(dataReceived.slice(0, METADATA_LENGTH));
+        update(dataReceivedBuffer.array(), dataReceivedBuffer.position(), METADATA_LENGTH);
 
         int offset = METADATA_LENGTH + macCodeLength;
-        update(dataReceived.slice(offset, dataReceived.readableBytes() - offset));
+        update(dataReceivedBuffer.array(), dataReceivedBuffer.position() + offset, dataReceived.readableBytes() - offset);
+        digest = getValueAndReset();
 
-        ByteBuf digest = PooledByteBufAllocator.DEFAULT.buffer(macCodeLength);
-        populateValueAndReset(digest);
-
-        try {
-            if (digest.compareTo(dataReceived.slice(METADATA_LENGTH, macCodeLength)) != 0) {
+        for (int i = 0; i < digest.length; i++) {
+            if (digest[i] != dataReceived.getByte(METADATA_LENGTH + i)) {
                 logger.error("Mac mismatch for ledger-id: " + ledgerId + ", entry-id: " + entryId);
                 throw new BKDigestMatchException();
             }
-        } finally {
-            digest.release();
         }
 
         long actualLedgerId = dataReceived.readLong();
@@ -173,7 +182,9 @@ abstract class DigestManager {
 
     }
 
-    long verifyDigestAndReturnLac(ByteBuf dataReceived) throws BKDigestMatchException{
+    long verifyDigestAndReturnLac(ChannelBuffer dataReceived) throws BKDigestMatchException{
+        ByteBuffer dataReceivedBuffer = dataReceived.toByteBuffer();
+        byte[] digest;
         if ((LAC_METADATA_LENGTH + macCodeLength) > dataReceived.readableBytes()) {
             logger.error("Data received is smaller than the minimum for this digest type."
                     + " Either the packet it corrupt, or the wrong digest is configured. "
@@ -181,24 +192,14 @@ abstract class DigestManager {
                     this.getClass().getName(), dataReceived.readableBytes());
             throw new BKDigestMatchException();
         }
-
-        update(dataReceived.slice(0, LAC_METADATA_LENGTH));
-
-        int offset = LAC_METADATA_LENGTH + macCodeLength;
-        update(dataReceived.slice(offset, dataReceived.readableBytes() - offset));
-
-        ByteBuf digest = PooledByteBufAllocator.DEFAULT.buffer(macCodeLength);
-        try {
-            populateValueAndReset(digest);
-
-            if (digest.compareTo(dataReceived.slice(LAC_METADATA_LENGTH, macCodeLength)) != 0) {
+        update(dataReceivedBuffer.array(), dataReceivedBuffer.position(), LAC_METADATA_LENGTH);
+        digest = getValueAndReset();
+        for (int i = 0; i < digest.length; i++) {
+            if (digest[i] != dataReceived.getByte(LAC_METADATA_LENGTH + i)) {
                 logger.error("Mac mismatch for ledger-id LAC: " + ledgerId);
                 throw new BKDigestMatchException();
             }
-        } finally {
-            digest.release();
         }
-
         long actualLedgerId = dataReceived.readLong();
         long lac = dataReceived.readLong();
         if (actualLedgerId != ledgerId) {
@@ -217,11 +218,11 @@ abstract class DigestManager {
      * @return
      * @throws BKDigestMatchException
      */
-    ByteBufInputStream verifyDigestAndReturnData(long entryId, ByteBuf dataReceived)
+    ChannelBufferInputStream verifyDigestAndReturnData(long entryId, ChannelBuffer dataReceived)
             throws BKDigestMatchException {
         verifyDigest(entryId, dataReceived);
         dataReceived.readerIndex(METADATA_LENGTH + macCodeLength);
-        return new ByteBufInputStream(dataReceived);
+        return new ChannelBufferInputStream(dataReceived);
     }
 
     static class RecoveryData {
@@ -235,7 +236,7 @@ abstract class DigestManager {
 
     }
 
-    RecoveryData verifyDigestAndReturnLastConfirmed(ByteBuf dataReceived) throws BKDigestMatchException {
+    RecoveryData verifyDigestAndReturnLastConfirmed(ChannelBuffer dataReceived) throws BKDigestMatchException {
         verifyDigest(dataReceived);
         dataReceived.readerIndex(8);
 

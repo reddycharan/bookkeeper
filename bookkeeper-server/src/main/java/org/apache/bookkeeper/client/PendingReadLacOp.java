@@ -19,11 +19,13 @@ package org.apache.bookkeeper.client;
 
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
 import org.apache.bookkeeper.client.DigestManager.RecoveryData;
+import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
+import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import io.netty.buffer.ByteBuf;
+import org.jboss.netty.buffer.ChannelBuffer;
 
 /**
  * This represents a pending ReadLac operation.
@@ -72,8 +74,7 @@ class PendingReadLacOp implements ReadLacCallback {
     }
 
     @Override
-    public void readLacComplete(int rc, long ledgerId, final ByteBuf lacBuffer, final ByteBuf lastEntryBuffer,
-            Object ctx) {
+    public void readLacComplete(int rc, long ledgerId, final ChannelBuffer lacBuffer, final ChannelBuffer lastEntryBuffer, Object ctx) {
         int bookieIndex = (Integer) ctx;
         numResponsesPending--;
         boolean heardValidResponse = false;

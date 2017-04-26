@@ -21,8 +21,7 @@ package org.apache.bookkeeper.proto;
  *
  */
 
-import io.netty.buffer.ByteBuf;
-
+import org.jboss.netty.buffer.ChannelBuffer;
 import java.nio.ByteBuffer;
 
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage;
@@ -247,28 +246,24 @@ public interface BookieProtocol {
     }
 
     static class AddRequest extends Request {
-        final ByteBuf data;
+        final ChannelBuffer data;
 
         AddRequest(byte protocolVersion, long ledgerId, long entryId,
-                   short flags, byte[] masterKey, ByteBuf data) {
+                   short flags, byte[] masterKey, ChannelBuffer data) {
             super(protocolVersion, ADDENTRY, ledgerId, entryId, flags, masterKey);
-            this.data = data.retain();
+            this.data = data;
         }
 
-        ByteBuf getData() {
+        ChannelBuffer getData() {
             return data;
         }
 
         ByteBuffer getDataAsByteBuffer() {
-            return data.nioBuffer().slice();
+            return data.toByteBuffer().slice();
         }
 
         boolean isRecoveryAdd() {
             return (flags & FLAG_RECOVERY_ADD) == FLAG_RECOVERY_ADD;
-        }
-
-        void release() {
-            data.release();
         }
     }
 
@@ -344,14 +339,14 @@ public interface BookieProtocol {
     }
 
     static class ReadResponse extends Response {
-        final ByteBuf data;
+        final ChannelBuffer data;
 
         ReadResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId) {
             super(protocolVersion, READENTRY, errorCode, ledgerId, entryId);
             this.data = null;
         }
 
-        ReadResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId, ByteBuf data) {
+        ReadResponse(byte protocolVersion, int errorCode, long ledgerId, long entryId, ChannelBuffer data) {
             super(protocolVersion, READENTRY, errorCode, ledgerId, entryId);
             this.data = data;
         }
@@ -360,7 +355,7 @@ public interface BookieProtocol {
             return data != null;
         }
 
-        ByteBuf getData() {
+        ChannelBuffer getData() {
             return data;
         }
     }

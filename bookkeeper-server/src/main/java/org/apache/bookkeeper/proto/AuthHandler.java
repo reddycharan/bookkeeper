@@ -20,13 +20,6 @@
  */
 package org.apache.bookkeeper.proto;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-import io.netty.channel.local.LocalChannel;
-
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
@@ -40,13 +33,20 @@ import org.apache.bookkeeper.auth.ClientAuthProvider;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.DefaultExceptionEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.local.LocalChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class AuthHandler {
     static final Logger LOG = LoggerFactory.getLogger(AuthHandler.class);
 
-    static class ServerSideHandler extends ChannelInboundHandlerAdapter {
+    static class ServerSideHandler extends SimpleChannelHandler {
         volatile boolean authenticated = false;
         final BookieAuthProvider.Factory authProviderFactory;
         BookieAuthProvider authProvider;
@@ -57,77 +57,81 @@ class AuthHandler {
         }
 
         @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            LOG.info("Channel open {}", ctx.channel());
-            SocketAddress remote = ctx.channel().remoteAddress();
+        public void channelOpen(ChannelHandlerContext ctx,
+                                ChannelStateEvent e) throws Exception {
+            LOG.info("Channel open {}", ctx.getChannel());
+            SocketAddress remote  = ctx.getChannel().getRemoteAddress();
             if (remote instanceof InetSocketAddress) {
                 authProvider = authProviderFactory.newProvider((InetSocketAddress)remote,
                         new AuthHandshakeCompleteCallback());
-            } else if (ctx.channel() instanceof LocalChannel) {
+            } else if (ctx.getChannel() instanceof LocalChannel) {
                 authProvider = authProviderFactory.newProvider(new InetSocketAddress(Inet4Address.getLocalHost(), 0),
                         new AuthHandshakeCompleteCallback());
             } else {
                 LOG.error("Unknown channel ({}) or socket type {} for {}",
-                        new Object[] { ctx.channel(), remote != null ? remote.getClass() : null, remote });
+                        new Object[] { ctx.getChannel(), remote != null ? remote.getClass() : null, remote });
             }
-            super.channelActive(ctx);
+            super.channelOpen(ctx, e);
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        public void messageReceived(ChannelHandlerContext ctx,
+                                    MessageEvent e)
+                throws Exception {
             if (authProvider == null) {
                 // close the channel, authProvider should only be
                 // null if the other end of line is an InetSocketAddress
                 // anything else is strange, and we don't want to deal
                 // with it
-                ctx.channel().close();
+                ctx.getChannel().close();
                 return;
             }
 
+            Object event = e.getMessage();
             if (authenticated) {
-                super.channelRead(ctx, msg);
-            } else if (msg instanceof BookieProtocol.AuthRequest) { // pre-PB-client
-                BookieProtocol.AuthRequest req = (BookieProtocol.AuthRequest) msg;
+                super.messageReceived(ctx, e);
+            } else if (event instanceof BookieProtocol.AuthRequest) { // pre-PB-client
+                BookieProtocol.AuthRequest req = (BookieProtocol.AuthRequest)event;
                 assert (req.getOpCode() == BookieProtocol.AUTH);
-                if (checkAuthPlugin(req.getAuthMessage(), ctx.channel())) {
+                if (checkAuthPlugin(req.getAuthMessage(), ctx.getChannel())) {
                     authProvider.process(req.getAuthMessage(),
-                            new AuthResponseCallbackLegacy(req, ctx.channel()));
+                                new AuthResponseCallbackLegacy(req, ctx.getChannel()));
                 } else {
-                    ctx.channel().close();
+                    ctx.getChannel().close();
                 }
-            } else if (msg instanceof BookieProtocol.Request) {
-                BookieProtocol.Request req = (BookieProtocol.Request) msg;
+            } else if (event instanceof BookieProtocol.Request) {
+                BookieProtocol.Request req = (BookieProtocol.Request)event;
                 if (req.getOpCode() == BookieProtocol.ADDENTRY) {
-                    ctx.channel().writeAndFlush(
+                    ctx.getChannel().write(
                             new BookieProtocol.AddResponse(
                                     req.getProtocolVersion(), BookieProtocol.EUA,
                                     req.getLedgerId(), req.getEntryId()));
                 } else if (req.getOpCode() == BookieProtocol.READENTRY) {
-                    ctx.channel().writeAndFlush(
+                    ctx.getChannel().write(
                             new BookieProtocol.ReadResponse(
                                     req.getProtocolVersion(), BookieProtocol.EUA,
                                     req.getLedgerId(), req.getEntryId()));
                 } else {
-                    ctx.channel().close();
+                    ctx.getChannel().close();
                 }
-            } else if (msg instanceof BookkeeperProtocol.Request) { // post-PB-client
-                BookkeeperProtocol.Request req = (BookkeeperProtocol.Request) msg;
+            } else if (event instanceof BookkeeperProtocol.Request) { // post-PB-client
+                BookkeeperProtocol.Request req = (BookkeeperProtocol.Request)event;
                 if (req.getHeader().getOperation() == BookkeeperProtocol.OperationType.AUTH
                         && req.hasAuthRequest()
-                        && checkAuthPlugin(req.getAuthRequest(), ctx.channel())) {
+                        && checkAuthPlugin(req.getAuthRequest(), ctx.getChannel())) {
                     authProvider.process(req.getAuthRequest(),
-                            new AuthResponseCallback(req, ctx.channel()));
+                                         new AuthResponseCallback(req, ctx.getChannel()));
                 } else {
                     BookkeeperProtocol.Response.Builder builder
                         = BookkeeperProtocol.Response.newBuilder()
                         .setHeader(req.getHeader())
                         .setStatus(BookkeeperProtocol.StatusCode.EUA);
 
-                    ctx.channel().writeAndFlush(builder.build());
+                    ctx.getChannel().write(builder.build());
                 }
             } else {
                 // close the channel, junk coming over it
-                ctx.channel().close();
+                ctx.getChannel().close();
             }
         }
 
@@ -157,7 +161,8 @@ class AuthHandler {
                     channel.close();
                     return;
                 }
-                channel.writeAndFlush(new BookieProtocol.AuthResponse(req.getProtocolVersion(), newam));
+                channel.write(new BookieProtocol.AuthResponse(req.getProtocolVersion(),
+                                                              newam));
             }
         }
 
@@ -179,13 +184,13 @@ class AuthHandler {
                     LOG.error("Error processing auth message, closing connection");
 
                     builder.setStatus(BookkeeperProtocol.StatusCode.EUA);
-                    channel.writeAndFlush(builder.build());
+                    channel.write(builder.build());
                     channel.close();
                     return;
                 } else {
                     builder.setStatus(BookkeeperProtocol.StatusCode.EOK)
                         .setAuthResponse(newam);
-                    channel.writeAndFlush(builder.build());
+                    channel.write(builder.build());
                 }
             }
         }
@@ -202,12 +207,12 @@ class AuthHandler {
         }
     }
 
-    static class ClientSideHandler extends ChannelDuplexHandler {
+    static class ClientSideHandler extends SimpleChannelHandler {
         volatile boolean authenticated = false;
         final ClientAuthProvider.Factory authProviderFactory;
         ClientAuthProvider authProvider;
         AtomicLong transactionIdGenerator;
-        Queue<Object> waitingForAuth = new ConcurrentLinkedQueue<Object>();
+        Queue<MessageEvent> waitingForAuth = new ConcurrentLinkedQueue<MessageEvent>();
 
         ClientSideHandler(ClientAuthProvider.Factory authProviderFactory,
                           AtomicLong transactionIdGenerator) {
@@ -217,33 +222,39 @@ class AuthHandler {
         }
 
         @Override
-        public void channelActive(ChannelHandlerContext ctx) throws Exception {
-            SocketAddress remote  = ctx.channel().remoteAddress();
+        public void channelConnected(ChannelHandlerContext ctx,
+                                     ChannelStateEvent e)
+                throws Exception {
+            SocketAddress remote  = ctx.getChannel().getRemoteAddress();
             if (remote instanceof InetSocketAddress) {
                 authProvider = authProviderFactory.newProvider((InetSocketAddress)remote,
                         new AuthHandshakeCompleteCallback(ctx));
-            } else if (ctx.channel() instanceof LocalChannel) {
+            } else if (ctx.getChannel() instanceof LocalChannel) {
                 authProvider = authProviderFactory.newProvider(new InetSocketAddress(Inet4Address.getLocalHost(), 0),
                         new AuthHandshakeCompleteCallback(ctx));
             } else {
                 LOG.error("Unknown channel ({}) or socket type {} for {}",
-                        new Object[] { ctx.channel(), remote != null ? remote.getClass() : null, remote });
+                        new Object[] { ctx.getChannel(), remote != null ? remote.getClass() : null, remote });
             }
 
             if (authProvider != null) {
                 authProvider.init(new AuthRequestCallback(ctx));
             }
-            super.channelActive(ctx);
+            super.channelConnected(ctx, e);
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        public void messageReceived(ChannelHandlerContext ctx,
+                                    MessageEvent e)
+                throws Exception {
             assert (authProvider != null);
 
+            Object event = e.getMessage();
+
             if (authenticated) {
-                super.channelRead(ctx, msg);
-            } else if (msg instanceof BookkeeperProtocol.Response) {
-                BookkeeperProtocol.Response resp = (BookkeeperProtocol.Response) msg;
+                super.messageReceived(ctx, e);
+            } else if (event instanceof BookkeeperProtocol.Response) {
+                BookkeeperProtocol.Response resp = (BookkeeperProtocol.Response)event;
                 if (resp.getHeader().getOperation() == BookkeeperProtocol.OperationType.AUTH) {
                     if (resp.getStatus() != BookkeeperProtocol.StatusCode.EOK) {
                         authenticationError(ctx, resp.getStatus().getNumber());
@@ -260,18 +271,20 @@ class AuthHandler {
         }
 
         @Override
-        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+        public void writeRequested(ChannelHandlerContext ctx,
+                                   MessageEvent e)
+                throws Exception {
             synchronized (this) {
                 if (authenticated) {
-                    super.write(ctx, msg, promise);
-                } else if (msg instanceof BookkeeperProtocol.Request) {
+                    super.writeRequested(ctx, e);
+                } else if (e.getMessage() instanceof BookkeeperProtocol.Request) {
                     // let auth messages through, queue the rest
-                    BookkeeperProtocol.Request req = (BookkeeperProtocol.Request) msg;
+                    BookkeeperProtocol.Request req = (BookkeeperProtocol.Request)e.getMessage();
                     if (req.getHeader().getOperation()
                             == BookkeeperProtocol.OperationType.AUTH) {
-                        super.write(ctx, msg, promise);
+                        super.writeRequested(ctx, e);
                     } else {
-                        waitingForAuth.add(msg);
+                        waitingForAuth.add(e);
                     }
                 } // else just drop
             }
@@ -283,7 +296,9 @@ class AuthHandler {
 
         void authenticationError(ChannelHandlerContext ctx, int errorCode) {
             LOG.error("Error processing auth message, erroring connection {}", errorCode);
-            ctx.fireExceptionCaught(new AuthenticationException("Auth failed with error " + errorCode));
+            ctx.sendUpstream(new DefaultExceptionEvent(ctx.getChannel(),
+                                     new AuthenticationException(
+                                             "Auth failed with error " + errorCode)));
         }
 
         class AuthRequestCallback implements GenericCallback<AuthMessage> {
@@ -291,7 +306,7 @@ class AuthHandler {
             ChannelHandlerContext ctx;
 
             AuthRequestCallback(ChannelHandlerContext ctx) {
-                this.channel = ctx.channel();
+                this.channel = ctx.getChannel();
                 this.ctx = ctx;
             }
 
@@ -311,7 +326,7 @@ class AuthHandler {
                     .setHeader(header)
                     .setAuthRequest(newam);
 
-                channel.writeAndFlush(builder.build());
+                channel.write(builder.build());
             }
         }
 
@@ -326,10 +341,10 @@ class AuthHandler {
                 if (rc == BKException.Code.OK) {
                     synchronized (this) {
                         authenticated = true;
-                        Object msg = waitingForAuth.poll();
-                        while (msg != null) {
-                            ctx.writeAndFlush(msg);
-                            msg = waitingForAuth.poll();
+                        MessageEvent e = waitingForAuth.poll();
+                        while (e != null) {
+                            ctx.sendDownstream(e);
+                            e = waitingForAuth.poll();
                         }
                     }
                 } else {
@@ -340,7 +355,6 @@ class AuthHandler {
         }
     }
 
-    @SuppressWarnings("serial")
     static class AuthenticationException extends IOException {
         AuthenticationException(String reason) {
             super(reason);

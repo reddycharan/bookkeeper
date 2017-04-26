@@ -29,11 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.ExtensionRegistry;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-
 import org.apache.bookkeeper.auth.ClientAuthProvider;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieSocketAddress;
@@ -41,12 +36,22 @@ import org.apache.bookkeeper.proto.PerChannelBookieClient;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.auth.TestAuth;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ChannelStateEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.proto.BookieProtocol.*;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.AuthMessage;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.junit.Assert.*;
@@ -56,14 +61,15 @@ public class TestBackwardCompatCMS42 extends BookKeeperClusterTestCase {
 
     ExtensionRegistry extRegistry = ExtensionRegistry.newInstance();
     ClientAuthProvider.Factory authProvider;
-    EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
+    ClientSocketChannelFactory channelFactory
+        = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),
+                                            Executors.newCachedThreadPool());
     OrderedSafeExecutor executor = OrderedSafeExecutor.newBuilder().numThreads(1).name("TestBackwardCompatClient")
             .build();
 
     public TestBackwardCompatCMS42() throws Exception {
         super(0);
 
-        baseConf.setGcWaitTime(60000);
         TestDataFormats.registerAllExtensions(extRegistry);
         authProvider = AuthProviderFactoryFactory.newClientAuthProviderFactory(
                 new ClientConfiguration(), extRegistry);
@@ -176,36 +182,44 @@ public class TestBackwardCompatCMS42 extends BookKeeperClusterTestCase {
     }
 
     CompatClient42 newCompatClient(BookieSocketAddress addr) throws Exception {
-        return new CompatClient42(executor, eventLoopGroup, addr, authProvider, extRegistry);
+        return new CompatClient42(executor, channelFactory, addr, authProvider, extRegistry);
     }
 
     // extending PerChannelBookieClient to get the pipeline factory
     class CompatClient42 extends PerChannelBookieClient {
         final ArrayBlockingQueue<Response> responses = new ArrayBlockingQueue<Response>(10);
-        Channel channel;
+        final Channel channel;
         final CountDownLatch connected = new CountDownLatch(1);
 
-        CompatClient42(OrderedSafeExecutor executor, EventLoopGroup eventLoopGroup,
+        CompatClient42(OrderedSafeExecutor executor, ClientSocketChannelFactory channelFactory,
                        BookieSocketAddress addr,
                        ClientAuthProvider.Factory authProviderFactory,
                        ExtensionRegistry extRegistry) throws Exception {
-            super(executor, eventLoopGroup, addr, authProviderFactory, extRegistry);
+            super(executor, channelFactory, addr, authProviderFactory, extRegistry);
 
-            state = ConnectionState.CONNECTING;
-            ChannelFuture future = connect();
-            future.await();
-            channel = future.channel();
-            connected.countDown();
+            ClientBootstrap bootstrap = new ClientBootstrap(channelFactory);
+            bootstrap.setPipelineFactory(this);
+            bootstrap.setOption("tcpNoDelay", false);
+            bootstrap.setOption("keepAlive", true);
+            ChannelFuture f = bootstrap.connect(addr.getSocketAddress()).await();
+            channel = f.getChannel();
         }
 
         @Override
-        public void channelRead(io.netty.channel.ChannelHandlerContext ctx, Object msg) throws Exception {
-            if (!(msg instanceof Response)) {
-                LOG.error("Unknown message {}, passing upstream", msg);
-                ctx.fireChannelRead(msg);
+        public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+            if (!(e.getMessage() instanceof Response)) {
+                LOG.error("Unknown message {}, passing upstream", e.getMessage());
+                ctx.sendUpstream(e);
                 return;
             }
-            responses.add((Response) msg);
+            responses.add((Response)e.getMessage());
+        }
+
+        @Override
+        public void channelConnected(ChannelHandlerContext ctx,
+                                     ChannelStateEvent e)
+                throws Exception {
+            connected.countDown();
         }
 
         Response takeResponse() throws Exception {
@@ -218,7 +232,7 @@ public class TestBackwardCompatCMS42 extends BookKeeperClusterTestCase {
 
         void sendRequest(Request request) throws Exception {
             connected.await();
-            channel.writeAndFlush(request);
+            channel.write(request);
         }
     }
 }

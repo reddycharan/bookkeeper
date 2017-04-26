@@ -20,18 +20,12 @@
  */
 package org.apache.bookkeeper.client;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.util.HashedWheelTimer;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -63,9 +57,11 @@ import org.apache.bookkeeper.util.SafeRunnable;
 import org.apache.bookkeeper.zookeeper.BoundExponentialBackoffRetryPolicy;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.lang.SystemUtils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +87,7 @@ public class BookKeeper implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(BookKeeper.class);
 
     final ZooKeeper zk;
-    final EventLoopGroup eventLoopGroup;
+    final ClientSocketChannelFactory channelFactory;
 
     // The stats logger for this client.
     private final StatsLogger statsLogger;
@@ -141,7 +137,7 @@ public class BookKeeper implements AutoCloseable {
         final ClientConfiguration conf;
 
         ZooKeeper zk = null;
-        EventLoopGroup eventLoopGroup = null;
+        ClientSocketChannelFactory channelFactory = null;
         StatsLogger statsLogger = NullStatsLogger.INSTANCE;
         DNSToSwitchMapping dnsResolver = null;
         HashedWheelTimer requestTimer = null;
@@ -151,8 +147,8 @@ public class BookKeeper implements AutoCloseable {
             this.conf = conf;
         }
 
-        public Builder setEventLoopGroup(EventLoopGroup f) {
-            eventLoopGroup = f;
+        public Builder setChannelFactory(ClientSocketChannelFactory f) {
+            channelFactory = f;
             return this;
         }
 
@@ -184,11 +180,7 @@ public class BookKeeper implements AutoCloseable {
 
         public BookKeeper build() throws IOException, InterruptedException, KeeperException {
             Preconditions.checkNotNull(statsLogger, "No stats logger provided");
-
-            if (eventLoopGroup == null) {
-                eventLoopGroup = getDefaultEventLoopGroup();
-            }
-            return new BookKeeper(conf, zk, eventLoopGroup, statsLogger, dnsResolver, requestTimer, featureProvider);
+            return new BookKeeper(conf, zk, channelFactory, statsLogger, dnsResolver, requestTimer, featureProvider);
         }
     }
 
@@ -236,10 +228,10 @@ public class BookKeeper implements AutoCloseable {
         return zk;
     }
 
-    private static EventLoopGroup validateChannelFactory(EventLoopGroup eventLoopGroup)
+    private static ClientSocketChannelFactory validateChannelFactory(ClientSocketChannelFactory factory)
             throws NullPointerException {
-        Preconditions.checkNotNull(eventLoopGroup, "No Event Loop Group provided");
-        return eventLoopGroup;
+        Preconditions.checkNotNull(factory, "No Channel Factory provided");
+        return factory;
     }
 
     /**
@@ -259,7 +251,11 @@ public class BookKeeper implements AutoCloseable {
     public BookKeeper(ClientConfiguration conf, ZooKeeper zk)
             throws IOException, InterruptedException, KeeperException {
 
-        this(conf, validateZooKeeper(zk), getDefaultEventLoopGroup());
+        this(conf, validateZooKeeper(zk), new NioClientSocketChannelFactory(
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder()
+                        .setNameFormat("BookKeeper-NIOBoss-%d").build()),
+                Executors.newCachedThreadPool(new ThreadFactoryBuilder()
+                        .setNameFormat("BookKeeper-NIOWorker-%d").build())));
     }
 
     /**
@@ -279,9 +275,9 @@ public class BookKeeper implements AutoCloseable {
      * @throws InterruptedException
      * @throws KeeperException if the passed zk handle is not connected
      */
-    public BookKeeper(ClientConfiguration conf, ZooKeeper zk, EventLoopGroup eventLoopGroup)
+    public BookKeeper(ClientConfiguration conf, ZooKeeper zk, ClientSocketChannelFactory channelFactory)
             throws IOException, InterruptedException, KeeperException {
-        this(conf, validateZooKeeper(zk), validateChannelFactory(eventLoopGroup), NullStatsLogger.INSTANCE,
+        this(conf, validateZooKeeper(zk), validateChannelFactory(channelFactory), NullStatsLogger.INSTANCE,
                 null, null, null);
     }
 
@@ -290,7 +286,7 @@ public class BookKeeper implements AutoCloseable {
      */
     private BookKeeper(ClientConfiguration conf,
                        ZooKeeper zkc,
-                       EventLoopGroup eventLoopGroup,
+                       ClientSocketChannelFactory channelFactory,
                        StatsLogger statsLogger,
                        DNSToSwitchMapping dnsResolver,
                        HashedWheelTimer requestTimer,
@@ -323,11 +319,16 @@ public class BookKeeper implements AutoCloseable {
         }
 
         // initialize channel factory
-        if (null == eventLoopGroup) {
-            this.eventLoopGroup = getDefaultEventLoopGroup();
+        if (null == channelFactory) {
+            ThreadFactoryBuilder tfb = new ThreadFactoryBuilder();
+            this.channelFactory = new NioClientSocketChannelFactory(
+                    Executors.newCachedThreadPool(tfb.setNameFormat(
+                            "BookKeeper-NIOBoss-%d").build()),
+                    Executors.newCachedThreadPool(tfb.setNameFormat(
+                            "BookKeeper-NIOWorker-%d").build()));
             this.ownChannelFactory = true;
         } else {
-            this.eventLoopGroup = eventLoopGroup;
+            this.channelFactory = channelFactory;
             this.ownChannelFactory = false;
         }
 
@@ -372,8 +373,8 @@ public class BookKeeper implements AutoCloseable {
                 .build();
 
         // initialize bookie client
-        this.bookieClient = new BookieClient(conf, this.eventLoopGroup, this.mainWorkerPool, statsLogger);
-        this.bookieWatcher = new BookieWatcher(conf, this.scheduler, this.placementPolicy, this, statsLogger.scope("bookie_watcher"));
+        this.bookieClient = new BookieClient(conf, this.channelFactory, this.mainWorkerPool, statsLogger);
+        this.bookieWatcher = new BookieWatcher(conf, this.scheduler, this.placementPolicy, this, statsLogger.scope("bookie_watcher"));        
         if (conf.getDiskWeightBasedPlacementEnabled()) {
             LOG.info("Weighted ledger placement enabled");
             ThreadFactoryBuilder tFBuilder = new ThreadFactoryBuilder()
@@ -1196,7 +1197,7 @@ public class BookKeeper implements AutoCloseable {
             requestTimer.stop();
         }
         if (ownChannelFactory) {
-            eventLoopGroup.shutdownGracefully();
+            channelFactory.releaseExternalResources();
         }
         if (ownZKHandle) {
             zk.close();
@@ -1272,20 +1273,4 @@ public class BookKeeper implements AutoCloseable {
     OpStatsLogger getAddOpLogger() { return addOpLogger; }
     OpStatsLogger getWriteLacOpLogger() { return writeLacOpLogger; }
     OpStatsLogger getReadLacOpLogger() { return readLacOpLogger; }
-
-    static EventLoopGroup getDefaultEventLoopGroup() {
-        ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("bookkeeper-io-%s").build();
-        final int numThreads = Runtime.getRuntime().availableProcessors() * 2;
-
-        if (SystemUtils.IS_OS_LINUX) {
-            try {
-                return new EpollEventLoopGroup(numThreads, threadFactory);
-            } catch (Throwable t) {
-                LOG.warn("Could not use Netty Epoll event loop for bookie server: {}", t.getMessage());
-                return new NioEventLoopGroup(numThreads, threadFactory);
-            }
-        } else {
-            return new NioEventLoopGroup(numThreads, threadFactory);
-        }
-    }
 }

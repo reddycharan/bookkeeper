@@ -17,8 +17,6 @@
  */
 package org.apache.bookkeeper.proto;
 
-import io.netty.channel.Channel;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
@@ -34,6 +32,7 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
 import org.apache.bookkeeper.util.MathUtils;
+import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,14 +69,14 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             Future<Boolean> fenceResult = null;
             if (readRequest.hasFlag() && readRequest.getFlag().equals(ReadRequest.Flag.FENCE_LEDGER)) {
                 LOG.warn("Ledger fence request received for ledger: {} from address: {}", ledgerId,
-                         channel.remoteAddress());
+                         channel.getRemoteAddress());
 
                 if (readRequest.hasMasterKey()) {
                     byte[] masterKey = readRequest.getMasterKey().toByteArray();
                     fenceResult = requestProcessor.bookie.fenceLedger(ledgerId, masterKey);
                 } else {
                     LOG.error("Fence ledger request received without master key for ledger:{} from address: {}",
-                              ledgerId, channel.remoteAddress());
+                              ledgerId, channel.getRemoteAddress());
                     throw BookieException.create(BookieException.Code.UnauthorizedAccessException);
                 }
             }
@@ -128,7 +127,7 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
             LOG.error("IOException while reading entry:{} from ledger:{}", new Object[] {entryId, ledgerId, e});
         } catch (BookieException e) {
             LOG.error("Unauthorized access to ledger:{} while reading entry:{} in request from address: {}",
-                    new Object[] { ledgerId, entryId, channel.remoteAddress(), e });
+                    new Object[]{ledgerId, entryId, channel.getRemoteAddress(), e});
             status = StatusCode.EUA;
         }
 

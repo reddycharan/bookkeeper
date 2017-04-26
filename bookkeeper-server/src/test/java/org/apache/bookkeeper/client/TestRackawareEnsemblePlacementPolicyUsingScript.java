@@ -19,6 +19,7 @@ import org.apache.bookkeeper.net.CommonConfigurationKeys;
 import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.net.ScriptBasedMapping;
 import org.apache.bookkeeper.util.Shell;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -28,8 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import io.netty.util.HashedWheelTimer;
 
 /**
  * In this testsuite, ScriptBasedMapping is used as DNS_RESOLVER_CLASS for

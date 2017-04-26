@@ -21,8 +21,6 @@
 
 package org.apache.bookkeeper.proto;
 
-import io.netty.buffer.ByteBuf;
-
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,6 +28,7 @@ import org.apache.bookkeeper.client.LedgerMetadata;
 import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.zookeeper.AsyncCallback;
+import org.jboss.netty.buffer.ChannelBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public class BookkeeperInternalCallbacks {
     }
 
     public interface ReadLacCallback {
-        void readLacComplete(int rc, long ledgerId, ByteBuf lac, ByteBuf buffer, Object ctx);
+        void readLacComplete(int rc, long ledgerId, ChannelBuffer lac, ChannelBuffer buffer, Object ctx);
     }
 
     public interface WriteLacCallback {
@@ -87,7 +86,7 @@ public class BookkeeperInternalCallbacks {
      */
 
     public interface ReadEntryCallback {
-        void readEntryComplete(int rc, long ledgerId, long entryId, ByteBuf buffer, Object ctx);
+        void readEntryComplete(int rc, long ledgerId, long entryId, ChannelBuffer buffer, Object ctx);
     }
 
     public interface GetBookieInfoCallback {
