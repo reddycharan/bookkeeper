@@ -85,6 +85,8 @@ public interface BookKeeperServerStats {
     public final static String SKIP_LIST_THROTTLING = "SKIP_LIST_THROTTLING";
     public final static String READ_LAST_ENTRY_NOENTRY_ERROR = "READ_LAST_ENTRY_NOENTRY_ERROR";
     public final static String LEDGER_CACHE_NUM_EVICTED_LEDGERS = "LEDGER_CACHE_NUM_EVICTED_LEDGERS";
+    public final static String BOOKIES_JOINED = "BOOKIES_JOINED";
+    public final static String BOOKIES_LEFT = "BOOKIES_LEFT";
 
     // Gauge
     public final static String NUM_INDEX_PAGES = "NUM_INDEX_PAGES";
