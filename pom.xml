@@ -37,7 +37,6 @@
 -->
     <module>bookkeeper-stats</module>
     <module>bookkeeper-server</module>
-    <module>bookkeeper-proxy</module>
     <module>bookkeeper-benchmark</module>
     <module>bookkeeper-stats-providers</module>
     <module>proxy-logparser</module>

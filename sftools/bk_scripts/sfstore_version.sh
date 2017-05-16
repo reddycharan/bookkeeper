@@ -75,7 +75,6 @@ bzip2 -zfq ${ARTIFACT_DIR}/${NEW_SFSTORE_DEPLOY_NAME}
 cd ${DEPLOY_SFPROXY}
 tar -xf ${IMAGE_NAME2}
 rm ${IMAGE_NAME2}
-mv bookkeeper-proxy*.jar bookkeeper-proxy-${NEW_VERSION_STRING}-jar-with-dependencies.jar
 NEW_SFPROXY_DEPLOY_NAME=deploy-sfproxy-${NEW_VERSION_STRING}.tar
 tar cf ${ARTIFACT_DIR}/${NEW_SFPROXY_DEPLOY_NAME} *
 bzip2 -zfq ${ARTIFACT_DIR}/${NEW_SFPROXY_DEPLOY_NAME}
