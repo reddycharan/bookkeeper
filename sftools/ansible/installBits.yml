@@ -1,0 +1,42 @@
+---
+- hosts: PRD
+  user: sfdc
+  become: yes
+  become_method: sudo
+  tasks:
+    - name: copy and untar the packages
+      unarchive:
+        src: /home/zshi/Work/distrib/{{ package_name }}.tar.bz2
+        dest: /home/sfstore/installed
+        owner: sfstore
+        group: sfdc
+
+    - name: link current to new package path
+      file:
+        src: /home/sfstore/installed/{{ package_name }}
+        dest: /home/sfstore/current/sfstorage
+        owner: sfstore
+        group: sfdc
+        state: link
+
+    - name: update user.properties
+      shell: |
+        echo "# ansible provided properties" > user.properties
+        echo "settings.path=prd.prdsfstore.prd.prdsfstore.sfstore" >> user.properties
+        echo "cluster.name=PRDSFSTORE" >> user.properties
+        echo "superpod.name=PRDSFSTORE" >> user.properties
+        echo "home.dir=/home/sfstore/current/sfstorage" >> user.properties
+        echo "devhome.dir = \${home.dir}" >> user.properties
+        echo "core.home = \${home.dir}/salesforce" >> user.properties
+        echo "app.home = \${core.home}/sfdc" >> user.properties
+        echo "log.dir = /home/sfstore/logs/sfstorage" >> user.properties
+        echo "tools.platform.dir=\${home.dir}/tools/Linux" >> user.properties
+        echo "tools.arch = Linux" >> user.properties
+        echo "# instance property overrides" >> user.properties
+        echo "ledgerDirectories = /sfs/sfsdata/ledger" >> user.properties
+        echo "journalDirectory = /sfs/sfsdata/journal" >> user.properties
+        echo "zkServers = sayonara1a-mnds1-1-prd.eng.sfdc.net:2181,sayonara1a-mnds1-3-prd.eng.sfdc.net:2181,sayonara1a-mnds1-2-prd.eng.sfdc.net:2181" >> user.properties
+        echo "# service property overrides" >> user.properties
+      args:
+        chdir: /home/sfstore/current/sfstorage/bookkeeper/build
+
