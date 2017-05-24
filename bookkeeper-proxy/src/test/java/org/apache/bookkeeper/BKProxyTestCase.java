@@ -1144,16 +1144,17 @@ public class BKProxyTestCase extends BookKeeperClusterTestCase {
     @Test
     public void ledgerStatAfterOutOfOrderWriteClose() throws IOException, InterruptedException {
         String testDefinition =         BKPDETAILS + "-BKP1-5555\n"
-                                    +   NUMOFTHREADS + "-3\n"
+                                    +   NUMOFTHREADS + "-4\n"
                                     +   THREADDETAILS + "-Thread1-BKP1\n"
                                     +   THREADDETAILS + "-Thread2-BKP1\n"
                                     +   THREADDETAILS + "-Thread3-BKP1\n"
+                                    +   THREADDETAILS + "-Thread4-BKP1\n"
                                     +   NUMOFSLOTS + "-7\n"
                                     +   BKPOPERATION + "-0-Thread1-"+BKPConstants.LedgerCreateReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-1-Thread1-"+BKPConstants.LedgerWriteEntryReq+"-true-true-ext1-1-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-2-Thread2-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-3-10-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-3-Thread3-"+BKPConstants.LedgerWriteEntryReq+"-true-false-ext1-4-10-"+BKPConstants.SF_OK+"\n"
-                                    +   BKPOPERATION + "-4-Thread1-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-5-20-"+BKPConstants.SF_OK+"\n"
+                                    +   BKPOPERATION + "-4-Thread4-"+BKPConstants.LedgerAsyncWriteEntryReq+"-ext1-5-20-"+BKPConstants.SF_OK+"\n"
                                     +   BKPOPERATION + "-5-Thread1-"+BKPConstants.LedgerWriteCloseReq+"-ext1-"+BKPConstants.SF_OK+"\n"
                                     // since pending writes (fragment 3 and 4) are discarded after writeclose, now stat should return response 10
                                     +   BKPOPERATION + "-6-Thread1-"+BKPConstants.LedgerStatReq+"-ext1-"+BKPConstants.SF_OK+"-10\n";

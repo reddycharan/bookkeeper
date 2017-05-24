@@ -655,7 +655,7 @@ public class LedgerHandle implements AutoCloseable {
      */
     public void asyncAddEntry(final byte[] data, final int offset, final int length,
                               final AddCallback cb, final Object ctx) {
-        PendingAddOp op = new PendingAddOp(LedgerHandle.this, cb, ctx);
+        PendingAddOp op = new PendingAddOp(LedgerHandle.this, length, cb, ctx);
         doAsyncAddEntry(op, data, offset, length, cb, ctx);
     }
 
@@ -697,7 +697,7 @@ public class LedgerHandle implements AutoCloseable {
      */
     void asyncRecoveryAddEntry(final byte[] data, final int offset, final int length,
                                final AddCallback cb, final Object ctx) {
-        PendingAddOp op = new PendingAddOp(LedgerHandle.this, cb, ctx).enableRecoveryAdd();
+        PendingAddOp op = new PendingAddOp(LedgerHandle.this, length, cb, ctx).enableRecoveryAdd();
         doAsyncAddEntry(op, data, offset, length, cb, ctx);
     }
 
@@ -764,7 +764,7 @@ public class LedgerHandle implements AutoCloseable {
                     ByteBuf toSend = macManager.computeDigestAndPackageForSending(entryId, lastAddConfirmed,
                             currentLength, data, offset, length);
                     try {
-                        op.initiate(toSend, length);
+                        op.initiate(toSend);
                     } finally {
                         toSend.release();
                     }

@@ -71,11 +71,12 @@ class PendingAddOp implements WriteCallback, TimerTask {
 
     OpStatsLogger addOpLogger;
 
-    PendingAddOp(LedgerHandle lh, AddCallback cb, Object ctx) {
+    PendingAddOp(LedgerHandle lh, int entryLength, AddCallback cb, Object ctx) {
         this.lh = lh;
         this.cb = cb;
         this.ctx = ctx;
         this.entryId = LedgerHandle.INVALID_ENTRY_ID;
+        this.entryLength = entryLength;
         this.ackSet = lh.distributionSchedule.getAckSet();
         this.addOpLogger = lh.bk.getAddOpLogger();
         this.timeoutSec = lh.bk.getConf().getAddEntryQuorumTimeout();
@@ -178,7 +179,7 @@ class PendingAddOp implements WriteCallback, TimerTask {
         sendWriteRequest(bookieIndex);
     }
 
-    void initiate(ByteBuf toSend, int entryLength) {
+    void initiate(ByteBuf toSend) {
         if (timeoutSec > -1) {
             this.timeout = lh.bk.bookieClient.scheduleTimeout(this, timeoutSec, TimeUnit.SECONDS);
         }
@@ -186,7 +187,6 @@ class PendingAddOp implements WriteCallback, TimerTask {
         this.toSend = toSend;
         // Retain the buffer until all writes are complete
         this.toSend.retain();
-        this.entryLength = entryLength;
         for (int bookieIndex : writeSet) {
             sendWriteRequest(bookieIndex);
         }

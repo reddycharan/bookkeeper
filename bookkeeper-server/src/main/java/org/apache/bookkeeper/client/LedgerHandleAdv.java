@@ -144,7 +144,7 @@ public class LedgerHandleAdv extends LedgerHandle {
 
     public void asyncAddEntry(final long entryId, final byte[] data, final int offset, final int length,
             final AddCallback cb, final Object ctx) {
-        PendingAddOp op = new PendingAddOp(this, cb, ctx);
+        PendingAddOp op = new PendingAddOp(this, length, cb, ctx);
         op.setEntryId(entryId);
         if ((entryId <= this.lastAddConfirmed) || pendingAddOps.contains(op)) {
             LOG.error("Trying to re-add duplicate entryid:{}", entryId);
@@ -211,12 +211,12 @@ public class LedgerHandleAdv extends LedgerHandle {
         }
 
         try {
-            bk.mainWorkerPool.submit(new SafeRunnable() {
+            bk.mainWorkerPool.submitOrdered(ledgerId, new SafeRunnable() {
                 @Override
                 public void safeRun() {
                     ByteBuf toSend = macManager.computeDigestAndPackageForSending(
                                                op.getEntryId(), lastAddConfirmed, currentLength, data, offset, length);
-                    op.initiate(toSend, length);
+                    op.initiate(toSend);
                     toSend.release();
                 }
             });
