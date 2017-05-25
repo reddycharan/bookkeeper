@@ -22,21 +22,22 @@ package org.apache.bookkeeper.bookie;
 
 public interface BookKeeperServerStats {
 
-	// Stat scopes
+    // Stat scopes
     public final static String SERVER_SCOPE = "bookkeeper_server";
     public final static String BOOKIE_SCOPE = "bookie";
-	public final static String JOURNAL_SCOPE = "journal";
-	public final static String LEDGER_SCOPE = "ledger";
+    public final static String JOURNAL_SCOPE = "journal";
+    public final static String LEDGER_SCOPE = "ledger";
     public final static String INDEX_SCOPE = "index";
 
-	public final static String SERVER_STATUS = "SERVER_STATUS";
+    public final static String SERVER_STATUS = "SERVER_STATUS";
+    public final static String SERVER_VERSION = "SERVER_VERSION";
 
-	// Generic scope-specific operations
-	public final static String ADD_ENTRY = "ADD_ENTRY";
-	public final static String READ_ENTRY = "READ_ENTRY";
+    // Generic scope-specific operations
+    public final static String ADD_ENTRY = "ADD_ENTRY";
+    public final static String READ_ENTRY = "READ_ENTRY";
 
-	// Server Operations
-	public final static String ADD_ENTRY_REQUEST = "ADD_ENTRY_REQUEST";
+    // Server Operations
+    public final static String ADD_ENTRY_REQUEST = "ADD_ENTRY_REQUEST";
     public final static String READ_ENTRY_REQUEST = "READ_ENTRY_REQUEST";
     public final static String READ_ENTRY_FENCE_REQUEST = "READ_ENTRY_FENCE_REQUEST";
     public final static String READ_ENTRY_FENCE_WAIT = "READ_ENTRY_FENCE_WAIT";
