@@ -48,6 +48,7 @@ import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 
 
+@SuppressWarnings("deprecation")
 public class CodahaleMetricsProvider implements StatsProvider {
 
     static final Logger LOG = LoggerFactory.getLogger(CodahaleMetricsProvider.class);

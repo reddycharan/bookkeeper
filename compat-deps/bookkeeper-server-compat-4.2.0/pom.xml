@@ -78,6 +78,7 @@
                   <include>com.google.protobuf:protobuf-java</include>
                   <include>org.apache.*:*</include>
                   <include>org.jboss.*:*</include>
+                  <include>com.google.guava:guava</include>
                   <include>commons-*:*</include>
                 </includes>
                 <excludes>
@@ -108,6 +109,10 @@
                 <relocation>
                   <pattern>org.jboss</pattern>
                   <shadedPattern>org.jboss.bk_v4_2_0</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google</pattern>
+                  <shadedPattern>com.google.bk_v4_2_0</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>
