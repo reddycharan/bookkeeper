@@ -65,7 +65,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
      */
     private static final boolean READ_SYSTEM_PROPERTIES
                                     = Boolean.getBoolean(READ_SYSTEM_PROPERTIES_PROPERTY);
-
+    private static final String cluster = System.getProperty("cluster.loc") + "$";
     protected static final ClassLoader defaultLoader;
     static {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
@@ -544,8 +544,15 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
                                         EntryFormatter.class.getClassLoader());
     }
 
-	public String getStatPrefix() {
-		return getString(STAT_PREFIX, "");
-	}
+    public String getStatPrefix() {
+        return getString(STAT_PREFIX, "");
+    }
 
+    @Override
+    public Object getProperty(String name) {
+        String clusterProperty = cluster + name;
+        //Return override if present; else, generic.
+        return this.containsKey(clusterProperty) ? super.getProperty(clusterProperty) :
+            super.getProperty(name);
+    }
 }

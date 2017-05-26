@@ -21,6 +21,7 @@
 package org.apache.bookkeeper.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.security.AccessControlException;
 
@@ -62,6 +63,31 @@ public class ConfigurationTest {
         assertEquals("newserver", newConf.getZkServers());
         conf2.loadConf(newConf);
         assertEquals("newserver", conf2.getZkServers());
+    }
+
+    @Test (timeout=10000)
+    public void testClusterOverride() {
+        System.setProperty("cluster.loc", "phx.sp1.testCluster");
+        ServerConfiguration conf = new ServerConfiguration();
+
+        // Assign a specific and a generic to our environment; should get specific.
+        conf.setProperty("testProp", "generic");
+        conf.setProperty("phx.sp1.testCluster$testProp", "specific");
+
+        // Assign a generic and a specific to another environment. Should get generic.
+        conf.setProperty("dfw.sp1.testCluster$genericTestProp", "specific");
+        conf.setProperty("genericTestProp", "generic");
+
+        conf.setProperty("phx.sp1.testCluster$specificTestInt", 100);
+        conf.setProperty("genericTestInt", 0);
+
+        conf.setProperty("dfw.sp1.testCluster$genericTestInt", 100);
+        conf.setProperty("genericTestInt", 0);
+
+        assertTrue(conf.getString("testProp").equals("specific"));
+        assertTrue(conf.getString("genericTestProp").equals("generic"));
+        assertTrue(conf.getInt("genericTestInt") == 0);
+        assertTrue(conf.getInt("specificTestInt") == 100);
     }
 
     @Test(timeout=60000)
