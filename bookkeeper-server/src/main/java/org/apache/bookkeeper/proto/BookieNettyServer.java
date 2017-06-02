@@ -83,13 +83,14 @@ class BookieNettyServer {
     volatile boolean suspended = false;
     ChannelGroup allChannels;
     final BookieSocketAddress bookieAddress;
+    final InetSocketAddress bindAddress;
 
     final BookieAuthProvider.Factory authProviderFactory;
     final BookieProtoEncoding.ResponseEncoder responseEncoder;
     final BookieProtoEncoding.RequestDecoder requestDecoder;
 
     BookieNettyServer(ServerConfiguration conf, RequestProcessor processor)
-            throws IOException, KeeperException, InterruptedException, BookieException {
+            throws IOException, KeeperException, BookieException {
         this.conf = conf;
         this.requestProcessor = processor;
 
@@ -129,13 +130,11 @@ class BookieNettyServer {
         }
 
         bookieAddress = Bookie.getBookieAddress(conf);
-        InetSocketAddress bindAddress;
         if (conf.getListeningInterface() == null) {
             bindAddress = new InetSocketAddress(conf.getBookiePort());
         } else {
             bindAddress = bookieAddress.getSocketAddress();
         }
-        listenOn(bindAddress, bookieAddress);
     }
 
     boolean isRunning() {
@@ -269,7 +268,8 @@ class BookieNettyServer {
         }
     }
 
-    void start() {
+    void start() throws InterruptedException {
+        listenOn(bindAddress, bookieAddress);
         isRunning.set(true);
     }
 
@@ -286,7 +286,6 @@ class BookieNettyServer {
             }
         }
         if (jvmEventLoopGroup != null) {
-            LocalBookiesRegistry.unregisterLocalBookieAddress(bookieAddress);
             jvmEventLoopGroup.shutdownGracefully();
             LocalBookiesRegistry.unregisterLocalBookieAddress(bookieAddress);
         }
