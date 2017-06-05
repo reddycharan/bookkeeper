@@ -198,7 +198,10 @@ abstract public class Shell {
         try {
             // couldn't find either setting for hadoop's home directory
             if (home == null) {
-                throw new IOException("HADOOP_HOME or hadoop.home.dir are not set.");
+                LOG.warn("HADOOP_HOME or hadoop.home.dir are not set." +
+                        " not a problem unless running on Windows" +
+                        " and rackaware policy with networkTopologyScriptFileName is enabled");
+                return null;
             }
 
             if (home.startsWith("\"") && home.endsWith("\"")) {
@@ -243,6 +246,10 @@ abstract public class Shell {
      *  cached by callers.
      * */
     public static final String getQualifiedBinPath(String executable) throws IOException {
+        if (HADOOP_HOME_DIR == null) {
+            throw new IOException("Misconfigured HADOOP_HOME cannot be referenced.");
+        }
+
         // construct hadoop bin path to the specified executable
         String fullExeName = HADOOP_HOME_DIR + File.separator + "bin" + File.separator + executable;
 
