@@ -150,7 +150,7 @@ public class BookieProtoEncoding {
                 ledgerId = packet.readLong();
                 entryId = packet.readLong();
                 packet.resetReaderIndex();
-                return new BookieProtocol.AddRequest(h.getVersion(), ledgerId, entryId, flags, masterKey, packet.retain());
+                return new BookieProtocol.AddRequest(h.getVersion(), ledgerId, entryId, flags, masterKey, packet);
             case BookieProtocol.READENTRY:
                 ledgerId = packet.readLong();
                 entryId = packet.readLong();
