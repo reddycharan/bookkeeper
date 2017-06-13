@@ -293,6 +293,8 @@ if [ $COMMAND == "bookie" ]; then
   exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
     exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
+elif [ $COMMAND == "class" ]; then
+    exec $JAVA $OPTS $@
 elif [ $COMMAND == "localbookie" ]; then
     NUMBER=$1
     shift
