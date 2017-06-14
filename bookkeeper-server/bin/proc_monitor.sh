@@ -5,7 +5,7 @@ CURRENT_STATUS=`./ant -q status`
 #If sfstore is down, bring it back up; determined by its ./ant -q status check
 if [[ ${CURRENT_STATUS} == *"Not Running"* ]]; then
     #Starting implicitly stops both services without exiting.
-    RESULT=`./ant -q start`
+    RESULT=`./ant -q recover`
     if [[ $RESULT == *"BUILD SUCCESSFUL"* ]]; then
         echo "Successfully brought up bookkeeper via cron."
     else

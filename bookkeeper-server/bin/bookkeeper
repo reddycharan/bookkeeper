@@ -54,6 +54,7 @@ where command is one of:
 or command is the full name of a class with a defined main() method.
 
 Environment variables:
+   SFSTORE_CLUSTER_NAME        	The full cluster name including DC and SP
    BOOKIE_VERSION        	Version of the current bits
    BOOKIE_LOG_CONF        	Log4j configuration file (default $DEFAULT_LOG_CONF)
    BOOKIE_CONF            	Configuration file (default: $DEFAULT_CONF)
@@ -278,6 +279,7 @@ else
     OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
 fi
 
+OPTS="$OPTS -Dcluster.loc=$SFSTORE_CLUSTER_NAME"
 OPTS="$OPTS -Dbookkeeper.sfstore.version=$BOOKIE_VERSION"
 OPTS="$OPTS -Dbookkeeper.log.level=$BOOKIE_LOG_LEVEL"
 OPTS="$OPTS -Dbookkeeper.log.filesize=$BOOKIE_LOG_FILE_SIZE"
