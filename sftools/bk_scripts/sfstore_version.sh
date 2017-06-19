@@ -23,11 +23,11 @@ ARTIFACT_DIR=$WORKSPACE
 [ -z "$COPY_FROM_JOB" ]   && echo "Error! \$COPY_FROM_JOB not set. Which job you want to copy artifact from?"  && exit -1
 [ -z "$DEST_DIR" ]        && echo "Error! \$DEST_DIR not set."  && exit -1
 [ -z "$COPY_FROM_BUILD" ] && echo "Error! \$BUILD_NUMBER_TO_COPY_FROM not set."  && exit -1
-[[ -z "$IMAGE_NAME1" && -z "$IMAGE_NAME2" ]]      && echo "Error! \$IMAGE_NAME1 and \$IMAGE_NAME2 not set."  && exit -1
+[[ -z "$IMAGE_NAME1" ]]      && echo "Error! \$IMAGE_NAME1 not set."  && exit -1
 [ -z "$TARGET_BRANCH" ] && echo "Error! \$TARGET_BRANCH not set." && exit -1
 [ -z "$UPDATE_GIT_TAGS" ] && echo "Error!  $UPDATE_GIT_TAGS was not set." && exit -1
 
-if [[ ! -f $ARTIFACT_DIR/$IMAGE_NAME1 && ! -f $ARTIFACT_DIR/$IMAGE_NAME2 ]];then
+if [[ ! -f $ARTIFACT_DIR/$IMAGE_NAME1 ]];then
    echo "!!!ERROR: Artifacts were not copied from Build job. Please check"
    exit 1;
 fi
@@ -41,12 +41,7 @@ DEPLOY_SFSTORE=${WORKSPACEIMAGEDIR}/deploy-sfstore
 mkdir -p ${DEPLOY_SFSTORE}
 rm -rf ${DEPLOY_SFSTORE}/*
 
-DEPLOY_SFPROXY=${WORKSPACEIMAGEDIR}/deploy-sfproxy
-mkdir -p ${DEPLOY_SFPROXY}
-rm -rf ${DEPLOY_SFPROXY}/*
-
 cp ${ARTIFACT_DIR}/${IMAGE_NAME1} ${DEPLOY_SFSTORE}
-cp ${ARTIFACT_DIR}/${IMAGE_NAME2} ${DEPLOY_SFPROXY}
 
 cd $DEPLOY_SFSTORE
 tar -xf $IMAGE_NAME1
@@ -72,13 +67,6 @@ NEW_SFSTORE_DEPLOY_NAME=deploy-sfstore-${NEW_VERSION_STRING}.tar
 tar cf ${ARTIFACT_DIR}/${NEW_SFSTORE_DEPLOY_NAME} *
 bzip2 -zfq ${ARTIFACT_DIR}/${NEW_SFSTORE_DEPLOY_NAME}
 
-cd ${DEPLOY_SFPROXY}
-tar -xf ${IMAGE_NAME2}
-rm ${IMAGE_NAME2}
-NEW_SFPROXY_DEPLOY_NAME=deploy-sfproxy-${NEW_VERSION_STRING}.tar
-tar cf ${ARTIFACT_DIR}/${NEW_SFPROXY_DEPLOY_NAME} *
-bzip2 -zfq ${ARTIFACT_DIR}/${NEW_SFPROXY_DEPLOY_NAME}
-
 # Update git tags
 if [ "x$UPDATE_GIT_TAGS" = "xtrue" ];then
   cd $WORKSPACE
@@ -100,4 +88,3 @@ fi
 
 # delete the old deploy packages that didn't have the version number
 rm ${ARTIFACT_DIR}/${IMAGE_NAME1}
-rm ${ARTIFACT_DIR}/${IMAGE_NAME2}
