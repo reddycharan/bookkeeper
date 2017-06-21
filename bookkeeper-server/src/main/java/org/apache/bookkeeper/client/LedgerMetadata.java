@@ -316,7 +316,7 @@ public class LedgerMetadata {
         StringBuilder s = new StringBuilder();
         s.append(VERSION_KEY).append(tSplitter).append(CURRENT_METADATA_FORMAT_VERSION).append(lSplitter);
         s.append(TextFormat.printToString(builder.build()));
-        LOG.debug("Serialized config: {}", s);
+        LOG.trace("Serialized config: {}", s);
         return s.toString().getBytes(UTF_8);
     }
 
@@ -339,7 +339,7 @@ public class LedgerMetadata {
             s.append(lSplitter).append(getLastEntryId()).append(tSplitter).append(closed);
         }
 
-        LOG.debug("Serialized config: {}", s);
+        LOG.trace("Serialized config: {}", s);
 
         return s.toString().getBytes(UTF_8);
     }
