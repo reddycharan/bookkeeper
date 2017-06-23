@@ -30,7 +30,7 @@ import java.util.HashSet;
  * on.
  *
  */
-public class RoundRobinDistributionSchedule implements DistributionSchedule {
+class RoundRobinDistributionSchedule implements DistributionSchedule {
     private int writeQuorumSize;
     private int ackQuorumSize;
     private int ensembleSize;
