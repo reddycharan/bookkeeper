@@ -58,6 +58,8 @@ public class LedgerFragmentReplicator {
     private final OpStatsLogger numBytesRead;
     private final Counter numEntriesWritten;
     private final OpStatsLogger numBytesWritten;
+    private final Counter numReadsOutstanding;
+    private final Counter numWritesOutstanding;
 
     public LedgerFragmentReplicator(BookKeeper bkc, StatsLogger statsLogger) {
         this.bkc = bkc;
@@ -66,6 +68,8 @@ public class LedgerFragmentReplicator {
         numBytesRead = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_BYTES_READ);
         numEntriesWritten = this.statsLogger.getCounter(ReplicationStats.NUM_ENTRIES_WRITTEN);
         numBytesWritten = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_BYTES_WRITTEN);
+        numReadsOutstanding = this.statsLogger.getCounter(ReplicationStats.NUM_READS_OUTSTANDING);
+        numWritesOutstanding = this.statsLogger.getCounter(ReplicationStats.NUM_WRITES_OUTSTANDING);
     }
 
     public LedgerFragmentReplicator(BookKeeper bkc) {
@@ -86,9 +90,9 @@ public class LedgerFragmentReplicator {
                                             null, null);
             return;
         }
-        Long startEntryId = lf.getFirstStoredEntryId();
-        Long endEntryId = lf.getLastStoredEntryId();
-        if (endEntryId == null) {
+        long startEntryId = lf.getFirstStoredEntryId();
+        long endEntryId = lf.getLastStoredEntryId();
+        if (endEntryId == -1) {
             /*
              * Ideally this should never happen if bookie failure is taken care
              * of properly. Nothing we can do though in this case.
@@ -262,10 +266,12 @@ public class LedgerFragmentReplicator {
          * read the entry from one of the other replicated bookies other than
          * the dead one.
          */
+        numReadsOutstanding.inc();
         lh.asyncReadEntries(entryId, entryId, new ReadCallback() {
             @Override
             public void readComplete(int rc, LedgerHandle lh,
                     Enumeration<LedgerEntry> seq, Object ctx) {
+                numReadsOutstanding.dec();
                 if (rc != BKException.Code.OK) {
                     LOG.error("BK error reading ledger entry: " + entryId,
                             BKException.create(rc));
@@ -285,6 +291,7 @@ public class LedgerFragmentReplicator {
                         .computeDigestAndPackageForSending(entryId,
                                 lh.getLastAddConfirmed(), entry.getLength(),
                                 data, 0, data.length);
+                numWritesOutstanding.inc();
                 bkc.getBookieClient().addEntry(newBookie, lh.getId(),
                         lh.getLedgerKey(), entryId, toSend,
                         new WriteCallback() {
@@ -292,6 +299,7 @@ public class LedgerFragmentReplicator {
                             public void writeComplete(int rc, long ledgerId,
                                     long entryId, BookieSocketAddress addr,
                                     Object ctx) {
+                                numWritesOutstanding.dec();
                                 if (rc != BKException.Code.OK) {
                                     LOG.error(
                                             "BK error writing entry for ledgerId: "
