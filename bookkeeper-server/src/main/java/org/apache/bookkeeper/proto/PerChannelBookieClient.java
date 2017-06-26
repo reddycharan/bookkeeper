@@ -29,7 +29,6 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.DefaultEventLoop;
 import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
@@ -101,7 +100,6 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.OrderedSafeExecutor;
 import org.apache.bookkeeper.util.SafeRunnable;
-import org.apache.commons.lang.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,6 +163,10 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private final Counter exceptionCounter;
     private final OpStatsLogger getBookieInfoOpLogger;
     private final OpStatsLogger startTLSOpLogger;
+    private final Counter addEntryOutstanding;
+    private final Counter readEntryOutstanding;
+    /* collect stats on all Ops that flows through netty pipeline */
+    private final OpStatsLogger nettyOpLogger;
 
     /**
      * The following member variables do not need to be concurrent, or volatile
@@ -331,6 +333,9 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         exceptionCounter = statsLogger.getCounter(BookKeeperClientStats.NETTY_EXCEPTION_CNT);
         connectTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_CONNECT_TIMER);
         startTLSOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_START_TLS_OP);
+        addEntryOutstanding = statsLogger.getCounter(BookKeeperClientStats.ADD_OP_OUTSTANDING);
+        readEntryOutstanding = statsLogger.getCounter(BookKeeperClientStats.READ_OP_OUTSTANDING);
+        nettyOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.NETTY_OPS);
     }
 
     private String generateAddressScope(BookieSocketAddress addr) {
@@ -424,7 +429,6 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     }
 
     void connectIfNeededAndDoOp(GenericCallback<PerChannelBookieClient> op) {
-        long startTime = MathUtils.nowInNano();
         boolean completeOpNow = false;
         int opRc = BKException.Code.OK;
         // common case without lock first
@@ -497,16 +501,19 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             return;
         }
         try {
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(writeLacRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Successfully wrote request for writeLac LedgerId: {} bookie: {}",
                                     ledgerId, c.remoteAddress());
                         }
                     } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (!(future.cause() instanceof ClosedChannelException)) {
                             LOG.warn("Writing Lac(lid={} to channel {} failed : ",
                                     new Object[] { ledgerId, c, future.cause() });
@@ -578,17 +585,21 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             return;
         }
         try {
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(addRequest);
+            addEntryOutstanding.inc();
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Successfully wrote request for adding entry: " + entryId + " ledger-id: " + ledgerId
                                                             + " bookie: " + c.remoteAddress() + " entry length: " + entrySize);
                         }
                         // totalBytesOutstanding.addAndGet(entrySize);
                     } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (!(future.cause() instanceof ClosedChannelException)) {
                             LOG.warn("Writing addEntry(lid={}, eid={}) to channel {} failed : ",
                                     new Object[] { ledgerId, entryId, c, future.cause() });
@@ -636,16 +647,19 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
 
         try {
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(readRequest);
             future.addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
                         if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                             if (LOG.isDebugEnabled()) {
                                 LOG.debug("Successfully wrote request {} to {}",
                                           readRequest, c.remoteAddress());
                             }
                         } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                             if (!(future.cause() instanceof ClosedChannelException)) {
                                 LOG.warn("Writing readEntryAndFenceLedger(lid={}, eid={}) to channel {} failed : ",
                                         new Object[] { ledgerId, entryId, c, future.cause() });
@@ -684,14 +698,17 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
 
         try {
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(readLacRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         LOG.debug("Succssfully wrote request {} to {}",
                                 readLacRequest, c.remoteAddress());
                     } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (!(future.cause() instanceof ClosedChannelException)) {
                             LOG.warn("Writing readLac(lid = {}) to channel {} failed : ",
                                     new Object[] { ledgerId, c, future.cause() });
@@ -735,16 +752,20 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
 
         try{
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(readRequest);
+            readEntryOutstanding.inc();
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Successfully wrote request {} to {}",
                                       readRequest, c.remoteAddress());
                         }
                     } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (!(future.cause() instanceof ClosedChannelException)) {
                             LOG.warn("Writing readEntry(lid={}, eid={}) to channel {} failed : ",
                                     new Object[] { ledgerId, entryId, c, future.cause() });
@@ -787,16 +808,19 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
 
         try{
+            final long startTime = MathUtils.nowInNano();
             ChannelFuture future = c.writeAndFlush(getBookieInfoRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
                     if (future.isSuccess()) {
+                        nettyOpLogger.registerSuccessfulEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (LOG.isDebugEnabled()) {
                             LOG.debug("Successfully wrote request {} to {}",
                                     getBookieInfoRequest, c.remoteAddress());
                         }
                     } else {
+                        nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         if (!(future.cause() instanceof ClosedChannelException)) {
                             LOG.warn("Writing GetBookieInfoRequest(flags={}) to channel {} failed : ",
                                     new Object[] { requested, c, future.cause() });
@@ -1304,6 +1328,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         long entryId = addResponse.getEntryId();
         StatusCode status = response.getStatus() == StatusCode.EOK ? addResponse.getStatus() : response.getStatus();
 
+        addEntryOutstanding.dec();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Got response for add request from bookie: " + addr + " for ledger: " + ledgerId + " entry: "
                     + entryId + " rc: " + status);
@@ -1367,6 +1392,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             buffer = Unpooled.wrappedBuffer(readResponse.getBody().asReadOnlyByteBuffer());
         }
 
+        readEntryOutstanding.dec();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Got response for read request from bookie: " + addr + " for ledger: " + ledgerId + " entry: "
                     + entryId + " rc: " + rc + " entry length: " + buffer.readableBytes());
@@ -1698,10 +1724,12 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             }
             if (OperationType.ADD_ENTRY == operationType) {
                 errorOutAddKey(this, BKException.Code.TimeoutException);
+                addEntryOutstanding.dec();
                 addTimeoutOpLogger.registerSuccessfulEvent(elapsedTime(), TimeUnit.NANOSECONDS);
             } else if (OperationType.READ_ENTRY == operationType) {
                 errorOutReadKey(this, BKException.Code.TimeoutException);
                 readTimeoutOpLogger.registerSuccessfulEvent(elapsedTime(), TimeUnit.NANOSECONDS);
+                readEntryOutstanding.dec();
             } else if (OperationType.WRITE_LAC == operationType) {
                 errorOutWriteLacKey(this, BKException.Code.TimeoutException);
                 writeLacTimeoutOpLogger.registerSuccessfulEvent(elapsedTime(), TimeUnit.NANOSECONDS);

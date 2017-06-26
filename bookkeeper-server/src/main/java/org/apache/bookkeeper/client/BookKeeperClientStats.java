@@ -34,6 +34,9 @@ public interface BookKeeperClientStats {
 	public final static String READ_LAC_OP = "READ_LAC";
 	public final static String GET_BOOKIE_INFO_OP = "GET_BOOKIE_INFO";
     public final static String CHANNEL_START_TLS_OP = "START_TLS";
+    public final static String ADD_OP_OUTSTANDING = "ADD_ENTRY_OUTSTANDING";
+    public final static String READ_OP_OUTSTANDING = "READ_ENTRY_OUTSTANDING";
+    public final static String NETTY_OPS = "NETTY_OPS";
 
 	// Client operations
 	public final static String CREATE_OP = "LEDGER_CREATE";
