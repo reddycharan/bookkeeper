@@ -1,1 +1,14 @@
-target/
+**/target/
+**/lib/
+**/.idea
+**/dependency-reduced-pom.xml
+
+*.project
+*.classpath
+*.iml
+*.DS_Store
+*.ipr
+*.ipw
+*.iws
+deploy*
+*/logs/*
