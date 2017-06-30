@@ -393,7 +393,7 @@ public class LocalBookKeeper {
         if(args.length > 2) {
         	zkPath = args[2];
         }
-
+        RestResources.setServerConfiguration(conf);
         lb.runZookeeper(1000, zkPath);
         lb.initializeZookeeper(conf);        
         

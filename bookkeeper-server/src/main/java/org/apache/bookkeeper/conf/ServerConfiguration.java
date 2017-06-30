@@ -135,10 +135,6 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String SKIP_LIST_CHUNK_SIZE_ENTRY = "skipListArenaChunkSize";
     protected final static String SKIP_LIST_MAX_ALLOC_ENTRY = "skipListArenaMaxAllocSize";
 
-    // Statistics Parameters
-    protected final static String ENABLE_STATISTICS = "enableStatistics";
-    protected final static String STATS_PROVIDER_CLASS = "statsProviderClass";
-
     protected final static String LEDGER_STORAGE_CLASS = "ledgerStorageClass";
 
     // Rx adaptive ByteBuf allocator parameters
@@ -899,27 +895,6 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setZkRetryBackoffMaxMs(int retryMs) {
         setProperty(ZK_RETRY_BACKOFF_MAX_MS, retryMs);
-        return this;
-    }
-
-    /**
-     * Is statistics enabled
-     *
-     * @return is statistics enabled
-     */
-    public boolean isStatisticsEnabled() {
-        return getBoolean(ENABLE_STATISTICS, true);
-    }
-
-    /**
-     * Turn on/off statistics
-     *
-     * @param enabled
-     *          Whether statistics enabled or not.
-     * @return server configuration
-     */
-    public ServerConfiguration setStatisticsEnabled(boolean enabled) {
-        setProperty(ENABLE_STATISTICS, Boolean.toString(enabled));
         return this;
     }
 
@@ -1919,31 +1894,6 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setDisableServerSocketBind(boolean disableServerSocketBind) {
         setProperty(DISABLE_SERVER_SOCKET_BIND, disableServerSocketBind);
-        return this;
-    }
-
-    /**
-     * Get the stats provider used by bookie.
-     *
-     * @return stats provider class
-     * @throws ConfigurationException
-     */
-    public Class<? extends StatsProvider> getStatsProviderClass()
-        throws ConfigurationException {
-        return ReflectionUtils.getClass(this, STATS_PROVIDER_CLASS,
-                                        NullStatsProvider.class, StatsProvider.class,
-                                        defaultLoader);
-    }
-
-    /**
-     * Set the stats provider used by bookie.
-     *
-     * @param providerClass
-     *          stats provider class
-     * @return server configuration
-     */
-    public ServerConfiguration setStatsProviderClass(Class<? extends StatsProvider> providerClass) {
-        setProperty(STATS_PROVIDER_CLASS, providerClass.getName());
         return this;
     }
 

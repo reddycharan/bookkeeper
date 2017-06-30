@@ -106,7 +106,7 @@ public class BookieRequestProcessor implements RequestProcessor {
             shFactory.init(NodeType.Server, serverCfg);
         }
         // Expose Stats
-        this.statsEnabled = serverCfg.isStatisticsEnabled();
+        this.statsEnabled = serverCfg.areStatsEnabled();
         this.addEntryStats = statsLogger.getOpStatsLogger(ADD_ENTRY);
         this.addRequestStats = statsLogger.getOpStatsLogger(ADD_ENTRY_REQUEST);
         this.readEntryStats = statsLogger.getOpStatsLogger(READ_ENTRY);

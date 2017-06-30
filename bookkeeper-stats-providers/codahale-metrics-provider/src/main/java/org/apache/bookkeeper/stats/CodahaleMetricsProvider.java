@@ -27,8 +27,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,9 +47,6 @@ import com.codahale.metrics.servlets.MetricsServlet;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.bookkeeper.stats.StatsProvider;
-
 
 public class CodahaleMetricsProvider implements StatsProvider {
 
@@ -60,9 +55,11 @@ public class CodahaleMetricsProvider implements StatsProvider {
     MetricRegistry metrics = null;
     List<ScheduledReporter> reporters = new ArrayList<ScheduledReporter>();
     JmxReporter jmx = null;
-    private Server jettyServer;
+	private JettyServices jettyServices;
+	public CodahaleMetricsProvider() {
+	}
 
-    synchronized void initIfNecessary() {
+	synchronized void initIfNecessary() {
         if (metrics == null) {
             metrics = new MetricRegistry();
             metrics.register(name("jvm.gc"), new GarbageCollectorMetricSet());
@@ -81,47 +78,21 @@ public class CodahaleMetricsProvider implements StatsProvider {
     @Override
     public void start(Configuration conf) {
         initIfNecessary();
-
         int metricsOutputFrequency = conf.getInt("codahaleStatsOutputFrequencySeconds", 60);
         String prefix = conf.getString("codahaleStatsPrefix", "");
         String graphiteHost = conf.getString("codahaleStatsGraphiteEndpoint");
         String csvDir = conf.getString("codahaleStatsCSVEndpoint");
         String slf4jCat = conf.getString("codahaleStatsSlf4jEndpoint");
         String jmxDomain = conf.getString("codahaleStatsJmxEndpoint");
-        String servletPort = conf.getString("statsServletPort");
+        int jettyPort = conf.getInt("jettyPort");
 
-
-        if (!Strings.isNullOrEmpty(servletPort)) {
-            //Get the context and endpoint. If none specified, set to "/" and "metrics.json", respectively, as default.
-            String contextPath = conf.getString("servletContextPath", "/");
-            String endpoint = conf.getString("servletEndpoint", "/metrics.json");
-            int port = Integer.valueOf(servletPort);
-            LOG.info("Configuring stats on port: " + servletPort);
+        if (jettyPort > 0) {
+            // Get the context and endpoint. If none specified, set to "/" and
+            // "metrics.json", respectively, as default.
+            LOG.info("Configuring stats on port: " + jettyPort);
             try {
-                this.jettyServer = new Server(port);
-                ServletContextHandler context = new ServletContextHandler();
-                context.setContextPath(contextPath);
-                context.setAttribute("show-jvm-metrics", "true");
-                context.addServlet(new ServletHolder(new MetricsServlet()), endpoint);
-                context.addEventListener(new MetricsServlet.ContextListener() {
-
-					@Override
-					protected MetricRegistry getMetricRegistry() {
-						return getMetrics();
-					}
-
-					@Override
-					protected TimeUnit getRateUnit() {
-						return TimeUnit.SECONDS;
-					}
-
-					@Override
-					protected TimeUnit getDurationUnit() {
-						return TimeUnit.MILLISECONDS;
-					}
-				});
-                jettyServer.setHandler(context);
-                jettyServer.start();
+                JettyServices jettyServices = new JettyServices(conf, this);
+                jettyServices.start();
             } catch (Exception e) {
                 LOG.error("Failed to start logging servlet!\n" + e.getMessage(), e);
             }
@@ -183,12 +154,8 @@ public class CodahaleMetricsProvider implements StatsProvider {
             r.report();
             r.stop();
         }
-        if (jettyServer != null ) {
-        	try {
-				jettyServer.stop();
-			} catch (Exception e) {
-				LOG.error("Failed to stop Jetty stats servlet: {}", e);
-			}
+        if (jettyServices != null) {
+            jettyServices.shutDown();
         }
         if (jmx != null) {
             jmx.stop();

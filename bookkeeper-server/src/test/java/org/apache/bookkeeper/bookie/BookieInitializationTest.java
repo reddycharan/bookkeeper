@@ -24,10 +24,13 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
+import java.net.URL;
 import java.security.AccessControlException;
+import java.util.Map;
 
 import org.apache.bookkeeper.bookie.BookieException.DirsPartitionDuplicationException;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
@@ -44,8 +47,11 @@ import org.apache.bookkeeper.replication.ReplicationException.UnavailableExcepti
 import org.apache.bookkeeper.ssl.SecurityException;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.test.PortManager;
 import org.apache.bookkeeper.util.DiskChecker;
+import org.apache.bookkeeper.util.ReflectionUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
@@ -55,6 +61,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /**
  * Testing bookie initialization cases
  */
@@ -63,6 +71,7 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
             .getLogger(BookieInitializationTest.class);
 
     ZooKeeper newzk = null;
+    private static ObjectMapper om = new ObjectMapper();
 
     public BookieInitializationTest() {
         super(0);
@@ -704,5 +713,97 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         newzk = ZooKeeperClient.newBuilder()
                 .connectString(zkUtil.getZooKeeperConnectString())
                 .build();
+    }
+
+    @Test(timeout = 20000)
+    public void testJettyEndpointStart() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
+
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
+                .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setBookiePort(PortManager.nextFreePort());
+
+        String statServletContext = "/stats";
+        String statEndpoint = "/metrics.json";
+        conf.setJettyPort(2182);
+        conf.setStatsEnabled(true);
+        conf.setEnableRestEndpoints(true);
+        conf.setStatServletContext(statServletContext);
+        conf.setRestServletContext("/rest");
+        conf.setRestPackage("org.apache.bookkeeper.util");
+        conf.setStatServletEndpoint(statEndpoint);
+        conf.setStatsProviderClass(org.apache.bookkeeper.stats.CodahaleMetricsProvider.class);
+        String urlAddr = "http://localhost:" + conf.getJettyPort() + conf.getStatServletContext()
+                + conf.getStatServletEndpoint();
+        Class<? extends StatsProvider> statsProviderClass = conf.getStatsProviderClass();
+        final StatsProvider statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+        statsProvider.start(conf);
+        BookieServer bkServer = new BookieServer(conf, statsProvider.getStatsLogger(""));
+        bkServer.start();
+        URL url = new URL(urlAddr);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> statMap = om.readValue(url, Map.class);
+        if (statMap.isEmpty() || !statMap.containsKey("counters")) {
+            Assert.fail("Failed to map metrics to valid JSON entries on servlet.");
+        }
+        // Now, hit the rest endpoint we know exists to ensure Jersey servlet is
+        // up
+        url = new URL("http://localhost:" + conf.getJettyPort() + conf.getRestServletContext() +
+                "/resources/v1/configurations");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = om.readValue(url, Map.class);
+        if (configMap.isEmpty() || !(configMap.containsKey("jettyPort") && configMap.containsKey("bookiePort"))) {
+            Assert.fail("Failed to map /rest/resources/v1/configurations to valid JSON entries.");
+        }
+        if (bkServer.isRunning()) {
+            bkServer.shutdown();
+        }
+    }
+
+    @Test (timeout = 20000)
+    public void testJettyEndpointStartOneOnOneOff() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
+
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
+                .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setBookiePort(PortManager.nextFreePort());
+        String statServletContext = "/stats";
+        String statEndpoint = "/metrics.json";
+        conf.setJettyPort(2183);
+        conf.setStatsEnabled(true);
+        conf.setRestServletContext("/rest");
+        conf.setEnableRestEndpoints(false);
+        conf.setRestPackage("org.apache.bookkeeper.util");
+        conf.setStatServletContext(statServletContext);
+        conf.setStatServletEndpoint(statEndpoint);
+        conf.setStatsProviderClass(org.apache.bookkeeper.stats.CodahaleMetricsProvider.class);
+        String urlAddr = "http://localhost:" + conf.getJettyPort() + conf.getStatServletContext()
+        + conf.getStatServletEndpoint();
+        Class<? extends StatsProvider> statsProviderClass = conf.getStatsProviderClass();
+        final StatsProvider statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+        statsProvider.start(conf);
+        BookieServer bkServer = new BookieServer(conf, statsProvider.getStatsLogger(""));
+        bkServer.start();
+        URL url = new URL(urlAddr);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> statMap = om.readValue(url, Map.class);
+        if (statMap.isEmpty() || !statMap.containsKey("counters")) {
+            Assert.fail("Failed to map metrics to valid JSON entries on servlet.");
+        }
+        // Now, hit the rest endpoint we know exists to ensure Jersey servlet is
+        // up
+        url = new URL("http://localhost:" + conf.getJettyPort() + conf.getRestServletContext()
+                + "/resources/v1/configurations");
+        try{
+            @SuppressWarnings("unchecked")
+            Map<String,Object> configMap = om.readValue(url, Map.class);
+            Assert.fail("Endpoint for REST shouldn't be up. Failing.");
+        }
+        catch (FileNotFoundException fe) {
+            //Good... doesn't exist. 
+        }
+        if (bkServer.isRunning()) {
+            bkServer.shutdown();
+        }
     }
 }

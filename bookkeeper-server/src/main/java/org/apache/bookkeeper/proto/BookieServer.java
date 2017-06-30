@@ -48,6 +48,7 @@ import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.util.ReflectionUtils;
+import org.apache.bookkeeper.util.RestResources;
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -95,7 +96,7 @@ public class BookieServer {
             throws IOException, KeeperException, InterruptedException,
             BookieException, UnavailableException, CompatibilityException, SecurityException {
         this.conf = conf;
-		conf.validateUser();
+        conf.validateUser();
         this.statsLogger = statsLogger;
         this.bookie = newBookie(conf);
         final SecurityHandlerFactory shFactory;
@@ -105,6 +106,7 @@ public class BookieServer {
         this.requestProcessor = new BookieRequestProcessor(conf, bookie,
                 statsLogger.scope(SERVER_SCOPE), shFactory);
 
+        RestResources.setServerConfiguration(conf);
         this.nettyServer = new BookieNettyServer(this.conf, requestProcessor);
         isAutoRecoveryDaemonEnabled = conf.isAutoRecoveryDaemonEnabled();
         if (isAutoRecoveryDaemonEnabled) {
