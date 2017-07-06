@@ -57,6 +57,7 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,6 +220,7 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
      * KeeperException.NodeExistsException if the znode still exists even after
      * the zk session timeout.
      */
+    @Ignore("W-4095631 Flapper")
     @Test(timeout = 30000)
     public void testRegNodeExistsAfterSessionTimeOut() throws Exception {
         File tmpDir = createTempDir("bookie", "test");
