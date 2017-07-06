@@ -250,7 +250,7 @@ public class AutoRecoveryMain {
             LOG.error("Malformed configuration file: " + confFile, e);
             throw new IllegalArgumentException();
         }
-        LOG.info("Using configuration file " + confFile);
+        LOG.info("Using configuration file {}, Cluster full name: {}", confFile, conf.getClusterLoc());
     }
 
     /*
@@ -297,6 +297,11 @@ public class AutoRecoveryMain {
             System.exit(ExitCode.INVALID_CONF);
         }
 
+        String hello = String.format(
+                           "Hello, I'm your AutoRecovery. ZKServers are on %1$s, zkLedgersRootPath is %2$.",
+                           conf.getZkServers(), conf.getZkLedgersRootPath());
+        LOG.info(hello);
+        
         try {
 			Class<? extends StatsProvider> statsProviderClass = conf.getStatsProviderClass();
             StatsProvider statsProvider = null;

@@ -905,6 +905,8 @@ public class BookKeeperAdmin {
                 .build();
         BookKeeper bkc = null;
         try {
+            LOG.info("Formatting ZooKeeper metadata, ledger root path: " + conf.getZkLedgersRootPath());
+            
             boolean ledgerRootExists = null != zkc.exists(
                     conf.getZkLedgersRootPath(), false);
             boolean availableNodeExists = null != zkc.exists(

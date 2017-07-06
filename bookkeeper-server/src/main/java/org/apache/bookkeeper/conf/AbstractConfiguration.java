@@ -69,7 +69,12 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
      */
     private static final boolean READ_SYSTEM_PROPERTIES
                                     = Boolean.getBoolean(READ_SYSTEM_PROPERTIES_PROPERTY);
-    private static final String cluster = System.getProperty("cluster.loc") + "$";
+
+
+    // for per Cluster based configuration
+    public static final String CLUSTER_LOC_PROPERTY = "cluster.loc";
+    private static final String cluster = System.getProperty(CLUSTER_LOC_PROPERTY) + "$";
+    
     protected static final ClassLoader defaultLoader;
     static {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
@@ -144,6 +149,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
             // add configuration for system properties
             addConfiguration(new SystemConfiguration());
         }
+        LOG.info("Current Cluster Full Name: " + cluster);
     }
 
     // immutable
@@ -178,6 +184,10 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
         return LocalDate.from(localClock.instant().atZone(ZoneId.systemDefault())).getDayOfWeek();
     }
 
+    public static String getClusterLoc() {
+        return cluster;
+    }
+    
     protected Map<DayOfWeek, List<DailyRange>> getDailyRanges() {
         loadDailyRangesIfNeeded();
         return dailyRanges;

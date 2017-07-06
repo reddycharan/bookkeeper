@@ -305,7 +305,7 @@ public class BookieServer {
             LOG.error("Malformed configuration file: " + confFile, e);
             throw new IllegalArgumentException();
         }
-        LOG.info("Using configuration file " + confFile);
+        LOG.info("Using configuration file {}, Cluster full name: {}", confFile, conf.getClusterLoc());
     }
 
     private static ServerConfiguration parseArgs(String[] args)
@@ -383,8 +383,8 @@ public class BookieServer {
         }
 
         String hello = String.format(
-                           "Hello, I'm your bookie, listening on port %1$s. ZKServers are on %2$s. Journals are in %3$s. Ledgers are stored in %4$s.",
-                           conf.getBookiePort(), conf.getZkServers(),
+                           "Hello, I'm your bookie, listening on port %1$s. ZKServers are on %2$s, zkLedgersRootPath is %3$. Journals are in %4$s. Ledgers are stored in %5$s.",
+                           conf.getBookiePort(), conf.getZkServers(), conf.getZkLedgersRootPath(),
                            conf.getJournalDirName(), sb);
         LOG.info(hello);
         try {
