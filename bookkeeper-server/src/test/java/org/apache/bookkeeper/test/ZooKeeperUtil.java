@@ -50,8 +50,6 @@ import static org.junit.Assert.*;
 public class ZooKeeperUtil {
     static final Logger LOG = LoggerFactory.getLogger(ZooKeeperUtil.class);
 
-    // ZooKeeper related variables
-    protected final static Integer zooKeeperPort = PortManager.nextFreePort();
     private final InetSocketAddress zkaddr;
 
     protected ZooKeeperServer zks;
@@ -62,6 +60,7 @@ public class ZooKeeperUtil {
 
     public ZooKeeperUtil() {
         String loopbackIPAddr = InetAddress.getLoopbackAddress().getHostAddress();
+        Integer zooKeeperPort = PortManager.nextFreePort();
         zkaddr = new InetSocketAddress(loopbackIPAddr, zooKeeperPort);
         connectString = loopbackIPAddr + ":" + zooKeeperPort;
     }

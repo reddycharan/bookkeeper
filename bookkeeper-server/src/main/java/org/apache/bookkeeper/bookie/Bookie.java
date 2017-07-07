@@ -1397,14 +1397,11 @@ public class Bookie extends BookieCriticalThread {
                 // mark bookie as in shutting down progress
                 shuttingdown = true;
 
-                // Shutdown the state service
-                stateService.shutdown();
-
                 // Shutdown journal
                 journal.shutdown();
                 this.join();
                 syncThread.shutdown();
-
+                
                 // Shutdown the EntryLogger which has the GarbageCollector Thread running
                 ledgerStorage.shutdown();
 
@@ -1421,6 +1418,9 @@ public class Bookie extends BookieCriticalThread {
                 if (indexDirsManager != ledgerDirsManager) {
                     idxMonitor.shutdown();
                 }
+                
+                // Shutdown the state service
+                stateService.shutdown();
             }
             // Shutdown the ZK client
             if (zk != null) {
@@ -1428,6 +1428,9 @@ public class Bookie extends BookieCriticalThread {
             }
         } catch (InterruptedException ie) {
             LOG.error("Interrupted during shutting down bookie : ", ie);
+        } catch (Exception e) {
+            LOG.error("Got Exception while trying to shutdown Bookie", e);
+            throw e;
         } finally {
             // setting running to false here, so watch thread
             // in bookie server know it only after bookie shut down

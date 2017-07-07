@@ -108,13 +108,32 @@ public abstract class BookKeeperClusterTestCase {
     @After
     public void tearDown() throws Exception {
         LOG.info("TearDown");
+        Exception tearDownException = null;
         // stop bookkeeper service
-        stopBKCluster();
+        try {
+            stopBKCluster();
+        } catch (Exception e) {
+            LOG.error("Got Exception while trying to stop BKCluster", e);
+            tearDownException = e;
+        }
         // stop zookeeper service
-        stopZKCluster();
+        try {
+            stopZKCluster();
+        } catch (Exception e) {
+            LOG.error("Got Exception while trying to stop ZKCluster", e);
+            tearDownException = e;
+        }
         // cleanup temp dirs
-        cleanupTempDirs();
+        try {
+            cleanupTempDirs();
+        } catch (Exception e) {
+            LOG.error("Got Exception while trying to cleanupTempDirs", e);
+            tearDownException = e;
+        }
         LOG.info("Tearing down test {}", getClass());
+        if (tearDownException != null) {
+            throw tearDownException;
+        }
     }
 
     protected File createTempDir(String prefix, String suffix) throws IOException {
