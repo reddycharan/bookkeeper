@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.math.RoundingMode;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,11 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.apache.bookkeeper.bookie.BookieException.InvalidCookieException;
@@ -77,7 +76,6 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.replication.AuditorElector;
 import org.apache.bookkeeper.replication.BookieLedgerIndexer;
-import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.util.DiskChecker;
 import org.apache.bookkeeper.util.EntryFormatter;
@@ -103,7 +101,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
@@ -1086,8 +1083,6 @@ public class BookieShell implements Tool {
             super(CMD_LISTBOOKIES);
             opts.addOption("rw", "readwrite", false, "Print readwrite bookies");
             opts.addOption("ro", "readonly", false, "Print readonly bookies");
-            opts.addOption("h", "hostnames", false,
-                    "Also print hostname of the bookie");
         }
 
         @Override
@@ -1116,11 +1111,7 @@ public class BookieShell implements Tool {
                 bookies.addAll(roBookies);
             }
             for (BookieSocketAddress b : bookies) {
-                System.out.print(b);
-                if (cmdLine.hasOption("h")) {
-                    System.out.print("\t" + b.getSocketAddress().getHostName());
-                }
-                System.out.println("");
+                System.out.println(getBookieSocketAddrStringRepresentation(b));
                 count++;
             }
             if (count == 0) {
@@ -1428,11 +1419,7 @@ public class BookieShell implements Tool {
                     LOG.info("No auditor elected");
                     return -1;
                 }
-                LOG.info("Auditor: {}/{}:{}",
-                         new Object[] {
-                             bookieId.getSocketAddress().getAddress().getCanonicalHostName(),
-                             bookieId.getSocketAddress().getAddress().getHostAddress(),
-                             bookieId.getSocketAddress().getPort() });
+                LOG.info("Auditor: " + getBookieSocketAddrStringRepresentation(bookieId));
             } finally {
                 if (zk != null) {
                     zk.close();
@@ -1958,8 +1945,10 @@ public class BookieShell implements Tool {
             long totalFree = 0, total=0;
             for (Map.Entry<BookieSocketAddress, BookieInfo> e : map.entrySet()) {
                 BookieInfo bInfo = e.getValue();
-                System.out.println(e.getKey() + ":\tFree: " + bInfo.getFreeDiskSpace() +  getReadable(bInfo.getFreeDiskSpace()) +
-                        "\tTotal: " + bInfo.getTotalDiskSpace() +  getReadable(bInfo.getTotalDiskSpace()));
+                BookieSocketAddress bookieId = e.getKey();
+                System.out.println(getBookieSocketAddrStringRepresentation(bookieId) + ":\tFree: "
+                        + bInfo.getFreeDiskSpace() + getReadable(bInfo.getFreeDiskSpace()) + "\tTotal: "
+                        + bInfo.getTotalDiskSpace() + getReadable(bInfo.getTotalDiskSpace()));
                 totalFree += bInfo.getFreeDiskSpace();
                 total += bInfo.getTotalDiskSpace();
             }
@@ -2338,6 +2327,16 @@ public class BookieShell implements Tool {
         return cmd.runCmd(newArgs);
     }
 
+    /*
+     * The string returned is of the form: 'resolved canonicalHostName'/'literal IP address':'port number'
+     */
+    private static String getBookieSocketAddrStringRepresentation(BookieSocketAddress bookieId) {
+        String bookieSocketAddrStringRepresentation = bookieId.getSocketAddress().getAddress().getCanonicalHostName()
+                + "/" + bookieId.getSocketAddress().getAddress().getHostAddress() + ":"
+                + bookieId.getSocketAddress().getPort();
+        return bookieSocketAddrStringRepresentation;
+    }
+    
     /**
      * Returns the sorted list of the files in the given folders with the given file extensions.
      * Sorting is done on the basis of CreationTime if the CreationTime is not available or if they are equal
