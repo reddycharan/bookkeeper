@@ -298,7 +298,7 @@ public class AutoRecoveryMain {
         }
 
         String hello = String.format(
-                           "Hello, I'm your AutoRecovery. ZKServers are on %1$s, zkLedgersRootPath is %2$.",
+                           "Hello, I'm your AutoRecovery. ZKServers are on %1$s, zkLedgersRootPath is %2$s.",
                            conf.getZkServers(), conf.getZkLedgersRootPath());
         LOG.info(hello);
         
