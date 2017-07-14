@@ -803,7 +803,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         final Channel c = channel;
         if (c == null) {
-            errorOutReadKey(completionKey);
+            errorOutGetBookieInfoKey(completionKey);
             return;
         }
 
@@ -825,13 +825,13 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                             LOG.warn("Writing GetBookieInfoRequest(flags={}) to channel {} failed : ",
                                     new Object[] { requested, c, future.cause() });
                         }
-                        errorOutReadKey(completionKey);
+                        errorOutGetBookieInfoKey(completionKey);
                     }
                 }
             });
         } catch(Throwable e) {
             LOG.warn("Get metadata operation {} failed", getBookieInfoRequest, e);
-            errorOutReadKey(completionKey);
+            errorOutGetBookieInfoKey(completionKey);
         }
     }
 
@@ -1056,6 +1056,9 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     break;
                 case READ_ENTRY:
                     errorOutReadKey(key, rc);
+                    break;
+                case GET_BOOKIE_INFO:
+                    errorOutGetBookieInfoKey(key, rc);
                     break;
                 case START_TLS:
                     errorStartTLS(rc);
