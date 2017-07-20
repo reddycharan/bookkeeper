@@ -20,8 +20,8 @@
 # * limitations under the License.
 # */
 
-
 ## Bookie settings
+
 
 ## Some settings support configuration override for specific time range.
 ## For example one can set:
@@ -87,7 +87,7 @@ bookiePort=3181
 #allowLoopback=false
 
 # Directory Bookkeeper outputs its write ahead log
-journalDirectory=/tmp/bk-txn
+journalDirectory=/sfs/sfsdata/bkjournal
 
 # Directory Bookkeeper outputs ledger snapshots
 # could define multi directories to store snapshots, separated by ','
@@ -97,7 +97,7 @@ journalDirectory=/tmp/bk-txn
 # Ideally ledger dirs and journal dir are each in a differet device,
 # which reduce the contention between random i/o and sequential write.
 # It is possible to run with a single disk, but performance will be significantly lower.
-ledgerDirectories=/tmp/bk-data
+ledgerDirectories=/sfs/sfsdata/bkledger
 # Directories to store index files. If not specified, will use ledgerDirectories to store.
 # indexDirectories=/tmp/bk-data
 
@@ -132,7 +132,7 @@ ledgerManagerFactoryClass=org.apache.bookkeeper.meta.LongHierarchicalLedgerManag
 # if false, preallocation runs synchronously on the thread doing addEntry
 # disabling it results in more stable writes in case of
 # collocated journal and ledger
-entryLogFilePreallocationEnabled=false
+#entryLogFilePreallocationEnabled=true
 
 # twitter's settings. seem to reduce frequency of memtable flushes.
 sortedLedgerStorageEnabled=true
@@ -158,7 +158,7 @@ minorCompactionThreshold=0.2
 # Interval to run minor compaction, in seconds
 # If it is set to less than zero, the minor compaction is disabled.
 # Supports configuration override for specific time range. 
-minorCompactionInterval=3600
+minorCompactionInterval=900
 
 # Threshold of major compaction
 # For those entry log files whose remaining(used) size percentage reaches below
@@ -168,12 +168,13 @@ minorCompactionInterval=3600
 # If it is set to less than zero, the major compaction is disabled.
 # [twitter] reduce major compaction threshold to a low value to prevent bad force compaction behavior
 # Supports configuration override for specific time range.
+# majorCompactionThreshold=0.8
 majorCompactionThreshold=0.6
 
 # Interval to run major compaction, in seconds
 # If it is set to less than zero, the major compaction is disabled.
 # Supports configuration override for specific time range. 
-majorCompactionInterval=86400
+# majorCompactionInterval=86400
 
 # whether force compaction is allowed when disk full or almost full.
 # Force GC may get some space back, but may also fill up disk space more
@@ -181,6 +182,7 @@ majorCompactionInterval=86400
 # garbage log files deleted after GC.
 # Supports configuration override for specific time range.
 #isForceGCAllowWhenNoSpace=false
+isForceGCAllowWhenNoSpace=true
 
 # Set the maximum number of entries which can be compacted without flushing.
 # When compacting, the entries are written to the entrylog and the new offsets
@@ -215,16 +217,15 @@ majorCompactionInterval=86400
 # journalMaxBackups=5
 
 # How much space should we pre-allocate at a time in the journal
-# improves stability of writes if journal and ledger share the device
-# reduces IO spikes when reduced from default value
-journalPreAllocSizeMB=4
+# journalPreAllocSizeMB=16
+journalPreAllocSizeMB=8
 
 # Size of the write buffers used for the journal
-# improves stability of writes if journal and ledger share the device
-# imporves write thtoughput comparing to default (64K)
-journalWriteBufferSizeKB=256
+# journalWriteBufferSizeKB=64
+journalWriteBufferSizeKB=512
 
 # Should we remove pages from page cache after force write
+# journalRemoveFromPageCache=false
 journalRemoveFromPageCache=true
 
 # Should we group journal force writes, which optimize group commit
@@ -232,35 +233,23 @@ journalRemoveFromPageCache=true
 # journalAdaptiveGroupWrites=true
 
 # Maximum latency to impose on a journal write to achieve grouping
-# improves throughput under heavier load at expency of extra latency
-journalMaxGroupWaitMSec=0
+journalMaxGroupWaitMSec=2
 
 # Maximum writes to buffer to achieve grouping
-journalBufferedWritesThreshold=262144
-
-journalBufferedEntriesThreshold=180
+journalBufferedWritesThreshold=524288
 
 # If we should flush the journal when journal queue is empty
-# improves stability of writes if journal and ledger share the device
-journalFlushWhenQueueEmpty=false
+# journalFlushWhenQueueEmpty=false
 
 # The number of threads that should handle journal callbacks
-# improves stability of writes if journal and ledger share the device
-# combined with increased numAddWorkerThreads improves throughput and stability.
-# may need to be adjusted to match disk performance and number of disks in the system.
-numJournalCallbackThreads=12
+numJournalCallbackThreads=20
 
 # How long the interval to trigger next garbage collection, in milliseconds
 # Since garbage collection is running in background, too frequent gc
 # will heart performance. It is better to give a higher number of gc
 # interval if there is enough disk capacity.
-# Supports configuration override for specific time range.
-gcWaitTime=1800000
-
-# How long the interval to trigger next garbage collection of overreplicated
-# ledgers, in milliseconds [Default: 1 day]. This should not be run very frequently since we read
-# the metadata for all the ledgers on the bookie from zk
-# gcOverreplicatedLedgerWaitTime=86400000
+# gcWaitTime=1000
+gcWaitTime=300000
 
 # How long the interval to flush ledger index pages to disk, in milliseconds
 # Flushing index files will introduce much random disk I/O.
@@ -271,15 +260,16 @@ gcWaitTime=1800000
 # to get better performance, but you need to pay more time on bookie
 # server restart after failure.
 #
-flushInterval=10000
+# flushInterval=100
+flushInterval=15000
 
 # Entry log flush interval in bytes.
 # Default is 0. 0 or less disables this feature and effectively flush
 # happens on log rotation.
 # Flushing in smaller chunks but more frequently reduces spikes in disk
 # I/O. Flushing too frequently may also affect performance negatively.
-# let's flush every 10M
-flushEntrylogBytes=10485760
+# let's flush every 50M
+flushEntrylogBytes=52428800
 
 # Interval to watch whether bookie is dead or not, in milliseconds
 #
@@ -353,9 +343,13 @@ readOnlyModeEnabled=true
 #shutdown.
 #Valid values should be in between 0 and 1 (exclusive). 
 #diskUsageThreshold=0.95
+diskUsageThreshold=0.90
+
+diskUsageWarnThreshold=0.8
 
 #Disk check interval in milli seconds, interval to check the ledger dirs usage.
 #Default is 10000
+#diskCheckInterval=10000
 diskCheckInterval=60000
 
 # Interval at which the auditor will do a check of all ledgers in the cluster.
@@ -364,6 +358,7 @@ diskCheckInterval=60000
 # Note that periodic checking will put extra load on the cluster, so it should
 # not be run more frequently than once a day.
 #auditorPeriodicCheckInterval=604800
+auditorPeriodicCheckInterval=86400
 
 # isAuditorPeriodicCheckOkToRunNow support configuration override for specific time range
 # so it is possible to enable/disable AuditorPeriodicCheck depending on the system date/time
@@ -394,6 +389,7 @@ diskCheckInterval=60000
 # run when a bookie fails.
 # The interval is specified in seconds.
 #auditorPeriodicBookieCheckInterval=86400
+auditorPeriodicBookieCheckInterval=3600
 
 # isAuditorPeriodicBookieCheckOkToRunNow support configuration override for specific time range
 # so it is possible to enable/disable AuditorPeriodicBookieCheck depending on the system date/time
@@ -409,19 +405,17 @@ diskCheckInterval=60000
 
 # number of threads that should handle write requests. if zero, the writes would
 # be handled by netty threads directly.
-numAddWorkerThreads=6
+numAddWorkerThreads=20
 
 # number of threads that should handle read requests. if zero, the reads would
 # be handled by netty threads directly.
-# improves read throughput and latency. 
-# needs to be adjusted to match disk performance and number of disks.
-numReadWorkerThreads=18
+numReadWorkerThreads=20
 
 # The number of bytes we should use as capacity for BufferedReadChannel. Default is 512 bytes.
 # adjusted to load typical data entry (64K) + some overhead.
 # values smaller than data entry size will result in multiple disk accesses (bad performance)
-# significantly larger values willrresult in prefetch if unnecessary data (bad performance)
-# alighen do 4K block
+# significantly larger values will result in prefetch if unnecessary data (bad performance)
+# align to 4K block
 readBufferSizeBytes=69632
 
 # The number of bytes used as capacity for the write buffer. Default is 64KB.
@@ -448,35 +442,25 @@ statsProviderClass=org.apache.bookkeeper.stats.CodahaleMetricsProvider
 codahaleStatsOutputFrequencySeconds=60
 
 # prefix for defining a scope for the bookie or bookkeeper client metrics
-codahaleStatsPrefix=bk
+codahaleStatsPrefix=bookie
 
 # directory for appending metrics in csv files
-#codahaleStatsCSVEndpoint=/media/data/stats
+#codahaleStatsCSVEndpoint=/sfs/sfslogs/stats
 
-autoRecoveryDaemonEnabled=false
-diskUsageThreshold=0.85
-diskUsageWarnThreshold=0.8
-isForceGCAllowWhenNoSpace=true
+autoRecoveryDaemonEnabled=true
 
 # how long to wait, in seconds, before starting auto recovery of a lost bookie
 # default is 0.
 lostBookieRecoveryDelay=1800
 
-#If enabled, rest endpoints are enabled alongside stats on same jetty server.
-enableRestEndpoints=true
-restPackage=org.apache.bookkeeper.util
-#If present and > 0, stats are hosted.
-jettyPort=2182
-enableLocalStats=true
-
+#Port to host metrics on. If null, stats will not be hosted on a servlet.
+statsServletPort=2182
 
 #Context path after domain to monitor. Must begin with / and not end with /
-statServletContextPath=/stats
-#Endpoint to host metrics on. Hosted after [domain]/[servletContextPath]/. Must begin with / and not end with /
-statServletEndpoint=/metrics.json
-restServletContextPath=/rest
-#journalDirectory=/media/data/bk
-#ledgerDirectories=/media/data/bk
+servletContextPath=/stats
+
+#Endpoint to host metrics on. Hosted after [domain]/[servletContextPath]/. Must begin with / and not with /
+servletEndpoint=/metrics.json
 
 #Ensure that we start the user as only a certain user
 #permittedStartupUsers=
@@ -485,38 +469,3 @@ restServletContextPath=/rest
 entryFormatterClass=org.apache.bookkeeper.util.HexDumpEntryFormatter
 # LedgerId formatter class to format ledgerids. default value is UUID formatter
 ledgerIdFormatterClass=org.apache.bookkeeper.util.LedgerIdFormatter$UUIDLedgerIdFormatter
-
-# Minimum safe Usable size to be available in index directory for Bookie to create Index File while replaying 
-# journal at the time of Bookie Start in Readonly Mode (in bytes)
-# minUsableSizeForIndexFileCreation=1073741824
-
-# Configure the Bookie to allow/disallow multiple ledger/index directories in the same filesystem partition
-allowMultipleDirsUnderSamePartition=false
-
-# SSL Provider (JDK or OpenSSL)
-# sslProvider=OpenSSL
-
-# The path to class that provides security.
-#sslProviderFactoryClass=org.apache.bookkeeper.security.SSLContextFactory
-
-# Type of security used by server
-#sslClientAuthentication=true
-
-# Bookie Keystore type
-#sslKeyStoreType=JKS
-
-# Bookie Keystore location (path)
-#sslKeyStore=
-
-# Bookie Keystore password path, if the keystore is protected by a password
-#sslKeyStorePasswordPath=
-
-# Bookie Truststore type
-#sslTrustStoreType=
-
-# Bookie Truststore location (path)
-#sslTrustStore=
-
-# Bookie Truststore password path, if the truststore is protected by a password
-#sslTrustStorePasswordPath=
-
