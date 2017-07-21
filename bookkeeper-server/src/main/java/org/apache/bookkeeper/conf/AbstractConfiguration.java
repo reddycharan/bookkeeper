@@ -141,16 +141,27 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     protected final static String SSL_CLIENT_AUTHENTICATION = "sslClientAuthentication";
 
     /**
-     * This list will be passed to {@link SSLEngine#setEnabledCipherSuites(java.lang.String[]) }.
-     * Please refer to official JDK JavaDocs
-    */
+     * This list will be passed to {@link SSLEngine#setEnabledCipherSuites(java.lang.String[]) }. Please refer to
+     * official JDK JavaDocs
+     */
     protected final static String SSL_ENABLED_CIPHER_SUITES = "sslEnabledCipherSuites";
 
     /**
-     * This list will be passed to {@link SSLEngine#setEnabledProtocols(java.lang.String[]) }.
-     * Please refer to official JDK JavaDocs
-    */
+     * This list will be passed to {@link SSLEngine#setEnabledProtocols(java.lang.String[]) }. Please refer to official
+     * JDK JavaDocs
+     */
     protected final static String SSL_ENABLED_PROTOCOLS = "sslEnabledProtocols";
+
+    /**
+     * SSL KeyFile, TrustFile, Password files and Certificate Paths
+     */
+    protected final static String SSL_KEYFILE_TYPE = "sslKeyFileType";
+    protected final static String SSL_KEYFILE_PATH = "sslKeyFilePath";
+    protected final static String SSL_KEYFILE_PASSWORD_PATH = "sslKeyFilePasswordPath";
+    protected final static String SSL_TRUSTFILE_TYPE = "sslTrustFileType";
+    protected final static String SSL_TRUSTFILE_PATH = "sslTrustFilePath";
+    protected final static String SSL_TRUSTFILE_PASSWORD_PATH = "sslTrustFilePasswordPath";
+    protected final static String SSL_CERTIFICATE_PATH = "sslCertificatePath";
 
     protected AbstractConfiguration() {
         super();

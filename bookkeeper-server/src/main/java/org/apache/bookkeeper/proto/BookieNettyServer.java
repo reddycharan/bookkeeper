@@ -221,6 +221,7 @@ class BookieNettyServer {
                             result.addAll(Arrays.asList(certificates));
                             return result;
                         } catch (SSLPeerUnverifiedException err) {
+                            LOG.error("Failed to get peer certificates", err);
                             return Collections.emptyList();
                         }
 

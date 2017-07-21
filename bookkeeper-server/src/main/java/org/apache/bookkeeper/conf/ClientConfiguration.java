@@ -115,14 +115,6 @@ public class ClientConfiguration extends AbstractConfiguration {
     // Client auth provider factory class name. It must be configured on Bookies to for the Auditor
     protected final static String CLIENT_AUTH_PROVIDER_FACTORY_CLASS = "clientAuthProviderFactoryClass";
 
-    // Client SSL
-    protected final static String SSL_KEYSTORE_TYPE = "clientKeyStoreType";
-    protected final static String SSL_KEYSTORE = "clientKeyStore";
-    protected final static String SSL_KEYSTORE_PASSWORD_PATH = "clientKeyStorePasswordPath";
-    protected final static String SSL_TRUSTSTORE_TYPE = "clientTrustStoreType";
-    protected final static String SSL_TRUSTSTORE = "clientTrustStore";
-    protected final static String SSL_TRUSTSTORE_PASSWORD_PATH = "clientTrustStorePasswordPath";
-
     /**
      * Construct a default client-side configuration
      */
@@ -1147,118 +1139,137 @@ public class ClientConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Get the keystore type for client. Default is JKS.
+     * Get the keyfile type for client. Default is JKS.
      * 
      * @return
      */
-    public String getSSLKeyStoreType() {
-        return getString(SSL_KEYSTORE_TYPE, "JKS");
+    public String getSSLKeyFileType() {
+        return getString(SSL_KEYFILE_TYPE, "JKS");
     }
 
 
     /**
-     * Set the keystore type for client.
+     * Set the keyfile type for client.
      * 
      * @return
      */
-    public ClientConfiguration setSSLKeyStoreType(String arg) {
-        setProperty(SSL_KEYSTORE_TYPE, arg);
+    public ClientConfiguration setSSLKeyFileType(String arg) {
+        setProperty(SSL_KEYFILE_TYPE, arg);
         return this;
     }
 
     /**
-     * Get the keystore path for the client.
+     * Get the keyfile path for the client.
      * 
      * @return
      */
-    public String getSSLKeyStore() {
-        return getString(SSL_KEYSTORE, null);
+    public String getSSLKeyFilePath() {
+        return getString(SSL_KEYFILE_PATH, null);
     }
 
     /**
-     * Set the keystore path for the client.
+     * Set the keyfile path for the client.
      * 
      * @return
      */
-    public ClientConfiguration setSSLKeyStore(String arg) {
-        setProperty(SSL_KEYSTORE, arg);
+    public ClientConfiguration setSSLKeyFilePath(String arg) {
+        setProperty(SSL_KEYFILE_PATH, arg);
         return this;
     }
 
     /**
-     * Get the path to file containing keystore password, if the client keystore is password protected. Default is null.
+     * Get the path to file containing keyfile password, if the client keyfile is password protected. Default is null.
      * 
      * @return
      */
-    public String getSSLKeyStorePasswordPath() {
-        return getString(SSL_KEYSTORE_PASSWORD_PATH, null);
+    public String getSSLKeyFilePasswordPath() {
+        return getString(SSL_KEYFILE_PASSWORD_PATH, null);
     }
 
     /**
-     * Set the path to file containing keystore password, if the client keystore is password protected.
+     * Set the path to file containing keyfile password, if the client keyfile is password protected.
      * 
      * @return
      */
-    public ClientConfiguration setSSLKeyStorePasswordPath(String arg) {
-        setProperty(SSL_KEYSTORE_PASSWORD_PATH, arg);
+    public ClientConfiguration setSSLKeyFilePasswordPath(String arg) {
+        setProperty(SSL_KEYFILE_PASSWORD_PATH, arg);
         return this;
     }
 
     /**
-     * Get the truststore type for client. Default is JKS.
+     * Get the trustfile type for client. Default is JKS.
      * 
      * @return
      */
-    public String getSSLTrustStoreType() {
-        return getString(SSL_TRUSTSTORE_TYPE, "JKS");
+    public String getSSLTrustFileType() {
+        return getString(SSL_TRUSTFILE_TYPE, "JKS");
     }
 
     /**
-     * Set the truststore type for client.
+     * Set the trustfile type for client.
      * 
      * @return
      */
-    public ClientConfiguration setSSLTrustStoreType(String arg) {
-        setProperty(SSL_TRUSTSTORE_TYPE, arg);
+    public ClientConfiguration setSSLTrustFileType(String arg) {
+        setProperty(SSL_TRUSTFILE_TYPE, arg);
         return this;
     }
 
     /**
-     * Get the truststore path for the client.
+     * Get the trustfile path for the client.
      * 
      * @return
      */
-    public String getSSLTrustStore() {
-        return getString(SSL_TRUSTSTORE, null);
+    public String getSSLTrustFilePath() {
+        return getString(SSL_TRUSTFILE_PATH, null);
     }
 
     /**
-     * Set the truststore path for the client.
+     * Set the trustfile path for the client.
      * 
      * @return
      */
-    public ClientConfiguration setSSLTrustStore(String arg) {
-        setProperty(SSL_TRUSTSTORE, arg);
+    public ClientConfiguration setSSLTrustFilePath(String arg) {
+        setProperty(SSL_TRUSTFILE_PATH, arg);
         return this;
     }
 
     /**
-     * Get the path to file containing truststore password, if the client truststore is password protected. Default is
+     * Get the path to file containing trustfile password, if the client trustfile is password protected. Default is
      * null.
      * 
      * @return
      */
-    public String getSSLTrustStorePasswordPath() {
-        return getString(SSL_TRUSTSTORE_PASSWORD_PATH, null);
+    public String getSSLTrustFilePasswordPath() {
+        return getString(SSL_TRUSTFILE_PASSWORD_PATH, null);
     }
 
     /**
-     * Set the path to file containing truststore password, if the client truststore is password protected.
+     * Set the path to file containing trustfile password, if the client trustfile is password protected.
      * 
      * @return
      */
-    public ClientConfiguration setSSLTrustStorePasswordPath(String arg) {
-        setProperty(SSL_TRUSTSTORE_PASSWORD_PATH, arg);
+    public ClientConfiguration setSSLTrustFilePasswordPath(String arg) {
+        setProperty(SSL_TRUSTFILE_PASSWORD_PATH, arg);
+        return this;
+    }
+
+    /**
+     * Get the path to file containing SSL Certificate
+     * 
+     * @return
+     */
+    public String getSSLCertificatePath() {
+        return getString(SSL_CERTIFICATE_PATH, null);
+    }
+
+    /**
+     * Set the path to file containing SSL Certificate
+     * 
+     * @return
+     */
+    public ClientConfiguration setSSLCertificatePath(String arg) {
+        setProperty(SSL_CERTIFICATE_PATH, arg);
         return this;
     }
 }

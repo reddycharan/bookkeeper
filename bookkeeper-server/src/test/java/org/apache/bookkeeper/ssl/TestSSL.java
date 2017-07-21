@@ -18,6 +18,9 @@
 package org.apache.bookkeeper.ssl;
 
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.Enumeration;
@@ -28,7 +31,6 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
-import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -66,6 +68,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Tests with SSL enabled.
  */
+@RunWith(Parameterized.class)
 public class TestSSL extends BookKeeperClusterTestCase {
 
     static Logger LOG = LoggerFactory.getLogger(TestPerChannelBookieClient.class);
@@ -76,9 +79,28 @@ public class TestSSL extends BookKeeperClusterTestCase {
     private static boolean secureBookieSideChannel = false;
     private static Collection<Object> secureBookieSideChannelPrincipals = null;
 
+    private SSLContextFactory.KeyFileType clientKeyFileFormat;
+    private SSLContextFactory.KeyFileType clientTrustFileFormat;
+    private SSLContextFactory.KeyFileType serverKeyFileFormat;
+    private SSLContextFactory.KeyFileType serverTrustFileFormat;
 
-    public TestSSL() {
+    @Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+                { "JKS", "JKS" },
+                { "PEM", "PEM" },
+                { "PKCS12", "PKCS12" },
+                { "JKS", "PEM" },
+                { "PEM", "PKCS12" },
+                { "PKCS12", "JKS" }
+            });
+    }
+    public TestSSL(String keyFileFormat, String trustFileFormat) {
         super(3);
+        this.clientKeyFileFormat = SSLContextFactory.KeyFileType.valueOf(keyFileFormat);
+        this.clientTrustFileFormat = SSLContextFactory.KeyFileType.valueOf(trustFileFormat);
+        this.serverKeyFileFormat = SSLContextFactory.KeyFileType.valueOf(keyFileFormat);
+        this.serverTrustFileFormat = SSLContextFactory.KeyFileType.valueOf(trustFileFormat);
     }
 
     @Before
@@ -87,26 +109,113 @@ public class TestSSL extends BookKeeperClusterTestCase {
         /* client configuration */
         baseClientConf.setSSLProviderFactoryClass(SSLContextFactory.class.getName());
         baseClientConf.setSSLClientAuthentication(true);
-        baseClientConf.setSSLKeyStoreType("JKS");
-        baseClientConf.setSSLKeyStore(this.getClass().getClassLoader().getResource("client.jks").getPath());
-        baseClientConf.setSSLKeyStorePasswordPath(
-                this.getClass().getClassLoader().getResource("keyStoreClientPassword.txt").getPath());
-        baseClientConf.setSSLTrustStoreType("JKS");
-        baseClientConf.setSSLTrustStore(this.getClass().getClassLoader().getResource("cacerts").getPath());
-        baseClientConf.setSSLTrustStorePasswordPath(
-                this.getClass().getClassLoader().getResource("trustStorePassword.txt").getPath());
+
+        switch (clientKeyFileFormat) {
+        case PEM:
+            baseClientConf.setSSLKeyFileType("PEM");
+            baseClientConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("client-key.pem").getPath());
+            baseClientConf.setSSLCertificatePath(
+                    this.getClass().getClassLoader().getResource("client-cert.pem").getPath());
+
+            break;
+        case JKS:
+            baseClientConf.setSSLKeyFileType("JKS");
+            baseClientConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("client-key.jks").getPath());
+            baseClientConf.setSSLKeyFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreClientPassword.txt").getPath());
+
+            break;
+        case PKCS12:
+            baseClientConf.setSSLKeyFileType("PKCS12");
+            baseClientConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("client-key.p12").getPath());
+            baseClientConf.setSSLKeyFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreClientPassword.txt").getPath());
+
+            break;
+        default:
+            throw new Exception("Invalid client Keyfile format" + clientKeyFileFormat);
+        }
+
+        switch (clientTrustFileFormat) {
+        case PEM:
+            baseClientConf.setSSLTrustFileType("PEM");
+            baseClientConf
+                    .setSSLTrustFilePath(this.getClass().getClassLoader().getResource("server-cert.pem").getPath());
+
+            break;
+        case JKS:
+            baseClientConf.setSSLTrustFileType("JKS");
+            baseClientConf
+                    .setSSLTrustFilePath(this.getClass().getClassLoader().getResource("server-key.jks").getPath());
+            baseClientConf.setSSLTrustFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreServerPassword.txt").getPath());
+
+            break;
+        case PKCS12:
+            baseClientConf.setSSLTrustFileType("PKCS12");
+            baseClientConf
+                    .setSSLTrustFilePath(this.getClass().getClassLoader().getResource("server-key.p12").getPath());
+            baseClientConf.setSSLTrustFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreServerPassword.txt").getPath());
+
+            break;
+        default:
+            throw new Exception("Invalid client Keyfile format" + clientTrustFileFormat);
+        }
 
         /* server configuration */
         baseConf.setSSLProviderFactoryClass(SSLContextFactory.class.getName());
         baseConf.setSSLClientAuthentication(true);
-        baseConf.setSSLKeyStoreType("JKS");
-        baseConf.setSSLKeyStore(this.getClass().getClassLoader().getResource("server.jks").getPath());
-        baseConf.setSSLKeyStorePasswordPath(
-                this.getClass().getClassLoader().getResource("keyStoreServerPassword.txt").getPath());
-        baseConf.setSSLTrustStoreType("JKS");
-        baseConf.setSSLTrustStore(this.getClass().getClassLoader().getResource("cacerts").getPath());
-        baseConf.setSSLTrustStorePasswordPath(
-                this.getClass().getClassLoader().getResource("trustStorePassword.txt").getPath());
+
+        switch (serverKeyFileFormat) {
+        case PEM:
+            baseConf.setSSLKeyFileType("PEM");
+            baseConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("server-key.pem").getPath());
+            baseConf.setSSLCertificatePath(this.getClass().getClassLoader().getResource("server-cert.pem").getPath());
+
+            break;
+        case JKS:
+            baseConf.setSSLKeyFileType("JKS");
+            baseConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("server-key.jks").getPath());
+            baseConf.setSSLKeyFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreServerPassword.txt").getPath());
+
+            break;
+        case PKCS12:
+            baseConf.setSSLKeyFileType("PKCS12");
+            baseConf.setSSLKeyFilePath(this.getClass().getClassLoader().getResource("server-key.p12").getPath());
+            baseConf.setSSLKeyFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreServerPassword.txt").getPath());
+
+            break;
+        default:
+            throw new Exception("Invalid server Keyfile format" + serverKeyFileFormat);
+        }
+
+        switch (serverTrustFileFormat) {
+        case PEM:
+            baseConf.setSSLTrustFileType("PEM");
+            baseConf.setSSLTrustFilePath(this.getClass().getClassLoader().getResource("client-cert.pem").getPath());
+
+            break;
+        case JKS:
+            baseConf.setSSLTrustFileType("JKS");
+            baseConf.setSSLTrustFilePath(this.getClass().getClassLoader().getResource("client-key.jks").getPath());
+            baseConf.setSSLTrustFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreClientPassword.txt").getPath());
+
+            break;
+
+        case PKCS12:
+            baseConf.setSSLTrustFileType("PKCS12");
+            baseConf.setSSLTrustFilePath(this.getClass().getClassLoader().getResource("client-key.p12").getPath());
+            baseConf.setSSLTrustFilePasswordPath(
+                    this.getClass().getClassLoader().getResource("keyStoreClientPassword.txt").getPath());
+
+            break;
+        default:
+            throw new Exception("Invalid server Keyfile format" + serverTrustFileFormat);
+        }
 
         super.setUp();
     }
@@ -121,8 +230,8 @@ public class TestSSL extends BookKeeperClusterTestCase {
      * Verify that a server will not start if ssl is enabled but no cert is specified
      */
     @Test(timeout = 60000)
-    public void testStartSSLServerNoKeyStore() throws Exception {
-        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyStore(null);
+    public void testStartSSLServerNoKeyFile() throws Exception {
+        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyFilePath(null);
 
         try {
             bs.add(startBookie(bookieConf));
@@ -137,7 +246,7 @@ public class TestSSL extends BookKeeperClusterTestCase {
      */
     @Test(timeout = 60000)
     public void testStartSSLServerBadPassword() throws Exception {
-        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyStorePasswordPath("badpassword");
+        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyFilePasswordPath("badpassword");
         try {
             bs.add(startBookie(bookieConf));
             fail("Shouldn't have been able to start");
