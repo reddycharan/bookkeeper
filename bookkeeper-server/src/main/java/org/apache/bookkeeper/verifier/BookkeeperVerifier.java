@@ -661,7 +661,7 @@ public class BookkeeperVerifier {
             long toWait = testEnd - System.currentTimeMillis();
 
             /* atomically wait for either IO to complete or the test to end */
-            this.wait(testEnd < 0 ? 0 : toWait);
+            this.wait(toWait < 0 ? 0 : toWait);
             printThrowExceptions();
         }
 
