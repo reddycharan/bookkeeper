@@ -213,8 +213,7 @@ public class LocalBookKeeper {
             throw new IOException(
                     "Unable to create LocalBookiesConfigDir - " + localBookiesConfigDir.getAbsolutePath());
         }
-        tempDirs.add(localBookiesConfigDir);
-
+    
         String loopbackIfName = this.getLoopbackIfName();
         for (int i = 0; i < numberOfBookies; i++) {
             bsConfs[i] = new ServerConfiguration((ServerConfiguration) baseConf.clone());
@@ -306,6 +305,9 @@ public class LocalBookKeeper {
             if (indexDirNames != null) {
                 bsConfs[i].setIndexDirName(indexDirNames);
             }
+            // write config into file before start so we can know what's wrong if start failed
+            String fileName = Bookie.getBookieAddress(bsConfs[i]).toString() + ".conf";
+            serializeLocalBookieConfig(bsConfs[i], fileName);
 
             if (sl != null) {
                 bs[i] = new BookieServer(bsConfs[i], sl);
@@ -313,8 +315,6 @@ public class LocalBookKeeper {
                 bs[i] = new BookieServer(bsConfs[i]);
             }
             bs[i].start();
-            String fileName = Bookie.getBookieAddress(bsConfs[i]).toString() + ".conf";
-            serializeLocalBookieConfig(bsConfs[i], fileName);
         }
         // baseconf.conf is needed because for executing any BookieShell command of Metadata/Zookeeper Operation nature
         // we need a valid conf file having correct zk details and this could be used for running any such bookieshell

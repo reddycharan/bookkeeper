@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.security.AccessControlException;
+import java.util.Arrays;
 
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -70,24 +71,21 @@ public class ConfigurationTest {
     public void testClusterOverride() {
         ServerConfiguration conf = new ServerConfiguration();
 
-        // Assign a specific and a generic to our environment; should get specific.
-        conf.setProperty("testProp", "generic");
-        conf.setProperty("phx.sp1.testCluster$testProp", "specific");
-
-        // Assign a generic and a specific to another environment. Should get generic.
-        conf.setProperty("dfw.sp1.testCluster$genericTestProp", "specific");
-        conf.setProperty("genericTestProp", "generic");
-
-        conf.setProperty("phx.sp1.testCluster$specificTestInt", 100);
-        conf.setProperty("genericTestInt", 0);
-
-        conf.setProperty("dfw.sp1.testCluster$genericTestInt", 100);
-        conf.setProperty("genericTestInt", 0);
+        // Assign a value to our environment; should get same value with and without prefix.
+        conf.setProperty("testProp", "specific");
+        conf.setProperty("genericTestInt", 100);
 
         assertTrue(conf.getString("testProp").equals("specific"));
-        assertTrue(conf.getString("genericTestProp").equals("generic"));
-        assertTrue(conf.getInt("genericTestInt") == 0);
-        assertTrue(conf.getInt("specificTestInt") == 100);
+        assertTrue(conf.getString("phx.sp1.testCluster$testProp").equals("specific"));
+        assertTrue(conf.getInt("genericTestInt") == 100);
+        assertTrue(conf.getInt("phx.sp1.testCluster$genericTestInt") == 100);
+
+        // GetStringArray should also work
+        String arr[] = {"v1", "v2", "v3"};
+        conf.setProperty("testList", "v1,v2,v3");
+        assertTrue(Arrays.equals(conf.getStringArray("testList"), arr));
+        assertTrue(Arrays.equals(conf.getStringArray("phx.sp1.testCluster$testList"), arr));
+
     }
 
     @Test(timeout=60000)
