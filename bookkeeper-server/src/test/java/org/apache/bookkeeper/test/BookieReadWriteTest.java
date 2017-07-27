@@ -27,9 +27,11 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
@@ -538,6 +540,58 @@ public class BookieReadWriteTest extends MultiLedgerManagerMultiDigestTestCase
         }
     }
 
+    @Test(timeout=60000)
+    public void testReadWriteSyncWithByteArrayProvider() throws IOException {
+        try {
+            // Create a ledger
+            lh = bkc.createLedger(digestType, ledgerPassword);
+            final int valueToWrite = 40000;
+            ledgerId = lh.getId();
+            LOG.info("Ledger ID: " + lh.getId());
+            final ByteBuffer entry = ByteBuffer.allocate(4);
+            entry.putInt(valueToWrite);
+            entry.position(0);
+            lh.addEntry(entry.array());
+            lh.close();
+
+            lh = bkc.openLedger(ledgerId, digestType, ledgerPassword);
+            LOG.debug("Number of entries written: " + lh.getLastAddConfirmed());
+            assertTrue("Verifying number of entries written", lh.getLastAddConfirmed() == 0);
+
+            Enumeration<LedgerEntry> ls = lh.readEntries(0, 0);
+            ByteBuffer origbb = entry;
+            Integer origEntry = origbb.getInt();
+            
+            final byte[] pooled = new byte[16];
+            final byte[] tooSmall = new byte[3];
+            final AtomicBoolean gotPooled = new AtomicBoolean(false);
+            ByteBuffer result;
+            
+        	result = ls.nextElement().getEntry(x -> tooSmall, y -> { gotPooled.set(tooSmall == y); });
+            assertTrue("ByteArrayDiscarder got expected buffer", gotPooled.get());
+
+            gotPooled.set(false);
+            ls = lh.readEntries(0, 0);
+            result = ls.nextElement().getEntry(x -> pooled, y -> { gotPooled.set(true); });
+            assertFalse("ByteArrayDiscarder not called", gotPooled.get());
+            LOG.debug("Length of result: " + result.capacity());
+            LOG.debug("Original entry: " + origEntry);
+
+            assertTrue("result uses provided byte array", result.array() == pooled);
+            result.rewind();
+            Integer retrEntry = result.getInt();
+            LOG.debug("Retrieved entry: " + retrEntry);
+            assertTrue("Checking entry 0 for equality", retrEntry.equals(valueToWrite));
+            lh.close();
+        } catch (BKException e) {
+            LOG.error("Test failed", e);
+            fail("Test failed due to BookKeeper exception");
+        } catch (InterruptedException e) {
+            LOG.error("Test failed", e);
+            fail("Test failed due to interruption");
+        }
+    }    
+    
     @Test(timeout=60000)
     public void testReadWriteZero() throws IOException {
         try {
