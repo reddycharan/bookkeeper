@@ -70,6 +70,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -676,9 +677,13 @@ public class BookKeeper implements AutoCloseable {
             throw BKException.create(BKException.Code.UnexpectedConditionException);
         }
 
-        LOG.info("Ensemble: {} for ledger: {}", lh.getLedgerMetadata().getEnsemble(0L),
-                lh.getId());
+        List<BookieSocketAddress> curEns = lh.getLedgerMetadata().getEnsemble(0L);
+        LOG.info("Ensemble: {} for ledger: {}", curEns, lh.getId());
 
+        for(BookieSocketAddress bsa : curEns) {
+            String ensSpread = bsa.toString() + "-" + BookKeeperClientStats.LEDGER_CREATE_ENSEMBLE;
+            statsLogger.getCounter(ensSpread).inc();
+        }
         return lh;
     }
 
@@ -837,9 +842,13 @@ public class BookKeeper implements AutoCloseable {
             throw BKException.create(BKException.Code.UnexpectedConditionException);
         }
 
-        LOG.info("Ensemble: {} for ledger: {}", lh.getLedgerMetadata().getEnsemble(0L),
-                lh.getId());
+        List<BookieSocketAddress> curEns = lh.getLedgerMetadata().getEnsemble(0L);
+        LOG.info("Ensemble: {} for ledger: {}", curEns, lh.getId());
 
+        for(BookieSocketAddress bsa : curEns) {
+            String ensSpread = bsa.toString() + "-" + BookKeeperClientStats.LEDGER_CREATE_ENSEMBLE;
+            statsLogger.getCounter(ensSpread).inc();
+        }
         return lh;
     }
 

@@ -47,6 +47,7 @@ public interface BookKeeperClientStats {
 	public final static String LAC_UPDATE_HITS = "LAC_UPDATE_HITS";
 	public final static String LAC_UPDATE_MISSES = "LAC_UPDATE_MISSES";
 	public final static String SPECULATIVE_READ_COUNT = "SPECULATIVE_READ_COUNT";
+	public final static String LEDGER_CREATE_ENSEMBLE = "LEDGER_CREATE_ENSEMBLE";
 
 	// Per-channel operations
 	public final static String TIMEOUT_READ = "TIMEOUT_READ_ENTRY";
