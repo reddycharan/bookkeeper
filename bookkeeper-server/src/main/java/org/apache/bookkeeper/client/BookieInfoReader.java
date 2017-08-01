@@ -40,6 +40,11 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A utility class to read {@link BookieInfo} from bookies.
+ *
+ * <p>NOTE: This class is tended to be used by this project only. External users should not rely on it directly.
+ */
 public class BookieInfoReader {
     private static final Logger LOG = LoggerFactory.getLogger(BookieInfoReader.class);
     private final ScheduledExecutorService scheduler;
@@ -47,7 +52,9 @@ public class BookieInfoReader {
     private final ClientConfiguration conf;
 
     /**
-     * Tracks current disk usage information for a particular bookie
+     * A class represents the information (e.g. disk usage, load) of a bookie.
+     *
+     * <p>NOTE: This class is tended to be used by this project only. External users should not rely on it directly.
      */
     public static class BookieInfo implements WeightedObject {
         private final long freeDiskSpace;
@@ -94,9 +101,11 @@ public class BookieInfoReader {
         private Collection<BookieSocketAddress> mostRecentlyReportedBookies = new ArrayList<>();
 
         public void updateBookies(Collection<BookieSocketAddress> updatedBookieSet) {
-            LOG.debug(
-                    "updateBookies: current: {}, new: {}",
-                    mostRecentlyReportedBookies, updatedBookieSet);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(
+                        "updateBookies: current: {}, new: {}",
+                        mostRecentlyReportedBookies, updatedBookieSet);
+            }
             infoMap.keySet().retainAll(updatedBookieSet);
             mostRecentlyReportedBookies = updatedBookieSet;
         }
@@ -152,12 +161,10 @@ public class BookieInfoReader {
      * Tracks whether there is an execution in progress as well as whether
      * another is pending.
      */
-    static final int UNQUEUED = 0;
-    static final int PARTIAL = 1;
-    static final int FULL = 2;
+    public enum State { UNQUEUED, PARTIAL, FULL }
     private static class InstanceState {
         private boolean running = false;
-        private int queuedType = UNQUEUED;
+        private State queuedType = State.UNQUEUED;
 
         private boolean shouldStart() {
             if (running) {
@@ -174,7 +181,7 @@ public class BookieInfoReader {
          * @return True if we should execute a scan, False if there is already one running
          */
         public boolean tryStartFull() {
-            queuedType = FULL;
+            queuedType = State.FULL;
             return shouldStart();
         }
 
@@ -184,8 +191,8 @@ public class BookieInfoReader {
          * @return True if we should execute a scan, False if there is already one running
          */
         public boolean tryStartPartial() {
-            if (queuedType == UNQUEUED) {
-                queuedType = PARTIAL;
+            if (queuedType == State.UNQUEUED) {
+                queuedType = State.PARTIAL;
             }
             return shouldStart();
         }
@@ -193,9 +200,9 @@ public class BookieInfoReader {
         /**
          * Gets and clears queuedType
          */
-        public int getAndClearQueuedType() {
-            int ret = queuedType;
-            queuedType = UNQUEUED;
+        public State getAndClearQueuedType() {
+            State ret = queuedType;
+            queuedType = State.UNQUEUED;
             return ret;
         }
 
@@ -204,7 +211,7 @@ public class BookieInfoReader {
          * Otherwise, returns false and sets running to false
          */
         public boolean completeUnlessQueued() {
-            if (queuedType == UNQUEUED) {
+            if (queuedType == State.UNQUEUED) {
                 running = false;
                 return false;
             } else {
@@ -227,13 +234,15 @@ public class BookieInfoReader {
             @Override
             public void run() {
                 synchronized (BookieInfoReader.this) {
-                    LOG.debug("Running periodic BookieInfo scan");
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Running periodic BookieInfo scan");
+                    }
                     try {
                         Collection<BookieSocketAddress> updatedBookies = bk.bookieWatcher.getBookies();
                         bookieInfoMap.updateBookies(updatedBookies);
                     } catch (BKException e) {
-                        LOG.info("Got exception {} while querying bookies from watcher, rerunning after {}s",
-                                 e, conf.getGetBookieInfoRetryIntervalSeconds());
+                        LOG.info("Got exception while querying bookies from watcher, rerunning after {}s",
+                                 conf.getGetBookieInfoRetryIntervalSeconds(), e);
                         scheduler.schedule(this, conf.getGetBookieInfoRetryIntervalSeconds(), TimeUnit.SECONDS);
                         return;
                     }
@@ -254,7 +263,9 @@ public class BookieInfoReader {
     }
 
     synchronized void availableBookiesChanged(Set<BookieSocketAddress> updatedBookiesList) {
-        LOG.info("Scheduling bookie info read due to changes in available bookies.");
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Scheduling bookie info read due to changes in available bookies.");
+        }
         bookieInfoMap.updateBookies(updatedBookiesList);
         if (instanceState.tryStartPartial()) {
             submitTask();
@@ -286,17 +297,23 @@ public class BookieInfoReader {
      * in bookieInfoMap.
      */
     synchronized void getReadWriteBookieInfo() {
-        int queuedType = instanceState.getAndClearQueuedType();
+        State queuedType = instanceState.getAndClearQueuedType();
         Collection<BookieSocketAddress> toScan;
-        if (queuedType == FULL) {
-            LOG.debug("Doing full scan");
+        if (queuedType == State.FULL) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Doing full scan");
+            }
             toScan = bookieInfoMap.getFullScanTargets();
-        } else if (queuedType == PARTIAL) {
-            LOG.debug("Doing partial scan");
+        } else if (queuedType == State.PARTIAL) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Doing partial scan");
+            }
             toScan = bookieInfoMap.getPartialScanTargets();
         } else {
-            LOG.error("Invalid state, queuedType cannot be UNQUEUED in getReadWriteBookieInfo");
-            assert(queuedType != UNQUEUED);
+            if (LOG.isErrorEnabled()) {
+                LOG.error("Invalid state, queuedType cannot be UNQUEUED in getReadWriteBookieInfo");
+            }
+            assert(queuedType != State.UNQUEUED);
             return;
         }
 
@@ -307,7 +324,9 @@ public class BookieInfoReader {
         completedCnt = 0;
         errorCnt = 0;
 
-        LOG.debug("Getting bookie info for: {}", toScan);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Getting bookie info for: {}", toScan);
+        }
         for (BookieSocketAddress b : toScan) {
             bkc.getBookieInfo(b, requested,
                     new GetBookieInfoCallback() {
@@ -315,13 +334,17 @@ public class BookieInfoReader {
                             synchronized (BookieInfoReader.this) {
                                 BookieSocketAddress b = (BookieSocketAddress) ctx;
                                 if (rc != BKException.Code.OK) {
-                                    LOG.error("Reading bookie info from bookie {} failed due to error: {}.", b, rc);
+                                    if (LOG.isErrorEnabled()) {
+                                        LOG.error("Reading bookie info from bookie {} failed due to error: {}.", b, rc);
+                                    }
                                     // We reread bookies missing from the map each time, so remove to ensure
                                     // we get to it on the next scan
                                     bookieInfoMap.clearInfo(b);
                                     errorCnt++;
                                 } else {
-                                    LOG.debug("Bookie Info for bookie {} is {}", b, bInfo);
+                                    if (LOG.isDebugEnabled()) {
+                                        LOG.debug("Bookie Info for bookie {} is {}", b, bInfo);
+                                    }
                                     bookieInfoMap.gotInfo(b, bInfo);
                                 }
                                 completedCnt++;
@@ -351,11 +374,15 @@ public class BookieInfoReader {
     void onExit() {
         bk.placementPolicy.updateBookieInfo(bookieInfoMap.getBookieMap());
         if (errorCnt > 0) {
-            LOG.info("Rescheduling in {}s due to errors", conf.getGetBookieInfoIntervalSeconds());
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Rescheduling in {}s due to errors", conf.getGetBookieInfoIntervalSeconds());
+            }
             instanceState.tryStartPartial();
             submitTaskWithDelay(conf.getGetBookieInfoRetryIntervalSeconds());
         } else if (instanceState.completeUnlessQueued()) {
-            LOG.info("Rescheduling, another scan is pending");
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Rescheduling, another scan is pending");
+            }
             submitTask();
         }
     }
@@ -380,9 +407,13 @@ public class BookieInfoReader {
                         public void getBookieInfoComplete(int rc, BookieInfo bInfo, Object ctx) {
                             BookieSocketAddress b = (BookieSocketAddress) ctx;
                             if (rc != BKException.Code.OK) {
-                                LOG.error("Reading bookie info from bookie {} failed due to error: {}.", b, rc);
+                                if (LOG.isErrorEnabled()) {
+                                    LOG.error("Reading bookie info from bookie {} failed due to error: {}.", b, rc);
+                                }
                             } else {
-                                LOG.debug("Free disk space on bookie {} is {}.", b, bInfo.getFreeDiskSpace());
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.debug("Free disk space on bookie {} is {}.", b, bInfo.getFreeDiskSpace());
+                                }
                                 map.put(b, bInfo);
                             }
                             if (totalCompleted.incrementAndGet() == totalSent.get()) {
