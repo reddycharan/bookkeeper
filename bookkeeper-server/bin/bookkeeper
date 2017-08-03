@@ -296,9 +296,9 @@ OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
 #Change to BK_HOME to support relative paths
 cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
-  exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
+  exec $JAVA -Dname=BookieServer $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
-    exec $JAVA $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
+    exec $JAVA -Dname=AutoRecovery $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
 elif [ $COMMAND == "class" ]; then
     exec $JAVA $OPTS $@
 elif [ $COMMAND == "localbookie" ]; then
