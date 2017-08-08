@@ -186,7 +186,7 @@ public class BookieShell implements Tool {
         @Override
         public void printUsage() {
             HelpFormatter hf = new HelpFormatter();
-            System.err.println(cmdName + ": " + getDescription());
+            LOG.error(cmdName + ": " + getDescription());
             hf.printHelp(getUsage(), getOptions());
         }
     }
@@ -339,7 +339,7 @@ public class BookieShell implements Tool {
                 throws InterruptedException, BKException, KeeperException, IOException {
             final String bookieSrcString[] = args[0].split(":");
             if (bookieSrcString.length != 2) {
-                System.err.println("BookieSrc inputted has invalid format"
+                LOG.error("BookieSrc inputted has invalid format"
                         + "(host:port expected): " + args[0]);
                 return -1;
             }
@@ -349,7 +349,7 @@ public class BookieShell implements Tool {
             if (args.length >= 2) {
                 final String bookieDestString[] = args[1].split(":");
                 if (bookieDestString.length < 2) {
-                    System.err.println("BookieDest inputted has invalid format"
+                    LOG.error("BookieDest inputted has invalid format"
                             + "(host:port expected): " + args[1]);
                     return -1;
                 }
@@ -385,7 +385,7 @@ public class BookieShell implements Tool {
         public int runCmd(CommandLine cmdLine) throws Exception {
             String[] leftArgs = cmdLine.getArgs();
             if (leftArgs.length <= 0) {
-                System.err.println("ERROR: missing ledger id");
+                LOG.error("ERROR: missing ledger id");
                 printUsage();
                 return -1;
             }
@@ -398,7 +398,7 @@ public class BookieShell implements Tool {
             try {
                 ledgerId = ledgerIdFormatter.readLedgerId(leftArgs[0]);
             } catch (IllegalArgumentException iae) {
-                System.err.println("ERROR: invalid ledger id " + leftArgs[0]);
+                LOG.error("ERROR: invalid ledger id " + leftArgs[0]);
                 printUsage();
                 return -1;
             }
@@ -460,7 +460,7 @@ public class BookieShell implements Tool {
         int runCmd(CommandLine cmdLine) throws Exception {
             final long ledgerId = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             if (ledgerId == -1) {
-                System.err.println("Must specify a ledger id");
+                LOG.error("Must specify a ledger id");
                 return -1;
             }
 
@@ -549,7 +549,7 @@ public class BookieShell implements Tool {
                 LedgerUnderreplicationManager underreplicationManager = mFactory.newLedgerUnderreplicationManager();
                 Iterator<Long> iter = underreplicationManager.listLedgersToRereplicate(predicate);
                 while (iter.hasNext()) {
-                    System.out.println(ledgerIdFormatter.formatLedgerId(iter.next()));
+                    LOG.info(ledgerIdFormatter.formatLedgerId(iter.next()));
                 }
             } finally {
                 if (zk != null) {
@@ -612,7 +612,7 @@ public class BookieShell implements Tool {
                     while (iter.hasNext()) {
                         LedgerRange r = iter.next();
                         for (Long lid : r.getLedgers()) {
-                            System.out.println(ledgerIdFormatter.formatLedgerId(lid));
+                            LOG.info(ledgerIdFormatter.formatLedgerId(lid));
                         }
                     }
                 }
@@ -651,8 +651,8 @@ public class BookieShell implements Tool {
 
     void printLedgerMetadata(ReadMetadataCallback cb) throws Exception {
         LedgerMetadata md = cb.get();
-        System.out.println("ledgerID: " + ledgerIdFormatter.formatLedgerId(cb.getLedgerId()));
-        System.out.println(new String(md.serialize(), UTF_8));
+        LOG.info("ledgerID: " + ledgerIdFormatter.formatLedgerId(cb.getLedgerId()));
+        LOG.info(new String(md.serialize(), UTF_8));
     }
 
     static class ReadMetadataCallback extends AbstractFuture<LedgerMetadata>
@@ -691,7 +691,7 @@ public class BookieShell implements Tool {
         public int runCmd(CommandLine cmdLine) throws Exception {
             final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             if (lid == -1) {
-                System.err.println("Must specify a ledger id");
+                LOG.error("Must specify a ledger id");
                 return -1;
             }
 
@@ -769,20 +769,20 @@ public class BookieShell implements Tool {
             BookKeeper bk = new BookKeeper(conf);
             LedgerHandle lh = bk.createLedger(ensemble, writeQuorum, ackQuorum,
                                               BookKeeper.DigestType.MAC, new byte[0]);
-            System.out.println("Ledger ID: " + lh.getId());
+            LOG.info("Ledger ID: " + lh.getId());
             long lastReport = System.nanoTime();
             for (int i = 0; i < numEntries; i++) {
                 lh.addEntry(data);
                 if (TimeUnit.SECONDS.convert(System.nanoTime() - lastReport,
                                              TimeUnit.NANOSECONDS) > 1) {
-                    System.out.println(i + " entries written");
+                    LOG.info(i + " entries written");
                     lastReport = System.nanoTime();
                 }
             }
 
             lh.close();
             bk.close();
-            System.out.println(numEntries + " entries written to ledger " + lh.getId());
+            LOG.info(numEntries + " entries written to ledger " + lh.getId());
 
             return 0;
         }
@@ -910,7 +910,7 @@ public class BookieShell implements Tool {
         public int runCmd(CommandLine cmdLine) throws Exception {
             String[] leftArgs = cmdLine.getArgs();
             if (leftArgs.length <= 0) {
-                System.err.println("ERROR: missing entry log id or entry log file name");
+                LOG.error("ERROR: missing entry log id or entry log file name");
                 printUsage();
                 return -1;
             }
@@ -928,7 +928,7 @@ public class BookieShell implements Tool {
                 String name = f.getName();
                 if (!name.endsWith(".log")) {
                     // not a log file
-                    System.err.println("ERROR: invalid entry log file name " + leftArgs[0]);
+                    LOG.error("ERROR: invalid entry log file name " + leftArgs[0]);
                     printUsage();
                     return -1;
                 }
@@ -944,8 +944,7 @@ public class BookieShell implements Tool {
             // scan entry log
             if (startpos != -1) {
                 if ((endpos != -1) && (endpos < startpos)) {
-                    System.err
-                            .println("ERROR: StartPosition of the range should be lesser than or equal to EndPosition");
+                    LOG.error("ERROR: StartPosition of the range should be lesser than or equal to EndPosition");
                     return -1;
                 }
                 scanEntryLogForPositionRange(logId, startpos, endpos, printMsg);
@@ -990,7 +989,7 @@ public class BookieShell implements Tool {
         public int runCmd(CommandLine cmdLine) throws Exception {
             String[] leftArgs = cmdLine.getArgs();
             if (leftArgs.length <= 0) {
-                System.err.println("ERROR: missing journal id or journal file name");
+                LOG.error("ERROR: missing journal id or journal file name");
                 printUsage();
                 return -1;
             }
@@ -1008,7 +1007,7 @@ public class BookieShell implements Tool {
                 String name = f.getName();
                 if (!name.endsWith(".txn")) {
                     // not a journal file
-                    System.err.println("ERROR: invalid journal file name " + leftArgs[0]);
+                    LOG.error("ERROR: invalid journal file name " + leftArgs[0]);
                     printUsage();
                     return -1;
                 }
@@ -1104,11 +1103,11 @@ public class BookieShell implements Tool {
                 bookies.addAll(roBookies);
             }
             for (BookieSocketAddress b : bookies) {
-                System.out.println(getBookieSocketAddrStringRepresentation(b));
+                LOG.info(getBookieSocketAddrStringRepresentation(b));
                 count++;
             }
             if (count == 0) {
-                System.err.println("No bookie exists!");
+                LOG.error("No bookie exists!");
                 return 1;
             }
             return 0;
@@ -1155,27 +1154,27 @@ public class BookieShell implements Tool {
             if (all || journal) {
                 File journalDir = bkConf.getJournalDir();
                 List<File> journalFiles = listFilesAndSort(new File[] { journalDir }, "txn");
-                System.out.println("--------- Printing the list of Journal Files ---------");
+                LOG.info("--------- Printing the list of Journal Files ---------");
                 for (File journalFile : journalFiles) {
-                    System.out.println(journalFile.getCanonicalPath());
-                }
-                System.out.println();
+                    LOG.info(journalFile.getCanonicalPath());
+                }                
+                LOG.info("");
             }
             if (all || entrylog) {
                 File[] ledgerDirs = bkConf.getLedgerDirs();
                 List<File> ledgerFiles = listFilesAndSort(ledgerDirs, "log");
-                System.out.println("--------- Printing the list of EntryLog/Ledger Files ---------");
+                LOG.info("--------- Printing the list of EntryLog/Ledger Files ---------");
                 for (File ledgerFile : ledgerFiles) {
-                    System.out.println(ledgerFile.getCanonicalPath());
+                    LOG.info(ledgerFile.getCanonicalPath());
                 }
-                System.out.println();
+                LOG.info("");
             }
             if (all || index) {
                 File[] indexDirs = (bkConf.getIndexDirs() == null) ? bkConf.getLedgerDirs() : bkConf.getIndexDirs();
                 List<File> indexFiles = listFilesAndSort(indexDirs, "idx");
-                System.out.println("--------- Printing the list of Index Files ---------");
+                LOG.info("--------- Printing the list of Index Files ---------");
                 for (File indexFile : indexFiles) {
-                    System.out.println(indexFile.getCanonicalPath());
+                    LOG.info(indexFile.getCanonicalPath());
                 }
             }
             return 0;
@@ -1216,7 +1215,7 @@ public class BookieShell implements Tool {
             String cmdName = args[0];
             Command cmd = commands.get(cmdName);
             if (null == cmd) {
-                System.err.println("Unknown command " + cmdName);
+                LOG.error("Unknown command " + cmdName);
                 printShellUsage();
                 return -1;
             }
@@ -1842,7 +1841,7 @@ public class BookieShell implements Tool {
         public int runCmd(CommandLine cmdLine) throws Exception {
             final long lid = getOptionLedgerIdValue(cmdLine, "ledgerid", -1);
             if (lid == -1) {
-                System.err.println("Must specify a ledger id");
+                LOG.error("Must specify a ledger id");
                 return -1;
             }
 
@@ -1927,24 +1926,24 @@ public class BookieShell implements Tool {
 
             Map<BookieSocketAddress, BookieInfo> map = bk.getBookieInfo();
             if (map.size() == 0) {
-                System.out.println("Failed to retrieve bookie information from any of the bookies");
+                LOG.info("Failed to retrieve bookie information from any of the bookies");
                 bk.close();
                 return 0;
             }
 
-            System.out.println("Free disk space info:");
+            LOG.info("Free disk space info:");
             long totalFree = 0, total=0;
             for (Map.Entry<BookieSocketAddress, BookieInfo> e : map.entrySet()) {
                 BookieInfo bInfo = e.getValue();
                 BookieSocketAddress bookieId = e.getKey();
-                System.out.println(getBookieSocketAddrStringRepresentation(bookieId) + ":\tFree: "
+                LOG.info(getBookieSocketAddrStringRepresentation(bookieId) + ":\tFree: "
                         + bInfo.getFreeDiskSpace() + getReadable(bInfo.getFreeDiskSpace()) + "\tTotal: "
                         + bInfo.getTotalDiskSpace() + getReadable(bInfo.getTotalDiskSpace()));
                 totalFree += bInfo.getFreeDiskSpace();
                 total += bInfo.getTotalDiskSpace();
             }
-            System.out.println("Total free disk space in the cluster:\t" + totalFree + getReadable(totalFree));
-            System.out.println("Total disk capacity in the cluster:\t" + total + getReadable(total));
+            LOG.info("Total free disk space in the cluster:\t" + totalFree + getReadable(totalFree));
+            LOG.info("Total disk capacity in the cluster:\t" + total + getReadable(total));
             bk.close();
             return 0;
         }
@@ -2087,16 +2086,16 @@ public class BookieShell implements Tool {
     }
 
     private void printShellUsage() {
-        System.err.println(
+        LOG.error(
                 "Usage: bookkeeper shell [-localbookie [<host:port>]] [-ledgeridformat <hex/long/uuid>] [-entryformat <hex/string>] [-conf configuration] <command>");
-        System.err.println("where command is one of:");
+        LOG.error("where command is one of:");
         List<String> commandNames = new ArrayList<String>();
         for (MyCommand c : commands.values()) {
             commandNames.add("       " + c.getUsage());
         }
         Collections.sort(commandNames);
         for (String s : commandNames) {
-            System.err.println(s);
+            LOG.error(s);
         }
     }
 
@@ -2110,7 +2109,7 @@ public class BookieShell implements Tool {
         String cmdName = args[0];
         Command cmd = commands.get(cmdName);
         if (null == cmd) {
-            System.err.println("ERROR: Unknown command " + cmdName);
+            LOG.error("ERROR: Unknown command " + cmdName);
             printShellUsage();
             return -1;
         }
@@ -2314,22 +2313,22 @@ public class BookieShell implements Tool {
      *          Ledger Id
      */
     protected void readLedgerMeta(long ledgerId) throws Exception {
-        System.out.println("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
+        LOG.info("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
         FileInfo fi = getFileInfo(ledgerId);
         byte[] masterKey = fi.getMasterKey();
         if (null == masterKey) {
-            System.out.println("master key  : NULL");
+            LOG.info("master key  : NULL");
         } else {
-            System.out.println("master key  : " + bytes2Hex(fi.getMasterKey()));
+            LOG.info("master key  : " + bytes2Hex(fi.getMasterKey()));
         }
         long size = fi.size();
         if (size % 8 == 0) {
-            System.out.println("size        : " + size);
+            LOG.info("size        : " + size);
         } else {
-            System.out.println("size : " + size + " (not aligned with 8, may be corrupted or under flushing now)");
+            LOG.info("size : " + size + " (not aligned with 8, may be corrupted or under flushing now)");
         }
-        System.out.println("entries     : " + (size / 8));
-        System.out.println("isFenced    : " + fi.isFenced());
+        LOG.info("entries     : " + (size / 8));
+        LOG.info("isFenced    : " + fi.isFenced());
     }
 
     /**
@@ -2340,10 +2339,10 @@ public class BookieShell implements Tool {
      * @throws IOException
      */
     protected void readLedgerIndexEntries(long ledgerId) throws IOException {
-        System.out.println("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
+        LOG.info("===== LEDGER: " + ledgerIdFormatter.formatLedgerId(ledgerId) + " =====");
         FileInfo fi = getFileInfo(ledgerId);
         long size = fi.size();
-        System.out.println("size        : " + size);
+        LOG.info("size        : " + size);
         long curSize = 0;
         long curEntry = 0;
         LedgerEntryPage lep = new LedgerEntryPage(pageSize, entriesPerPage);
@@ -2357,11 +2356,11 @@ public class BookieShell implements Tool {
                 for (int i=0; i<entriesPerPage; i++) {
                     long offset = lep.getOffset(i * 8);
                     if (0 == offset) {
-                        System.out.println("entry " + curEntry + "\t:\tN/A");
+                        LOG.info("entry " + curEntry + "\t:\tN/A");
                     } else {
                         long entryLogId = offset >> 32L;
                         long pos = offset & 0xffffffffL;
-                        System.out.println("entry " + curEntry + "\t:\t(log:" + entryLogId + ", pos: " + pos + ")");
+                        LOG.info("entry " + curEntry + "\t:\t(log:" + entryLogId + ", pos: " + pos + ")");
                     }
                     ++curEntry;
                 }
@@ -2371,9 +2370,9 @@ public class BookieShell implements Tool {
         } catch (IOException ie) {
             LOG.error("Failed to read index page : ", ie);
             if (curSize + pageSize < size) {
-                System.out.println("Failed to read index page @ " + curSize + ", the index file may be corrupted : " + ie.getMessage());
+                LOG.info("Failed to read index page @ " + curSize + ", the index file may be corrupted : " + ie.getMessage());
             } else {
-                System.out.println("Failed to read last index page @ " + curSize
+                LOG.info("Failed to read last index page @ " + curSize
                                  + ", the index file may be corrupted or last index page is not fully flushed yet : " + ie.getMessage());
             }
         }
@@ -2388,7 +2387,7 @@ public class BookieShell implements Tool {
      *          Whether printing the entry data.
      */
     protected void scanEntryLog(long logId, final boolean printMsg) throws Exception {
-        System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)");
+        LOG.info("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)");
         scanEntryLog(logId, new EntryLogScanner() {
             @Override
             public boolean accept(long ledgerId) {
@@ -2416,7 +2415,7 @@ public class BookieShell implements Tool {
      */
     protected void scanEntryLogForSpecificEntry(long logId, final long lId, final long eId, final boolean printMsg)
             throws Exception {
-        System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for LedgerId " + lId
+        LOG.info("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for LedgerId " + lId
                 + ((eId == -1) ? "" : " for EntryId " + eId));
         final MutableBoolean entryFound = new MutableBoolean(false);
         scanEntryLog(logId, new EntryLogScanner() {
@@ -2437,7 +2436,7 @@ public class BookieShell implements Tool {
             }
         });
         if (!entryFound.booleanValue()) {
-            System.out.println("LedgerId " + lId + ((eId == -1) ? "" : " EntryId " + eId)
+            LOG.info("LedgerId " + lId + ((eId == -1) ? "" : " EntryId " + eId)
                     + " is not available in the entry log " + logId + " (" + Long.toHexString(logId) + ".log)");
         }
     }
@@ -2457,7 +2456,7 @@ public class BookieShell implements Tool {
      */
     protected void scanEntryLogForPositionRange(long logId, final long rangeStartPos, final long rangeEndPos, final boolean printMsg)
  throws Exception {
-        System.out.println("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for PositionRange: "
+        LOG.info("Scan entry log " + logId + " (" + Long.toHexString(logId) + ".log)" + " for PositionRange: "
                 + rangeStartPos + " - " + rangeEndPos);
         final MutableBoolean entryFound = new MutableBoolean(false);
         scanEntryLog(logId, new EntryLogScanner() {
@@ -2493,7 +2492,7 @@ public class BookieShell implements Tool {
             }
         });
         if (!entryFound.booleanValue()) {
-            System.out.println("Entry log " + logId + " (" + Long.toHexString(logId)
+            LOG.info("Entry log " + logId + " (" + Long.toHexString(logId)
                     + ".log) doesn't has any entry in the range " + rangeStartPos + " - " + rangeEndPos
                     + ". Probably the position range, you have provided is lesser than the LOGFILE_HEADER_SIZE (1024) "
                     + "or greater than the current log filesize.");
@@ -2509,13 +2508,13 @@ public class BookieShell implements Tool {
      *          Whether printing the entry data.
      */
     protected void scanJournal(long journalId, final boolean printMsg) throws Exception {
-        System.out.println("Scan journal " + journalId + " (" + Long.toHexString(journalId) + ".txn)");
+        LOG.info("Scan journal " + journalId + " (" + Long.toHexString(journalId) + ".txn)");
         scanJournal(journalId, new JournalScanner() {
             boolean printJournalVersion = false;
             @Override
             public void process(int journalVersion, long offset, ByteBuffer entry) throws IOException {
                 if (!printJournalVersion) {
-                    System.out.println("Journal Version : " + journalVersion);
+                    LOG.info("Journal Version : " + journalVersion);
                     printJournalVersion = true;
                 }
                 formatEntry(offset, entry, printMsg);
@@ -2528,7 +2527,7 @@ public class BookieShell implements Tool {
      */
     protected void printLastLogMark() throws IOException {
         LogMark lastLogMark = getJournal().getLastLogMark().getCurMark();
-        System.out.println("LastLogMark: Journal Id - " + lastLogMark.getLogFileId() + "("
+        LOG.info("LastLogMark: Journal Id - " + lastLogMark.getLogFileId() + "("
                 + Long.toHexString(lastLogMark.getLogFileId()) + ".txn), Pos - "
                 + lastLogMark.getLogFileOffset());
     }
@@ -2545,8 +2544,7 @@ public class BookieShell implements Tool {
         long ledgerId = entry.getLedgerId();
         long entryId = entry.getEntryId();
         long entrySize = entry.getLength();
-        System.out
-                .println("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
+        LOG.info("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId + ", EntrySize=" + entrySize + " ---------");
         if (printMsg) {
             entryFormatter.formatEntry(entry.getEntry());
         }
@@ -2567,43 +2565,43 @@ public class BookieShell implements Tool {
         long entryId = recBuff.getLong();
         int entrySize = recBuff.limit();
 
-        System.out.println("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId
+        LOG.info("--------- Lid=" + ledgerIdFormatter.formatLedgerId(ledgerId) + ", Eid=" + entryId
                          + ", ByteOffset=" + pos + ", EntrySize=" + entrySize + " ---------");
         if (entryId == Bookie.METAENTRY_ID_LEDGER_KEY) {
             int masterKeyLen = recBuff.getInt();
             byte[] masterKey = new byte[masterKeyLen];
             recBuff.get(masterKey);
-            System.out.println("Type:           META");
-            System.out.println("MasterKey:      " + bytes2Hex(masterKey));
-            System.out.println();
+            LOG.info("Type:           META");
+            LOG.info("MasterKey:      " + bytes2Hex(masterKey));
+            LOG.info("");
             return;
         }
         if (entryId == Bookie.METAENTRY_ID_FENCE_KEY) {
-            System.out.println("Type:           META");
-            System.out.println("Fenced");
-            System.out.println();
+            LOG.info("Type:           META");
+            LOG.info("Fenced");
+            LOG.info("");
             return;
         }
         // process a data entry
         long lastAddConfirmed = recBuff.getLong();
-        System.out.println("Type:           DATA");
-        System.out.println("LastConfirmed:  " + lastAddConfirmed);
+        LOG.info("Type:           DATA");
+        LOG.info("LastConfirmed:  " + lastAddConfirmed);
         if (!printMsg) {
-            System.out.println();
+            LOG.info("");
             return;
         }
         // skip digest checking
         recBuff.position(32 + 8);
-        System.out.println("Data:");
-        System.out.println();
+        LOG.info("Data:");
+        LOG.info("");
         try {
             byte[] ret = new byte[recBuff.remaining()];
             recBuff.get(ret);
             entryFormatter.formatEntry(ret);
         } catch (Exception e) {
-            System.out.println("N/A. Corrupted.");
+            LOG.error("N/A. Corrupted.");
         }
-        System.out.println();
+        LOG.info("");
     }
 
     static String bytes2Hex(byte[] data) {
@@ -2622,7 +2620,7 @@ public class BookieShell implements Tool {
             try {
                 return Integer.parseInt(val);
             } catch (NumberFormatException nfe) {
-                System.err.println("ERROR: invalid value for option " + option + " : " + val);
+                LOG.error("ERROR: invalid value for option " + option + " : " + val);
                 return defaultVal;
             }
         }
@@ -2635,7 +2633,7 @@ public class BookieShell implements Tool {
             try {
                 return Long.parseLong(val);
             } catch (NumberFormatException nfe) {
-                System.err.println("ERROR: invalid value for option " + option + " : " + val);
+                LOG.error("ERROR: invalid value for option " + option + " : " + val);
                 return defaultVal;
             }
         }
@@ -2648,7 +2646,7 @@ public class BookieShell implements Tool {
             try {
                 return ledgerIdFormatter.readLedgerId(val);
             } catch (IllegalArgumentException iae) {
-                System.err.println("ERROR: invalid value for option " + option + " : " + val);
+                LOG.error("ERROR: invalid value for option " + option + " : " + val);
                 return defaultVal;
             }
         }

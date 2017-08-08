@@ -262,7 +262,12 @@ BOOKIE_ROOT_LOGGER=${BOOKIE_ROOT_LOGGER:-"INFO,CONSOLE"}
 BOOKIE_LOG_DIR=${BOOKIE_LOG_DIR:-"$BK_HOME/logs"}
 BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"bookkeeper-server.log"}
 BOOKIE_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/bk-gc-log"
-BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"INFO"}
+if [ $COMMAND == "shell" ]; then
+    BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"ERROR"}
+    BOOKIESHELL_LOGGER_APPENDER=${BOOKIESHELL_LOGGER_APPENDER:-"CONSOLE"}
+else
+    BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"INFO"}
+fi
 BOOKIE_LOG_FILE_SIZE=${BOOKIE_LOG_FILE_SIZE:-"100MB"}
 BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
 #Delete logs with a last modified older than "P[days]D"
@@ -280,7 +285,7 @@ OPTS="$OPTS -Dbookkeeper.log.max.fileAge=$BOOKIE_LOG_MAX_AGE"
 OPTS="$OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
 
 if [ $COMMAND == "shell" ]; then
-    OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog"
+    OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog -Dbookieshell.logger.appender=$BOOKIESHELL_LOGGER_APPENDER"
 elif [[ $COMMAND == "autorecovery" ]]; then
     OPTS="$OPTS -Xloggc:$AR_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
 else
