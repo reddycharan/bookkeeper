@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -39,11 +40,13 @@ import org.apache.bookkeeper.client.LedgerHandleAdapter;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
+import org.apache.bookkeeper.meta.MSLedgerManagerFactory;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.test.MultiLedgerManagerTestCase;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -150,6 +153,76 @@ public class TestReplicationWorker extends MultiLedgerManagerTestCase {
             rw.shutdown();
         }
     }
+    /**
+     * Tests that replication worker successfully releases lock and can retry
+     * after failure to update metadata
+     */
+    @Test(timeout = 60000)
+    public void testRWRetryAfterMetaUpdateFailure()
+            throws Exception {
+        /* Exclude MSLedgerManager, doesn't use zk for the metadata update */
+        if (baseConf.getLedgerManagerFactoryClass() == MSLedgerManagerFactory.class) {
+            return;
+        }
+
+        LedgerHandle lh = bkc.createLedger(3, 3, BookKeeper.DigestType.CRC32,
+                TESTPASSWD);
+
+        for (int i = 0; i < 10; i++) {
+            lh.addEntry(data);
+        }
+        lh.close();
+        BookieSocketAddress replicaToKill = LedgerHandleAdapter
+                .getLedgerMetadata(lh).getEnsembles().get(0L).get(0);
+        LOG.info("Killing Bookie", replicaToKill);
+        ServerConfiguration killedBookieConfig = killBookie(replicaToKill);
+
+        int startNewBookie = startNewBookie();
+        BookieSocketAddress newBkAddr = new BookieSocketAddress(InetAddress
+                .getLocalHost().getHostAddress(), startNewBookie);
+        LOG.info("New Bookie addr :" + newBkAddr);
+
+        final AtomicBoolean trapSetData = new AtomicBoolean(true);
+        final ZooKeeper wrapped = zkc;
+        ZooKeeper wrapper = new ZooKeeper(
+                zkUtil.getZooKeeperConnectString(), 10000, null) {
+            @Override
+            public void setData(final String path, final byte[] data, final int version,
+                                final AsyncCallback.StatCallback cb, final Object context) {
+
+                if (trapSetData.get()) {
+                    cb.processResult(BKException.Code.ZKException, path, context, null);
+                } else {
+                    wrapped.setData(path, data, version, cb, context);
+                }
+            }
+        };
+        ReplicationWorker rw = new ReplicationWorker(wrapper, baseConf, newBkAddr);
+
+        try {
+            underReplicationManager.markLedgerUnderreplicated(lh.getId(),
+                    replicaToKill.toString());
+
+            boolean gotException = false;
+            try {
+                rw.rereplicate();
+            } catch (BKException.ZKException e) {
+                gotException = true;
+            }
+
+            assertTrue("Should have gotten exception from rereplicate", gotException);
+
+            trapSetData.set(false);
+
+            rw.rereplicate();
+
+            // Should be able to read the entries from 0-9
+            verifyRecoveredLedgers(lh, 0, 9);
+        } finally {
+            rw.shutdown();
+        }
+    }
+
 
     /**
      * Tests that replication worker should retry for replication until enough

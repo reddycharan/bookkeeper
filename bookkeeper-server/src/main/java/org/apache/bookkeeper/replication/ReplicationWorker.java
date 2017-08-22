@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 
 import org.apache.bookkeeper.bookie.BookieThread;
@@ -203,7 +204,8 @@ public class ReplicationWorker implements Runnable {
      * Replicates the under replicated fragments from failed bookie ledger to
      * targetBookie
      */
-    private void rereplicate() throws InterruptedException, BKException,
+    @VisibleForTesting
+    void rereplicate() throws InterruptedException, BKException,
             UnavailableException {
         long ledgerIdToReplicate = underreplicationManager
                 .getLedgerToRereplicate();
@@ -225,6 +227,7 @@ public class ReplicationWorker implements Runnable {
     private boolean rereplicate(long ledgerIdToReplicate) throws InterruptedException, BKException,
             UnavailableException {
         LOG.debug("Going to replicate the fragments of the ledger: {}", ledgerIdToReplicate);
+        boolean deferLedgerLockRelease = false;
         try (LedgerHandle lh = admin.openLedgerNoRecovery(ledgerIdToReplicate)) {
             Set<LedgerFragment> fragments = getUnderreplicatedFragments(lh);
             LOG.debug("Founds fragments {} for replication from ledger: {}", fragments, ledgerIdToReplicate);
@@ -251,7 +254,6 @@ public class ReplicationWorker implements Runnable {
                     LOG.warn("BKLedgerRecoveryException "
                             + "while replicating the fragment", e);
                     if (admin.getReadOnlyBookies().contains(targetBookie)) {
-                        underreplicationManager.releaseUnderreplicatedLedger(ledgerIdToReplicate);
                         throw new BKException.BKWriteOnReadOnlyBookieException();
                     }
                 }
@@ -262,6 +264,7 @@ public class ReplicationWorker implements Runnable {
             }
 
             if (foundOpenFragments || isLastSegmentOpenAndMissingBookies(lh)) {
+                deferLedgerLockRelease = true;
                 deferLedgerLockRelease(ledgerIdToReplicate);
                 return false;
             }
@@ -275,8 +278,6 @@ public class ReplicationWorker implements Runnable {
             } else {
                 // Releasing the underReplication ledger lock and compete
                 // for the replication again for the pending fragments
-                underreplicationManager
-                        .releaseUnderreplicatedLedger(ledgerIdToReplicate);
                 return false;
             }
         } catch (BKNoSuchLedgerExistsException e) {
@@ -292,17 +293,25 @@ public class ReplicationWorker implements Runnable {
                     + " opening ledger for replication."
                     + " Enough Bookies might not have available"
                     + "So, no harm to continue");
-            underreplicationManager
-                    .releaseUnderreplicatedLedger(ledgerIdToReplicate);
             return false;
         } catch (BKBookieHandleNotAvailableException e) {
             LOG.info("BKBookieHandleNotAvailableException while"
                     + " opening ledger for replication."
                     + " Enough Bookies might not have available"
                     + "So, no harm to continue");
-            underreplicationManager
-                    .releaseUnderreplicatedLedger(ledgerIdToReplicate);
             return false;
+        } finally {
+            // we make sure we always release the underreplicated lock, unless we decided to defer it. If the lock has
+            // already been released, this is a no-op
+            if (!deferLedgerLockRelease) {
+                try {
+                    underreplicationManager.releaseUnderreplicatedLedger(ledgerIdToReplicate);
+                } catch (UnavailableException e) {
+                    LOG.error("UnavailableException while releasing the underreplicated lock for ledger {}:",
+                            ledgerIdToReplicate, e);
+                    shutdown();
+                }
+            }
         }
     }
 
