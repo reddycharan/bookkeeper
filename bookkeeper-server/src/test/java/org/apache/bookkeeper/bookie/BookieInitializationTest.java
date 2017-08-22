@@ -719,7 +719,8 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
 
         String statServletContext = "/stats";
         String statEndpoint = "/metrics.json";
-        conf.setJettyPort(2182);
+        int nextFreePort = PortManager.nextFreePort();
+        conf.setJettyPort(nextFreePort);
         conf.setStatsEnabled(true);
         conf.setEnableRestEndpoints(true);
         conf.setStatServletContext(statServletContext);
@@ -763,7 +764,8 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
                 .setBookiePort(PortManager.nextFreePort());
         String statServletContext = "/stats";
         String statEndpoint = "/metrics.json";
-        conf.setJettyPort(2183);
+        int nextFreePort = PortManager.nextFreePort();
+        conf.setJettyPort(nextFreePort);
         conf.setStatsEnabled(true);
         conf.setRestServletContext("/rest");
         conf.setEnableRestEndpoints(false);
