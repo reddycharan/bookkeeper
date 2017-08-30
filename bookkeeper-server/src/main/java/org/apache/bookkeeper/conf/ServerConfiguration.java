@@ -30,6 +30,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.bookkeeper.bookie.InterleavedLedgerStorage;
 import org.apache.bookkeeper.bookie.SortedLedgerStorage;
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.jetty.server.Server;
 
 /**
  * Configuration manages server-side settings
@@ -144,6 +145,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     
     protected final static String MIN_USABLESIZE_FOR_INDEXFILE_CREATION = "minUsableSizeForIndexFileCreation";
     protected final static String ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION = "allowMultipleDirsUnderSamePartition";
+
+    // Stats
+    protected final static String ENABLE_TASK_EXECUTION_STATS = "enableTaskExecutionStats";
 
     /**
      * Construct a default configuration object
@@ -2157,6 +2161,28 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public ServerConfiguration setSSLCertificatePath(String arg) {
         setProperty(SSL_CERTIFICATE_PATH, arg);
+        return this;
+    }
+
+
+    /**
+     * Whether to enable recording task execution stats.
+     *
+     * @return flag to enable/disable recording task execution stats.
+     */
+    public boolean getEnableTaskExecutionStats() {
+        return getBoolean(ENABLE_TASK_EXECUTION_STATS, false);
+    }
+
+    /**
+     * Enable/Disable recording task execution stats.
+     *
+     * @param enabled
+     *          flag to enable/disable recording task execution stats.
+     * @return client configuration.
+     */
+    public ServerConfiguration setEnableTaskExecutionStats(boolean enabled) {
+        setProperty(ENABLE_TASK_EXECUTION_STATS, enabled);
         return this;
     }
 }

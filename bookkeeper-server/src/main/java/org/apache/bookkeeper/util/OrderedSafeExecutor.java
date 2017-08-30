@@ -132,7 +132,8 @@ public class OrderedSafeExecutor {
 
         @Override
         public void safeRun() {
-            taskPendingStats.registerSuccessfulEvent(initNanos, TimeUnit.NANOSECONDS);
+            taskPendingStats.registerSuccessfulEvent(
+                    MathUtils.elapsedNanos(initNanos), TimeUnit.NANOSECONDS);
             long startNanos = MathUtils.nowInNano();
             this.runnable.safeRun();
             long elapsedMicroSec = MathUtils.elapsedMicroSec(startNanos);

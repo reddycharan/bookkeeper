@@ -230,6 +230,7 @@ public abstract class BookKeeperClusterTestCase {
             ledgerDirNames[i] = ledgerDirs[i].getPath();
         }
         conf.setLedgerDirNames(ledgerDirNames);
+        conf.setEnableTaskExecutionStats(true);
         return conf;
     }
 

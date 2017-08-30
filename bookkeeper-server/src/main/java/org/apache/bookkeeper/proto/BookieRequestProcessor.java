@@ -96,11 +96,9 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.serverCfg = serverCfg;
         this.bookie = bookie;
         this.readThreadPool =
-            createExecutor(this.serverCfg.getNumReadWorkerThreads(),
-                           "BookieReadThread-" + serverCfg.getBookiePort());
+            createExecutor(this.serverCfg.getNumReadWorkerThreads(), "BookieReadThreadPool", statsLogger);
         this.writeThreadPool =
-            createExecutor(this.serverCfg.getNumAddWorkerThreads(),
-                           "BookieWriteThread-" + serverCfg.getBookiePort());
+            createExecutor(this.serverCfg.getNumAddWorkerThreads(), "BookieWriteThreadPool", statsLogger);
         this.shFactory = shFactory;
         if (shFactory != null) {
             shFactory.init(NodeType.Server, serverCfg);
@@ -123,11 +121,16 @@ public class BookieRequestProcessor implements RequestProcessor {
         shutdownExecutor(readThreadPool);
     }
 
-    private OrderedSafeExecutor createExecutor(int numThreads, String nameFormat) {
+    private OrderedSafeExecutor createExecutor(int numThreads, String nameFormat, StatsLogger statsLogger) {
         if (numThreads <= 0) {
             return null;
         } else {
-            return OrderedSafeExecutor.newBuilder().numThreads(numThreads).name(nameFormat).build();
+            return OrderedSafeExecutor.newBuilder()
+                    .numThreads(numThreads)
+                    .name(nameFormat)
+                    .traceTaskExecution(serverCfg.getEnableTaskExecutionStats())
+                    .statsLogger(statsLogger)
+                    .build();
         }
     }
 
