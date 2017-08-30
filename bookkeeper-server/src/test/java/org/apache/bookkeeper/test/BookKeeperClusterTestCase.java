@@ -71,6 +71,7 @@ public abstract class BookKeeperClusterTestCase {
     // BookKeeper related variables
     protected List<File> tmpDirs = new LinkedList<File>();
     protected List<BookieServer> bs = new LinkedList<BookieServer>();
+    private Map<BookieSocketAddress, TestStatsProvider> bsLoggers = new HashMap<>();
     protected List<ServerConfiguration> bsConfs = new LinkedList<ServerConfiguration>();
     protected int numBookies;
     protected BookKeeperTestClient bkc;
@@ -200,6 +201,7 @@ public abstract class BookKeeperClusterTestCase {
             }
         }
         bs.clear();
+        bsLoggers.clear();
     }
 
     protected void cleanupTempDirs() throws Exception {
@@ -285,6 +287,7 @@ public abstract class BookKeeperClusterTestCase {
         if (toRemove != null) {
             stopAutoRecoveryService(toRemove);
             bs.remove(toRemove);
+            bsLoggers.remove(addr);
             return bsConfs.remove(toRemoveIndex);
         }
         return null;
@@ -308,6 +311,7 @@ public abstract class BookKeeperClusterTestCase {
         server.shutdown();
         stopAutoRecoveryService(server);
         bs.remove(server);
+        bsLoggers.remove(server.getLocalAddress());
         return bsConfs.remove(index);
     }
 
@@ -432,16 +436,14 @@ public abstract class BookKeeperClusterTestCase {
         int toRemoveIndex = 0;
         for (BookieServer server : bs) {
             if (server.getLocalAddress().equals(addr)) {
-                server.shutdown();
                 toRemove = server;
                 break;
             }
             ++toRemoveIndex;
         }
         if (toRemove != null) {
-            stopAutoRecoveryService(toRemove);
-            bs.remove(toRemove);
-            ServerConfiguration newConfig = bsConfs.remove(toRemoveIndex);
+            ServerConfiguration newConfig = bsConfs.get(toRemoveIndex);
+            killBookie(toRemoveIndex);
             Thread.sleep(1000);
             bs.add(startBookie(newConfig));
             bsConfs.add(newConfig);
@@ -469,6 +471,7 @@ public abstract class BookKeeperClusterTestCase {
             stopAutoRecoveryService(server);
         }
         bs.clear();
+        bsLoggers.clear();
         Thread.sleep(1000);
         // restart them to ensure we can't
         for (ServerConfiguration conf : bsConfs) {
@@ -516,8 +519,11 @@ public abstract class BookKeeperClusterTestCase {
      */
     protected BookieServer startBookie(ServerConfiguration conf)
             throws Exception {
-        BookieServer server = new BookieServer(conf);
+
+        TestStatsProvider provider = new TestStatsProvider();
+        BookieServer server = new BookieServer(conf, provider.getStatsLogger(""));
         server.start();
+        bsLoggers.put(server.getLocalAddress(), provider);
 
         if (bkc == null) {
             bkc = new BookKeeperTestClient(baseClientConf);
@@ -556,13 +562,15 @@ public abstract class BookKeeperClusterTestCase {
      */
     protected BookieServer startBookie(ServerConfiguration conf, final Bookie b)
             throws Exception {
-        BookieServer server = new BookieServer(conf) {
+        TestStatsProvider provider = new TestStatsProvider();
+        BookieServer server = new BookieServer(conf, provider.getStatsLogger("")) {
             @Override
             protected Bookie newBookie(ServerConfiguration conf) {
                 return b;
             }
         };
         server.start();
+        bsLoggers.put(server.getLocalAddress(), provider);
 
         int port = conf.getBookiePort();
         String host = this.getLocalHostSafe().getHostAddress();
@@ -724,5 +732,19 @@ public abstract class BookKeeperClusterTestCase {
      */
     public static boolean isCreatedFromIp(BookieSocketAddress addr) {
         return addr.getSocketAddress().toString().startsWith("/");
+    }
+
+    public void resetBookieOpLoggers() {
+        for (TestStatsProvider provider : bsLoggers.values()) {
+            provider.clear();
+        }
+    }
+
+    public TestStatsProvider getStatsProvider(BookieSocketAddress addr) {
+        return bsLoggers.get(addr);
+    }
+
+    public TestStatsProvider getStatsProvider(int index) throws Exception {
+        return getStatsProvider(bs.get(index).getLocalAddress());
     }
 }
