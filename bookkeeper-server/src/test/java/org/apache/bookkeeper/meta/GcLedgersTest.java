@@ -43,6 +43,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
@@ -64,7 +65,10 @@ import org.apache.bookkeeper.jmx.BKMBeanInfo;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRange;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.LedgerMetadataListener;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.versioning.Version;
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,7 +143,7 @@ public class GcLedgersTest extends LedgerManagerTestCase {
                     }
                    });
         assertTrue(latch.await(10, TimeUnit.SECONDS));
-        assertEquals("Remove should have succeeded", 0, rc.get());
+        assertEquals("Remove should have succeeded for ledgerId: " + ledgerId, 0, rc.get());
     }
 
     @Test(timeout=60000)
@@ -315,6 +319,226 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         assertEquals("Should have cleaned first ledger" + first, (long)first, (long)cleaned.get(0));
     }
 
+    /*
+     * in this scenario no ledger is created, so ledgeriterator's hasNext call would return false and next would be
+     * null. GarbageCollector.gc is expected to behave normally
+     */
+    @Test(timeout = 60000)
+    public void testGcLedgersWithNoLedgers() throws Exception {
+        final SortedSet<Long> createdLedgers = Collections.synchronizedSortedSet(new TreeSet<Long>());
+        final List<Long> cleaned = new ArrayList<Long>();
+
+        // no ledger created
+
+        final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
+        AtomicBoolean cleanerCalled = new AtomicBoolean(false);
+
+        GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                LOG.info("Cleaned {}", ledgerId);
+                cleanerCalled.set(true);
+            }
+        };
+
+        validateLedgerRangeIterator(createdLedgers);
+
+        garbageCollector.gc(cleaner);
+        assertFalse("Should have cleaned nothing, since no ledger is created", cleanerCalled.get());
+    }
+
+    // in this scenario all the created ledgers are in one single ledger range.
+    @Test(timeout = 60000)
+    public void testGcLedgersWithLedgersInSameLedgerRange() throws Exception {
+        final SortedSet<Long> createdLedgers = Collections.synchronizedSortedSet(new TreeSet<Long>());
+        final SortedSet<Long> cleaned = Collections.synchronizedSortedSet(new TreeSet<Long>());
+
+        // Create few ledgers which span over just one ledger range in the hierarchical ledger manager implementation
+        final int numLedgers = 5;
+
+        createLedgers(numLedgers, createdLedgers);
+
+        final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(getLedgerManager(),
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
+        GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                LOG.info("Cleaned {}", ledgerId);
+                cleaned.add(ledgerId);
+            }
+        };
+
+        validateLedgerRangeIterator(createdLedgers);
+
+        garbageCollector.gc(cleaner);
+        assertTrue("Should have cleaned nothing", cleaned.isEmpty());
+
+        for (long ledgerId : createdLedgers) {
+            removeLedger(ledgerId);
+        }
+
+        garbageCollector.gc(cleaner);
+        assertEquals("Should have cleaned all the created ledgers", createdLedgers, cleaned);
+    }
+
+    /*
+     * in this test scenario no created ledger is deleted, but ledgeriterator is screwed up and returns hasNext to be
+     * false and next to be null. So even in this case it is expected not to clean any ledger's data.
+     *
+     * This testcase is needed for validating fix of bug - W-4292747.
+     *
+     * ScanAndCompareGarbageCollector/GC should clean data of ledger only if both the LedgerManager.getLedgerRanges says
+     * that ledger is not existing and also ledgerManager.readLedgerMetadata fails with error
+     * NoSuchLedgerExistsException.
+     *
+     */
+    @Test(timeout = 60000)
+    public void testGcLedgersIfLedgerManagerIteratorFails() throws Exception {
+        final SortedSet<Long> createdLedgers = Collections.synchronizedSortedSet(new TreeSet<Long>());
+        final SortedSet<Long> cleaned = Collections.synchronizedSortedSet(new TreeSet<Long>());
+
+        // Create few ledgers
+        final int numLedgers = 5;
+
+        createLedgers(numLedgers, createdLedgers);
+
+        LedgerManager mockLedgerManager = new LedgerManagerWrapper(getLedgerManager()) {
+            @Override
+            public LedgerRangeIterator getLedgerRanges() {
+                return new LedgerRangeIterator() {
+                    @Override
+                    public LedgerRange next() throws IOException {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean hasNext() throws IOException {
+                        return false;
+                    }
+                };
+            }
+        };
+
+        final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(mockLedgerManager,
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
+        GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                LOG.info("Cleaned {}", ledgerId);
+                cleaned.add(ledgerId);
+            }
+        };
+
+        validateLedgerRangeIterator(createdLedgers);
+
+        garbageCollector.gc(cleaner);
+        assertTrue("Should have cleaned nothing", cleaned.isEmpty());
+    }
+
+    /*
+     * In this test scenario no ledger is deleted, but LedgerManager.readLedgerMetadata says there is NoSuchLedger. So
+     * even in that case, GarbageCollector.gc shouldn't delete ledgers data.
+     *
+     * Consider the possible scenario - when the LedgerIterator is created that ledger is not deleted, so as per
+     * LedgerIterator that is live ledger. But right after the LedgerIterator creation that ledger is deleted, so
+     * readLedgerMetadata call would return NoSuchLedger. In this testscenario we are validating that as per Iterator if
+     * that ledger is alive though currently that ledger is deleted, we should not clean data of that ledger.
+     *
+     * ScanAndCompareGarbageCollector/GC should clean data of ledger only if both the LedgerManager.getLedgerRanges says
+     * that ledger is not existing and also ledgerManager.readLedgerMetadata fails with error
+     * NoSuchLedgerExistsException.
+     *
+     */
+    @Test(timeout = 60000)
+    public void testGcLedgersIfReadLedgerMetadataSaysNoSuchLedger() throws Exception {
+        final SortedSet<Long> createdLedgers = Collections.synchronizedSortedSet(new TreeSet<Long>());
+        final SortedSet<Long> cleaned = Collections.synchronizedSortedSet(new TreeSet<Long>());
+
+        // Create few ledgers
+        final int numLedgers = 5;
+
+        createLedgers(numLedgers, createdLedgers);
+
+        LedgerManager mockLedgerManager = new LedgerManagerWrapper(getLedgerManager()) {
+            @Override
+            public void readLedgerMetadata(long ledgerId, GenericCallback<LedgerMetadata> readCb) {
+                readCb.operationComplete(BKException.Code.NoSuchLedgerExistsException, null);
+            }
+        };
+
+        final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(mockLedgerManager,
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
+        GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                LOG.info("Cleaned {}", ledgerId);
+                cleaned.add(ledgerId);
+            }
+        };
+
+        validateLedgerRangeIterator(createdLedgers);
+
+        garbageCollector.gc(cleaner);
+        assertTrue("Should have cleaned nothing", cleaned.isEmpty());
+    }
+
+    /*
+     * In this test scenario all the created ledgers are deleted, but LedgerManager.readLedgerMetadata fails with
+     * ZKException. So even in this case, GarbageCollector.gc shouldn't delete ledgers data.
+     *
+     * ScanAndCompareGarbageCollector/GC should clean data of ledger only if both the LedgerManager.getLedgerRanges says
+     * that ledger is not existing and also ledgerManager.readLedgerMetadata fails with error
+     * NoSuchLedgerExistsException, but is shouldn't delete if the readLedgerMetadata fails with any other error.
+     */
+    @Test(timeout = 60000)
+    public void testGcLedgersIfReadLedgerMetadataFailsForDeletedLedgers() throws Exception {
+        final SortedSet<Long> createdLedgers = Collections.synchronizedSortedSet(new TreeSet<Long>());
+        final SortedSet<Long> cleaned = Collections.synchronizedSortedSet(new TreeSet<Long>());
+
+        // Create few ledgers
+        final int numLedgers = 5;
+
+        createLedgers(numLedgers, createdLedgers);
+
+        LedgerManager mockLedgerManager = new LedgerManagerWrapper(getLedgerManager()) {
+            @Override
+            public void readLedgerMetadata(long ledgerId, GenericCallback<LedgerMetadata> readCb) {
+                readCb.operationComplete(BKException.Code.ZKException, null);
+            }
+        };
+
+        final GarbageCollector garbageCollector = new ScanAndCompareGarbageCollector(mockLedgerManager,
+                new MockLedgerStorage(), baseConf, NullStatsLogger.INSTANCE);
+        GarbageCollector.GarbageCleaner cleaner = new GarbageCollector.GarbageCleaner() {
+            @Override
+            public void clean(long ledgerId) {
+                LOG.info("Cleaned {}", ledgerId);
+                cleaned.add(ledgerId);
+            }
+        };
+
+        validateLedgerRangeIterator(createdLedgers);
+
+        for (long ledgerId : createdLedgers) {
+            removeLedger(ledgerId);
+        }
+
+        garbageCollector.gc(cleaner);
+        assertTrue("Should have cleaned nothing", cleaned.isEmpty());
+    }
+
+    public void validateLedgerRangeIterator(SortedSet<Long> createdLedgers) throws IOException {
+        SortedSet<Long> scannedLedgers = new TreeSet<Long>();
+        LedgerRangeIterator iterator = getLedgerManager().getLedgerRanges();
+        while (iterator.hasNext()) {
+            LedgerRange ledgerRange = iterator.next();
+            scannedLedgers.addAll(ledgerRange.getLedgers());
+        }
+
+        assertEquals(createdLedgers, scannedLedgers);
+    }
+
     class MockLedgerStorage implements CompactableLedgerStorage {
 
         @Override
@@ -423,6 +647,61 @@ public class GcLedgersTest extends LedgerManagerTestCase {
         @Override
         public long getLastAddConfirmed(long ledgerId) throws IOException {
             return 0;
+        }
+    }
+
+    class LedgerManagerWrapper implements LedgerManager {
+
+        LedgerManager ledgerManager;
+
+        public LedgerManagerWrapper(LedgerManager ledgerManager) {
+            this.ledgerManager = ledgerManager;
+        }
+
+        @Override
+        public void close() throws IOException {
+            ledgerManager.close();
+        }
+
+        @Override
+        public void createLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<Void> cb) {
+            ledgerManager.createLedgerMetadata(ledgerId, metadata, cb);
+        }
+
+        @Override
+        public void removeLedgerMetadata(long ledgerId, Version version, GenericCallback<Void> vb) {
+            ledgerManager.removeLedgerMetadata(ledgerId, version, vb);
+        }
+
+        @Override
+        public void readLedgerMetadata(long ledgerId, GenericCallback<LedgerMetadata> readCb) {
+            ledgerManager.readLedgerMetadata(ledgerId, readCb);
+        }
+
+        @Override
+        public void writeLedgerMetadata(long ledgerId, LedgerMetadata metadata, GenericCallback<Void> cb) {
+            ledgerManager.writeLedgerMetadata(ledgerId, metadata, cb);
+        }
+
+        @Override
+        public void registerLedgerMetadataListener(long ledgerId, LedgerMetadataListener listener) {
+            ledgerManager.registerLedgerMetadataListener(ledgerId, listener);
+        }
+
+        @Override
+        public void unregisterLedgerMetadataListener(long ledgerId, LedgerMetadataListener listener) {
+            ledgerManager.unregisterLedgerMetadataListener(ledgerId, listener);
+        }
+
+        @Override
+        public void asyncProcessLedgers(Processor<Long> processor, VoidCallback finalCb, Object context, int successRc,
+                int failureRc) {
+            ledgerManager.asyncProcessLedgers(processor, finalCb, context, successRc, failureRc);
+        }
+
+        @Override
+        public LedgerRangeIterator getLedgerRanges() {
+            return ledgerManager.getLedgerRanges();
         }
     }
 }
