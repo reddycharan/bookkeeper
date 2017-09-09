@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 
@@ -139,20 +140,6 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
             NavigableSet<Long> bkActiveLedgers = Sets.newTreeSet(ledgerStorage.getActiveLedgersInRange(0, Long.MAX_VALUE));
             this.activeLedgerCounter = bkActiveLedgers.size();
 
-            // Iterate over all the ledger on the metadata store
-            LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges();
-
-            if (!ledgerRangeIterator.hasNext()) {
-                // Empty global active ledgers, need to remove all local active ledgers.
-                LOG.info("LEDGER DELETE: Empty Global active ledgers, deleting all");
-                for (long ledgerId : bkActiveLedgers) {
-                    deletedLedgerCounter.inc();
-                    garbageCleaner.clean(ledgerId);
-                }
-            }
-
-            long lastEnd = -1;
-
             long curTime = MathUtils.now();
             boolean checkOverreplicatedLedgers = (enableGcOverReplicatedLedger && curTime
                     - lastOverReplicatedLedgerGcTimeMillis > gcOverReplicatedLedgerIntervalMillis);
@@ -169,18 +156,26 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                 lastOverReplicatedLedgerGcTimeMillis = MathUtils.now();
             }
 
-            while(ledgerRangeIterator.hasNext()) {
-                LedgerRange lRange = ledgerRangeIterator.next();
-
-                Long start = lastEnd + 1;
-                Long end = lRange.end();
-                if (!ledgerRangeIterator.hasNext()) {
+            // Iterate over all the ledger on the metadata store
+            LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges();
+            Set<Long> ledgersInMetadata = null;
+            long start;
+            long end = -1;
+            boolean done = false;
+            while (!done) {
+                start = end + 1;
+                if (ledgerRangeIterator.hasNext()) {
+                    LedgerRange lRange = ledgerRangeIterator.next();
+                    ledgersInMetadata = lRange.getLedgers();
+                    end = lRange.end();
+                } else {
+                    ledgersInMetadata = new TreeSet<>();
                     end = Long.MAX_VALUE;
+                    done = true;
                 }
 
                 Iterable<Long> subBkActiveLedgers = bkActiveLedgers.subSet(start, true, end, true);
 
-                Set<Long> ledgersInMetadata = lRange.getLedgers();
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Active in metadata {}, Active in bookie {}", ledgersInMetadata, subBkActiveLedgers);
                 }
@@ -219,7 +214,6 @@ public class ScanAndCompareGarbageCollector implements GarbageCollector{
                         }
                     }
                 }
-                lastEnd = end;
             }
         } catch (Throwable t) {
             // ignore exception, collecting garbage next time
