@@ -220,7 +220,7 @@ public class ZkUtils {
      * @throws IOException
      */
     public static List<String> getChildrenInSingleNode(final ZooKeeper zk, final String node)
-            throws InterruptedException, IOException {
+            throws InterruptedException, IOException, KeeperException.NoNodeException {
         final GetChildrenCtx ctx = new GetChildrenCtx();
         getChildrenInSingleNode(zk, node, new GenericCallback<List<String>>() {
             @Override
@@ -241,11 +241,12 @@ public class ZkUtils {
                 ctx.wait();
             }
         }
-        if (Code.OK.intValue() != ctx.rc) {
+        if (Code.NONODE.intValue() == ctx.rc) {
+            throw new KeeperException.NoNodeException("Got NoNode on call to getChildren on path " + node);
+        } else if (Code.OK.intValue() != ctx.rc) {
             throw new IOException("Error on getting children from node " + node);
         }
         return ctx.children;
-
     }
 
     /**

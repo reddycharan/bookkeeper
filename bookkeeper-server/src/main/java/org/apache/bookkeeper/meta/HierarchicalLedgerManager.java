@@ -371,6 +371,8 @@ class HierarchicalLedgerManager extends AbstractZkLedgerManager {
             List<String> ledgerNodes = null;
             try {
                 ledgerNodes = ZkUtils.getChildrenInSingleNode(zk, nodePath);
+            } catch (KeeperException.NoNodeException e) {
+                throw new IOException("Error, path does not exist: " + nodePath, e);
             } catch (InterruptedException e) {
                 throw new IOException("Error when get child nodes from zk", e);
             }

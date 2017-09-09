@@ -71,6 +71,10 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
         baseClientConf.setLedgerManagerFactoryClass(lmFactoryCls);
     }
 
+    public LedgerManager getIndependentLedgerManager() {
+        return ledgerManagerFactory.newLedgerManager();
+    }
+
     public LedgerManager getLedgerManager() {
         if (null == ledgerManager) {
             ledgerManager = ledgerManagerFactory.newLedgerManager();
