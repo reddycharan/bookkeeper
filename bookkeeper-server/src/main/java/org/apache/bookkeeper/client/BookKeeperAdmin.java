@@ -58,7 +58,10 @@ import org.apache.bookkeeper.client.SyncCallbackUtils.SyncOpenCallback;
 import org.apache.bookkeeper.client.SyncCallbackUtils.SyncReadCallback;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.discover.RegistrationClient;
 import org.apache.bookkeeper.discover.RegistrationClient.RegistrationListener;
+import org.apache.bookkeeper.discover.ZKRegistrationClient;
+import org.apache.bookkeeper.meta.AbstractZkLedgerManager;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
@@ -83,6 +86,7 @@ import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZKUtil;
+import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 import org.slf4j.Logger;
@@ -1244,6 +1248,174 @@ public class BookKeeperAdmin implements AutoCloseable {
             }
         }
         return true;
+    }
+
+    /**
+     * Intializes new cluster by creating required znodes for the cluster. If
+     * ledgersrootpath is already existing then it will error out.
+     *
+     * @param conf
+     * @return
+     * @throws Exception
+     */
+    public static boolean initNewCluster(ClientConfiguration conf) throws Exception {
+        ZooKeeper zkc = ZooKeeperClient.newBuilder().connectString(conf.getZkServers())
+                .sessionTimeoutMs(conf.getZkTimeout()).build();
+        try {
+            String zkLedgersRootPath = conf.getZkLedgersRootPath();
+            String zkServers = conf.getZkServers();
+            String zkAvailableBookiesPath = conf.getZkAvailableBookiesPath();
+            LOG.info("Initializing ZooKeeper metadata for new cluster, ZKServers: {} ledger root path: {}", zkServers,
+                    zkLedgersRootPath);
+
+            boolean ledgerRootExists = null != zkc.exists(conf.getZkLedgersRootPath(), false);
+
+            if (ledgerRootExists) {
+                LOG.error(
+                        "Ledger root path: {} already exists",
+                        conf.getZkLedgersRootPath());
+                return false;
+            }
+
+            // Create ledgers root node
+            zkc.create(zkLedgersRootPath, "".getBytes(UTF_8), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+            // create available bookies node
+            zkc.create(zkAvailableBookiesPath, "".getBytes(UTF_8), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+            // creates the new layout and stores in zookeeper
+            LedgerManagerFactory.newLedgerManagerFactory(conf, zkc);
+
+            // create INSTANCEID
+            String instanceId = UUID.randomUUID().toString();
+            zkc.create(conf.getZkLedgersRootPath() + "/" + BookKeeperConstants.INSTANCEID, instanceId.getBytes(UTF_8),
+                    Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+            LOG.info("Successfully initiated cluster. ZKServers: {} ledger root path: {} instanceId: {}", zkServers,
+                    zkLedgersRootPath, instanceId);
+            return true;
+        } finally {
+            if (null != zkc) {
+                zkc.close();
+            }
+        }
+    }
+
+    /**
+     * Nukes existing cluster metadata. But it does only if the provided
+     * ledgersRootPath matches with configuration's zkLedgersRootPath and
+     * provided instanceid matches with the cluster metadata. If force is
+     * mentioned then instanceid will not be validated.
+     *
+     * @param conf
+     * @param ledgersRootPath
+     * @param instanceId
+     * @param force
+     * @return
+     * @throws Exception
+     */
+    public static boolean nukeExistingCluster(ClientConfiguration conf, String ledgersRootPath, String instanceId,
+            boolean force) throws Exception {
+        ZooKeeper zkc = ZooKeeperClient.newBuilder().connectString(conf.getZkServers())
+                .sessionTimeoutMs(conf.getZkTimeout()).build();
+        try {
+            String zkServers = conf.getZkServers();
+            LOG.info(
+                    "Nuking ZooKeeper metadata of existing cluster, ZKServers: {} ledger root path: {} instanceId: {}",
+                    zkServers, ledgersRootPath, instanceId);
+
+            String confLedgersRootPath = conf.getZkLedgersRootPath();
+            if (!confLedgersRootPath.equals(ledgersRootPath)) {
+                LOG.error("Provided ledgerRootPath : {} is not matching with config's ledgerRootPath: {}, "
+                        + "so exiting nuke operation", ledgersRootPath, confLedgersRootPath);
+                return false;
+            }
+
+            boolean ledgerRootExists = null != zkc.exists(conf.getZkLedgersRootPath(), false);
+            if (!ledgerRootExists) {
+                LOG.info("There is no existing cluster with ledgersRootPath: {} in ZKServers: {}, "
+                        + "so exiting nuke operation", ledgersRootPath, conf.getZkServers());
+                return true;
+            }
+
+            if (!force) {
+                byte[] data = zkc.getData(confLedgersRootPath + "/" + BookKeeperConstants.INSTANCEID, false, null);
+                String readInstanceId = new String(data, UTF_8);
+                if ((instanceId == null) || (!instanceId.equals(readInstanceId))) {
+                    LOG.error("Provided InstanceId : {} is not matching with cluster InstanceId in ZK: {}", instanceId,
+                            readInstanceId);
+                    return false;
+                }
+            }
+
+            String availableBookiesPath = conf.getZkAvailableBookiesPath();
+            boolean availableNodeExists = null != zkc.exists(availableBookiesPath, false);
+            try (RegistrationClient regClient = new ZKRegistrationClient()) {
+                regClient.initialize(conf, null, NullStatsLogger.INSTANCE, Optional.empty());
+                if (availableNodeExists) {
+                    Collection<BookieSocketAddress> rwBookies = BookieWatcher.getBookies(regClient);
+                    if (rwBookies != null && !rwBookies.isEmpty()) {
+                        LOG.error("Bookies are still up and connected to this cluster, "
+                                + "stop all bookies before nuking the cluster");
+                        return false;
+                    }
+                    String readOnlyBookieRegPath = availableBookiesPath + "/" + BookKeeperConstants.READONLY;
+                    boolean readonlyNodeExists = null != zkc.exists(readOnlyBookieRegPath, false);
+                    if (readonlyNodeExists) {
+                        Collection<BookieSocketAddress> roBookies = BookieWatcher.getReadOnlyBookies(regClient);
+                        if (roBookies != null && !roBookies.isEmpty()) {
+                            LOG.error("Readonly Bookies are still up and connected to this cluster, "
+                                    + "stop all bookies before nuking the cluster");
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // Format all ledger metadata layout
+            LedgerManagerFactory ledgerManagerFactory = LedgerManagerFactory.newLedgerManagerFactory(conf, zkc);
+            AbstractZkLedgerManager zkLedgerManager = (AbstractZkLedgerManager) ledgerManagerFactory.newLedgerManager();
+
+            /*
+             * before proceeding with nuking existing cluster, make sure there
+             * are no unexpected znodes under ledgersRootPath
+             */
+            List<String> ledgersRootPathChildrenList = zkc.getChildren(ledgersRootPath, false);
+            for (String ledgersRootPathChildren : ledgersRootPathChildrenList) {
+                if ((!zkLedgerManager.isSpecialZnode(ledgersRootPathChildren))
+                        && (!zkLedgerManager.isLedgerParentNode(ledgersRootPathChildren))) {
+                    LOG.error("Found unexpected znode : {} under ledgersRootPath : {} so exiting nuke operation",
+                            ledgersRootPathChildren, ledgersRootPath);
+                    return false;
+                }
+            }
+
+            // formatting ledgermanager deletes ledger znodes
+            ledgerManagerFactory.format(conf, zkc);
+
+            // now delete all the special nodes recursively
+            ledgersRootPathChildrenList = zkc.getChildren(ledgersRootPath, false);
+            for (String ledgersRootPathChildren : ledgersRootPathChildrenList) {
+                if (zkLedgerManager.isSpecialZnode(ledgersRootPathChildren)) {
+                    ZKUtil.deleteRecursive(zkc, ledgersRootPath + "/" + ledgersRootPathChildren);
+                } else {
+                    LOG.error("Found unexpected znode : {} under ledgersRootPath : {} so exiting nuke operation",
+                            ledgersRootPathChildren, ledgersRootPath);
+                    return false;
+                }
+            }
+
+            // finally deleting the ledgers rootpath
+            zkc.delete(ledgersRootPath, -1);
+
+            LOG.info("Successfully nuked existing cluster, ZKServers: {} ledger root path: {} instanceId: {}",
+                    zkServers, ledgersRootPath, instanceId);
+            return true;
+        } finally {
+            if (null != zkc) {
+                zkc.close();
+            }
+        }
     }
 
     /**
