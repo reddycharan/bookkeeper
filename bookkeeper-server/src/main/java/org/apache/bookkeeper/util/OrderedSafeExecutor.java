@@ -134,13 +134,25 @@ public class OrderedSafeExecutor {
         public void safeRun() {
             taskPendingStats.registerSuccessfulEvent(
                     MathUtils.elapsedNanos(initNanos), TimeUnit.NANOSECONDS);
+            
+            long queuedMicroSec = MathUtils.elapsedMicroSec(initNanos);
+            if (queuedMicroSec >= warnTimeMicroSec) {
+                logger.warn("Runnable {}:{} waited too long {} micros to execute.",
+                            runnable, runnable.getClass(), queuedMicroSec);
+            }
+
             long startNanos = MathUtils.nowInNano();
             this.runnable.safeRun();
             long elapsedMicroSec = MathUtils.elapsedMicroSec(startNanos);
             taskExecutionStats.registerSuccessfulEvent(elapsedMicroSec, TimeUnit.MICROSECONDS);
             if (elapsedMicroSec >= warnTimeMicroSec) {
                 logger.warn("Runnable {}:{} took too long {} micros to execute.",
-                            new Object[] { runnable, runnable.getClass(), elapsedMicroSec });
+                            runnable, runnable.getClass(), elapsedMicroSec);
+            }
+            long totalMicroSec = MathUtils.elapsedMicroSec(initNanos);
+            if (totalMicroSec >= warnTimeMicroSec) {
+                logger.warn("Runnable {}:{} waited & run for too long: {} micros.",
+                            runnable, runnable.getClass(), totalMicroSec);
             }
         }
      }
