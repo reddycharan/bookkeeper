@@ -306,4 +306,9 @@ class LongHierarchicalLedgerManager extends HierarchicalLedgerManager {
             return rootIterator.next();
         }
     }
+    
+    @Override
+    protected String getLedgerParentNodeRegex() {
+        return StringUtils.LONGHIERARCHICAL_LEDGER_PARENT_NODE_REGEX;
+    }
 }

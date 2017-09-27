@@ -29,6 +29,12 @@ public class StringUtils {
 
     // Ledger Node Prefix
     static public final String LEDGER_NODE_PREFIX = "L";
+    // Ledger znode in flatledgermanager layout will be "L" (prefix) +"%010d" (id in 10 digits)
+    static public final String FLAT_LEDGER_NODE_REGEX = StringUtils.LEDGER_NODE_PREFIX + "\\d{10}";
+    // top level znode in hierarchicalledgermanger will be just 2 digits
+    static public final String HIERARCHICAL_LEDGER_PARENT_NODE_REGEX = "\\d{2}";
+    // top level znode in longhierarchicalledgermanger will be just 3 digits
+    static public final String LONGHIERARCHICAL_LEDGER_PARENT_NODE_REGEX = "\\d{3}";
 
     /**
      * Formats ledger ID according to ZooKeeper rules

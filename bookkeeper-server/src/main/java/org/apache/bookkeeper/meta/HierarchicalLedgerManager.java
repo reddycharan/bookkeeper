@@ -259,7 +259,7 @@ class HierarchicalLedgerManager extends AbstractZkLedgerManager {
     }
 
     @Override
-    protected boolean isSpecialZnode(String znode) {
+    public boolean isSpecialZnode(String znode) {
         return IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode);
     }
 
@@ -385,5 +385,10 @@ class HierarchicalLedgerManager extends AbstractZkLedgerManager {
             return new LedgerRange(zkActiveLedgers.subSet(getStartLedgerIdByLevel(level1, level2), true,
                                                           getEndLedgerIdByLevel(level1, level2), true));
         }
+    }
+
+    @Override
+    protected String getLedgerParentNodeRegex() {
+        return StringUtils.HIERARCHICAL_LEDGER_PARENT_NODE_REGEX;
     }
 }

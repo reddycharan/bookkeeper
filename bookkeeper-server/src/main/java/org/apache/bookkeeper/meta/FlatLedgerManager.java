@@ -89,7 +89,7 @@ class FlatLedgerManager extends AbstractZkLedgerManager {
     }
 
     @Override
-    protected boolean isSpecialZnode(String znode) {
+    public boolean isSpecialZnode(String znode) {
         return znode.startsWith(ZkLedgerIdGenerator.LEDGER_ID_GEN_PREFIX) || super.isSpecialZnode(znode);
     }
 
@@ -133,5 +133,10 @@ class FlatLedgerManager extends AbstractZkLedgerManager {
                 return nextRange;
             }
         };
+    }
+
+    @Override
+    protected String getLedgerParentNodeRegex() {
+        return StringUtils.FLAT_LEDGER_NODE_REGEX;
     }
 }

@@ -45,6 +45,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,8 +146,13 @@ class BookieWatcher implements Watcher, ChildrenCallback {
     }
 
     public Collection<BookieSocketAddress> getBookies() throws BKException {
+        return getBookies(bk.getZkHandle(), this.bookieRegistrationPath);
+    }
+
+    public static Collection<BookieSocketAddress> getBookies(ZooKeeper zkHandle, String bookieRegistrationPath)
+            throws BKException {
         try {
-            List<String> children = bk.getZkHandle().getChildren(this.bookieRegistrationPath, false);
+            List<String> children = zkHandle.getChildren(bookieRegistrationPath, false);
             children.remove(BookKeeperConstants.READONLY);
             return convertToBookieAddresses(children);
         } catch (KeeperException ke) {
@@ -159,6 +165,21 @@ class BookieWatcher implements Watcher, ChildrenCallback {
         }
     }
 
+    public static Collection<BookieSocketAddress> getReadOnlyBookies(ZooKeeper zkHandle,
+            String readOnlybookieRegistrationPath) throws BKException {
+        try {
+            List<String> children = zkHandle.getChildren(readOnlybookieRegistrationPath, false);
+            return convertToBookieAddresses(children);
+        } catch (KeeperException ke) {
+            logger.error("Failed to get bookie list : ", ke);
+            throw new BKException.ZKException();
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            logger.error("Interrupted reading bookie list", ie);
+            throw new BKException.BKInterruptedException();
+        }
+    }
+    
     Collection<BookieSocketAddress> getReadOnlyBookies() {
         return new HashSet<BookieSocketAddress>(readOnlyBookieWatcher.getReadOnlyBookies());
     }
