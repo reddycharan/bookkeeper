@@ -318,11 +318,15 @@ elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 elif [ $COMMAND == "jmx" ]; then
     getPortNum() {
+        prefixForBookiePortWithCluster=$SFSTORE_CLUSTER_NAME\$bookiePort=
         while read line; do
             trimmedline=`echo $line | tr -d ' '`
-            if [[ $trimmedline == bookiePort=* ]]; then
+            # config variable with SFSTORE_CLUSTER_NAME prefix should take precedence
+            if [[ $trimmedline == $prefixForBookiePortWithCluster* ]]; then
+                PORT_NUM=${trimmedline/#$prefixForBookiePortWithCluster/}
+                return
+            elif [[ $trimmedline == bookiePort=* ]]; then
                 PORT_NUM=${trimmedline/#bookiePort=/}
-                break
             fi
         done < $BOOKIE_CONF
     }

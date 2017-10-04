@@ -654,7 +654,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public String[] getLedgerDirNames() {
         String[] ledgerDirs = this.getStringArray(LEDGER_DIRS);
-        if (null == ledgerDirs) {
+        if (null == ledgerDirs || ledgerDirs.length == 0) {
             return new String[] { "/tmp/bk-data" };
         }
         return ledgerDirs;

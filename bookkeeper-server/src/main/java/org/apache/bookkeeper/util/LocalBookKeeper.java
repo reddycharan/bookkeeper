@@ -370,70 +370,80 @@ public class LocalBookKeeper {
     public static void main(String[] args) throws IOException, KeeperException,
             InterruptedException, BookieException, UnavailableException,
             CompatibilityException, SecurityException {
-        if(args.length < 1) {
-            usage();
-            System.exit(-1);
-        }
-
-        LocalBookKeeper lb = new LocalBookKeeper(Integer.parseInt(args[0]));
-
-        ServerConfiguration conf = new ServerConfiguration();
-        if (args.length >= 2) {
-            String confFile = args[1];
-            try {
-                conf.loadConf(new File(confFile).toURI().toURL());
-                LOG.info("Using configuration file " + confFile);
-            } catch (Exception e) {
-                // load conf failed
-                LOG.warn("Error loading configuration file " + confFile, e);
+        try{
+            if(args.length < 1) {
+                usage();
+                System.exit(-1);
             }
-        }
 
-        String zkPath = null;
-        if(args.length > 2) {
-        	zkPath = args[2];
-        }
-        RestResources.setServerConfiguration(conf);
-        lb.runZookeeper(1000, zkPath);
-        lb.initializeZookeeper(conf);        
-        
-        Class<? extends StatsProvider> statsProviderClass = null;
-        StatsProvider statsProvider = null;
-		
-		List<File> tmpDirs = null;
-		boolean statsEnabled = containsAndIsVal("enableStatistics", "true", conf);
-		boolean localLogsEnabled = containsAndIsVal("enableLocalStats", "true", conf); 
-		boolean runLocalLogs = statsEnabled && localLogsEnabled;
-		if (runLocalLogs) {
-			System.out.println("Collecting local stats...");
-			try {
-				statsProviderClass = conf.getStatsProviderClass();
-			} catch (ConfigurationException e) {
-				LOG.warn("Failed to instantiate stats providre class: " + e.getStackTrace());
-				LOG.debug("Failed to instantiate stats providre class: ", e);
-			}
-			statsProvider = ReflectionUtils.newInstance(statsProviderClass);
-	        statsProvider.start(conf);	       
-		}
-		
-		//If statsProvider isn't null, that means we have local logging enabled and a logging class instantiated. 
-		if (statsProvider != null) {
-			tmpDirs = lb.runBookies(conf, "test", statsProvider.getStatsLogger(conf.getString("codahaleStatsPrefix")));
-		}
-		else {
-			tmpDirs = lb.runBookies(conf, "test", null);
-		}
-        
-        try {
-            while (true) {
-                Thread.sleep(5000);
+            LocalBookKeeper lb = new LocalBookKeeper(Integer.parseInt(args[0]));
+
+            ServerConfiguration conf = new ServerConfiguration();
+            if (args.length >= 2) {
+                String confFile = args[1];
+                try {
+                    conf.loadConf(new File(confFile).toURI().toURL());
+                    LOG.info("Using configuration file " + confFile);
+                } catch (Exception e) {
+                    // load conf failed
+                    LOG.warn("Error loading configuration file " + confFile, e);
+                }
             }
-        } catch (InterruptedException ie) {
+
+            String zkPath = null;
+            if(args.length > 2) {
+                zkPath = args[2];
+            }
+            RestResources.setServerConfiguration(conf);
+            lb.runZookeeper(1000, zkPath);
+            lb.initializeZookeeper(conf);        
+
+            Class<? extends StatsProvider> statsProviderClass = null;
+            StatsProvider statsProvider = null;
+
+            List<File> tmpDirs = null;
+            boolean statsEnabled = containsAndIsVal("enableStatistics", "true", conf);
+            boolean localLogsEnabled = containsAndIsVal("enableLocalStats", "true", conf); 
+            boolean runLocalLogs = statsEnabled && localLogsEnabled;
             if (runLocalLogs) {
-                statsProvider.stop();
+                System.out.println("Collecting local stats...");
+                try {
+                    statsProviderClass = conf.getStatsProviderClass();
+                } catch (ConfigurationException e) {
+                    LOG.warn("Failed to instantiate stats providre class: " + e.getStackTrace());
+                    LOG.debug("Failed to instantiate stats providre class: ", e);
+                }
+                statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+                statsProvider.start(conf);	       
             }
-            cleanupDirectories(tmpDirs);
-            throw ie;
+
+            //If statsProvider isn't null, that means we have local logging enabled and a logging class instantiated. 
+            if (statsProvider != null) {
+                tmpDirs = lb.runBookies(conf, "test", statsProvider.getStatsLogger(conf.getString("codahaleStatsPrefix")));
+            }
+            else {
+                tmpDirs = lb.runBookies(conf, "test", null);
+            }
+
+            try {
+                while (true) {
+                    Thread.sleep(5000);
+                }
+            } catch (InterruptedException ie) {
+                if (runLocalLogs) {
+                    statsProvider.stop();
+                }
+                cleanupDirectories(tmpDirs);
+                throw ie;
+            }
+
+        } catch (Exception e) {
+            LOG.error("Exiting LocalBookKeeper because of exception in main method", e);
+            /*
+             * This is needed because, some non-daemon thread (probably in ZK or in statsProvider) is preventing the JVM
+             * from exiting, though there is exception in main thread.
+             */
+            System.exit(-1);
         }
     }
     
