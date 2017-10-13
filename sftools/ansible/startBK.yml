@@ -1,0 +1,15 @@
+---
+- hosts: PRD
+  user: sfdc
+  become: yes
+  become_user: sfstore
+  become_method: sudo
+  tasks:
+    - name: start new bookkeeper service
+      shell: |
+        ./ant -q stop
+        ./ant -q install
+        echo "permittedStartupUsers=sfstore" >> user.properties
+        ./ant -q start 
+      args:
+        chdir: /home/sfstore/current/sfstorage/bookkeeper/build

@@ -1,0 +1,24 @@
+---
+- hosts: PRD
+  user: sfdc
+  become: yes
+  become_user: sfstore
+  become_method: sudo
+  tasks:
+    - name: prepare new metric streamer service
+      shell: |
+        echo "# ansible provided properties" > user.properties
+        echo "metrics-streamer.funnelUrl=ajna0-funnel1-0-prd.data.sfdc.net:80" >> user.properties
+        echo "metrics-streamer.superpod=PRDSFSTORE" >> user.properties
+        echo "metrics-streamer.datacenter=PRD" >> user.properties
+        echo "metrics-streamer.podname=" >> user.properties
+        echo "metrics-streamer.source=sfstore" >> user.properties
+        echo "metrics-streamer.snapshot=NONE" >> user.properties
+      args:
+        chdir: /home/sfstore/current/sfstorage/sayonara/build
+
+    - name: start new metric streamer service
+      shell: |
+        ./ant sfms.stop sfms.install sfms.startSfstoreMetrics
+      args:
+        chdir: /home/sfstore/current/sfstorage/sayonara/build
