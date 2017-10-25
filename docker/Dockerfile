@@ -1,4 +1,4 @@
-FROM ops0-artifactrepo1-0-prd.data.sfdc.net/docker-dev-base/tnrp/appbase:7
+FROM ops0-artifactrepo1-0-prd.data.sfdc.net/docker-dev-base/tnrp/centos:7
 
 ARG pipeline_args
 ARG version
