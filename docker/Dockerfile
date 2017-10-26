@@ -8,7 +8,7 @@ LABEL maintainer="Storage Cloud Foundation \"storagefoundation@salesforce.com\""
       version=$version \
       name=storagecloud/sfstore:latest
 
-ADD sfstore.tar.bz2 /sfs/sfsbuild
+ADD sfstore.tar.gz /sfs/sfsbuild
 
 # Install necessary packages
 RUN yum install -y --nogpgcheck which java bzip2 wget net-tools nmap-ncat && \
