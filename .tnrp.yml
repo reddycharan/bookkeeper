@@ -11,8 +11,8 @@ pipeline:
       - docker-dev-base/tnrp/oracle/jdk:8u91
     package_docker_image:
       enabled: true
-      docker_file: ./docker
-      image_name: storagecloud/sfstore:v
+      docker_file: ./docker/Dockerfile
+      image_name: storagecloud/bookie:base
     component_test:
       enabled: false
       docker_compose_files:
