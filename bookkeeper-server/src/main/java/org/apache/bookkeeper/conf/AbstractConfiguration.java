@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +74,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
 
     // for per Cluster based configuration
     public static final String CLUSTER_LOC_PROPERTY = "cluster.loc";
+    public static final char CLUSTER_CONFIG_SEPARATOR = '$';
     private static final String cluster;
     static {
         String name = System.getProperty(CLUSTER_LOC_PROPERTY);
@@ -80,7 +82,7 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
         if (name == null || name.length() < 1) {
             cluster = "";
         } else {
-            cluster = name + "$";
+            cluster = name + CLUSTER_CONFIG_SEPARATOR;
         }
     }
     
@@ -887,5 +889,36 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
 
     public void setRestPackage(String pkg) {
         setProperty(REST_PACKAGE, pkg);
+    }
+    
+    /**
+     * converts the config into string format, by appending the config values
+     * and separated by 'separator'
+     *
+     * @param separator
+     *            separator to separate the configs in string
+     */
+    public String configAsString(String separator) {
+        StringBuilder configString = new StringBuilder();
+        Iterator keys = this.getKeys();
+        while (keys.hasNext()) {
+            String key = (String) keys.next();
+            int indexOfSep = key.indexOf(CLUSTER_CONFIG_SEPARATOR);
+            if (indexOfSep != -1) {
+                String configClusterName = key.substring(0, indexOfSep + 1);
+                if (getClusterLoc().equals(configClusterName)) {
+                    key = key.substring(indexOfSep + 1);
+                } else {
+                    /*
+                     * If the cluster name of the config is not equal to the
+                     * current cluster name, then ignore it
+                     */
+                    continue;
+                }
+            }
+            Object value = getProperty(key);
+            configString.append(key + "=" + value + separator);
+        }
+        return configString.toString();
     }
 }
