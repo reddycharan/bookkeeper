@@ -16,6 +16,8 @@
  */
 package org.apache.bookkeeper.stats.codahale;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 import com.codahale.metrics.CsvReporter;
 import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricFilter;
@@ -24,11 +26,15 @@ import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,12 +56,19 @@ public class CodahaleMetricsProvider implements StatsProvider {
     MetricRegistry metrics = null;
     List<ScheduledReporter> reporters = new ArrayList<ScheduledReporter>();
     JmxReporter jmx = null;
+    private JettyServices jettyServices;
+    public CodahaleMetricsProvider() {
+    }
 
     synchronized void initIfNecessary() {
         if (metrics == null) {
             metrics = new MetricRegistry();
-            metrics.registerAll(new MemoryUsageGaugeSet());
-            metrics.registerAll(new GarbageCollectorMetricSet());
+            metrics.register(name("jvm.gc"), new GarbageCollectorMetricSet());
+            metrics.register(name("jvm.memory"), new MemoryUsageGaugeSet());
+            metrics.register(name("jvm.system"), new JvmSystemMetricSet());
+            metrics.register(name("jvm.threads"), new ThreadStatesGaugeSet());
+            metrics.register(name("jvm.buffers"), new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
+            metrics.register(name("jvm.filedescriptors"), new FileDescriptorRatioGauge());
         }
     }
 
@@ -66,14 +79,25 @@ public class CodahaleMetricsProvider implements StatsProvider {
     @Override
     public void start(Configuration conf) {
         initIfNecessary();
-
         int metricsOutputFrequency = conf.getInt("codahaleStatsOutputFrequencySeconds", 60);
         String prefix = conf.getString("codahaleStatsPrefix", "");
         String graphiteHost = conf.getString("codahaleStatsGraphiteEndpoint");
         String csvDir = conf.getString("codahaleStatsCSVEndpoint");
         String slf4jCat = conf.getString("codahaleStatsSlf4jEndpoint");
         String jmxDomain = conf.getString("codahaleStatsJmxEndpoint");
+        int jettyPort = conf.getInt("jettyPort");
 
+        if (jettyPort > 0) {
+            // Get the context and endpoint. If none specified, set to "/" and
+            // "metrics.json", respectively, as default.
+            LOG.info("Configuring stats on port: " + jettyPort);
+            try {
+                JettyServices jettyServices = new JettyServices(conf, this);
+                jettyServices.start();
+            } catch (Exception e) {
+                LOG.error("Failed to start logging servlet!\n" + e.getMessage(), e);
+            }
+        }
         if (!Strings.isNullOrEmpty(graphiteHost)) {
             LOG.info("Configuring stats with graphite");
             HostAndPort addr = HostAndPort.fromString(graphiteHost);
@@ -130,6 +154,9 @@ public class CodahaleMetricsProvider implements StatsProvider {
         for (ScheduledReporter r : reporters) {
             r.report();
             r.stop();
+        }
+        if (jettyServices != null) {
+            jettyServices.shutDown();
         }
         if (jmx != null) {
             jmx.stop();

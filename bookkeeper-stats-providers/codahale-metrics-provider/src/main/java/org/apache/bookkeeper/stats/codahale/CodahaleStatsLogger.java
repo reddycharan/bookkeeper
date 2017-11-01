@@ -34,7 +34,7 @@ public class CodahaleStatsLogger implements StatsLogger {
 
     CodahaleStatsLogger(MetricRegistry metrics, String basename) {
         this.metrics = metrics;
-        this.basename = basename;
+        this.basename = basename != null ? basename : "";
     }
 
     @Override
