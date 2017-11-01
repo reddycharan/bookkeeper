@@ -23,6 +23,7 @@ package org.apache.bookkeeper.client;
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
+import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.client.AsyncCallback.OpenCallback;
 import org.apache.bookkeeper.client.AsyncCallback.RecoverCallback;
 import org.apache.bookkeeper.client.BookKeeper.SyncOpenCallback;
@@ -1187,6 +1189,86 @@ public class BookKeeperAdmin {
 
             LOG.info("Successfully nuked existing cluster, ZKServers: {} ledger root path: {} instanceId: {}",
                     zkServers, ledgersRootPath, instanceId);
+            return true;
+        } finally {
+            if (null != zkc) {
+                zkc.close();
+            }
+        }
+    }
+    
+    /**
+     * Initializes bookie, by making sure that the journalDir, ledgerDirs and
+     * indexDirs are empty and there is no registered Bookie with this BookieId
+     * 
+     * @param conf
+     * @return
+     * @throws Exception
+     */
+    public static boolean initBookie(ServerConfiguration conf) throws Exception {
+        ZooKeeper zkc = ZooKeeperClient.newBuilder().connectString(conf.getZkServers())
+                .sessionTimeoutMs(conf.getZkTimeout()).build();
+        try {
+            /*
+             * make sure that journalDir, ledgerDirs and indexDirs are empty
+             */
+            File journalDir = conf.getJournalDir();
+            if (journalDir.exists() && journalDir.listFiles().length != 0) {
+                LOG.error("JournalDir: {} is existing and its not empty, try formatting the bookie", journalDir);
+                return false;
+            }
+
+            File[] ledgerDirs = conf.getLedgerDirs();
+            for (File ledgerDir : ledgerDirs) {
+                if (ledgerDir.exists() && ledgerDir.listFiles().length != 0) {
+                    LOG.error("Atleast one LedgerDir: {} is existing and its not empty, try formatting the bookie",
+                            ledgerDir);
+                    return false;
+                }
+            }
+
+            File[] indexDirs = conf.getIndexDirs();
+            if (indexDirs != null) {
+                for (File indexDir : indexDirs) {
+                    if (indexDir.exists() && indexDir.listFiles().length != 0) {
+                        LOG.error("Atleast one IndexDir: {} is existing and its not empty, try formatting the bookie",
+                                indexDir);
+                        return false;
+                    }
+                }
+            }
+
+            /*
+             * make sure that there is no bookie registered with the same
+             * bookieid and the cookie for the same bookieid is not existing.
+             */
+            String bookieId = Bookie.getBookieAddress(conf).toString();
+            String availablePath = conf.getZkAvailableBookiesPath() + "/";
+
+            String bookieAvailablePath = availablePath + bookieId;
+            if (zkc.exists(bookieAvailablePath, false) != null) {
+                LOG.error(
+                        "Bookie with bookieId: {} is still registered at: {}, If this node is running bookie process, try stopping it first.",
+                        bookieId, bookieAvailablePath);
+                return false;
+            }
+
+            String readOnlyPath = availablePath + BookKeeperConstants.READONLY + "/";
+            String bookieReadOnlyPath = readOnlyPath + bookieId;
+            if (zkc.exists(bookieReadOnlyPath, false) != null) {
+                LOG.error(
+                        "Bookie with bookieId: {} is still registered at: {}, If this node is running bookie process, try stopping it first.",
+                        bookieId, bookieReadOnlyPath);
+                return false;
+            }
+
+            String bookieCookiePath = conf.getZkLedgersRootPath() + "/" + BookKeeperConstants.COOKIE_NODE + "/"
+                    + bookieId;
+            if (zkc.exists(bookieCookiePath, false) != null) {
+                LOG.error("Cookie still exists in the ZK for this bookie: {}, try formatting the bookie",
+                        bookieCookiePath);
+                return false;
+            }
             return true;
         } finally {
             if (null != zkc) {

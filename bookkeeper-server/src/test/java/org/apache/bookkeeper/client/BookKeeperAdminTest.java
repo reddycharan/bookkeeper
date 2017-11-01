@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -39,7 +40,10 @@ import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.util.BookKeeperConstants;
+import org.apache.bookkeeper.versioning.Versioned;
+import org.apache.commons.io.FileUtils;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.junit.Assert;
 import org.junit.Test;
@@ -432,5 +436,44 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
             lh.close();
         }
         bk.close();
+    }
+
+    @Test(timeout = 6000000)
+    public void testBookieInit() throws Exception {
+        int bookieindex = 0;
+        ServerConfiguration confOfExistingBookie = bsConfs.get(bookieindex);
+        Assert.assertFalse("initBookie shouldn't have succeeded, since bookie is still running with that configuration",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
+        killBookie(bookieindex);
+        Assert.assertFalse("initBookie shouldn't have succeeded, since previous bookie is not formatted yet",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
+
+        File journalDir = confOfExistingBookie.getJournalDir();
+        FileUtils.deleteDirectory(journalDir);
+        Assert.assertFalse("initBookie shouldn't have succeeded, since previous bookie is not formatted yet completely",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
+
+        File[] ledgerDirs = confOfExistingBookie.getLedgerDirs();
+        for (File ledgerDir : ledgerDirs) {
+            FileUtils.deleteDirectory(ledgerDir);
+        }
+        Assert.assertFalse("initBookie shouldn't have succeeded, since previous bookie is not formatted yet completely",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
+
+        File[] indexDirs = confOfExistingBookie.getIndexDirs();
+        if (indexDirs != null) {
+            for (File indexDir : indexDirs) {
+                FileUtils.deleteDirectory(indexDir);
+            }
+        }
+        Assert.assertFalse("initBookie shouldn't have succeeded, since cookie in ZK is not deleted yet",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
+        String bookieId = Bookie.getBookieAddress(confOfExistingBookie).toString();
+        String bookieCookiePath = confOfExistingBookie.getZkLedgersRootPath() + "/" + BookKeeperConstants.COOKIE_NODE + "/"
+                + bookieId;
+        zkc.delete(bookieCookiePath, -1);
+        
+        Assert.assertTrue("initBookie shouldn't succeeded",
+                BookKeeperAdmin.initBookie(confOfExistingBookie));
     }
 }
