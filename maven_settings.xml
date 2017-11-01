@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+ | Copyright (C) 2015 salesforce.com
+ |
+ | This is the default Maven user configuration file which should be used by all Salesforce engineers. It
+ | encapsulates the BUTC team's best-practice recommendations for configuring access to our internal Nexus
+ | server and Maven Central.
+ |
+ | Replace ${username.token} and ${password.token} with your actual username and password tokens from Nexus.
+ | You can access your Nexus tokens at https://nexus.soma.salesforce.com/nexus/index.html#profile;User Token.
+ |
+ | The BUTC team owns this template. For questions or concerns, please post to the BUTC group in Chatter:
+ | https://gus.my.salesforce.com/_ui/core/chatter/groups/GroupProfilePage?g=0F9B000000000lg
+ |-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <!--
+   | Where possible in your projects' POM files, use "nexus" when you need a repository ID. This will minimize churn in this
+   | file and make it easier to maintain for you over time. There are very few cases where you really need to point at anything
+   | other than our public group.
+   |-->
+  <servers>
+    <!--
+     | "nexus" is the ID of the repository configured in the distributionManagement section of the Salesforce
+     | company POM (https://git.soma.salesforce.com/modularization-team/salesforce-company-pom), so we need Nexus
+     | credentials here.
+     |-->
+     <!--
+    <server>
+      <id>nexus</id>
+      <username>INSERT_8_CHAR_USERNAME_TOKEN_HERE</username>
+      <password>INSERT_44_CHAR_PASSWORD_TOKEN_HERE</password>
+    </server>
+    -->
+
+    <!--
+     | Our internal Nexus server proxies Maven Central (i.e. whatever you'd find in Maven Central you'll find in
+     | our Nexus), so by defining a repository and server in this file named "central" we are essentially mirroring
+     | Maven Central and potentially saving many HTTP round trips.
+     |-->
+    <server>
+      <id>central</id>
+      <username>INSERT_8_CHAR_USERNAME_TOKEN_HERE</username>
+      <password>INSERT_44_CHAR_PASSWORD_TOKEN_HERE</password>
+    </server>
+
+    <!--
+     | Uncomment these for 3-Tier/Scone development.
+    <server>
+      <id>core</id>
+      <username>[Replace with your Nexus username token]</username>
+      <password>[Replace with your Nexus password token]</password>
+    </server>
+    <server>
+      <id>sfdc.sharedlibs</id>
+      <username>[Replace with your Nexus username token]</username>
+      <password>[Replace with your Nexus password token]</password>
+    </server>
+    -->
+  </servers>
+
+  <profiles>
+    <profile>
+      <id>sfdc</id>
+      <!--
+       | By defining repositories having the ID "central", we essentially mirror Maven Central and save
+       | some HTTP round-trips. Our internal Nexus repository proxies Maven Central, so you will find everything
+       | there that you'd find by letting Maven hit Maven Central directly.
+       |-->
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://nexus.soma.salesforce.com/nexus/content/groups/public/</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <url>https://nexus.soma.salesforce.com/nexus/content/groups/public/</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>sfdc</activeProfile>
+  </activeProfiles>
+
+</settings>

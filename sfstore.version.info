@@ -1,0 +1,21 @@
+# Sfstore Version Scheme:
+# - Increment the major version whenever we sync from Apache bookkeeper community branch
+#   and there is a new version of Bookkeeper released at that time. E.g. Bookkeeper version
+#   bumped from 4.5.0 to 4.6.0, the next time we sync, we increment SFSTORE_MAJOR_VERSION
+#   by 1.
+# - The minor version will be bumped with every new internal release; it will bumped
+#   by the Jenkins job that creates the new golden image.
+# - The patch version will be bumped by the Jenkins job that is creating a new patch
+#   release.
+# - The APACHE_BOOKKEEPER_VERSION should be kept in sync with the version number in
+#   Apache bookkeeper branch.
+#
+# The Jenkins job reads the values in this file and stamps the version number on all
+# all the artifacts like the jar files, etc. It also renames the deploy package accordingly.
+# Please don't change the formatting of the following because sftools/bk_scripts/sfstore_version.sh
+# script relies on this formatting. If you do need to change, please update that script as well.
+#
+SFSTORE_MAJOR_VERSION=1
+SFSTORE_MINOR_VERSION=48
+SFSTORE_PATCH_VERSION=0
+APACHE_BOOKKEEPER_VERSION=4.5.0
