@@ -509,6 +509,24 @@ public abstract class BookKeeperClusterTestCase {
         }
     }
 
+    protected String getLocalHostId(ServerConfiguration conf) {
+        InetAddress localHostSafeInetAddress = this.getLocalHostSafe();
+        String host = null;
+        if (conf.getUseHostNameAsBookieID()) {
+            host = localHostSafeInetAddress.getCanonicalHostName();
+            if (conf.getUseShortHostName()) {
+                /*
+                 * if short hostname is used, then FQDN is not used. Short
+                 * hostname is the hostname cut at the first dot.
+                 */
+                host = host.split("\\.", 2)[0];
+            }
+        } else {
+            host = localHostSafeInetAddress.getHostAddress();
+        }
+        return host;
+    }
+
     /**
      * Helper method to startup a bookie server using a configuration object.
      * Also, starts the auto recovery process if isAutoRecoveryEnabled is true.
@@ -530,10 +548,7 @@ public abstract class BookKeeperClusterTestCase {
         }
 
         int port = conf.getBookiePort();
-        String host = this.getLocalHostSafe().getHostAddress();
-        if (conf.getUseHostNameAsBookieID()) {
-            host = this.getLocalHostSafe().getCanonicalHostName();
-        }
+        String host = getLocalHostId(conf);
 
         while ( (!conf.isForceReadOnlyBookie() && (bkc.getZkHandle().exists(
                     "/ledgers/available/" + host + ":" + port, false) == null)) ||
@@ -573,10 +588,7 @@ public abstract class BookKeeperClusterTestCase {
         bsLoggers.put(server.getLocalAddress(), provider);
 
         int port = conf.getBookiePort();
-        String host = this.getLocalHostSafe().getHostAddress();
-        if (conf.getUseHostNameAsBookieID()) {
-            host = this.getLocalHostSafe().getCanonicalHostName();
-        }
+        String host = getLocalHostId(conf);
         while (bkc.getZkHandle().exists(
                 "/ledgers/available/" + host + ":" + port, false) == null) {
             Thread.sleep(500);

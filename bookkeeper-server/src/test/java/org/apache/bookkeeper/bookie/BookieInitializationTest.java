@@ -206,6 +206,42 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         }
     }
 
+    @Test(timeout = 20000)
+    public void testBookieRegistrationWithFQDNHostNameAsBookieID() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
+
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration().setZkServers(null)
+                .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setUseHostNameAsBookieID(true);
+
+        final String bkRegPath = conf.getZkAvailableBookiesPath() + "/"
+                + InetAddress.getLocalHost().getCanonicalHostName() + ":" + conf.getBookiePort();
+
+        MockBookie bWithFQDNHostname = new MockBookie(conf);
+        bWithFQDNHostname.zk = zkc;
+        bWithFQDNHostname.testRegisterBookie(conf);
+        Stat bkRegNode1 = zkc.exists(bkRegPath, false);
+        Assert.assertNotNull("Bookie registration node doesn't exists!", bkRegNode1);
+    }
+
+    @Test(timeout = 20000)
+    public void testBookieRegistrationWithShortHostNameAsBookieID() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
+
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration().setZkServers(null)
+                .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setUseHostNameAsBookieID(true).setUseShortHostName(true);
+
+        final String bkRegPath = conf.getZkAvailableBookiesPath() + "/"
+                + (InetAddress.getLocalHost().getCanonicalHostName().split("\\.", 2)[0]) + ":" + conf.getBookiePort();
+
+        MockBookie bWithShortHostname = new MockBookie(conf);
+        bWithShortHostname.zk = zkc;
+        bWithShortHostname.testRegisterBookie(conf);
+        Stat bkRegNode1 = zkc.exists(bkRegPath, false);
+        Assert.assertNotNull("Bookie registration node doesn't exists!", bkRegNode1);
+    }
+    
     /**
      * Verify the bookie registration, it should throw
      * KeeperException.NodeExistsException if the znode still exists even after

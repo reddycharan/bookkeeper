@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -590,9 +591,18 @@ public class Bookie extends BookieCriticalThread {
         InetSocketAddress inetAddr = new InetSocketAddress(DNS.getDefaultHost(iface), conf.getBookiePort());
         String hostAddress = "127.0.0.1";
         if (!inetAddr.isUnresolved()) {
-            hostAddress = inetAddr.getAddress().getHostAddress();
+            InetAddress iAddress = inetAddr.getAddress();
             if (conf.getUseHostNameAsBookieID()) {
-                hostAddress = inetAddr.getAddress().getCanonicalHostName();
+                hostAddress = iAddress.getCanonicalHostName();
+                if (conf.getUseShortHostName()) {
+                    /*
+                     * if short hostname is used, then FQDN is not used. Short
+                     * hostname is the hostname cut at the first dot.
+                     */
+                    hostAddress = hostAddress.split("\\.", 2)[0];
+                }
+            } else {
+                hostAddress = iAddress.getHostAddress();
             }
         }
         BookieSocketAddress addr =

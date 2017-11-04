@@ -125,6 +125,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     // Whether the bookie should use its hostname or ipaddress for the
     // registration.
     protected final static String USE_HOST_NAME_AS_BOOKIE_ID = "useHostNameAsBookieID";
+    protected final static String USE_SHORT_HOST_NAME = "useShortHostName";
     protected final static String ENABLE_LOCAL_TRANSPORT = "enableLocalTransport";
     protected final static String DISABLE_SERVER_SOCKET_BIND = "disableServerSocketBind";
 
@@ -1841,6 +1842,34 @@ public class ServerConfiguration extends AbstractConfiguration {
         return this;
     }
 
+    /**
+     * If bookie is using hostname for registration and in ledger metadata then
+     * whether to use short hostname or FQDN hostname. Defaults to false.
+     *
+     * @return true, then bookie will be registered with its short hostname and
+     *         short hostname will be used in ledger metadata. Otherwise bookie
+     *         will use its FQDN hostname
+     */
+    public boolean getUseShortHostName() {
+        return getBoolean(USE_SHORT_HOST_NAME, false);
+    }
+
+    /**
+     * Configure the bookie to use its short hostname or FQDN hostname to
+     * register with the co-ordination service(eg: zookeeper) and in ledger
+     * metadata
+     *
+     * @see #getUseShortHostName
+     * @param useShortHostName
+     *            whether to use short hostname for registration and in
+     *            ledgermetadata
+     * @return server configuration
+     */
+    public ServerConfiguration setUseShortHostName(boolean useShortHostName) {
+        setProperty(USE_SHORT_HOST_NAME, useShortHostName);
+        return this;
+    }
+    
     /**
      * Get whether to listen for local JVM clients. Defaults to false.
      *

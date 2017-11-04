@@ -57,6 +57,14 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
     }
 
     /**
+     * updatecookie to short hostname
+     */
+    @Test
+    public void testUpdateCookieIpAddressToShortHostname() throws Exception {
+        updateCookie("-bookieId", "hostname", true, true);
+    }
+    
+    /**
      * updatecookie to ipaddress
      */
     @Test
@@ -169,6 +177,11 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
     }
 
     private void updateCookie(String option, String optionVal, boolean useHostNameAsBookieID) throws Exception {
+        updateCookie(option, optionVal, useHostNameAsBookieID, false);
+    }
+
+    private void updateCookie(String option, String optionVal, boolean useHostNameAsBookieID, boolean useShortHostName)
+            throws Exception {
         ServerConfiguration conf = bsConfs.get(0);
         BookieServer bks = bs.get(0);
         bks.shutdown();
@@ -181,12 +194,14 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
         LOG.info("Perform updatecookie command");
         ServerConfiguration newconf = new ServerConfiguration(conf);
         newconf.setUseHostNameAsBookieID(useHostNameAsBookieID);
+        newconf.setUseShortHostName(useShortHostName);
         BookieShell bkShell = new BookieShell();
         bkShell.setConf(newconf);
         String[] argv = new String[] { "updatecookie", option, optionVal };
         Assert.assertEquals("Failed to return exit code!", 0, bkShell.run(argv));
 
         newconf.setUseHostNameAsBookieID(useHostNameAsBookieID);
+        newconf.setUseShortHostName(useShortHostName);
         cookie = Cookie.readFromZooKeeper(zkc, newconf).getValue();
         Assert.assertEquals("Wrongly updated cookie!", previousBookieID, !cookie.isBookieHostCreatedFromIp());
         Assert.assertEquals("Wrongly updated cookie!", useHostNameAsBookieID, !cookie.isBookieHostCreatedFromIp());
