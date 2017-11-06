@@ -12680,55 +12680,53 @@ public final class BookkeeperProtocol {
       "WriteLacRequest\022\'\n\016readLacRequest\030h \001(\0132" +
       "\017.ReadLacRequest\0223\n\024getBookieInfoRequest",
       "\030i \001(\0132\025.GetBookieInfoRequest\022)\n\017startTL" +
-      "SRequest\030j \001(\0132\020.StartTLSRequest\"\271\001\n\013Rea" +
-      "dRequest\022\037\n\004flag\030d \001(\0162\021.ReadRequest.Fla" +
-      "g\022\020\n\010ledgerId\030\001 \002(\003\022\017\n\007entryId\030\002 \002(\003\022\021\n\t" +
-      "masterKey\030\003 \001(\014\022\023\n\013previousLAC\030\004 \001(\003\022\017\n\007" +
-      "timeOut\030\005 \001(\003\"-\n\004Flag\022\020\n\014FENCE_LEDGER\020\001\022" +
-      "\023\n\017ENTRY_PIGGYBACK\020\002\"\212\001\n\nAddRequest\022\036\n\004f" +
-      "lag\030d \001(\0162\020.AddRequest.Flag\022\020\n\010ledgerId\030" +
-      "\001 \002(\003\022\017\n\007entryId\030\002 \002(\003\022\021\n\tmasterKey\030\003 \002(" +
-      "\014\022\014\n\004body\030\004 \002(\014\"\030\n\004Flag\022\020\n\014RECOVERY_ADD\020",
-      "\001\"\021\n\017StartTLSRequest\"Q\n\017WriteLacRequest\022" +
-      "\020\n\010ledgerId\030\001 \002(\003\022\013\n\003lac\030\002 \002(\003\022\021\n\tmaster" +
-      "Key\030\003 \002(\014\022\014\n\004body\030\004 \002(\014\"\"\n\016ReadLacReques" +
-      "t\022\020\n\010ledgerId\030\001 \002(\003\"`\n\024GetBookieInfoRequ" +
-      "est\022\021\n\trequested\030\001 \001(\003\"5\n\005Flags\022\027\n\023TOTAL" +
-      "_DISK_CAPACITY\020\001\022\023\n\017FREE_DISK_SPACE\020\002\"\360\002" +
-      "\n\010Response\022\037\n\006header\030\001 \002(\0132\017.BKPacketHea" +
-      "der\022\033\n\006status\030\002 \002(\0162\013.StatusCode\022#\n\014read" +
-      "Response\030d \001(\0132\r.ReadResponse\022!\n\013addResp" +
-      "onse\030e \001(\0132\014.AddResponse\022\"\n\014authResponse",
-      "\030f \001(\0132\014.AuthMessage\022+\n\020writeLacResponse" +
-      "\030g \001(\0132\021.WriteLacResponse\022)\n\017readLacResp" +
-      "onse\030h \001(\0132\020.ReadLacResponse\0225\n\025getBooki" +
-      "eInfoResponse\030i \001(\0132\026.GetBookieInfoRespo" +
-      "nse\022+\n\020startTLSResponse\030j \001(\0132\021.StartTLS" +
-      "Response\"\210\001\n\014ReadResponse\022\033\n\006status\030\001 \002(" +
-      "\0162\013.StatusCode\022\020\n\010ledgerId\030\002 \002(\003\022\017\n\007entr" +
-      "yId\030\003 \002(\003\022\014\n\004body\030\004 \001(\014\022\016\n\006maxLAC\030\005 \001(\003\022" +
-      "\032\n\022lacUpdateTimestamp\030\006 \001(\003\"M\n\013AddRespon" +
-      "se\022\033\n\006status\030\001 \002(\0162\013.StatusCode\022\020\n\010ledge",
-      "rId\030\002 \002(\003\022\017\n\007entryId\030\003 \002(\003\"6\n\013AuthMessag" +
-      "e\022\026\n\016authPluginName\030\001 \002(\t\022\017\n\007payload\030\002 \002" +
-      "(\014\"A\n\020WriteLacResponse\022\033\n\006status\030\001 \002(\0162\013" +
-      ".StatusCode\022\020\n\010ledgerId\030\002 \002(\003\"h\n\017ReadLac" +
-      "Response\022\033\n\006status\030\001 \002(\0162\013.StatusCode\022\020\n" +
-      "\010ledgerId\030\002 \002(\003\022\017\n\007lacBody\030\003 \001(\014\022\025\n\rlast" +
-      "EntryBody\030\004 \001(\014\"f\n\025GetBookieInfoResponse" +
-      "\022\033\n\006status\030\001 \002(\0162\013.StatusCode\022\031\n\021totalDi" +
-      "skCapacity\030\002 \001(\003\022\025\n\rfreeDiskSpace\030\003 \001(\003\"" +
-      "\022\n\020StartTLSResponse*F\n\017ProtocolVersion\022\017",
-      "\n\013VERSION_ONE\020\001\022\017\n\013VERSION_TWO\020\002\022\021\n\rVERS" +
-      "ION_THREE\020\003*\206\001\n\nStatusCode\022\007\n\003EOK\020\000\022\016\n\tE" +
-      "NOLEDGER\020\222\003\022\r\n\010ENOENTRY\020\223\003\022\014\n\007EBADREQ\020\224\003" +
-      "\022\010\n\003EIO\020\365\003\022\010\n\003EUA\020\366\003\022\020\n\013EBADVERSION\020\367\003\022\014" +
-      "\n\007EFENCED\020\370\003\022\016\n\tEREADONLY\020\371\003*\244\001\n\rOperati" +
-      "onType\022\016\n\nREAD_ENTRY\020\001\022\r\n\tADD_ENTRY\020\002\022\024\n" +
-      "\020RANGE_READ_ENTRY\020\003\022\023\n\017RANGE_ADD_ENTRY\020\004" +
-      "\022\010\n\004AUTH\020\005\022\r\n\tWRITE_LAC\020\006\022\014\n\010READ_LAC\020\007\022" +
-      "\023\n\017GET_BOOKIE_INFO\020\010\022\r\n\tSTART_TLS\020\tB\037\n\033o" +
-      "rg.apache.bookkeeper.protoH\001"
+      "SRequest\030j \001(\0132\020.StartTLSRequest\"~\n\013Read" +
+      "Request\022\037\n\004flag\030d \001(\0162\021.ReadRequest.Flag" +
+      "\022\020\n\010ledgerId\030\001 \002(\003\022\017\n\007entryId\030\002 \002(\003\022\021\n\tm" +
+      "asterKey\030\003 \001(\014\"\030\n\004Flag\022\020\n\014FENCE_LEDGER\020\001" +
+      "\"\212\001\n\nAddRequest\022\036\n\004flag\030d \001(\0162\020.AddReque" +
+      "st.Flag\022\020\n\010ledgerId\030\001 \002(\003\022\017\n\007entryId\030\002 \002" +
+      "(\003\022\021\n\tmasterKey\030\003 \002(\014\022\014\n\004body\030\004 \002(\014\"\030\n\004F" +
+      "lag\022\020\n\014RECOVERY_ADD\020\001\"\021\n\017StartTLSRequest" +
+      "\"Q\n\017WriteLacRequest\022\020\n\010ledgerId\030\001 \002(\003\022\013\n",
+      "\003lac\030\002 \002(\003\022\021\n\tmasterKey\030\003 \002(\014\022\014\n\004body\030\004 " +
+      "\002(\014\"\"\n\016ReadLacRequest\022\020\n\010ledgerId\030\001 \002(\003\"" +
+      "`\n\024GetBookieInfoRequest\022\021\n\trequested\030\001 \001" +
+      "(\003\"5\n\005Flags\022\027\n\023TOTAL_DISK_CAPACITY\020\001\022\023\n\017" +
+      "FREE_DISK_SPACE\020\002\"\360\002\n\010Response\022\037\n\006header" +
+      "\030\001 \002(\0132\017.BKPacketHeader\022\033\n\006status\030\002 \002(\0162" +
+      "\013.StatusCode\022#\n\014readResponse\030d \001(\0132\r.Rea" +
+      "dResponse\022!\n\013addResponse\030e \001(\0132\014.AddResp" +
+      "onse\022\"\n\014authResponse\030f \001(\0132\014.AuthMessage" +
+      "\022+\n\020writeLacResponse\030g \001(\0132\021.WriteLacRes",
+      "ponse\022)\n\017readLacResponse\030h \001(\0132\020.ReadLac" +
+      "Response\0225\n\025getBookieInfoResponse\030i \001(\0132" +
+      "\026.GetBookieInfoResponse\022+\n\020startTLSRespo" +
+      "nse\030j \001(\0132\021.StartTLSResponse\"\\\n\014ReadResp" +
+      "onse\022\033\n\006status\030\001 \002(\0162\013.StatusCode\022\020\n\010led" +
+      "gerId\030\002 \002(\003\022\017\n\007entryId\030\003 \002(\003\022\014\n\004body\030\004 \001" +
+      "(\014\"M\n\013AddResponse\022\033\n\006status\030\001 \002(\0162\013.Stat" +
+      "usCode\022\020\n\010ledgerId\030\002 \002(\003\022\017\n\007entryId\030\003 \002(" +
+      "\003\"A\n\020WriteLacResponse\022\033\n\006status\030\001 \002(\0162\013." +
+      "StatusCode\022\020\n\010ledgerId\030\002 \002(\003\"h\n\017ReadLacR",
+      "esponse\022\033\n\006status\030\001 \002(\0162\013.StatusCode\022\020\n\010" +
+      "ledgerId\030\002 \002(\003\022\017\n\007lacBody\030\003 \001(\014\022\025\n\rlastE" +
+      "ntryBody\030\004 \001(\014\"f\n\025GetBookieInfoResponse\022" +
+      "\033\n\006status\030\001 \002(\0162\013.StatusCode\022\031\n\021totalDis" +
+      "kCapacity\030\002 \001(\003\022\025\n\rfreeDiskSpace\030\003 \001(\003\"6" +
+      "\n\013AuthMessage\022\026\n\016authPluginName\030\001 \002(\t\022\017\n" +
+      "\007payload\030\002 \002(\014\"\022\n\020StartTLSResponse*F\n\017Pr" +
+      "otocolVersion\022\017\n\013VERSION_ONE\020\001\022\017\n\013VERSIO" +
+      "N_TWO\020\002\022\021\n\rVERSION_THREE\020\003*\206\001\n\nStatusCod" +
+      "e\022\007\n\003EOK\020\000\022\016\n\tENOLEDGER\020\222\003\022\r\n\010ENOENTRY\020\223",
+      "\003\022\014\n\007EBADREQ\020\224\003\022\010\n\003EIO\020\365\003\022\010\n\003EUA\020\366\003\022\020\n\013E" +
+      "BADVERSION\020\367\003\022\014\n\007EFENCED\020\370\003\022\016\n\tEREADONLY" +
+      "\020\371\003*\244\001\n\rOperationType\022\016\n\nREAD_ENTRY\020\001\022\r\n" +
+      "\tADD_ENTRY\020\002\022\024\n\020RANGE_READ_ENTRY\020\003\022\023\n\017RA" +
+      "NGE_ADD_ENTRY\020\004\022\010\n\004AUTH\020\005\022\r\n\tWRITE_LAC\020\006" +
+      "\022\014\n\010READ_LAC\020\007\022\023\n\017GET_BOOKIE_INFO\020\010\022\r\n\tS" +
+      "TART_TLS\020\tB\037\n\033org.apache.bookkeeper.prot" +
+      "oH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {

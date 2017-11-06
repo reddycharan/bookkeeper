@@ -420,6 +420,18 @@ public final class DataFormats {
        * <code>HMAC = 2;</code>
        */
       HMAC(1, 2),
+      /**
+       * <code>DUMMY = 3;</code>
+       */
+      DUMMY(2, 3),
+      /**
+       * <code>CRC32C = 4;</code>
+       */
+      CRC32C(3, 4),
+      /**
+       * <code>ADLER32 = 5;</code>
+       */
+      ADLER32(4, 5),
       ;
 
       /**
@@ -430,6 +442,18 @@ public final class DataFormats {
        * <code>HMAC = 2;</code>
        */
       public static final int HMAC_VALUE = 2;
+      /**
+       * <code>DUMMY = 3;</code>
+       */
+      public static final int DUMMY_VALUE = 3;
+      /**
+       * <code>CRC32C = 4;</code>
+       */
+      public static final int CRC32C_VALUE = 4;
+      /**
+       * <code>ADLER32 = 5;</code>
+       */
+      public static final int ADLER32_VALUE = 5;
 
 
       public final int getNumber() { return value; }
@@ -438,6 +462,9 @@ public final class DataFormats {
         switch (value) {
           case 1: return CRC32;
           case 2: return HMAC;
+          case 3: return DUMMY;
+          case 4: return CRC32C;
+          case 5: return ADLER32;
           default: return null;
         }
       }
@@ -6213,7 +6240,7 @@ public final class DataFormats {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n src/main/proto/DataFormats.proto\"\263\004\n\024L" +
+      "\n src/main/proto/DataFormats.proto\"\327\004\n\024L" +
       "edgerMetadataFormat\022\022\n\nquorumSize\030\001 \002(\005\022" +
       "\024\n\014ensembleSize\030\002 \002(\005\022\016\n\006length\030\003 \002(\003\022\023\n" +
       "\013lastEntryId\030\004 \001(\003\0220\n\005state\030\005 \002(\0162\033.Ledg" +
@@ -6227,15 +6254,16 @@ public final class DataFormats {
       "\030\001 \003(\t\022\024\n\014firstEntryId\030\002 \002(\003\032/\n\021cMetadat" +
       "aMapEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005value\030\002 \001(\014\".\n" +
       "\005State\022\010\n\004OPEN\020\001\022\017\n\013IN_RECOVERY\020\002\022\n\n\006CLO" +
-      "SED\020\003\"!\n\nDigestType\022\t\n\005CRC32\020\001\022\010\n\004HMAC\020\002" +
-      "\"@\n\037LedgerRereplicationLayoutFormat\022\014\n\004t" +
-      "ype\030\001 \002(\t\022\017\n\007version\030\002 \002(\005\".\n\033Underrepli" +
-      "catedLedgerFormat\022\017\n\007replica\030\001 \003(\t\"^\n\014Co" +
-      "okieFormat\022\022\n\nbookieHost\030\001 \002(\t\022\022\n\njourna" +
-      "lDir\030\002 \002(\t\022\022\n\nledgerDirs\030\003 \002(\t\022\022\n\ninstan",
-      "ceId\030\004 \001(\t\"\"\n\016LockDataFormat\022\020\n\010bookieId" +
-      "\030\001 \001(\t\"%\n\021AuditorVoteFormat\022\020\n\010bookieId\030" +
-      "\001 \001(\tB\037\n\033org.apache.bookkeeper.protoH\001"
+      "SED\020\003\"E\n\nDigestType\022\t\n\005CRC32\020\001\022\010\n\004HMAC\020\002" +
+      "\022\t\n\005DUMMY\020\003\022\n\n\006CRC32C\020\004\022\013\n\007ADLER32\020\005\"@\n\037" +
+      "LedgerRereplicationLayoutFormat\022\014\n\004type\030" +
+      "\001 \002(\t\022\017\n\007version\030\002 \002(\005\".\n\033Underreplicate" +
+      "dLedgerFormat\022\017\n\007replica\030\001 \003(\t\"^\n\014Cookie" +
+      "Format\022\022\n\nbookieHost\030\001 \002(\t\022\022\n\njournalDir",
+      "\030\002 \002(\t\022\022\n\nledgerDirs\030\003 \002(\t\022\022\n\ninstanceId" +
+      "\030\004 \001(\t\"\"\n\016LockDataFormat\022\020\n\010bookieId\030\001 \001" +
+      "(\t\"%\n\021AuditorVoteFormat\022\020\n\010bookieId\030\001 \001(" +
+      "\tB\037\n\033org.apache.bookkeeper.protoH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {

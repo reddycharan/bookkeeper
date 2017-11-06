@@ -123,45 +123,42 @@ public class BookieWriteLedgersWithDifferentDigestsTest extends
     @Test(timeout = 60000)
     public void testLedgersWithDifferentDigestTypesWithAutodetection() throws Exception {
     	bkc.conf.setEnableDigestTypeAutodetection(true);
-        // Create ledgers
-        lh = bkc.createLedgerAdv(3, 2, 2, DigestType.MAC, ledgerPassword);
-        lh2 = bkc.createLedgerAdv(3, 2, 2, DigestType.CRC32, ledgerPassword);
+    	for (DigestType type: DigestType.values()) {
+    	    LOG.info("Testing with DigestType == {}", type.toString());
+    	    testWithSingleDigestType(type);
+    	}
+    }
+
+    private void testWithSingleDigestType(DigestType digestType) throws InterruptedException, BKException {
+        // Create ledger
+        LedgerHandle lh = bkc.createLedgerAdv(3, 2, 2, digestType, ledgerPassword);
         
         final long id = lh.ledgerId;
-        final long id2 = lh2.ledgerId;
 
         LOG.info("Ledger ID-1: " + lh.getId());
-        LOG.info("Ledger ID-2: " + lh2.getId());
         SyncObj syncObj1 = new SyncObj();
-        SyncObj syncObj2 = new SyncObj();
         for (int i = numEntriesToWrite - 1; i >= 0; i--) {
             ByteBuffer entry = ByteBuffer.allocate(4);
             entry.putInt(rng.nextInt(maxInt));
             entry.position(0);
             entries1.add(0, entry.array());
-            entries2.add(0, entry.array());
             lh.asyncAddEntry(i, entry.array(), 0, entry.capacity(), this, syncObj1);
-            lh2.asyncAddEntry(i, entry.array(), 0, entry.capacity(), this, syncObj2);
         }
 
         // Wait for all entries to be acknowledged
         waitForEntriesAddition(syncObj1, numEntriesToWrite);
-        waitForEntriesAddition(syncObj2, numEntriesToWrite);
 
         // Reads here work ok because ledger uses digest type set during create
         readEntries(lh, entries1);
-        readEntries(lh2, entries2);
         lh.close();
-        lh2.close();
         
         // open here would fail if provided digest type is used
         // it passes because ledger just uses digest type from its metadata/autodetects it
-        lh = bkc.openLedgerNoRecovery(id, DigestType.CRC32, ledgerPassword);
-        lh2 = bkc.openLedgerNoRecovery(id2, DigestType.MAC, ledgerPassword);
+        lh = bkc.openLedgerNoRecovery(id, 
+                        digestType == DigestType.MAC ? DigestType.CRC32 : DigestType.MAC, 
+                        ledgerPassword);
         readEntries(lh, entries1);
-        readEntries(lh2, entries2);
         lh.close();
-        lh2.close();
     }
     
 	private void waitForEntriesAddition(SyncObj syncObj, int numEntriesToWrite) throws InterruptedException {

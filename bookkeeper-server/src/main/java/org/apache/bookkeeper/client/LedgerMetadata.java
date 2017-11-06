@@ -102,7 +102,8 @@ public class LedgerMetadata {
         this.metadataFormatVersion = CURRENT_METADATA_FORMAT_VERSION;
 
         this.digestType = digestType.equals(BookKeeper.DigestType.MAC) ?
-            LedgerMetadataFormat.DigestType.HMAC : LedgerMetadataFormat.DigestType.CRC32;
+              LedgerMetadataFormat.DigestType.HMAC 
+            : LedgerMetadataFormat.DigestType.valueOf(digestType.toString());
         this.password = Arrays.copyOf(password, password.length);
         this.hasPassword = true;
         if (customMetadata != null) {
@@ -199,7 +200,7 @@ public class LedgerMetadata {
         if (digestType.equals(LedgerMetadataFormat.DigestType.HMAC)) {
             return BookKeeper.DigestType.MAC;
         } else {
-            return BookKeeper.DigestType.CRC32;
+            return BookKeeper.DigestType.valueOf(digestType.toString());
         }
     }
 

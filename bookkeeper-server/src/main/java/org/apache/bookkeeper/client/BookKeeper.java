@@ -467,7 +467,7 @@ public class BookKeeper implements AutoCloseable {
      * where digest is considered a overhead.
      */
     public enum DigestType {
-        MAC, CRC32, DUMMY
+        MAC, CRC32, DUMMY, CRC32C, ADLER32
     }
 
     ZooKeeper getZkHandle() {
