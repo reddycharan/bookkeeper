@@ -2,7 +2,7 @@
 
 #Override bookkeeper-specific properties and then execute bookkeeper specific commands for initiating a new cluster in a k8s environment.
 
-bash ./kube-common-start.sh
+/bin/bash /sfs/sfsbuild/bin/kube-common-start.sh
 export BOOKIE_LOG_FILE_PATTERN=bookkeeper-bookie-$HOSTNAME-%d{yyyyMMddHH}.log
 export BOOKIE_LOG_FORMAT=$HOSTNAME.sfstore.bookie
 export BOOKIE_LOG_FILE=bookkeeper-bookie-$HOSTNAME.log
