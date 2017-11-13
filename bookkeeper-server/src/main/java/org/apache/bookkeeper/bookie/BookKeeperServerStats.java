@@ -152,4 +152,7 @@ public interface BookKeeperServerStats {
     String LD_LEDGER_SCOPE = "ledger";
     String LD_INDEX_SCOPE = "index";
     String LD_WRITABLE_DIRS = "writable_dirs";
+
+    // SF stats not merged upstream
+    String SERVER_VERSION = "SERVER_VERSION";
 }

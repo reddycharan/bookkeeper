@@ -30,6 +30,7 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_INDEX_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.LD_LEDGER_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SERVER_VERSION;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_BYTES;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -80,6 +81,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNS;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -104,6 +106,8 @@ import org.slf4j.LoggerFactory;
 public class Bookie extends BookieCriticalThread {
 
     private static final Logger LOG = LoggerFactory.getLogger(Bookie.class);
+
+    private static final String SFSTORE_VERSION_PROPERTY = "bookkeeper.sfstore.version";
 
     final List<File> journalDirectories;
     final ServerConfiguration conf;
@@ -739,6 +743,38 @@ public class Bookie extends BookieCriticalThread {
         readEntryStats = statsLogger.getOpStatsLogger(BOOKIE_READ_ENTRY);
         addBytesStats = statsLogger.getOpStatsLogger(BOOKIE_ADD_ENTRY_BYTES);
         readBytesStats = statsLogger.getOpStatsLogger(BOOKIE_READ_ENTRY_BYTES);
+
+        // sfstore image version of current bits
+        statsLogger.registerGauge(SERVER_VERSION, new Gauge<Double>() {
+            @Override
+            public Double getDefaultValue() {
+                return 0.0;
+            }
+
+            @Override
+            public Double getSample() {
+                String s = System.getProperty(SFSTORE_VERSION_PROPERTY);
+                if (s == null || s.length() == 0) {
+                    return 0.0;
+                }
+
+                try {
+                    // make sure only parse the major.minor without the patch version
+                    int point = s.indexOf('.');
+                    int end = s.indexOf('.', point + 1);
+                    if (end >= 0) {
+                        return Double.parseDouble(s.substring(0, end));
+                    } else {
+                        return Double.parseDouble(s);
+                    }
+                } catch (Exception e) {
+                    LOG.error("Exception while parsing the sfstore version number: {}", s);
+                    // reset the value to avoid the exception flush the log file
+                    System.setProperty(SFSTORE_VERSION_PROPERTY, "0.0");
+                    return 0.0;
+                }
+            }
+        });
     }
 
     void readJournal() throws IOException, BookieException {
