@@ -50,7 +50,6 @@ where command is one of:
     localbookie <n>	Run a test ensemble of <n> bookies locally
     upgrade        	Upgrade bookie filesystem
     shell 		Run shell for admin commands
-    jmx 		Run jmx operations
     help                This help message
 
 or command is the full name of a class with a defined main() method.
@@ -66,26 +65,6 @@ Environment variables:
    BOOKIE_STOP_TIMEOUT    	Wait time before forcefully kill the Bookie server instance, if the stop is not successful
 
 These variable can also be set in conf/bkenv.sh
-EOF
-}
-
-
-jmx_help() {
-    cat <<EOF
-Usage: bookkeeper jmx [-localbookie <host:port>] <command>
-where command is one of:
-    forcecompaction
-    suspendmajorgc
-    suspendminorgc
-    resumeminorgc
-    resumemajorgc
-    flushbookie
-    openfilelimit
-    pagelimit
-    pagesize
-    pagecount
-    numopenledgers
-    help
 EOF
 }
 
@@ -114,11 +93,6 @@ elif [[ $ENV_TYPE == "vpod" ]]; then
     source $BK_HOME/conf/bkenv.vpod.sh
 elif [[ $ENV_TYPE == "min" ]]; then
     source $BK_HOME/conf/bkenv.min.sh
-fi
-
-if [ "x$JMX_PORT_NUM" != "x" ]
-then
-    JMX_ARGS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=$JMX_PORT_NUM -Dcom.sun.management.jmxremote.local.only=true -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
 fi
 
 # Check for the java to use
@@ -206,13 +180,6 @@ if [ $COMMAND == "shell" ]; then
             BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/baseconf.conf
             shift
         fi
-    fi
-fi
-
-if [ $COMMAND == "jmx" ]; then
-    if [[ $1 == "-localbookie" ]]; then
-        BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/$2.conf
-        shift 2
     fi
 fi
 
@@ -304,7 +271,7 @@ OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
 #Change to BK_HOME to support relative paths
 cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
-  exec $JAVA -Dname=BookieServer $OPTS $JMX_ARGS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
+  exec $JAVA -Dname=BookieServer $OPTS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
     exec $JAVA -Dname=AutoRecovery $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
 elif [ $COMMAND == "class" ]; then
@@ -312,65 +279,13 @@ elif [ $COMMAND == "class" ]; then
 elif [ $COMMAND == "localbookie" ]; then
     NUMBER=$1
     shift
-    exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
+    exec $JAVA $OPTS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
 elif [ $COMMAND == "upgrade" ]; then
   exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "shell" ]; then
     exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
-elif [ $COMMAND == "jmx" ]; then
-    getPortNum() {
-        prefixForBookiePortWithCluster=$SFSTORE_CLUSTER_NAME\$bookiePort=
-        while read line; do
-            trimmedline=`echo $line | tr -d ' '`
-            # config variable with SFSTORE_CLUSTER_NAME prefix should take precedence
-            if [[ $trimmedline == $prefixForBookiePortWithCluster* ]]; then
-                PORT_NUM=${trimmedline/#$prefixForBookiePortWithCluster/}
-                return
-            elif [[ $trimmedline == bookiePort=* ]]; then
-                PORT_NUM=${trimmedline/#bookiePort=/}
-            fi
-        done < $BOOKIE_CONF
-    }
-    getPortNum
-    if [[ -z "$PORT_NUM" ]]; then
-        echo "Something went wrong, bookiePort is not found in BookieConfig file: $BOOKIE_CONF"
-        exit 1
-    fi
-# get JMX command
-    JMX_COMMAND=$1
-    JMX_EXECUTION_COMMAND="exec $JAVA -jar $BK_HOME/bin/jmxterm-1.0-alpha-4-uber.jar -l localhost:$JMX_PORT_NUM -n"
-    if [[ -z "$JMX_COMMAND" ]]; then
-        jmx_help;
-    elif [ $JMX_COMMAND == "forcecompaction" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=Compaction-GarbageCollector"$'\n'"run forceCompaction"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "suspendmajorgc" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=Compaction-GarbageCollector"$'\n'"run suspendMajorGC"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "suspendminorgc" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=Compaction-GarbageCollector"$'\n'"run suspendMinorGC"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "resumeminorgc" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=Compaction-GarbageCollector"$'\n'"run resumeMinorGC"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "resumemajorgc" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=Compaction-GarbageCollector"$'\n'"run resumeMajorGC"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "flushbookie" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=SyncThread"$'\n'"run flushBookie"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "openfilelimit" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=LedgerCache"$'\n'"get OpenFileLimit"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "pagelimit" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=LedgerCache"$'\n'"get PageLimit"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "pagesize" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=LedgerCache"$'\n'"get PageSize"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "pagecount" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=LedgerCache"$'\n'"get PageCount"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "numopenledgers" ]; then
-        echo "bean org.apache.BookKeeperService:name0=BookieServer_$PORT_NUM,name1=Bookie,name2=LedgerCache"$'\n'"get NumOpenLedgers"$'\n'"bye" | $JMX_EXECUTION_COMMAND
-    elif [ $JMX_COMMAND == "help" ]; then
-        jmx_help;
-    else
-        echo "Unknown JMX Command: $JMX_COMMAND"
-        jmx_help
-    fi
 else
   exec $JAVA $OPTS $COMMAND $@
 fi

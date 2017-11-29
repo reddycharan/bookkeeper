@@ -52,9 +52,3 @@ BOOKIE_EXTRA_OPTS="$MEM_OPTS $GC_OPTS -Duser.timezone=UTC -XX:+UnlockDiagnosticV
 
 #Wait time before forcefully kill the Bookie server instance, if the stop is not successful
 #BOOKIE_STOP_TIMEOUT=
-
-#Port number through which you want to enable JMX RMI connections. Be sure to specify an unused port number. In addition to publishing an RMI connector for local access, setting this property publishes an additional RMI connector in a private read-only registry at the specified port using a well known name, "jmxrmi". For more info. - https://docs.oracle.com/javase/8/docs/technotes/guides/management/agent.html
-
-if [ -z "$JMX_PORT_NUM" ] ; then
-    JMX_PORT_NUM=9010
-fi
