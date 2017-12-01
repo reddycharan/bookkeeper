@@ -55,6 +55,7 @@ import org.apache.bookkeeper.client.LedgerMetadata;
 import org.apache.bookkeeper.proto.TestPerChannelBookieClient;
 import org.apache.bookkeeper.ssl.SSLContextFactory;
 import org.apache.bookkeeper.ssl.SecurityException;
+import org.apache.bookkeeper.ssl.SSLContextFactory.KeyFileType;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -79,28 +80,28 @@ public class TestSSL extends BookKeeperClusterTestCase {
     private static boolean secureBookieSideChannel = false;
     private static Collection<Object> secureBookieSideChannelPrincipals = null;
 
-    private SSLContextFactory.KeyFileType clientKeyFileFormat;
-    private SSLContextFactory.KeyFileType clientTrustFileFormat;
-    private SSLContextFactory.KeyFileType serverKeyFileFormat;
-    private SSLContextFactory.KeyFileType serverTrustFileFormat;
+    private KeyFileType clientKeyFileFormat;
+    private KeyFileType clientTrustFileFormat;
+    private KeyFileType serverKeyFileFormat;
+    private KeyFileType serverTrustFileFormat;
 
     @Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-                { "JKS", "JKS" },
-                { "PEM", "PEM" },
-                { "PKCS12", "PKCS12" },
-                { "JKS", "PEM" },
-                { "PEM", "PKCS12" },
-                { "PKCS12", "JKS" }
+                 { "JKS", "JKS" },
+                 { "PEM", "PEM" },
+                 { "PKCS12", "PKCS12" },
+                 { "JKS", "PEM" },
+                 { "PEM", "PKCS12" },
+                 { "PKCS12", "JKS" }
             });
     }
     public TestSSL(String keyFileFormat, String trustFileFormat) {
         super(3);
-        this.clientKeyFileFormat = SSLContextFactory.KeyFileType.valueOf(keyFileFormat);
-        this.clientTrustFileFormat = SSLContextFactory.KeyFileType.valueOf(trustFileFormat);
-        this.serverKeyFileFormat = SSLContextFactory.KeyFileType.valueOf(keyFileFormat);
-        this.serverTrustFileFormat = SSLContextFactory.KeyFileType.valueOf(trustFileFormat);
+        this.clientKeyFileFormat = KeyFileType.valueOf(keyFileFormat);
+        this.clientTrustFileFormat = KeyFileType.valueOf(trustFileFormat);
+        this.serverKeyFileFormat = KeyFileType.valueOf(keyFileFormat);
+        this.serverTrustFileFormat = KeyFileType.valueOf(trustFileFormat);
     }
 
     @Before
@@ -238,6 +239,44 @@ public class TestSSL extends BookKeeperClusterTestCase {
             fail("Shouldn't have been able to start");
         } catch (SecurityException se) {
             assertTrue(true);
+        }
+    }
+
+    /**
+     * Verify handshake failure with a bad cert
+     */
+    @Test(timeout = 60000)
+    public void testBadCertHandshakeFailure() throws Exception {
+        // Valid test case only for PEM format keys
+        Assume.assumeTrue(serverKeyFileFormat == KeyFileType.PEM);
+
+        /* start a client */
+        ClientConfiguration clientConf = new ClientConfiguration(baseClientConf);
+
+        /* restart a bookie with bad cert */
+        int restartBookieIdx = 0;
+        ServerConfiguration bookieConf = bsConfs.get(restartBookieIdx)
+                .setSSLCertificatePath(this.getClass().getClassLoader().getResource("server-cert-bad.pem").getPath());
+        killBookie(restartBookieIdx);
+        LOG.info("Sleeping for 1s before restarting bookie with bad cert");
+        Thread.sleep(1000);
+        bs.add(startBookie(bookieConf));
+        bsConfs.add(bookieConf);
+
+        /* Create ledger and write entries */
+        BookKeeper client = new BookKeeper(clientConf);
+        byte[] passwd = "testPassword".getBytes();
+        int numEntries = 2;
+        byte[] testEntry = "testEntry".getBytes();
+
+        LedgerHandle lh = client.createLedger(numBookies, numBookies, DigestType.CRC32, passwd);
+        try {
+            for (int i = 0; i <= numEntries; i++) {
+                lh.addEntry(testEntry);
+            }
+            fail("Should have failed with not enough bookies to write");
+        } catch (BKException.BKNotEnoughBookiesException bke) {
+            // expected
         }
     }
 
