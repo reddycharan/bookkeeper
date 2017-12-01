@@ -48,7 +48,7 @@
     <protobuf.version>2.6.1</protobuf.version>
     <guava.version>13.0.1</guava.version>
     <slf4j.version>1.7.25</slf4j.version>
-    <log4j.version>2.6.2</log4j.version>
+    <log4j.version>2.10.0</log4j.version>
     <disruptor.version>3.3.6</disruptor.version>
     <netty.version>4.1.12.Final</netty.version>
     <netty-boringssl.version>2.0.3.Final</netty-boringssl.version>
@@ -205,7 +205,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>animal-sniffer-maven-plugin</artifactId>
-            <version>1.15</version>
+            <version>1.16</version>
             <executions>
               <execution>
                 <id>check-java-version</id>

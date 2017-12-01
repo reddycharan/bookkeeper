@@ -11,7 +11,7 @@
     </Console>
     <RollingFile name="BOOKIESHELL-FILEAPPENDER" fileName="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.file}"
     	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}"
-    	immediateFlush="false">
+    	immediateFlush="false" filePermissions="rw-r-----">
       <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
       <Policies>
       	<SizeBasedTriggeringPolicy size="10 MB"/>
