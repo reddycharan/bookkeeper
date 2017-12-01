@@ -152,7 +152,7 @@
     <spotbugs-annotations.version>3.1.1</spotbugs-annotations.version>
     <twitter-server.version>1.29.0</twitter-server.version>
     <vertx.version>3.4.1</vertx.version>
-    <log4j.version>2.6.2</log4j.version>
+    <log4j.version>2.10.0</log4j.version>
     <disruptor.version>3.3.6</disruptor.version>
     <zookeeper.version>3.5.3-beta</zookeeper.version>
     <!-- plugin dependencies -->
@@ -997,7 +997,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>animal-sniffer-maven-plugin</artifactId>
-            <version>1.15</version>
+            <version>1.16</version>
             <executions>
               <execution>
                 <id>check-java-version</id>
