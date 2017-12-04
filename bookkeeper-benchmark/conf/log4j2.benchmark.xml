@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info">
+  <Appenders>
+    <Console name="CONSOLE" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{ISO8601} - %-5p - [%t:%C{1}@%L] - %m%n"/>
+    </Console>
+    <RollingFile name="BOOKKEEPER-BENCHMARK" fileName="bookkeeper-benchmark.log"
+        filePattern="bookkeeper-benchmark.log.%i">
+      <PatternLayout><pattern>%d{ISO8601} - %-5p - [%t:%C{1}@%L] - %m%n</pattern></PatternLayout>
+      <Policies><SizeBasedTriggeringPolicy size="10 MB"/></Policies>
+      <DefaultRolloverStrategy max="10"/>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="BOOKKEEPER-BENCHMARK"/>
+      <AppenderRef ref="CONSOLE"/>
+    </Root>
+  </Loggers>
+</Configuration>
+
