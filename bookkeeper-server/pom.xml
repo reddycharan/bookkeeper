@@ -348,16 +348,6 @@
       </dependencies>
     </profile>
     <profile>
-      <id>codahale-metrics-provider</id>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.bookkeeper.stats</groupId>
-          <artifactId>codahale-metrics-provider</artifactId>
-          <version>${project.parent.version}</version>
-        </dependency>
-      </dependencies>
-    </profile>
-    <profile>
       <id>twitter-http-server</id>
       <dependencies>
         <dependency>
