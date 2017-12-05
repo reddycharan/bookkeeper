@@ -24,6 +24,12 @@
   </parent>
   <artifactId>bookkeeper-server</artifactId>
   <name>Apache BookKeeper :: Server</name>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.libdir>${basedir}/lib</project.libdir>
+    <build.unknown>UNKNOWN</build.unknown>
+    <build.number>${build.unknown}</build.number>
+  </properties>
   <dependencies>
     <dependency>
       <groupId>org.apache.bookkeeper</groupId>
@@ -226,9 +232,43 @@
         <extensions>true</extensions>
       </plugin>
       <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>2.1.9</version>
+        <executions>
+          <execution>
+            <id>git-commit-id</id>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+            <phase>validate</phase>
+            <configuration>
+              <dateFormat>MM.dd.yyyy '@' HH:mm:ss z</dateFormat>
+              <prefix>git-commit-id</prefix>
+              <skipPoms>false</skipPoms>
+              <gitDescribe>
+                <skip>false</skip>
+              </gitDescribe>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <version>${maven-jar-plugin.version}</version>
+        <configuration>
+          <archive>
+              <manifestSection>
+                <name>Build Details</name>
+                <manifestEntries>
+                  <SCM-Revision>${git-commit-id.commit.id}</SCM-Revision>
+                  <SCM-Time>${git-commit-id.commit.time}</SCM-Time>
+                  <Build-Number>${build.number}</Build-Number>
+                </manifestEntries>
+              </manifestSection>
+          </archive>
+        </configuration>
         <executions>
           <execution>
             <goals>
