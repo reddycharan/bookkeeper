@@ -44,8 +44,9 @@ def set_configs(config_file, env_vars):
                 f.write("%s=%s\n" % (config, env_vars[config]))
 
 def start_bookie(env_vars):
-    os.environ["BOOKIE_LOG_FILE_PATTERN"]=("bookkeeper-bookie-{hostname}.log".
-                                           format(hostname=os.environ["HOSTNAME"]))
+    os.environ["BOOKIE_LOG_FILE_PATTERN"]=("bookkeeper-bookie-{hostname}-{pattern}.log".
+                                           format(hostname=os.environ["HOSTNAME"],
+                                            pattern="%d{yyyyMMddHH}"))
     os.environ["BOOKIE_LOG_FORMAT"]="%s.sfstore.bookie" % os.environ["HOSTNAME"]
     os.environ["BOOKIE_LOG_FILE"]="bookkeeper-bookie-%s.log" % os.environ["HOSTNAME"]
     set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
@@ -54,8 +55,9 @@ def start_bookie(env_vars):
     os.system("/sfs/sfsbuild/bin/bookkeeper bookie")
     
 def start_autorecovery(env_vars):
-    os.environ["BOOKIE_LOG_FILE_PATTERN"]=("bookkeeper-autorecovery-{hostname}.log".
-                                           format(hostname=os.environ["HOSTNAME"]))
+    os.environ["BOOKIE_LOG_FILE_PATTERN"]=("bookkeeper-autorecovery-{hostname}-{pattern}.log".
+                                           format(hostname=os.environ["HOSTNAME"],
+                                            pattern="%d{yyyyMMddHH}"))
     os.environ["BOOKIE_LOG_FORMAT"]="%s.sfstore.autorecovery" % os.environ["HOSTNAME"]
     os.environ["BOOKIE_LOG_FILE"]="bookkeeper-autorecovery-%s.log" % os.environ["HOSTNAME"]
     set_configs("/sfs/sfsbuild/conf/bk_replication.conf", env_vars)
