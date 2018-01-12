@@ -104,11 +104,7 @@ class LongHierarchicalLedgerManager extends AbstractHierarchicalLedgerManager {
 
     @Override
     public boolean isSpecialZnode(String znode) {
-        // Check nextnode length. All paths in long hierarchical format (3-4-4-4-4)
-        // are at least 3 characters long. This prevents picking up any old-style
-        // hierarchical paths (2-4-4)
-        //return LegacyHierarchicalLedgerManager.isSpecialZnode(znode) || znode.length() < 3;
-        return false;
+        return IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode);
     }
 
     private class RecursiveProcessor implements Processor<String> {

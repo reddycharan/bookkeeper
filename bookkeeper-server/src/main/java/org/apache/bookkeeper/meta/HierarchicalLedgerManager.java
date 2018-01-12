@@ -88,8 +88,8 @@ class HierarchicalLedgerManager extends AbstractHierarchicalLedgerManager {
 
     @Override
     public boolean isSpecialZnode(String znode) {
-        // return IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode); ***revisit***
-        return false;
+        return LegacyHierarchicalLedgerManager.IDGEN_ZNODE.equals(znode)
+                || LongHierarchicalLedgerManager.IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode);
     }
 
     @Override
