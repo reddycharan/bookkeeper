@@ -1193,7 +1193,7 @@ public class BookKeeperAdmin implements AutoCloseable {
         try (RegistrationManager rm = RegistrationManager.instantiateRegistrationManager(conf)) {
             if (!force) {
                 String readInstanceId = rm.getClusterInstanceId();
-                if (!instanceId.equals(readInstanceId)) {
+                if ((instanceId == null) || !instanceId.equals(readInstanceId)) {
                     LOG.error("Provided InstanceId : {} is not matching with cluster InstanceId in ZK: {}", instanceId,
                             readInstanceId);
                     return false;

@@ -284,7 +284,7 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
         bk.close();
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 120000)
     public void testNukeExistingClusterWithForceOption() throws Exception {
         String ledgersRootPath = "/testledgers";
         ServerConfiguration newConfig = new ServerConfiguration(baseConf);
@@ -306,7 +306,7 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
                 (zkc.exists(ledgersRootPath, false) == null));
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 120000)
     public void testNukeExistingClusterWithInstanceId() throws Exception {
         String ledgersRootPath = "/testledgers";
         ServerConfiguration newConfig = new ServerConfiguration(baseConf);
@@ -331,7 +331,7 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
                 (zkc.exists(ledgersRootPath, false) == null));
     }
 
-    @Test(timeout = 60000)
+    @Test(timeout = 120000)
     public void tryNukingExistingClustersWithInvalidParams() throws Exception {
         String ledgersRootPath = "/testledgers";
         ServerConfiguration newConfig = new ServerConfiguration(baseConf);
