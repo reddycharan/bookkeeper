@@ -104,7 +104,8 @@ class LongHierarchicalLedgerManager extends AbstractHierarchicalLedgerManager {
 
     @Override
     public boolean isSpecialZnode(String znode) {
-        return IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode);
+        return LegacyHierarchicalLedgerManager.IDGEN_ZNODE.equals(znode)
+                || LongHierarchicalLedgerManager.IDGEN_ZNODE.equals(znode) || super.isSpecialZnode(znode);
     }
 
     private class RecursiveProcessor implements Processor<String> {
