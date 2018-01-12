@@ -79,7 +79,7 @@ public class LegacyHierarchicalLedgerManagerFactory extends LedgerManagerFactory
 
     @Override
     public LedgerManager newLedgerManager() {
-        return new HierarchicalLedgerManager(conf, zk);
+        return new LegacyHierarchicalLedgerManager(conf, zk);
     }
 
     @Override
@@ -91,7 +91,7 @@ public class LegacyHierarchicalLedgerManagerFactory extends LedgerManagerFactory
     @Override
     public void format(AbstractConfiguration conf, LayoutManager layoutManager)
             throws InterruptedException, KeeperException, IOException {
-        try (LegacyHierarchicalLedgerManager ledgerManager = (LegacyHierarchicalLedgerManager) newLedgerManager()) {
+        try (AbstractHierarchicalLedgerManager ledgerManager = (AbstractHierarchicalLedgerManager) newLedgerManager()) {
             String ledgersRootPath = conf.getZkLedgersRootPath();
             List<String> children = zk.getChildren(ledgersRootPath, false);
             for (String child : children) {
