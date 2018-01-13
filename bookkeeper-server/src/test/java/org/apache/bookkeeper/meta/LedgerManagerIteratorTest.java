@@ -455,7 +455,7 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
             ledgerIds = Arrays.asList(100L, (Integer.MAX_VALUE - 10L));
         }
         for (long ledgerId : ledgerIds) {
-            String fullLedgerPath = lm.getLedgerPath(100);
+            String fullLedgerPath = lm.getLedgerPath(ledgerId);
             String ledgerPath = fullLedgerPath.replaceAll(baseConf.getZkLedgersRootPath() + "/", "");
             String[] znodesOfLedger = ledgerPath.split("/");
             Assert.assertTrue(znodesOfLedger[0] + " is supposed to be valid parent ",
@@ -469,9 +469,15 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
          * this testcase applies only ZK based ledgermanager so it doesnt work
          * for MSLedgerManager
          */
-        Assume.assumeTrue(baseConf.getLedgerManagerFactoryClass() != MSLedgerManagerFactory.class);
+        Assume.assumeTrue(!baseConf.getLedgerManagerFactoryClass().equals(MSLedgerManagerFactory.class));
         AbstractZkLedgerManager lm = (AbstractZkLedgerManager) getLedgerManager();
-        Collection<Long> ids = Arrays.asList(1234567890L, 2234567890L, 3234567890L, 4234567890L);
+        Collection<Long> ids = Arrays.asList(1234567890L, 2L, 32345L, 23456789L);
+        if (baseConf.getLedgerManagerFactoryClass().equals(HierarchicalLedgerManagerFactory.class)
+                || baseConf.getLedgerManagerFactoryClass().equals(LongHierarchicalLedgerManagerFactory.class)) {
+            ids = new ArrayList<Long>(ids);
+            ids.add(Integer.MAX_VALUE * 2L);
+            ids.add(1234567891234L);
+        }
         for (Long id : ids) {
             createLedger(lm, id, Optional.of(BKException.Code.OK));
         }
