@@ -30,14 +30,17 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -50,8 +53,8 @@ import org.apache.bookkeeper.versioning.Version;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
-
 
 /**
  * Test the ledger manager iterator.
@@ -434,5 +437,33 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         for (Thread thread: threads) {
             thread.join();
         }
+    }
+
+    @Test
+    public void hierarchicalLedgerManagerAsyncProcessLedgersTest() throws Throwable {
+        Assume.assumeTrue(baseConf.getLedgerManagerFactoryClass().equals(HierarchicalLedgerManagerFactory.class));
+        LedgerManager lm = getLedgerManager();
+
+        List<Long> ledgerIds = Arrays.asList(1234L, 123456789123456789L);
+        for (Long ledgerId : ledgerIds) {
+            createLedger(lm, ledgerId, Optional.of(BKException.Code.OK));
+        }
+
+        Set<Long> ledgersReadAsync = ConcurrentHashMap.newKeySet();
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger finalRC = new AtomicInteger();
+
+        lm.asyncProcessLedgers((ledgerId, callback) -> {
+            ledgersReadAsync.add(ledgerId);
+            callback.processResult(BKException.Code.OK, null, null);
+        }, (rc, s, obj) -> {
+            finalRC.set(rc);
+            latch.countDown();
+        }, null, BKException.Code.OK, BKException.Code.ReadException);
+
+        latch.await();
+        assertEquals("Final RC of asyncProcessLedgers", BKException.Code.OK, finalRC.get());
+        assertEquals("LedgersCreated: " + ledgerIds + " LedgersReadAsynchronously: " + ledgersReadAsync,
+                ledgerIds.size(), ledgersReadAsync.size());
     }
 }
