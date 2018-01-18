@@ -33,6 +33,7 @@ import java.util.Set;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.meta.HierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.MSLedgerManagerFactory;
@@ -43,6 +44,7 @@ import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.zookeeper.KeeperException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -137,6 +139,32 @@ public class BookieLedgerIndexTest extends BookKeeperClusterTestCase {
             for (Long ledgerId : ledgers) {
                 assertTrue("Unknown ledger-bookie mapping", ledgerList
                         .contains(ledgerId));
+            }
+        }
+    }
+
+    @Test
+    public void testHierarchicalLedgerManagerBookieLedgerMapping() throws Exception {
+        Assert.assertEquals("LedgerManagerFactoryClass", HierarchicalLedgerManagerFactory.class,
+                baseConf.getLedgerManagerFactoryClass());
+        Assert.assertEquals("LedgerManagerFactoryClass", HierarchicalLedgerManagerFactory.class,
+                baseClientConf.getLedgerManagerFactoryClass());
+
+        long[] ledgersIds = { 1234L, 123456789123456L };
+        for (long ledgersId : ledgersIds) {
+            createAndAddEntriesToLedger(ledgersId).close();
+        }
+
+        BookieLedgerIndexer bookieLedgerIndex = new BookieLedgerIndexer(ledgerManager);
+
+        Map<String, Set<Long>> bookieToLedgerIndex = bookieLedgerIndex.getBookieToLedgerIndex();
+
+        assertEquals("Missed few bookies in the bookie-ledger mapping!", this.numBookies, bookieToLedgerIndex.size());
+        Collection<Set<Long>> bk2ledgerEntry = bookieToLedgerIndex.values();
+        for (Set<Long> ledgers : bk2ledgerEntry) {
+            assertEquals("Missed few ledgers in the bookie-ledger mapping!", ledgersIds.length, ledgers.size());
+            for (Long ledgerId : ledgers) {
+                assertTrue("Unknown ledger-bookie mapping", ledgerList.contains(ledgerId));
             }
         }
     }
@@ -236,6 +264,24 @@ public class BookieLedgerIndexTest extends BookKeeperClusterTestCase {
 
             entries.add(entry.array());
             lh.addEntry(entry.array());
+        }
+        ledgerList.add(lh.getId());
+        return lh;
+    }
+
+    private LedgerHandle createAndAddEntriesToLedger(long ledgerId) throws BKException, InterruptedException {
+        int numEntriesToWrite = 20;
+        // Create a ledger
+        LedgerHandle lh = bkc.createLedgerAdv(ledgerId, this.numBookies, this.numBookies, this.numBookies, digestType,
+                "admin".getBytes(), null);
+        LOG.info("Ledger ID: " + lh.getId());
+        for (int i = 0; i < numEntriesToWrite; i++) {
+            ByteBuffer entry = ByteBuffer.allocate(4);
+            entry.putInt(rng.nextInt(Integer.MAX_VALUE));
+            entry.position(0);
+
+            entries.add(entry.array());
+            lh.addEntry(i, entry.array());
         }
         ledgerList.add(lh.getId());
         return lh;
