@@ -2,12 +2,12 @@
 <Configuration status="${sys:bookkeeper.log.level}" monitorInterval="15">
   <Appenders>
     <Console name="CONSOLE" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSS}{GMT}000[%-5p] [%t] [%F:%L] - %m%n"/>
     </Console>
     <RollingFile name="BOOKKEEPER-SERVER" fileName="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.file}"
     	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}"
     	immediateFlush="false" filePermissions="rw-r-----">
-      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSSSSS} [%-5p] [%t] [%F:%L] - %m%n"/>
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSS}{GMT}000[%-5p] [%t] [%F:%L] - %m%n"/>
       <Policies>
       	<!-- Rollover logs every 3 hours -->
       	<TimeBasedTriggeringPolicy interval="3"/>
