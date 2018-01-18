@@ -35,9 +35,11 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -50,8 +52,8 @@ import org.apache.bookkeeper.versioning.Version;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
-
 
 /**
  * Test the ledger manager iterator.
@@ -159,6 +161,24 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         return ret;
     }
 
+    static Set<Long> getLedgerIdsByUsingAsyncProcessLedgers(LedgerManager lm) throws InterruptedException{
+        Set<Long> ledgersReadAsync = ConcurrentHashMap.newKeySet();
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger finalRC = new AtomicInteger();
+
+        lm.asyncProcessLedgers((ledgerId, callback) -> {
+            ledgersReadAsync.add(ledgerId);
+            callback.processResult(BKException.Code.OK, null, null);
+        }, (rc, s, obj) -> {
+            finalRC.set(rc);
+            latch.countDown();
+        }, null, BKException.Code.OK, BKException.Code.ReadException);
+
+        latch.await();
+        assertEquals("Final RC of asyncProcessLedgers", BKException.Code.OK, finalRC.get());
+        return ledgersReadAsync;
+    }
+
     @Test
     public void testIterateNoLedgers() throws Exception {
         LedgerManager lm = getLedgerManager();
@@ -183,6 +203,9 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         Set<Long> lids = ledgerRangeToSet(lri);
         assertEquals(lids.size(), 1);
         assertEquals(lids.iterator().next().longValue(), id);
+
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", lids, ledgersReadAsync);
     }
 
     @Test
@@ -198,6 +221,9 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         assertNotNull(lri);
         Set<Long> returnedIds = ledgerRangeToSet(lri);
         assertEquals(ids, returnedIds);
+
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", ids, ledgersReadAsync);
     }
 
     @Test
@@ -214,6 +240,9 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         assertNotNull(lri);
         Set<Long> returnedIds = ledgerRangeToSet(lri);
         assertEquals(ids, returnedIds);
+
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", ids, ledgersReadAsync);
     }
 
     @Test
@@ -303,6 +332,9 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         Set<Long> returnedIds = ledgerRangeToSet(lri);
         assertEquals(ids, returnedIds);
 
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", ids, ledgersReadAsync);
+
         lri = lm.getLedgerRanges();
         int emptyRanges = 0;
         while (lri.hasNext()) {
@@ -349,6 +381,9 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         assertNotNull(lri);
         Set<Long> returnedIds = ledgerRangeToSet(lri);
         assertEquals(ids, returnedIds);
+
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", ids, ledgersReadAsync);
     }
 
     @Test
@@ -420,7 +455,12 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
                         for (long id: mustExist) {
                             assertTrue(returnedIds.contains(id));
                         }
-                    } catch (IOException e) {
+
+                        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(checkerLM);
+                        for (long id: mustExist) {
+                            assertTrue(ledgersReadAsync.contains(id));
+                        }
+                    } catch (IOException | InterruptedException e) {
                         e.printStackTrace();
                         fail("Got exception scanning ledgers: " + e.toString());
                     }
@@ -434,5 +474,21 @@ public class LedgerManagerIteratorTest extends LedgerManagerTestCase {
         for (Thread thread: threads) {
             thread.join();
         }
+    }
+
+    @Test
+    public void hierarchicalLedgerManagerAsyncProcessLedgersTest() throws Throwable {
+        Assume.assumeTrue(baseConf.getLedgerManagerFactoryClass().equals(HierarchicalLedgerManagerFactory.class));
+        LedgerManager lm = getLedgerManager();
+        LedgerRangeIterator lri = lm.getLedgerRanges();
+
+        Set<Long> ledgerIds = new TreeSet<>(Arrays.asList(1234L, 123456789123456789L));
+        for (Long ledgerId : ledgerIds) {
+            createLedger(lm, ledgerId, Optional.of(BKException.Code.OK));
+        }
+        Set<Long> ledgersReadThroughIterator = ledgerRangeToSet(lri);
+        assertEquals("Comparing LedgersIds read through Iterator", ledgerIds, ledgersReadThroughIterator);
+        Set<Long> ledgersReadAsync = getLedgerIdsByUsingAsyncProcessLedgers(lm);
+        assertEquals("Comparing LedgersIds read asynchronously", ledgerIds, ledgersReadAsync);
     }
 }
