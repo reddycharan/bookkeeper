@@ -10,7 +10,7 @@ from sets import Set
    This script will allow us to drop any config override into our container via an environment variable. So long as
    it has a "sf_" prefix, it will be recognized as intended for import, pulled in from environment variables and either
    overlaid over an existing configuration of the same name or written to the file anyway (for those that aren't in 
-   the file). 
+   the file).
 '''
 
 PREFIX = "sf_"
@@ -53,7 +53,7 @@ def start_bookie(env_vars):
     os.system("/sfs/sfsbuild/bin/bookkeeper shell initnewcluster")
     os.system("/sfs/sfsbuild/bin/bookkeeper shell bookieformat -d -nonInteractive")
     os.system("/sfs/sfsbuild/bin/bookkeeper bookie")
-    
+
 def start_autorecovery(env_vars):
     os.environ["BOOKIE_LOG_FILE_PATTERN"]=("bookkeeper-autorecovery-{hostname}-{pattern}.log".
                                            format(hostname=os.environ["HOSTNAME"],
@@ -97,6 +97,10 @@ if __name__ == '__main__':
     elif process == "autorecovery":
         start_autorecovery(env_vars)
         print "Started autorecovery"
+    elif process == "adminpod":
+        set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
+        print "Set configs for admin pod. Sleeping start-up command."
+        os.system("sleep infinity")
     else:
         print "Must specify either bookie or autorecovery. Exiting."
         sys.exit(1)
