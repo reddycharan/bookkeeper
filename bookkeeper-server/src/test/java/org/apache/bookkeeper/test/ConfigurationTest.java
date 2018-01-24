@@ -21,7 +21,9 @@
 package org.apache.bookkeeper.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -37,6 +39,7 @@ public class ConfigurationTest {
         // this property is read when AbstractConfiguration class is loaded.
         // this test will work as expected only using a new JVM (or classloader) for the test
         System.setProperty(AbstractConfiguration.READ_SYSTEM_PROPERTIES_PROPERTY, "true");
+        System.setProperty(AbstractConfiguration.CLUSTER_LOC_PROPERTY, "phx.sp1.testCluster");
     }
 
     @Test
@@ -63,6 +66,27 @@ public class ConfigurationTest {
         assertEquals("newserver", newConf.getZkServers());
         conf2.loadConf(newConf);
         assertEquals("newserver", conf2.getZkServers());
+    }
+
+    @Test
+    public void testClusterOverride() {
+        ServerConfiguration conf = new ServerConfiguration();
+
+        // Assign a value to our environment; should get same value with and without prefix.
+        conf.setProperty("testProp", "specific");
+        conf.setProperty("genericTestInt", 100);
+
+        assertTrue(conf.getString("testProp").equals("specific"));
+        assertTrue(conf.getString("phx.sp1.testCluster$testProp").equals("specific"));
+        assertTrue(conf.getInt("genericTestInt") == 100);
+        assertTrue(conf.getInt("phx.sp1.testCluster$genericTestInt") == 100);
+
+        // GetStringArray should also work
+        String arr[] = {"v1", "v2", "v3"};
+        conf.setProperty("testList", "v1,v2,v3");
+        assertTrue(Arrays.equals(conf.getStringArray("testList"), arr));
+        assertTrue(Arrays.equals(conf.getStringArray("phx.sp1.testCluster$testList"), arr));
+
     }
 
     @Test

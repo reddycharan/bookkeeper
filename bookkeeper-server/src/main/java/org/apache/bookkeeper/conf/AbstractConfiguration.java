@@ -45,12 +45,15 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Abstract configuration.
  */
 public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     extends CompositeConfiguration {
+    static final Logger LOG = LoggerFactory.getLogger(AbstractConfiguration.class);
 
     public static final String READ_SYSTEM_PROPERTIES_PROPERTY = "org.apache.bookkeeper.conf.readsystemproperties";
 
@@ -60,6 +63,20 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     private static final boolean READ_SYSTEM_PROPERTIES = Boolean.getBoolean(READ_SYSTEM_PROPERTIES_PROPERTY);
 
     protected static final ClassLoader DEFAULT_LOADER;
+
+    // for per Cluster based configuration
+    public static final String CLUSTER_LOC_PROPERTY = "cluster.loc";
+    private static final String cluster;
+    static {
+        String name = System.getProperty(CLUSTER_LOC_PROPERTY);
+        // no prefix if not set
+        if (name == null || name.length() < 1) {
+            cluster = "";
+        } else {
+            cluster = name + "$";
+        }
+    }
+
     static {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         if (null == loader) {
@@ -158,6 +175,47 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
             // add configuration for system properties
             addConfiguration(new SystemConfiguration());
         }
+        LOG.info("Current Cluster Full Name: " + cluster);
+    }
+
+    // support per cluster config based on cluster name prefix
+    @Override
+    public Object getProperty(String name) {
+        String clusterProperty = cluster + name;
+        //Return override if present; else, generic.
+        return super.containsKey(clusterProperty) ? super.getProperty(clusterProperty) :
+            super.getProperty(name);
+    }
+
+    @Override
+    public boolean containsKey(String name) {
+        String clusterProperty = cluster + name;
+        //Return override if present; else, generic.
+        if (super.containsKey(clusterProperty) || super.containsKey(name)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // CompositeConfiguration override this function without calling getProperty
+    @Override
+    public List<Object> getList(String name, List defaultValue) {
+        String clusterProperty = cluster + name;
+        //Return override if present; else, generic.
+        return super.containsKey(clusterProperty) ? super.getList(clusterProperty, defaultValue) :
+                super.getList(name, defaultValue);
+    }
+
+    @Override
+    public void setProperty(String name, Object value) {
+        String clusterProperty = cluster + name;
+        // only set the cluster prefixed value
+        super.setProperty(clusterProperty, value);
+    }
+
+    public static String getClusterLoc() {
+        return cluster;
     }
 
     /**

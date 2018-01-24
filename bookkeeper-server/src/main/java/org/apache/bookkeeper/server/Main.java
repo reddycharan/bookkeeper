@@ -105,7 +105,7 @@ public class Main {
             log.error("Malformed configuration file: {}", confFile, e);
             throw new IllegalArgumentException();
         }
-        log.info("Using configuration file {}", confFile);
+        log.info("Using configuration file {}, Cluster full name: {}", confFile, conf.getClusterLoc());
     }
 
     private static ServerConfiguration parseArgs(String[] args)
@@ -246,12 +246,13 @@ public class Main {
         }
 
         String hello = String.format(
-            "Hello, I'm your bookie, listening on port %1$s. ZKServers are on %2$s."
-                + " Journals are in %3$s. Ledgers are stored in %4$s.",
-            conf.getBookiePort(),
-            conf.getZkServers(),
-            Arrays.asList(conf.getJournalDirNames()),
-            sb);
+                "Hello, I'm your bookie, listening on port %1$s. ZKServers are on %2$s. zkLedgersRootPath is %3$s."
+                        + " Journals are in %4$s. Ledgers are stored in %5$s.",
+                conf.getBookiePort(),
+                conf.getZkServers(),
+                conf.getZkLedgersRootPath(),
+                Arrays.asList(conf.getJournalDirNames()),
+                sb);
         log.info(hello);
 
         return conf;
