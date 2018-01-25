@@ -58,4 +58,5 @@ public interface BookKeeperClientStats {
 	public final static String NETTY_EXCEPTION_CNT = "NETTY_EXCEPTION_CNT";
 	public final static String CLIENT_LOCK_TIME = "CLIENT_LOCK_TIME";
 	public final static String CLIENT_CONNECT_TIMER = "CLIENT_CONNECT_TIMER";
+	public final static String CLIENT_SEND_WAIT_TIMER = "CLIENT_SEND_WAIT_TIMER";
 }

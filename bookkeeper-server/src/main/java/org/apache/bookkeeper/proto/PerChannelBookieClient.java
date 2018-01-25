@@ -29,6 +29,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.DefaultChannelPromise;
 import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
@@ -160,6 +161,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     private final OpStatsLogger readLacTimeoutOpLogger;
     private final OpStatsLogger getBookieInfoTimeoutOpLogger;
     private final OpStatsLogger connectTimer;
+    private final OpStatsLogger sendWaitTimer;
     private final Counter exceptionCounter;
     private final OpStatsLogger getBookieInfoOpLogger;
     private final OpStatsLogger startTLSOpLogger;
@@ -185,11 +187,13 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     volatile ConnectionState state;
     final ReentrantReadWriteLock closeLock = new ReentrantReadWriteLock();
     private final ClientConfiguration conf;
+    private final long channelWaitOnWriteMillis;
 
     private final PerChannelBookieClientPool pcbcPool;
     private final ClientAuthProvider.Factory authProviderFactory;
     private final ExtensionRegistry extRegistry;
     private final SecurityHandlerFactory shFactory;
+    private final Object channelMonitor = new Object();
 
     public PerChannelBookieClient(OrderedSafeExecutor executor, EventLoopGroup eventLoopGroup,
                                   BookieSocketAddress addr) throws SecurityException {
@@ -223,6 +227,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                                   PerChannelBookieClientPool pcbcPool,
                                   SecurityHandlerFactory shFactory) throws SecurityException {
         this.conf = conf;
+        this.channelWaitOnWriteMillis = conf.getChannelWaitOnWriteMillis();
         this.addr = addr;
         this.executor = executor;
         if (LocalBookiesRegistry.isLocalBookie(addr)) {
@@ -292,7 +297,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             public void disconnect() {
                 Channel c = channel;
                 if (c != null) {
-                    c.close();
+                    c.close()
+                        .addListener(x -> channelChanged());
                 }
                 LOG.info("authplugin disconnected channel {}", channel);
             }
@@ -332,6 +338,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         getBookieInfoTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_GET_BOOKIE_INFO);
         exceptionCounter = statsLogger.getCounter(BookKeeperClientStats.NETTY_EXCEPTION_CNT);
         connectTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_CONNECT_TIMER);
+        sendWaitTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_SEND_WAIT_TIMER);
         startTLSOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_START_TLS_OP);
         addEntryOutstanding = statsLogger.getCounter(BookKeeperClientStats.ADD_OP_OUTSTANDING);
         readEntryOutstanding = statsLogger.getCounter(BookKeeperClientStats.READ_OP_OUTSTANDING);
@@ -419,6 +426,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         ChannelFuture future = bootstrap.connect(bookieAddr);
         future.addListener(new ConnectionFutureListener(startTime));
+        future.addListener(x -> channelChanged());
 
         return future;
     }
@@ -502,7 +510,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
         try {
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(writeLacRequest);
+            ChannelFuture future = channelWrite(writeLacRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -586,7 +594,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
         try {
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(addRequest);
+            ChannelFuture future = channelWrite(addRequest, channelWaitOnWriteMillis);
             addEntryOutstanding.inc();
             future.addListener(new ChannelFutureListener() {
                 @Override
@@ -648,7 +656,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         try {
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(readRequest);
+            ChannelFuture future = channelWrite(readRequest);
             future.addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
@@ -699,7 +707,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         try {
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(readLacRequest);
+            ChannelFuture future = channelWrite(readLacRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -753,7 +761,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         try{
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(readRequest);
+            ChannelFuture future = channelWrite(readRequest);
             readEntryOutstanding.inc();
             future.addListener(new ChannelFutureListener() {
                 @Override
@@ -809,7 +817,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         try{
             final long startTime = MathUtils.nowInNano();
-            ChannelFuture future = c.writeAndFlush(getBookieInfoRequest);
+            ChannelFuture future = channelWrite(getBookieInfoRequest);
             future.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -890,7 +898,9 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
     private ChannelFuture closeChannel(Channel c) {
         LOG.debug("Closing channel {}", c);
-        return c.close();
+        final ChannelFuture cf = c.close();
+        cf.addListener(x -> channelChanged());
+        return cf;
     }
 
     void errorStartTLS(int rc) {
@@ -1835,10 +1845,12 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     channel = future.channel();
                     if (shFactory != null) {
                         initiateSSL();
+                        channelChanged();
                         return;
                     } else {
                         LOG.info("Successfully connected to bookie: " + addr);
                         state = ConnectionState.CONNECTED;
+                        channelChanged();
                     }
                 } else if (future.isSuccess() && state == ConnectionState.START_TLS) {
                     rc = BKException.Code.OK;
@@ -1885,6 +1897,56 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         }
     }
 
+
+    private void channelChanged() {
+        synchronized (channelMonitor) {
+            channelMonitor.notify();
+        }
+    }
+
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        channelChanged();
+        super.channelWritabilityChanged(ctx);
+    }
+
+    public ChannelFuture channelWrite(Object msg) {
+        return channelWrite(msg, -1);
+    }
+
+    public ChannelFuture channelWrite(Object msg, long timeoutMillis) {
+        if (channel == null || !channel.isWritable()) {
+            final long startTime = MathUtils.nowInNano();
+            final long maxSleepUntil = startTime + (timeoutMillis > 0 
+                    ? TimeUnit.MILLISECONDS.toNanos(timeoutMillis) 
+                    : TimeUnit.DAYS.toNanos(1));
+            synchronized (channelMonitor) {
+                while (channel == null || !channel.isWritable()) {
+                    if (channel == null || !channel.isActive() || MathUtils.nowInNano() > maxSleepUntil) {
+                        sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
+                        return new DefaultChannelPromise(channel).setFailure(new Exception("cannot write to disconnected channel"));
+                    }
+                    try {
+                        long sleepFor = TimeUnit.NANOSECONDS.toMillis(maxSleepUntil - MathUtils.nowInNano());
+                        sleepFor = (sleepFor < 1) ? 1 : sleepFor;
+                        channelMonitor.wait(sleepFor);
+                    } catch (InterruptedException ie) {
+                        sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
+                        Thread.currentThread().interrupt();
+                        return new DefaultChannelPromise(channel).setFailure(ie);
+                    }
+                }
+            }
+            final long elapsed = MathUtils.elapsedNanos(startTime);
+            sendWaitTimer.registerSuccessfulEvent(elapsed, TimeUnit.NANOSECONDS);
+            if (elapsed > TimeUnit.MILLISECONDS.toNanos(1)) {
+                LOG.warn("Spent {} milliseconds waiting for the channel {} to become writable", 
+                        TimeUnit.NANOSECONDS.toMillis(elapsed), channel);
+            }
+        }
+        return channel.writeAndFlush(msg);
+    }
+
     private void initiateSSL() {
         LOG.info("Initializing SSL to {}",channel);
         assert state == ConnectionState.CONNECTING;
@@ -1900,7 +1962,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         h.setHeader(headerBuilder.build());
         h.setStartTLSRequest(BookkeeperProtocol.StartTLSRequest.newBuilder().build());
         state = ConnectionState.START_TLS;
-        channel.writeAndFlush(h.build()).addListener(new ChannelFutureListener() {
+        ChannelFuture future = channelWrite(h.build());
+        future.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (!future.isSuccess()) {

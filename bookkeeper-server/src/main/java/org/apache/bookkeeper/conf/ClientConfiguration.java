@@ -73,6 +73,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     protected final static String PCBC_TIMEOUT_TIMER_NUM_TICKS = "pcbcTimeoutTimerNumTicks";
     protected final static String TIMEOUT_TIMER_TICK_DURATION_MS = "timeoutTimerTickDurationMs";
     protected final static String TIMEOUT_TIMER_NUM_TICKS = "timeoutTimerNumTicks";
+    protected final static String CHANNEL_WAIT_TIMEOUT_ON_WRITE = "channelWaitOnWriteMillis";
 
     // Bookie health check settings
     protected final static String BOOKIE_HEALTH_CHECK_ENABLED = "bookieHealthCheckEnabled";
@@ -733,6 +734,31 @@ public class ClientConfiguration extends AbstractConfiguration {
      */
     public ClientConfiguration setPCBCTimeoutTimerNumTicks(int numTicks) {
         setProperty(PCBC_TIMEOUT_TIMER_NUM_TICKS, numTicks);
+        return this;
+    }
+
+    /*
+     * Timeout controlling how long write to any single bookie will wait for 
+     * unresponsive connection (i.e. bookie in long GC etc.)
+     * 
+     * @return timeout value
+     *        Feature is enabled only if the value is > 0 
+     *        Default is 0
+     */
+    public long getChannelWaitOnWriteMillis() {
+        return getLong(CHANNEL_WAIT_TIMEOUT_ON_WRITE, 0);
+    }
+
+    /*
+    * Timeout controlling how long write to any single bookie will wait for 
+    * unresponsive connection (i.e. bookie in long GC etc.)
+    * 
+    * @param timeout value
+    *        Feature is enabled only if the value is > 0 
+    *        Default is 0
+    */
+    public ClientConfiguration setChannelWaitOnWriteMillis(long value) {
+        setProperty(CHANNEL_WAIT_TIMEOUT_ON_WRITE, value);
         return this;
     }
 
