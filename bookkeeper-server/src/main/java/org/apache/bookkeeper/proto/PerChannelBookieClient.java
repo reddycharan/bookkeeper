@@ -1929,6 +1929,15 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     try {
                         long sleepFor = TimeUnit.NANOSECONDS.toMillis(maxSleepUntil - MathUtils.nowInNano());
                         sleepFor = (sleepFor < 1) ? 1 : sleepFor;
+                        if (sleepFor > 1000) {
+                            // I encountered case when no events get triggered to call channelMonitor.notify()
+                            // Overall it looks like there is a condition (possibly netty bug) when 
+                            // channelWritabilityChanged is not fired and so ar eother available events. 
+                            // I've tried other events that ChannelInboundHandlerAdapter provides but without any luck.
+                            // The only reliable solution I found so far is to force wake thread even when channel 
+                            // is not being connected/disconnected/channelWritabilityChanged.
+                            sleepFor = 1000;
+                        }
                         channelMonitor.wait(sleepFor);
                     } catch (InterruptedException ie) {
                         sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
