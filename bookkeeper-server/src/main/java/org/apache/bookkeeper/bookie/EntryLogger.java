@@ -55,6 +55,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -82,18 +84,17 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryLogger {
     private static final Logger LOG = LoggerFactory.getLogger(EntryLogger.class);
+    private static final Long INVALID_LEDGERID = new Long(-1);
 
-    private static class BufferedLogChannel extends BufferedChannel {
+    class BufferedLogChannel extends BufferedChannel {
         private final long logId;
         private final EntryLogMetadata entryLogMetadata;
         private final File logFile;
+        private Long ledgerId = INVALID_LEDGERID;
 
-        public BufferedLogChannel(FileChannel fc,
-                                  int writeCapacity,
-                                  int readCapacity,
-                                  long logId,
-                                  File logFile) throws IOException {
-            super(fc, writeCapacity, readCapacity);
+        public BufferedLogChannel(FileChannel fc, int writeCapacity, int readCapacity, long logId, File logFile,
+                long unpersistedBytesBound) throws IOException {
+            super(fc, writeCapacity, readCapacity, unpersistedBytesBound);
             this.logId = logId;
             this.entryLogMetadata = new EntryLogMetadata(logId);
             this.logFile = logFile;
@@ -113,13 +114,25 @@ public class EntryLogger {
         public ConcurrentLongLongHashMap getLedgersMap() {
             return entryLogMetadata.getLedgersMap();
         }
+
+        public boolean isLedgerDirFull() {
+            return ledgerDirsManager.isDirFull(logFile.getParentFile());
+        }
+
+        public Long getLedgerId() {
+            return ledgerId;
+        }
+
+        public void setLedgerId(Long ledgerId) {
+            this.ledgerId = ledgerId;
+        }
+
     }
 
-    volatile File currentDir;
     private final LedgerDirsManager ledgerDirsManager;
-    private final AtomicBoolean shouldCreateNewEntryLog = new AtomicBoolean(false);
+    private final boolean entryLogPerLedgerEnabled;
 
-    private volatile long leastUnflushedLogId;
+    RecentEntryLogsStatus recentlyCreatedEntryLogsStatus;
 
     /**
      * locks for compaction log.
@@ -130,11 +143,10 @@ public class EntryLogger {
      * The maximum size of a entry logger file.
      */
     final long logSizeLimit;
-    private List<BufferedLogChannel> logChannelsToFlush;
-    private volatile BufferedLogChannel logChannel;
     private volatile BufferedLogChannel compactionLogChannel;
 
-    private final EntryLoggerAllocator entryLoggerAllocator;
+    final EntryLoggerAllocator entryLoggerAllocator;
+    final EntryLogManager entryLogManager;
     private final boolean entryLogPreAllocationEnabled;
     private final CopyOnWriteArrayList<EntryLogListener> listeners = new CopyOnWriteArrayList<EntryLogListener>();
 
@@ -199,7 +211,6 @@ public class EntryLogger {
 
     private final long flushIntervalInBytes;
     private final boolean doRegularFlushes;
-    private long bytesWrittenSinceLastFlush = 0;
     private final int maxSaneEntrySize;
 
     final ServerConfiguration conf;
@@ -256,6 +267,8 @@ public class EntryLogger {
         // but the protocol varies so an exact value is difficult to determine
         this.maxSaneEntrySize = conf.getNettyMaxFrameSizeBytes() - 500;
         this.ledgerDirsManager = ledgerDirsManager;
+        this.conf = conf;
+        entryLogPerLedgerEnabled = conf.isEntryLogPerLedgerEnabled();
         if (listener != null) {
             addListener(listener);
         }
@@ -284,13 +297,15 @@ public class EntryLogger {
                 logId = lastLogId;
             }
         }
-        this.leastUnflushedLogId = logId + 1;
+        this.recentlyCreatedEntryLogsStatus = new RecentEntryLogsStatus(logId + 1);
+        this.flushIntervalInBytes = conf.getFlushIntervalInBytes();
+        this.doRegularFlushes = flushIntervalInBytes > 0;
         this.entryLoggerAllocator = new EntryLoggerAllocator(logId);
-        this.conf = conf;
-        flushIntervalInBytes = conf.getFlushIntervalInBytes();
-        doRegularFlushes = flushIntervalInBytes > 0;
-
-        initialize();
+        if (entryLogPerLedgerEnabled) {
+            this.entryLogManager = new EntryLogManagerForEntryLogPerLedger(conf);
+        } else {
+            this.entryLogManager = new EntryLogManagerForSingleEntryLog();
+        }
     }
 
     void addListener(EntryLogListener listener) {
@@ -313,13 +328,11 @@ public class EntryLogger {
      */
     private int readFromLogChannel(long entryLogId, BufferedReadChannel channel, ByteBuf buff, long pos)
             throws IOException {
-        BufferedLogChannel bc = logChannel;
+        BufferedLogChannel bc = entryLogManager.getCurrentLogIfPresent(entryLogId);
         if (null != bc) {
-            if (entryLogId == bc.getLogId()) {
-                synchronized (bc) {
-                    if (pos + buff.writableBytes() >= bc.getFileChannelPosition()) {
-                        return bc.read(buff, pos);
-                    }
+            synchronized (bc) {
+                if (pos + buff.writableBytes() >= bc.getFileChannelPosition()) {
+                    return bc.read(buff, pos);
                 }
             }
         }
@@ -386,12 +399,34 @@ public class EntryLogger {
      *
      * @return least unflushed log id.
      */
-    synchronized long getLeastUnflushedLogId() {
-        return leastUnflushedLogId;
+    long getLeastUnflushedLogId() {
+        return recentlyCreatedEntryLogsStatus.getLeastUnflushedLogId();
     }
 
-    synchronized long getCurrentLogId() {
-        return logChannel.getLogId();
+    long getPreviousAllocatedEntryLogId() {
+        return entryLoggerAllocator.getPreallocatedLogId();
+    }
+
+    void rollLogsIfEntryLogLimitReached() throws IOException {
+        // for this add ledgerid to bufferedlogchannel, getcopyofcurrentlogs get
+        // ledgerid, lock it only if there is new data
+        // so that cache accesstime is not changed
+
+        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
+        for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
+            if (currentLog.position() > logSizeLimit) {
+                Long ledgerId = currentLog.getLedgerId();
+                entryLogManager.acquireLock(ledgerId);
+                try {
+                    if (reachEntryLogLimit(ledgerId, 0L)) {
+                        LOG.info("Rolling entry logger since it reached size limitation");
+                        createNewLog(ledgerId);
+                    }
+                } finally {
+                    entryLogManager.releaseLock(ledgerId);
+                }
+            }
+        }
     }
 
     /**
@@ -404,67 +439,6 @@ public class EntryLogger {
             }
             return compactionLogChannel.getLogFile();
         }
-    }
-
-    protected void initialize() throws IOException {
-        // Register listener for disk full notifications.
-        ledgerDirsManager.addLedgerDirsListener(getLedgerDirsListener());
-        // create a new log to write
-        createNewLog();
-    }
-
-    private LedgerDirsListener getLedgerDirsListener() {
-        return new LedgerDirsListener() {
-            @Override
-            public void diskFull(File disk) {
-                // If the current entry log disk is full, then create new entry
-                // log.
-                if (currentDir != null && currentDir.equals(disk)) {
-                    shouldCreateNewEntryLog.set(true);
-                }
-            }
-
-            @Override
-            public void diskAlmostFull(File disk) {
-                // If the current entry log disk is almost full, then create new entry
-                // log.
-                if (currentDir != null && currentDir.equals(disk)) {
-                    shouldCreateNewEntryLog.set(true);
-                }
-            }
-
-            @Override
-            public void diskFailed(File disk) {
-                // Nothing to handle here. Will be handled in Bookie
-            }
-
-            @Override
-            public void allDisksFull() {
-                // Nothing to handle here. Will be handled in Bookie
-            }
-
-            @Override
-            public void fatalError() {
-                // Nothing to handle here. Will be handled in Bookie
-            }
-
-            @Override
-            public void diskWritable(File disk) {
-                // Nothing to handle here. Will be handled in Bookie
-            }
-
-            @Override
-            public void diskJustWritable(File disk) {
-                // Nothing to handle here. Will be handled in Bookie
-            }
-        };
-    }
-
-    /**
-     * Rolling a new log file to write.
-     */
-    synchronized void rollLog() throws IOException {
-        createNewLog();
     }
 
     /**
@@ -1360,6 +1334,7 @@ public class EntryLogger {
     public void shutdown() {
         // since logChannel is buffered channel, do flush when shutting down
         LOG.info("Stopping EntryLogger");
+        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
         try {
             flush();
             for (FileChannel fc : logid2FileChannel.values()) {
@@ -1367,8 +1342,10 @@ public class EntryLogger {
             }
             // clear the mapping, so we don't need to go through the channels again in finally block in normal case.
             logid2FileChannel.clear();
-            // close current writing log file
-            closeFileChannel(logChannel);
+            for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
+                // close current writing log file
+                closeFileChannel(currentLog);
+            }
             synchronized (compactionLogLock) {
                 closeFileChannel(compactionLogChannel);
                 compactionLogChannel = null;
@@ -1380,7 +1357,9 @@ public class EntryLogger {
             for (FileChannel fc : logid2FileChannel.values()) {
                 IOUtils.close(LOG, fc);
             }
-            forceCloseFileChannel(logChannel);
+            for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
+                forceCloseFileChannel(currentLog);
+            }
             synchronized (compactionLogLock) {
                 forceCloseFileChannel(compactionLogChannel);
             }
@@ -1434,5 +1413,41 @@ public class EntryLogger {
      */
     static String logId2HexString(long logId) {
         return Long.toHexString(logId);
+    }
+
+    /**
+     * Datastructure which maintains the status of logchannels. When a
+     * logChannel is created entry of < entryLogId, false > will be made to this
+     * sortedmap and when logChannel is rotated and flushed then the entry is
+     * updated to < entryLogId, true > and all the lowest entries with
+     * < entryLogId, true > status will be removed from the sortedmap. So that way
+     * we could get least unflushed LogId.
+     *
+     */
+    class RecentEntryLogsStatus {
+        private SortedMap<Long, Boolean> entryLogsStatusMap;
+        private long leastUnflushedLogId;
+
+        RecentEntryLogsStatus(long leastUnflushedLogId) {
+            entryLogsStatusMap = new TreeMap<Long, Boolean>();
+            this.leastUnflushedLogId = leastUnflushedLogId;
+        }
+
+        synchronized void createdEntryLog(Long entryLogId) {
+            entryLogsStatusMap.put(entryLogId, false);
+        }
+
+        synchronized void flushRotatedEntryLog(Long entryLogId) {
+            entryLogsStatusMap.replace(entryLogId, true);
+            while ((!entryLogsStatusMap.isEmpty()) && (entryLogsStatusMap.get(entryLogsStatusMap.firstKey()))) {
+                long leastFlushedLogId = entryLogsStatusMap.firstKey();
+                entryLogsStatusMap.remove(leastFlushedLogId);
+                leastUnflushedLogId = leastFlushedLogId + 1;
+            }
+        }
+
+        synchronized long getLeastUnflushedLogId() {
+            return leastUnflushedLogId;
+        }
     }
 }
