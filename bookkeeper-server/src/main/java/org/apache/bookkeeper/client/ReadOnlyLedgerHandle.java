@@ -53,7 +53,7 @@ class ReadOnlyLedgerHandle extends LedgerHandle implements LedgerMetadataListene
             Version.Occurred occurred =
                     ReadOnlyLedgerHandle.this.metadata.getVersion().compare(this.m.getVersion());
             if (Version.Occurred.BEFORE == occurred) {
-                LOG.info("Updated ledger metadata for ledger {} to {}.", ledgerId, this.m);
+                LOG.info("Updated ledger metadata for ledger {}.", ledgerId);
                 if (this.m.isClosed()) {
                         ReadOnlyLedgerHandle.this.lastAddConfirmed = this.m.getLastEntryId();
                         ReadOnlyLedgerHandle.this.length = this.m.getLength();
