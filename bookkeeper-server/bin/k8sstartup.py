@@ -15,6 +15,9 @@ from sets import Set
 
 PREFIX = "sf_"
 
+# The command that will be retrieved and executed from our job *after* setting environment variables and configs.
+JOB_CMD = "JOBCMD"
+
 def set_configs(config_file, env_vars):
     added_configs = Set([])
     for line in fileinput.FileInput(config_file, inplace=1):
@@ -100,7 +103,9 @@ if __name__ == '__main__':
     elif process == "adminpod":
         set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
         print "Set configs for admin pod. Sleeping start-up command."
-        os.system("sleep infinity")
+        if JOB_CMD in env_vars.keys():
+            admin_command = env_vars[JOB_CMD]
+            os.system(admin_command)
     else:
         print "Must specify either bookie or autorecovery. Exiting."
         sys.exit(1)
