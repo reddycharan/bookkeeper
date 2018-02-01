@@ -280,11 +280,15 @@ public class LedgerMetadata {
     }
 
     /**
-     * Generates a byte array of this object
+     * Generates a byte array of this object.
      *
      * @return the metadata serialized into a byte array
      */
     public byte[] serialize() {
+        return serialize(true);
+    }
+
+    public byte[] serialize(boolean withPassword) {
         if (metadataFormatVersion == 1) {
             return serializeVersion1();
         }
@@ -294,7 +298,10 @@ public class LedgerMetadata {
             .setState(state).setLastEntryId(lastEntryId).setCtime(ctime);
 
         if (hasPassword) {
-            builder.setDigestType(digestType).setPassword(ByteString.copyFrom(password));
+            builder.setDigestType(digestType);
+            if (withPassword) {
+                builder.setPassword(ByteString.copyFrom(password));
+            }
         }
 
         if (customMetadata != null) {
@@ -592,8 +599,24 @@ public class LedgerMetadata {
 
     @Override
     public String toString() {
+        return toStringRepresentation(true);
+    }
+
+    /**
+     * Returns a string representation of this LedgerMetadata object by
+     * filtering out the password field.
+     *
+     * @return a string representation of the object without password field in
+     *         it.
+     */
+    public String toSafeString() {
+        return toStringRepresentation(false);
+    }
+
+    private String toStringRepresentation(boolean withPassword) {
         StringBuilder sb = new StringBuilder();
-        sb.append("(meta:").append(new String(serialize(), UTF_8)).append(", version:").append(version).append(")");
+        sb.append("(meta:").append(new String(serialize(withPassword), UTF_8)).append(", version:").append(version)
+                .append(")");
         return sb.toString();
     }
 
