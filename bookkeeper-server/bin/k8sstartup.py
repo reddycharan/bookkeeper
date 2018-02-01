@@ -102,10 +102,12 @@ if __name__ == '__main__':
         print "Started autorecovery"
     elif process == "adminpod":
         set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
-        print "Set configs for admin pod. Sleeping start-up command."
+        print "Configs set using adminpod command."
         if JOB_CMD in env_vars.keys():
             admin_command = env_vars[JOB_CMD]
-            os.system(admin_command)
+            print "Executing command " + admin_command
+            # Popen will print the output from the executed system command, which is needed for logs.
+            print os.popen(admin_command).read()
     else:
         print "Must specify either bookie or autorecovery. Exiting."
         sys.exit(1)
