@@ -47,6 +47,11 @@ cd $DEPLOY_SFSTORE
 tar -xf $IMAGE_NAME1
 rm ${IMAGE_NAME1}
 
+# SFStore-Build jenkin job creates file : gitlog.info, containing the last git commit SHA, and tars it to $IMAGE_NAME1
+GIT_COMMIT=`cat gitlog.info`
+[ -z "$GIT_COMMIT" ]        && echo "Error! \$GIT_COMMIT not set, which means gitlog.info file is not created properly by SFStore-Build jenkin job."  && exit -1
+echo "This new SFStore-Gold-Image is based on git commit SHA : $GIT_COMMIT"
+
 echo "sfstore.version.info file content:"
 cat ${SFSTORE_VERSION_INFO}
 SFSTORE_VERSION_INFO=${WORKSPACE}/sfstore.version.info
@@ -72,7 +77,7 @@ if [ "x$UPDATE_GIT_TAGS" = "xtrue" ];then
   cd $WORKSPACE
   echo "Tagging the version number for sfstore"
   GIT_GOLD_IMAGE_TAG=Gold_Image_${NEW_VERSION_STRING}
-  git tag $GIT_GOLD_IMAGE_TAG
+  git tag $GIT_GOLD_IMAGE_TAG $GIT_COMMIT
   # Increment SFSTORE_MINOR_VERSION version number
   SFSTORE_MINOR_VERSION_PLUS_ONE=$((SFSTORE_MINOR_VERSION+1))
   sed -i -E "s/SFSTORE_MINOR_VERSION=$SFSTORE_MINOR_VERSION/SFSTORE_MINOR_VERSION=$SFSTORE_MINOR_VERSION_PLUS_ONE/" sfstore.version.info
