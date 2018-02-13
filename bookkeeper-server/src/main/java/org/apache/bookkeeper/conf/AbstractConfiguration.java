@@ -32,6 +32,8 @@ import org.apache.bookkeeper.meta.AbstractZkLedgerManagerFactory;
 import org.apache.bookkeeper.meta.HierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
+import org.apache.bookkeeper.stats.NullStatsProvider;
+import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.util.EntryFormatter;
 import org.apache.bookkeeper.util.JsonUtil;
 import org.apache.bookkeeper.util.JsonUtil.ParseJsonException;
@@ -138,6 +140,17 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
 
     // Validate bookie process user
     public static final String PERMITTED_STARTUP_USERS = "permittedStartupUsers";
+
+    // stat servlet
+    protected static final String STAT_PREFIX = "codahaleStatsPrefix";
+    protected static final String ENABLE_REST_ENDPOINTS = "enableRestEndpoints";
+    protected static final String SERVER_JETTY_PORT = "jettyPort";
+    protected static final String REST_SERVLET_CONTEXT = "restServletContextPath";
+    protected static final String REST_PACKAGE = "restPackage";
+    protected static final String STAT_SERVLET_CONTEXT = "statServletContextPath";
+    protected static final String STAT_SERVLET_ENDPOINT = "statServletEndpoint";
+    protected static final String STATS_PROVIDER_CLASS = "statsProviderClass";
+    protected static final String STATS_ENABLED = "enableStatistics";
 
     protected AbstractConfiguration() {
         super();
@@ -748,7 +761,6 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
         return getString(TLS_ENABLED_PROTOCOLS, null);
     }
 
-
     /**
      * Trickery to allow inheritance with fluent style.
      */
@@ -775,5 +787,113 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
             }
         }
         return configMap;
+    }
+
+    /* Get the stats provider used by bookie.
+     *
+     * @return stats provider class
+     * @throws ConfigurationException
+     */
+    public Class<? extends StatsProvider> getStatsProviderClass() throws ConfigurationException {
+        return ReflectionUtils.getClass(this, STATS_PROVIDER_CLASS, NullStatsProvider.class, StatsProvider.class,
+                StatsProvider.class.getClassLoader());
+    }
+
+    /**
+     * Set the stats provider used by bookie.
+     *
+     * @param providerClass
+     *          stats provider class
+     * @return server configuration
+     */
+    public AbstractConfiguration setStatsProviderClass(Class<? extends StatsProvider> providerClass) {
+        setProperty(STATS_PROVIDER_CLASS, providerClass.getName());
+        return this;
+    }
+
+    /*
+     * Should we enable decorating of REST endpoints?
+     */
+    public boolean getEnableRestEndpoints() {
+        return getBoolean(ENABLE_REST_ENDPOINTS, false);
+    }
+
+    public void setEnableRestEndpoints(boolean b) {
+        setProperty(ENABLE_REST_ENDPOINTS, b);
+    }
+
+    public String getRestServletContext() {
+        return getString(REST_SERVLET_CONTEXT, "/rest");
+    }
+
+    public void setRestServletContext(String context) {
+        setProperty(REST_SERVLET_CONTEXT, context);
+    }
+
+    /*
+     * Specifies URL context for stats
+     */
+    public String getStatServletContext() {
+        return getString(STAT_SERVLET_CONTEXT, "/stats");
+    }
+
+    public void setStatServletContext(String s) {
+        setProperty(STAT_SERVLET_CONTEXT, s);
+    }
+
+    /*
+     * Get the endpoint at which the stats live. Available at
+     * [servletContext]/[endpoint]
+     */
+    public String getStatServletEndpoint() {
+        return getString(STAT_SERVLET_ENDPOINT, "/metrics.json");
+    }
+
+    public void setStatServletEndpoint(String s) {
+        setProperty(STAT_SERVLET_ENDPOINT, s);
+    }
+
+    /**
+     * Turn on/off statistics.
+     *
+     * @param enabled
+     *            Whether statistics enabled or not.
+     */
+    public void setStatsEnabled(boolean enabled) {
+        setProperty(STATS_ENABLED, enabled);
+    }
+
+    /*
+     * Are stats enabled?
+     */
+    public boolean areStatsEnabled() {
+        return getBoolean(STATS_ENABLED, false);
+    }
+
+    public void setStatPrefix(String prefix) {
+        setProperty(STAT_PREFIX, prefix);
+    }
+
+    public String getStatPrefix() {
+        return getString(STAT_PREFIX);
+    }
+
+    /*
+     * Get the port of the Jetty servlet. Must be > 0
+     */
+    public int getJettyPort() {
+        return getInt(SERVER_JETTY_PORT, 0);
+    }
+
+    public void setJettyPort(int port) {
+        setProperty(SERVER_JETTY_PORT, port);
+    }
+
+    public String getRestPackage() {
+        return getString(REST_PACKAGE);
+    }
+
+    public void setRestPackage(String pkg) {
+        setProperty(REST_PACKAGE, pkg);
     }
 }

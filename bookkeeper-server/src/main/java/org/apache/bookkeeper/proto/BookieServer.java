@@ -47,6 +47,7 @@ import org.apache.bookkeeper.tls.SecurityException;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory;
 import org.apache.bookkeeper.tls.SecurityProviderFactoryFactory;
 import org.apache.bookkeeper.util.JsonUtil.ParseJsonException;
+import org.apache.bookkeeper.util.RestResources;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,9 @@ public class BookieServer {
                 .getSecurityProviderFactory(conf.getTLSProviderFactoryClass());
         this.requestProcessor = new BookieRequestProcessor(conf, bookie,
                 statsLogger.scope(SERVER_SCOPE), shFactory);
+
+        RestResources.setServerConfiguration(conf);
+
         this.nettyServer.setRequestProcessor(this.requestProcessor);
     }
 

@@ -451,6 +451,7 @@ public class LocalBookKeeper {
                 localBookiesConfigDirName = args[3];
             }
 
+            RestResources.setServerConfiguration(conf);
             startLocalBookiesInternal(conf, zooKeeperDefaultHost, zooKeeperDefaultPort, numBookies, true,
                     bookieDefaultInitialPort, false, "test", zkDataDir, localBookiesConfigDirName);
         } catch (Exception e) {
