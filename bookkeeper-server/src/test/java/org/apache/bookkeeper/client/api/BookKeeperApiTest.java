@@ -22,20 +22,15 @@ package org.apache.bookkeeper.client.api;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static org.apache.bookkeeper.common.concurrent.FutureUtils.result;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import io.netty.buffer.Unpooled;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.BKDigestMatchException;
@@ -45,10 +40,7 @@ import org.apache.bookkeeper.client.BKException.BKNoSuchLedgerExistsException;
 import org.apache.bookkeeper.client.BKException.BKUnauthorizedAccessException;
 import org.apache.bookkeeper.client.MockBookKeeperTestCase;
 import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.bookkeeper.util.LoggerOutput;
-import org.junit.Rule;
 import org.junit.Test;
-import org.slf4j.event.LoggingEvent;
 
 /**
  * Unit tests of classes in this package.
@@ -58,9 +50,6 @@ public class BookKeeperApiTest extends MockBookKeeperTestCase {
     private static final byte[] bigData = new byte[1024];
     private static final byte[] data = "foo".getBytes(UTF_8);
     private static final byte[] password = "password".getBytes(UTF_8);
-
-    @Rule
-    public LoggerOutput loggerOutput = new LoggerOutput();
 
     @Test
     public void testWriteHandle() throws Exception {
@@ -303,13 +292,6 @@ public class BookKeeperApiTest extends MockBookKeeperTestCase {
 
     @Test(expected = BKLedgerFencedException.class)
     public void testOpenLedgerWithRecovery() throws Exception {
-
-        loggerOutput.expect((List<LoggingEvent> logEvents) -> {
-            assertThat(logEvents, hasItem(hasProperty("message",
-                    containsString("due to LedgerFencedException: "
-                            + "Ledger has been fenced off. Some other client must have opened it to read")
-            )));
-        });
 
         long lId;
         try (WriteHandle writer = result(newCreateLedgerOp()
