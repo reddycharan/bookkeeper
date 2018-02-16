@@ -207,13 +207,6 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
                 super.getList(name, defaultValue);
     }
 
-    @Override
-    public void setProperty(String name, Object value) {
-        String clusterProperty = cluster + name;
-        // only set the cluster prefixed value
-        super.setProperty(clusterProperty, value);
-    }
-
     public static String getClusterLoc() {
         return cluster;
     }

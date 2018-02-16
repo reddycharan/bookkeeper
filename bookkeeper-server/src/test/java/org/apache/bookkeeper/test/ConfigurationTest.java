@@ -73,17 +73,15 @@ public class ConfigurationTest {
         ServerConfiguration conf = new ServerConfiguration();
 
         // Assign a value to our environment; should get same value with and without prefix.
-        conf.setProperty("testProp", "specific");
-        conf.setProperty("genericTestInt", 100);
+        conf.setProperty("phx.sp1.testCluster$testProp", "specific");
+        conf.setProperty("phx.sp1.testCluster$genericTestInt", 100);
 
-        assertTrue(conf.getString("testProp").equals("specific"));
         assertTrue(conf.getString("phx.sp1.testCluster$testProp").equals("specific"));
-        assertTrue(conf.getInt("genericTestInt") == 100);
         assertTrue(conf.getInt("phx.sp1.testCluster$genericTestInt") == 100);
 
         // GetStringArray should also work
         String arr[] = {"v1", "v2", "v3"};
-        conf.setProperty("testList", "v1,v2,v3");
+        conf.setProperty("phx.sp1.testCluster$testList", "v1,v2,v3");
         assertTrue(Arrays.equals(conf.getStringArray("testList"), arr));
         assertTrue(Arrays.equals(conf.getStringArray("phx.sp1.testCluster$testList"), arr));
 
