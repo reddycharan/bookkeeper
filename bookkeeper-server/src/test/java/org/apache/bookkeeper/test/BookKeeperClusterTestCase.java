@@ -94,6 +94,7 @@ public abstract class BookKeeperClusterTestCase {
         InMemoryMetaStore.reset();
         setMetastoreImplClass(baseConf);
         setMetastoreImplClass(baseClientConf);
+        baseClientConf.setChannelWaitOnWriteMillis(1000);
 
         try {
             // start zookeeper service

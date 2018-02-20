@@ -1900,7 +1900,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
     private void channelChanged() {
         synchronized (channelMonitor) {
-            channelMonitor.notify();
+            channelMonitor.notifyAll();
         }
     }
 
@@ -1911,15 +1911,17 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     }
 
     public ChannelFuture channelWrite(Object msg) {
-        return channelWrite(msg, -1);
+        return channelWrite(msg, channelWaitOnWriteMillis);
     }
 
     public ChannelFuture channelWrite(Object msg, long timeoutMillis) {
-        if (channel == null || !channel.isWritable()) {
+        if (channel == null) {
+            return new DefaultChannelPromise(channel)
+                    .setFailure(new Exception("cannot write to disconnected channel"));
+        }
+        if (!channel.isWritable() && timeoutMillis > 0) {
             final long startTime = MathUtils.nowInNano();
-            final long maxSleepUntil = startTime + (timeoutMillis > 0 
-                    ? TimeUnit.MILLISECONDS.toNanos(timeoutMillis) 
-                    : TimeUnit.DAYS.toNanos(1));
+            final long maxSleepUntil = startTime + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
             synchronized (channelMonitor) {
                 while (channel == null || !channel.isWritable()) {
                     if (channel == null || !channel.isActive() || MathUtils.nowInNano() > maxSleepUntil) {

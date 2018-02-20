@@ -89,7 +89,7 @@ public class ClientConfiguration extends AbstractConfiguration {
     protected final static String GET_BOOKIE_INFO_TIMEOUT_SECS = "getBookieInfoTimeoutSecs";
     protected final static String START_TLS_TIMEOUT_SECS = "startTLSTimeoutSecs";
 
-    // Number Woker Threads
+    // Number of Worker Threads
     protected final static String NUM_WORKER_THREADS = "numWorkerThreads";
 
     // Ensemble Placement Policy
@@ -345,7 +345,7 @@ public class ClientConfiguration extends AbstractConfiguration {
      * @return netty channel write buffer low water mark.
      */
     public int getClientWriteBufferLowWaterMark() {
-        return getInt(CLIENT_WRITEBUFFER_LOW_WATER_MARK, 32 * 1024);
+        return getInt(CLIENT_WRITEBUFFER_LOW_WATER_MARK, 384 * 1024);
     }
 
     /**
@@ -366,7 +366,7 @@ public class ClientConfiguration extends AbstractConfiguration {
      * @return netty channel write buffer high water mark.
      */
     public int getClientWriteBufferHighWaterMark() {
-        return getInt(CLIENT_WRITEBUFFER_HIGH_WATER_MARK, 64 * 1024);
+        return getInt(CLIENT_WRITEBUFFER_HIGH_WATER_MARK, 512 * 1024);
     }
 
     /**
