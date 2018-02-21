@@ -332,9 +332,11 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         }
 
         try {
-            // if it is just a checkpoint flush, we just flush rotated entry log files
-            // in entry logger.
-            if (isCheckpointFlush) {
+            /*
+             * if it is just a checkpoint flush and if entryLogPerLedger is not
+             * enabled, then we just flush rotated entry log files in entry logger.
+             */
+            if (isCheckpointFlush && !entryLogPerLedgerEnabled) {
                 entryLogger.checkpoint();
             } else {
                 entryLogger.flush();

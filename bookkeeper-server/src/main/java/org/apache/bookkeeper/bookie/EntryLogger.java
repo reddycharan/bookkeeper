@@ -407,11 +407,12 @@ public class EntryLogger {
         return entryLoggerAllocator.getPreallocatedLogId();
     }
 
-    void rollLogsIfEntryLogLimitReached() throws IOException {
+    boolean rollLogsIfEntryLogLimitReached() throws IOException {
         // for this add ledgerid to bufferedlogchannel, getcopyofcurrentlogs get
         // ledgerid, lock it only if there is new data
         // so that cache accesstime is not changed
 
+        boolean rolledLog = false;
         Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
         for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
             if (currentLog.position() > logSizeLimit) {
@@ -419,6 +420,7 @@ public class EntryLogger {
                 entryLogManager.acquireLock(ledgerId);
                 try {
                     if (reachEntryLogLimit(ledgerId, 0L)) {
+                        rolledLog = true;
                         LOG.info("Rolling entry logger since it reached size limitation");
                         createNewLog(ledgerId);
                     }
@@ -427,6 +429,7 @@ public class EntryLogger {
                 }
             }
         }
+        return rolledLog;
     }
 
     /**

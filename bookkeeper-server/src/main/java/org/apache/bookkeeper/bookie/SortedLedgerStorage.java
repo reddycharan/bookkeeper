@@ -177,13 +177,6 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
     @Override
     public void checkpoint(final Checkpoint checkpoint) throws IOException {
         long numBytesFlushed = memTable.flush(this, checkpoint);
-        if (numBytesFlushed > 0) {
-            // if bytes are added between previous flush and this checkpoint,
-            // it means bytes might live at current active entry log, we need
-            // roll current entry log and then issue checkpoint to underlying
-            // interleaved ledger storage.
-            entryLogger.rollLog();
-        }
         super.checkpoint(checkpoint);
     }
 
@@ -220,7 +213,9 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
                     LOG.info("Started flushing mem table.");
                     memTable.flush(SortedLedgerStorage.this);
                     // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
-                    entryLogger.rollLogsIfEntryLogLimitReached();
+                    if (entryLogger.rollLogsIfEntryLogLimitReached()) {
+                        checkpointer.startCheckpoint(cp);
+                    }
                 } catch (IOException e) {
                     stateManager.transitionToReadOnlyMode();
                     LOG.error("Exception thrown while flushing skip list cache.", e);
