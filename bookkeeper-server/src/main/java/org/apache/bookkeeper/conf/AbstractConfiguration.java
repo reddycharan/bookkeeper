@@ -71,6 +71,14 @@ public abstract class AbstractConfiguration extends CompositeConfiguration {
     private static final boolean READ_SYSTEM_PROPERTIES
                                     = Boolean.getBoolean(READ_SYSTEM_PROPERTIES_PROPERTY);
 
+    protected static final ClassLoader DEFAULT_LOADER;
+    static {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (null == loader) {
+            loader = AbstractConfiguration.class.getClassLoader();
+        }
+        DEFAULT_LOADER = loader;
+    }
 
     // for per Cluster based configuration
     public static final String CLUSTER_LOC_PROPERTY = "cluster.loc";
