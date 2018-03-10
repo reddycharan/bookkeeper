@@ -117,6 +117,7 @@ public class EntryLogger {
 
     volatile File currentDir;
     private final LedgerDirsManager ledgerDirsManager;
+    private final boolean entryLogPerLedgerEnabled;
     private final AtomicBoolean shouldCreateNewEntryLog = new AtomicBoolean(false);
 
     private volatile long leastUnflushedLogId;
@@ -287,6 +288,7 @@ public class EntryLogger {
         this.leastUnflushedLogId = logId + 1;
         this.entryLoggerAllocator = new EntryLoggerAllocator(logId);
         this.conf = conf;
+        this.entryLogPerLedgerEnabled = conf.isEntryLogPerLedgerEnabled();
         flushIntervalInBytes = conf.getFlushIntervalInBytes();
         doRegularFlushes = flushIntervalInBytes > 0;
 
@@ -801,6 +803,20 @@ public class EntryLogger {
      */
     void checkpoint() throws IOException {
         flushRotatedLogs();
+        /*
+         * In the case of entryLogPerLedgerEnabled we need to flush both
+         * rotatedlogs and currentlogs. This is needed because syncThread
+         * periodically does checkpoint and at this time all the logs should
+         * be flushed.
+         *
+         * TODO: When EntryLogManager is introduced in the subsequent sub-tasks of
+         * this Issue, I will move this logic to individual implamentations of
+         * EntryLogManager and it would be free of this booalen flag based logic.
+         *
+         */
+        if (entryLogPerLedgerEnabled) {
+            flushCurrentLog();
+        }
     }
 
     void flushRotatedLogs() throws IOException {
