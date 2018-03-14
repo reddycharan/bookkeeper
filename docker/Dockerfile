@@ -11,7 +11,8 @@ LABEL maintainer="Storage Cloud Foundation \"storagefoundation@salesforce.com\""
 ADD sfstore.tar.gz /sfs/sfsbuild
 
 # Install necessary packages
-RUN yum install -y --nogpgcheck which java bzip2 wget net-tools nmap-ncat && \
+RUN touch /var/lib/rpm/* && \
+    yum install -y --nogpgcheck which java bzip2 wget net-tools nmap-ncat && \
     yum clean all && \
     set -x && \
     mkdir -p /sfs/sfsbuild /sfs/sfsdata /sfs/sfslogs/ /sfs/sfsdata/journal /sfs/sfsdata/ledger && \
