@@ -167,14 +167,7 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
 
     @Override
     public void checkpoint(final Checkpoint checkpoint) throws IOException {
-        long numBytesFlushed = memTable.flush(this, checkpoint);
-        if (numBytesFlushed > 0) {
-            // if bytes are added between previous flush and this checkpoint,
-            // it means bytes might live at current active entry log, we need
-            // roll current entry log and then issue checkpoint to underlying
-            // interleaved ledger storage.
-            entryLogger.rollLog();
-        }
+        memTable.flush(this, checkpoint);
         super.checkpoint(checkpoint);
     }
 
@@ -209,16 +202,12 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
             public void run() {
                 try {
                     LOG.info("Started flushing mem table.");
-                    long logIdBeforeFlush = entryLogger.getCurrentLogId();
                     memTable.flush(SortedLedgerStorage.this);
-                    long logIdAfterFlush = entryLogger.getCurrentLogId();
                     // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
                     // if a memory table is flushed spanning over two entry log files, we also roll log. this is
                     // for performance consideration: since we don't wanna checkpoint a new log file that ledger
                     // storage is writing to.
-                    if (entryLogger.reachEntryLogLimit(0) || logIdAfterFlush != logIdBeforeFlush) {
-                        LOG.info("Rolling entry logger since it reached size limitation");
-                        entryLogger.rollLog();
+                    if (entryLogger.rollLogsIfEntryLogLimitReached()) {
                         checkpointer.startCheckpoint(cp);
                     }
                 } catch (IOException e) {
