@@ -1,58 +1,23 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
+FROM ops0-artifactrepo1-0-prd.data.sfdc.net/docker-dev-base/tnrp/centos:7
 
-FROM centos:7
-MAINTAINER Apache BookKeeper <dev@bookkeeper.apache.org>
+ARG pipeline_args
+ARG version
 
-ARG BK_VERSION=4.6.0
-ARG DISTRO_NAME=bookkeeper-server-${BK_VERSION}-bin
-ARG GPG_KEY=3ECFCAC4
+LABEL maintainer="Storage Cloud Foundation \"storagefoundation@salesforce.com\"" \
+      pipeline=$pipeline_args \
+      version=$version \
+      name=storagecloud/sfstore:latest
 
-ENV BOOKIE_PORT=3181
-EXPOSE $BOOKIE_PORT
-ENV BK_USER=bookkeeper
+ADD sfstore.tar.gz /sfs/sfsbuild
 
-# Download Apache Bookkeeper, untar and clean up
-RUN set -x \
-    && adduser "${BK_USER}" \
-    && yum install -y java-1.8.0-openjdk-headless wget bash python sudo \
-    && mkdir -pv /opt \
-    && cd /opt \
-    && wget -q "https://archive.apache.org/dist/bookkeeper/bookkeeper-${BK_VERSION}/${DISTRO_NAME}.tar.gz" \
-    && wget -q "https://archive.apache.org/dist/bookkeeper/bookkeeper-${BK_VERSION}/${DISTRO_NAME}.tar.gz.asc" \
-    && wget -q "https://archive.apache.org/dist/bookkeeper/bookkeeper-${BK_VERSION}/${DISTRO_NAME}.tar.gz.md5" \
-    && wget -q "https://archive.apache.org/dist/bookkeeper/bookkeeper-${BK_VERSION}/${DISTRO_NAME}.tar.gz.sha1" \
-    && md5sum -c ${DISTRO_NAME}.tar.gz.md5 \
-    && sha1sum -c ${DISTRO_NAME}.tar.gz.sha1 \
-    && gpg --keyserver ha.pool.sks-keyservers.net --recv-key "$GPG_KEY" \
-    && gpg --batch --verify "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz" \
-    && tar -xzf "$DISTRO_NAME.tar.gz" \
-    && mv bookkeeper-server-${BK_VERSION}/ /opt/bookkeeper/ \
-    && rm -rf "$DISTRO_NAME.tar.gz" "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz.md5" "$DISTRO_NAME.tar.gz.sha1" \
-    && yum remove -y wget \
-    && yum clean all
+# Install necessary packages
+RUN touch /var/lib/rpm/* && \
+    yum install -y --nogpgcheck which java bzip2 wget net-tools nmap-ncat && \
+    yum clean all && \
+    set -x && \
+    mkdir -p /sfs/sfsbuild /sfs/sfsdata /sfs/sfslogs/ /sfs/sfsdata/journal /sfs/sfsdata/ledger && \
+    groupadd --system --gid 7447 sfstore && \
+    adduser --system --gid 7447 --uid 7447 sfstore && \
+    chown -R sfstore:sfstore /sfs
 
-WORKDIR /opt/bookkeeper
-
-COPY scripts/apply-config-from-env.py scripts/entrypoint.sh scripts/healthcheck.sh /opt/bookkeeper/
-
-ENTRYPOINT [ "/bin/bash", "/opt/bookkeeper/entrypoint.sh" ]
-CMD ["/opt/bookkeeper/bin/bookkeeper", "bookie"]
-
-HEALTHCHECK --interval=10s --timeout=60s CMD /bin/bash /opt/bookkeeper/healthcheck.sh
+USER sfstore
