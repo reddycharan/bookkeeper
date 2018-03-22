@@ -210,6 +210,7 @@ BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"$BOOKIE_LOG_FORMAT.log"}
 BOOKIE_CLASSPATH="$BOOKIE_JAR:$BOOKIE_CLASSPATH:$BOOKIE_EXTRA_CLASSPATH"
 BOOKIE_CLASSPATH="`dirname $BOOKIE_LOG_CONF`:$BOOKIE_CLASSPATH"
 OPTS="$OPTS -Dlog4j.configurationFile=`basename $BOOKIE_LOG_CONF`"
+OPTS="$OPTS -Dlog4j2.is.webapp=false -Dlog4j2.garbagefreeThreadContextMap=true"
 
 #Allow the jvm to use the limits of the host
 OPTS="$OPTS -XX:-MaxFDLimit "
