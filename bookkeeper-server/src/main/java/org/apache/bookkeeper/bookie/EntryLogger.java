@@ -88,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryLogger {
     private static final Logger LOG = LoggerFactory.getLogger(EntryLogger.class);
-    private static final Long INVALID_LEDGERID = new Long(-1);
+    private static final Long INVALID_LEDGERID = Long.valueOf(-1);
     // log file suffix
     private static final String LOG_FILE_SUFFIX = ".log";
 
@@ -1669,7 +1669,7 @@ public class EntryLogger {
      * we could get least unflushed LogId.
      *
      */
-    class RecentEntryLogsStatus {
+    static class RecentEntryLogsStatus {
         private SortedMap<Long, Boolean> entryLogsStatusMap;
         private long leastUnflushedLogId;
 
