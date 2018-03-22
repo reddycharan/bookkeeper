@@ -121,6 +121,7 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory.NodeType;
+import org.apache.bookkeeper.tls.TLSUtils;
 import org.apache.bookkeeper.util.ByteBufList;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SafeRunnable;
@@ -1338,9 +1339,21 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                             }
                         } else if (future.isSuccess() && state == ConnectionState.START_TLS) {
                             rc = BKException.Code.OK;
-                            LOG.info("Successfully connected to bookie using TLS: " + addr);
+                            LOG.info("Successfully connected to bookie using TLS: {}", addr);
 
                             state = ConnectionState.CONNECTED;
+
+                            // print peer credentials
+                            SslHandler sslHandler = (SslHandler) channel.pipeline().get(SslHandler.class);
+                            LOG.info("Session {} is protected by {} ", future.get(),
+                                    sslHandler.engine().getSession().getCipherSuite());
+
+                            Certificate[] certificates = sslHandler.engine().getSession().getPeerCertificates();
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Peer Certificate Chain for {}: {} ", future.get(),
+                                        TLSUtils.prettyPrintCertChain(certificates));
+                            }
+
                             AuthHandler.ClientSideHandler authHandler = future.get().pipeline()
                                     .get(AuthHandler.ClientSideHandler.class);
                             authHandler.authProvider.onProtocolUpgrade();

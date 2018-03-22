@@ -52,6 +52,7 @@ import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 
+import java.security.cert.Certificate;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +71,7 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory;
 import org.apache.bookkeeper.tls.SecurityHandlerFactory.NodeType;
+import org.apache.bookkeeper.tls.TLSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -446,7 +448,15 @@ public class BookieRequestProcessor implements RequestProcessor {
                             .get(AuthHandler.ServerSideHandler.class);
                     authHandler.authProvider.onProtocolUpgrade();
                     if (future.isSuccess()) {
-                        LOG.info("Session is protected by: {}", sslHandler.engine().getSession().getCipherSuite());
+                        LOG.info("Session {} is protected by: {}", future.get(),
+                                sslHandler.engine().getSession().getCipherSuite());
+
+                        // print peer credentials
+                        Certificate[] certificates = sslHandler.engine().getSession().getPeerCertificates();
+                        if  (LOG.isDebugEnabled()) {
+                            LOG.debug("Peer Certificate chain for {}: {} ", future.get(),
+                                    TLSUtils.prettyPrintCertChain(certificates));
+                        }
                     } else {
                         LOG.error("TLS Handshake failure: {}", future.cause());
                         BookkeeperProtocol.Response.Builder errResponse = BookkeeperProtocol.Response.newBuilder()
