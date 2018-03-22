@@ -228,16 +228,18 @@ public class TestSSL extends BookKeeperClusterTestCase {
     }
 
     /**
-     * Verify that a server will not start if ssl is enabled but no cert is specified
+     * Verify that ledger write fails when key file is not provided.
      */
     @Test(timeout = 60000)
     public void testStartSSLServerNoKeyFile() throws Exception {
-        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyFilePath(null);
-
+        ServerConfiguration bookieConf = new ServerConfiguration(baseConf);
+        bookieConf.setSSLKeyFilePath(null);
+        ClientConfiguration conf = new ClientConfiguration(baseClientConf);
         try {
-            bs.add(startBookie(bookieConf));
-            fail("Shouldn't have been able to start");
-        } catch (SecurityException se) {
+            restartBookies(bookieConf);
+            testClient(conf, numBookies);
+            fail("Writing to ledger should have failed");
+        } catch (BKException.BKNotEnoughBookiesException se) {
             assertTrue(true);
         }
     }
@@ -281,15 +283,18 @@ public class TestSSL extends BookKeeperClusterTestCase {
     }
 
     /**
-     * Verify that a server will not start if ssl is enabled but the cert password is incorrect
+     * Verify that ledger writes fail when bookie key password is wrong.
      */
     @Test(timeout = 60000)
     public void testStartSSLServerBadPassword() throws Exception {
-        ServerConfiguration bookieConf = newServerConfiguration().setSSLKeyFilePasswordPath("badpassword");
+        ServerConfiguration bookieConf = new ServerConfiguration(baseConf);
+        bookieConf.setSSLKeyFilePasswordPath("badpassword");
+        ClientConfiguration conf = new ClientConfiguration(baseClientConf);
         try {
-            bs.add(startBookie(bookieConf));
-            fail("Shouldn't have been able to start");
-        } catch (SecurityException se) {
+            restartBookies(bookieConf);
+            testClient(conf, numBookies);
+            fail("Writing to ledger should have failed");
+        } catch (BKException.BKNotEnoughBookiesException e) {
             assertTrue(true);
         }
     }

@@ -265,6 +265,12 @@ public class BookieRequestProcessor implements RequestProcessor {
         } else {
             // there is no need to execute in a different thread as this operation is light
             SslHandler sslHandler = shFactory.newSslHandler();
+            if (sslHandler == null) {
+                LOG.error("Failed to get SSL handle");
+                response.setStatus((BookkeeperProtocol.StatusCode.EIO));
+                c.writeAndFlush(response.build());
+                return;
+            }
             c.pipeline().addFirst("ssl", sslHandler);
 
             response.setStatus(BookkeeperProtocol.StatusCode.EOK);

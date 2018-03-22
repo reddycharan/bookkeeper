@@ -57,28 +57,23 @@ import org.slf4j.LoggerFactory;
 
 public class SSLUtils {
     private final static Logger LOG = LoggerFactory.getLogger(SSLUtils.class);
-    private static final Pattern KEY_PATTERN = Pattern.compile("-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+([a-z0-9+/=\\r\\n]+)-+END\\s+.*PRIVATE\\s+KEY[^-]*-+", 2);
+    private static final Pattern KEY_PATTERN = Pattern.compile("-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+([a-z0-9+/=\\r\\n]+)-+END\\s+.*PRIVATE\\s+KEY[^-]*-+", Pattern.CASE_INSENSITIVE);
 
     public static X509Certificate[] getCertificates(String certFilePath) throws CertificateException, IOException {
         CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-        FileInputStream fileInputStream = new FileInputStream(certFilePath);
-        Collection<? extends Certificate> certificates = certificateFactory.generateCertificates(fileInputStream);
-        fileInputStream.close();
+        try (FileInputStream fileInputStream = new FileInputStream(certFilePath)) {
+            Collection<? extends Certificate> certificates = certificateFactory.generateCertificates(fileInputStream);
 
-        /* cast the return to X509Certificate */
-        return certificates.toArray(new X509Certificate[0]);
+            /* cast the return to X509Certificate */
+            return certificates.toArray(new X509Certificate[0]);
+        }
     }
 
     public static PrivateKey getPrivateKey(String keyFilePath, String keyPassword) throws IOException, NoSuchAlgorithmException,
             InvalidKeySpecException, KeyException, InvalidAlgorithmParameterException, NoSuchPaddingException {
 
         File keyFile = new File(keyFilePath);
-        FileInputStream fileInputStream = new FileInputStream(keyFile);
-        DataInputStream dataInputStream = new DataInputStream(fileInputStream);
-
-        byte[] keyBytes = new byte[(int) keyFile.length()];
-        dataInputStream.readFully(keyBytes);
-        dataInputStream.close();
+        byte[] keyBytes = FileUtils.readFileToByteArray(keyFile);
 
         Matcher m = KEY_PATTERN.matcher(new String(keyBytes));
         if (!m.find()) {
@@ -97,7 +92,11 @@ public class SSLUtils {
                 try {
                     return KeyFactory.getInstance("EC").generatePrivate(spec);
                 } catch (InvalidKeySpecException ikse2) {
-                    throw new InvalidKeySpecException("Neither RSA, DSA nor EC worked", ikse2);
+                    try {
+                        return KeyFactory.getInstance("DiffieHellman").generatePrivate(spec);
+                    } catch (InvalidKeySpecException ikse3) {
+                        throw new InvalidKeySpecException("Neither RSA, DSA, EC nor DH worked", ikse3);
+                    }
                 }
             }
         }
