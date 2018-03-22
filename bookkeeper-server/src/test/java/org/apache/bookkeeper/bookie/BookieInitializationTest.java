@@ -584,15 +584,6 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         } catch (NoWritableLedgerDirException e) {
             // expected
         }
-
-        conf.setIsForceGCAllowWhenNoSpace(false)
-            .setReadOnlyModeEnabled(true);
-        try {
-            new Bookie(conf);
-            fail("NoWritableLedgerDirException expected");
-        } catch (NoWritableLedgerDirException e) {
-            // expected
-        }
     }
 
     /**
