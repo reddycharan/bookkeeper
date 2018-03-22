@@ -17,15 +17,22 @@
  */
 package org.apache.bookkeeper.ssl;
 
-import org.apache.bookkeeper.conf.AbstractConfiguration;
-import org.apache.bookkeeper.conf.ClientConfiguration;
-import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
+import javax.crypto.NoSuchPaddingException;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import com.google.common.base.Strings;
-
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.OpenSsl;
@@ -33,25 +40,15 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslProvider;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.TrustManagerFactory;
+import org.apache.bookkeeper.conf.AbstractConfiguration;
+import org.apache.bookkeeper.conf.ClientConfiguration;
+import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SSLContextFactory implements SecurityHandlerFactory {
     public enum KeyFileType {
-        PKCS12, JKS, PEM;
+        PKCS12, JKS, PEM
     }
 
     private final static Logger LOG = LoggerFactory.getLogger(SSLContextFactory.class);
@@ -60,81 +57,8 @@ public class SSLContextFactory implements SecurityHandlerFactory {
     private String[] ciphers;
     private SslContext sslContext;
 
-    private String getPasswordFromFile(String path) throws IOException {
-        FileInputStream pwdin = new FileInputStream(path);
-        byte[] pwd;
-        try {
-            File passwdFile = new File(path);
-            if (passwdFile.length() == 0) {
-                return "";
-            }
-            pwd = FileUtils.readFileToByteArray(passwdFile);
-        } finally {
-            pwdin.close();
-        }
-        return new String(pwd, "UTF-8");
-    }
-
-    private KeyStore loadKeyFile(String keyFileType, String keyFileLocation, String keyFilePassword)
-            throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
-        KeyStore ks = KeyStore.getInstance(keyFileType);
-        FileInputStream ksin = new FileInputStream(keyFileLocation);
-        try {
-            ks.load(ksin, keyFilePassword.trim().toCharArray());
-        } finally {
-            ksin.close();
-        }
-        return ks;
-    }
-
     public String getHandlerName() {
         return SSLCONTEXT_HANDLER_NAME;
-    }
-
-    private KeyManagerFactory initKeyManagerFactory(String keyFileType, String keyFileLocation,
-            String keyFilePasswordPath) throws SecurityException, KeyStoreException, NoSuchAlgorithmException,
-            CertificateException, IOException, UnrecoverableKeyException, InvalidKeySpecException {
-        KeyManagerFactory kmf = null;
-
-        if (Strings.isNullOrEmpty(keyFileLocation)) {
-            LOG.error("Key store location cannot be empty when Mutual Authentication is enabled!");
-            throw new SecurityException("Key store location cannot be empty when Mutual Authentication is enabled!");
-        }
-
-        String keyFilePassword = "";
-        if (!Strings.isNullOrEmpty(keyFilePasswordPath)) {
-            keyFilePassword = getPasswordFromFile(keyFilePasswordPath);
-        }
-
-        // Initialize key file
-        KeyStore ks = loadKeyFile(keyFileType, keyFileLocation, keyFilePassword);
-        kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(ks, keyFilePassword.trim().toCharArray());
-
-        return kmf;
-    }
-
-    private TrustManagerFactory initTrustManagerFactory(String trustFileType, String trustFileLocation,
-            String trustFilePasswordPath)
-            throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, SecurityException {
-        TrustManagerFactory tmf;
-
-        if (Strings.isNullOrEmpty(trustFileLocation)) {
-            LOG.error("Trust Store location cannot be empty!");
-            throw new SecurityException("Trust Store location cannot be empty!");
-        }
-
-        String trustFilePassword = "";
-        if (!Strings.isNullOrEmpty(trustFilePasswordPath)) {
-            trustFilePassword = getPasswordFromFile(trustFilePasswordPath);
-        }
-
-        // Initialize trust file
-        KeyStore ts = loadKeyFile(trustFileType, trustFileLocation, trustFilePassword);
-        tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        tmf.init(ts);
-
-        return tmf;
     }
 
     private SslProvider getSslProvider(String sslProvider) {
@@ -157,7 +81,8 @@ public class SSLContextFactory implements SecurityHandlerFactory {
 
     private void createClientContext(AbstractConfiguration conf)
             throws SecurityException, KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException,
-            UnrecoverableKeyException, InvalidKeySpecException, NoSuchProviderException {
+            UnrecoverableKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, KeyException,
+            NoSuchPaddingException {
         final SslContextBuilder sslContextBuilder;
         final ClientConfiguration clientConf;
         final SslProvider provider;
@@ -178,20 +103,25 @@ public class SSLContextFactory implements SecurityHandlerFactory {
                 throw new SecurityException("CA Certificate required");
             }
 
+            X509Certificate[] trustChain = SSLUtils.getCertificates(clientConf.getSSLTrustFilePath());
+            LOG.info("Using Trust Chain: {}", SSLUtils.prettyPrintCertChain(trustChain));
+
             sslContextBuilder = SslContextBuilder.forClient()
-                    .trustManager(new File(clientConf.getSSLTrustFilePath()))
+                    .trustManager(trustChain)
                     .ciphers(null)
                     .sessionCacheSize(0)
                     .sessionTimeout(0)
                     .sslProvider(provider)
                     .clientAuth(ClientAuth.REQUIRE);
 
+
             break;
         case JKS:
             // falling thru, same as PKCS12
         case PKCS12:
-            TrustManagerFactory tmf = initTrustManagerFactory(clientConf.getSSLTrustFileType(),
+            TrustManagerFactory tmf = SSLUtils.initTrustManagerFactory(clientConf.getSSLTrustFileType(),
                     clientConf.getSSLTrustFilePath(), clientConf.getSSLTrustFilePasswordPath());
+            LOG.info("Using Trust Chain: {}", tmf);
 
             sslContextBuilder = SslContextBuilder.forClient()
                     .trustManager(tmf)
@@ -220,24 +150,29 @@ public class SSLContextFactory implements SecurityHandlerFactory {
                 }
 
                 if (!Strings.isNullOrEmpty(clientConf.getSSLKeyFilePasswordPath())) {
-                    keyPassword = getPasswordFromFile(clientConf.getSSLKeyFilePasswordPath());
+                    keyPassword = SSLUtils.getPasswordFromFile(clientConf.getSSLKeyFilePasswordPath());
                 } else {
                     keyPassword = null;
                 }
 
-                sslContextBuilder.keyManager(new File(clientConf.getSSLCertificatePath()),
-                        new File(clientConf.getSSLKeyFilePath()), keyPassword);
+                X509Certificate[] certificates = SSLUtils.getCertificates(clientConf.getSSLCertificatePath());
+                PrivateKey privateKey = SSLUtils.getPrivateKey(clientConf.getSSLKeyFilePath(), keyPassword);
+                LOG.info("Using Credentials: {}", SSLUtils.prettyPrintCertChain(certificates));
+
+                sslContextBuilder.keyManager(privateKey, certificates);
+
                 break;
             case JKS:
                 // falling thru, same as PKCS12
             case PKCS12:
-                KeyManagerFactory kmf = initKeyManagerFactory(clientConf.getSSLKeyFileType(),
+                KeyManagerFactory kmf = SSLUtils.initKeyManagerFactory(clientConf.getSSLKeyFileType(),
                         clientConf.getSSLKeyFilePath(), clientConf.getSSLKeyFilePasswordPath());
+                LOG.info("Using Credentials: {}", kmf);
 
                 sslContextBuilder.keyManager(kmf);
                 break;
             default:
-                throw new SecurityException("Invalid Keyfile type" + clientConf.getSSLKeyFileType());
+                throw new SecurityException("Invalid Keyfile type: " + clientConf.getSSLKeyFileType());
             }
         }
 
@@ -246,7 +181,7 @@ public class SSLContextFactory implements SecurityHandlerFactory {
 
     private void createServerContext(AbstractConfiguration conf) throws SecurityException, KeyStoreException,
             NoSuchAlgorithmException, CertificateException, IOException, UnrecoverableKeyException,
-            InvalidKeySpecException, NoSuchProviderException {
+            InvalidKeySpecException, InvalidAlgorithmParameterException, KeyException, NoSuchPaddingException {
         final SslContextBuilder sslContextBuilder;
         final ServerConfiguration serverConf;
         final SslProvider provider;
@@ -274,27 +209,30 @@ public class SSLContextFactory implements SecurityHandlerFactory {
             }
 
             if (!Strings.isNullOrEmpty(serverConf.getSSLKeyFilePasswordPath())) {
-                keyPassword = getPasswordFromFile(serverConf.getSSLKeyFilePasswordPath());
+                keyPassword = SSLUtils.getPasswordFromFile(serverConf.getSSLKeyFilePasswordPath());
             } else {
                 keyPassword = null;
             }
 
-            sslContextBuilder = SslContextBuilder
-                                .forServer(new File(serverConf.getSSLCertificatePath()), 
-                            new File(serverConf.getSSLKeyFilePath()), keyPassword)
-                                .ciphers(null)
-                                .sessionCacheSize(0)
-                                .sessionTimeout(0)
-                                .sslProvider(provider)
-                                .startTls(true);
+            X509Certificate[] certificates = SSLUtils.getCertificates(serverConf.getSSLCertificatePath());
+            PrivateKey privateKey = SSLUtils.getPrivateKey(serverConf.getSSLKeyFilePath(), keyPassword);
+            LOG.info("Using Credentials: {}", SSLUtils.prettyPrintCertChain(certificates));
+
+            sslContextBuilder = SslContextBuilder.forServer(privateKey, certificates)
+                    .ciphers(null)
+                    .sessionCacheSize(0)
+                    .sessionTimeout(0)
+                    .sslProvider(provider)
+                    .startTls(true);
 
             break;
         case JKS:
             // falling thru, same as PKCS12
         case PKCS12:
-            KeyManagerFactory kmf = initKeyManagerFactory(serverConf.getSSLKeyFileType(),
+            KeyManagerFactory kmf = SSLUtils.initKeyManagerFactory(serverConf.getSSLKeyFileType(),
                     serverConf.getSSLKeyFilePath(),
                     serverConf.getSSLKeyFilePasswordPath());
+            LOG.info("Using Credentials: {}", kmf);
 
             sslContextBuilder = SslContextBuilder.forServer(kmf)
                                 .ciphers(null)
@@ -316,13 +254,17 @@ public class SSLContextFactory implements SecurityHandlerFactory {
                 if (Strings.isNullOrEmpty(serverConf.getSSLTrustFilePath())) {
                     throw new SecurityException("CA Certificate chain is required");
                 }
-                sslContextBuilder.trustManager(new File(serverConf.getSSLTrustFilePath()));
+
+                X509Certificate[] trustChain = SSLUtils.getCertificates(serverConf.getSSLTrustFilePath());
+                LOG.info("Using Trust chain: {}", SSLUtils.prettyPrintCertChain(trustChain));
+                sslContextBuilder.trustManager(trustChain);
                 break;
             case JKS:
                 // falling thru, same as PKCS12
             case PKCS12:
-                TrustManagerFactory tmf = initTrustManagerFactory(serverConf.getSSLTrustFileType(),
+                TrustManagerFactory tmf = SSLUtils.initTrustManagerFactory(serverConf.getSSLTrustFileType(),
                         serverConf.getSSLTrustFilePath(), serverConf.getSSLTrustFilePasswordPath());
+                LOG.info("Using Trust chain: {}", tmf);
                 sslContextBuilder.trustManager(tmf);
                 break;
             default:
@@ -335,8 +277,8 @@ public class SSLContextFactory implements SecurityHandlerFactory {
 
     @Override
     public synchronized void init(NodeType type, AbstractConfiguration conf) throws SecurityException {
-        String enabledProtocols = "";
-        String enabledCiphers = "";
+        String enabledProtocols;
+        String enabledCiphers;
 
         enabledCiphers = conf.getSslEnabledCipherSuites();
         enabledProtocols = conf.getSslEnabledProtocols();
@@ -372,8 +314,8 @@ public class SSLContextFactory implements SecurityHandlerFactory {
             throw new SecurityException("Unable to load key manager, possibly bad password", e);
         } catch (InvalidKeySpecException e) {
             throw new SecurityException("Unable to load key manager", e);
-        } catch (NoSuchProviderException e) {
-            throw new SecurityException("No such provider", e);
+        } catch (KeyException | NoSuchPaddingException | InvalidAlgorithmParameterException e) {
+            throw new SecurityException("Invalid Key file", e);
         }
     }
 

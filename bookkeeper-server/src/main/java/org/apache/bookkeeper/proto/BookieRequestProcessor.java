@@ -31,6 +31,7 @@ import org.apache.bookkeeper.auth.AuthToken;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.processor.RequestProcessor;
+import org.apache.bookkeeper.ssl.SSLUtils;
 import org.apache.bookkeeper.ssl.SecurityException;
 import org.apache.bookkeeper.ssl.SecurityHandlerFactory;
 import org.apache.bookkeeper.ssl.SecurityHandlerFactory.NodeType;
@@ -48,6 +49,8 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SEND_RESPONSE;
+
+import java.security.cert.Certificate;
 
 public class BookieRequestProcessor implements RequestProcessor {
 
@@ -275,7 +278,14 @@ public class BookieRequestProcessor implements RequestProcessor {
                             .get(AuthHandler.ServerSideHandler.class);
                     authHandler.authProvider.onProtocolUpgrade();
                     if (future.isSuccess()) {
-                        LOG.info("Session is protected by: {}", sslHandler.engine().getSession().getCipherSuite());
+                        LOG.info("Session {} is protected by: {}", future.get(), sslHandler.engine().getSession().getCipherSuite());
+
+                        // print peer credentials
+                        Certificate[] certificates = sslHandler.engine().getSession().getPeerCertificates();
+                        if  (LOG.isDebugEnabled()) {
+                            LOG.info("Peer Certificate chain for {}: {} ", future.get(),
+                                    SSLUtils.prettyPrintCertChain(certificates));
+                        }
                     } else {
                         LOG.error("SSL Handshake failure: {}", future.cause());
                         BookkeeperProtocol.Response.Builder errResponse = BookkeeperProtocol.Response.newBuilder()

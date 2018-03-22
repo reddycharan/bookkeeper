@@ -52,6 +52,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -91,6 +92,7 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse;
+import org.apache.bookkeeper.ssl.SSLUtils;
 import org.apache.bookkeeper.ssl.SecurityException;
 import org.apache.bookkeeper.ssl.SecurityHandlerFactory;
 import org.apache.bookkeeper.ssl.SecurityHandlerFactory.NodeType;
@@ -1284,9 +1286,21 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                             }
                         } else if (future.isSuccess() && state == ConnectionState.START_TLS) {
                             rc = BKException.Code.OK;
-                            LOG.info("Successfully connected to bookie using SSL: " + addr);
+                            LOG.info("Successfully connected to bookie using SSL: {}", addr);
 
                             state = ConnectionState.CONNECTED;
+
+                            // print peer credentials
+                            SslHandler sslHandler = (SslHandler) channel.pipeline().get(SslHandler.class);
+                            LOG.info("Session {} is protected by {} ", future.get(),
+                                    sslHandler.engine().getSession().getCipherSuite());
+
+                            Certificate[] certificates = sslHandler.engine().getSession().getPeerCertificates();
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Peer Certificate Chain for {}: {} ", future.get(),
+                                        SSLUtils.prettyPrintCertChain(certificates));
+                            }
+
                             AuthHandler.ClientSideHandler authHandler = future.get().pipeline()
                                     .get(AuthHandler.ClientSideHandler.class);
                             authHandler.authProvider.onProtocolUpgrade();

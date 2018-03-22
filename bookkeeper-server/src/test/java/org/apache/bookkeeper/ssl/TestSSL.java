@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(Parameterized.class)
 public class TestSSL extends BookKeeperClusterTestCase {
 
-    static Logger LOG = LoggerFactory.getLogger(TestPerChannelBookieClient.class);
+    static Logger LOG = LoggerFactory.getLogger(TestSSL.class);
 
     private static boolean secureClientSideChannel = false;
     private static Collection<Object> secureClientSideChannelPrincipals = null;
