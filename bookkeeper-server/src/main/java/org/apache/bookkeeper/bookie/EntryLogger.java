@@ -121,10 +121,6 @@ public class EntryLogger {
             return entryLogMetadata.getLedgersMap();
         }
 
-        public boolean isLedgerDirFull() {
-            return ledgerDirsManager.isDirFull(logFile.getParentFile());
-        }
-
         public Long getLedgerId() {
             return ledgerId;
         }
@@ -321,10 +317,19 @@ public class EntryLogger {
                      * all the logs should be flushed.
                      *
                      */
-                    if (entryLogPerLedgerEnabled) {
-                        flushCurrentLogs();
-                    }
-                    flushRotatedLogs();
+                    flushCurrentLogs();
+                    super.checkpoint();
+                }
+
+                @Override
+                public void rollLogs() throws IOException {
+                    /*
+                     * rollLogs is required for singleentrylog scenario, but it
+                     * is not needed for entrylogperledger scenario, since
+                     * entries of a ledger go to a entrylog (even during
+                     * compaction) and SyncThread drives periodic checkpoint
+                     * logic.
+                     */
                 }
             };
         } else {
@@ -466,6 +471,13 @@ public class EntryLogger {
             }
             return compactionLogChannel.getLogFile();
         }
+    }
+
+    /*
+     *
+     */
+    synchronized void rollLogs() throws IOException {
+        entryLogManager.rollLogs();
     }
 
     /**
@@ -920,9 +932,14 @@ public class EntryLogger {
         File getDirForNextEntryLog(List<File> writableLedgerDirs);
 
         /*
-         *
+         * Do the operations required for checkpoint.
          */
         void checkpoint() throws IOException;
+
+        /*
+         * roll entryLogs.
+         */
+        void rollLogs() throws IOException;
     }
 
     class EntryLogManagerForSingleEntryLog implements EntryLogManager {
@@ -1010,6 +1027,11 @@ public class EntryLogger {
         public void checkpoint() throws IOException {
             flushRotatedLogs();
         }
+
+        @Override
+        public void rollLogs() throws IOException {
+            createNewLog(INVALID_LEDGERID);
+        }
     }
 
     /**
@@ -1083,7 +1105,8 @@ public class EntryLogger {
                     : readEntryLogHardLimit(ledger, entrySize);
             BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledger);
             // Create new log if logSizeLimit reached or current disk is full
-            boolean diskFull = (logChannel == null) ? false : logChannel.isLedgerDirFull();
+            boolean diskFull = (logChannel == null) ? false
+                    : ledgerDirsManager.isDirFull(logChannel.getLogFile().getParentFile());
             boolean allDisksFull = !ledgerDirsManager.hasWritableLedgerDirs();
 
             /**
@@ -1669,7 +1692,7 @@ public class EntryLogger {
      *
      */
     static class RecentEntryLogsStatus {
-        private SortedMap<Long, Boolean> entryLogsStatusMap;
+        private final SortedMap<Long, Boolean> entryLogsStatusMap;
         private long leastUnflushedLogId;
 
         RecentEntryLogsStatus(long leastUnflushedLogId) {

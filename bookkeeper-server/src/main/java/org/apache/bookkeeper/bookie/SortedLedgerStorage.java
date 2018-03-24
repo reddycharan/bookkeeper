@@ -48,6 +48,7 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
     EntryMemTable memTable;
     private ScheduledExecutorService scheduler;
     private StateManager stateManager;
+    private boolean isTransactionalCompactionEnabled;
 
     public SortedLedgerStorage() {
         super();
@@ -78,6 +79,7 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
                 .setNameFormat("SortedLedgerStorage-%d")
                 .setPriority((Thread.NORM_PRIORITY + Thread.MAX_PRIORITY) / 2).build());
         this.stateManager = stateManager;
+        this.isTransactionalCompactionEnabled = conf.getUseTransactionalCompaction();
     }
 
     @VisibleForTesting
@@ -167,7 +169,14 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
 
     @Override
     public void checkpoint(final Checkpoint checkpoint) throws IOException {
-        memTable.flush(this, checkpoint);
+        long numBytesFlushed = memTable.flush(this, checkpoint);
+        if (numBytesFlushed > 0) {
+            // if bytes are added between previous flush and this checkpoint,
+            // it means bytes might live at current active entry log, we need
+            // roll current entry log and then issue checkpoint to underlying
+            // interleaved ledger storage.
+            entryLogger.rollLogs();
+        }
         super.checkpoint(checkpoint);
     }
 
@@ -202,12 +211,39 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
             public void run() {
                 try {
                     LOG.info("Started flushing mem table.");
+                    long prevAllocLogIdBeforeFlush = entryLogger.getPreviousAllocatedEntryLogId();
                     memTable.flush(SortedLedgerStorage.this);
+                    long afterAllocLogIdBeforeFlush = entryLogger.getPreviousAllocatedEntryLogId();
                     // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
                     // if a memory table is flushed spanning over two entry log files, we also roll log. this is
                     // for performance consideration: since we don't wanna checkpoint a new log file that ledger
                     // storage is writing to.
                     if (entryLogger.rollLogsIfEntryLogLimitReached()) {
+                        checkpointer.startCheckpoint(cp);
+                    } else if ((prevAllocLogIdBeforeFlush != afterAllocLogIdBeforeFlush)
+                            && !isTransactionalCompactionEnabled) {
+                        /*
+                         * if logId is different before and after flush, we
+                         * should do rollLogs and startCheckpoint only if
+                         * TransactionalCompaction is not enabled. This is
+                         * because only when TransactionalCompaction is disabled
+                         * entries of compaction go to the same active entrylog
+                         * and can rolllog if the entrylog reaches its capacity.
+                         * If TransactionalCompaction is enabled then compaction
+                         * entries would go to different entrylog and
+                         * memTable.flush wouldn't cause active entrylog to
+                         * rollover, but still prevAllocLogIdBeforeFlush could
+                         * be different from afterAllocLogIdBeforeFlush because
+                         * PreviousAllocatedEntryLogId would covers both active
+                         * entrylog and compaction log.
+                         *
+                         * In the case of entrylogperledger both the methods
+                         * rollLogs and startCheckpoint would be no-op, because
+                         * there will be separate entrylog for each ledger (even
+                         * during compaction) and SyncThread drives periodic
+                         * checkpoint.
+                         */
+                        entryLogger.rollLogs();
                         checkpointer.startCheckpoint(cp);
                     }
                 } catch (IOException e) {
