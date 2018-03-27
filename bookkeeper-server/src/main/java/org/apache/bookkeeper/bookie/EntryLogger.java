@@ -47,7 +47,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,8 +55,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.util.IOUtils;
@@ -75,7 +72,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryLogger {
     private static final Logger LOG = LoggerFactory.getLogger(EntryLogger.class);
-    private static final Long INVALID_LEDGERID = Long.valueOf(-1);
+    static final Long INVALID_LEDGERID = Long.valueOf(-1);
     // log file suffix
     static final String LOG_FILE_SUFFIX = ".log";
 
@@ -128,7 +125,7 @@ public class EntryLogger {
          * Append the ledger map at the end of the entry log.
          * Updates the entry log file header with the offset and size of the map.
          */
-        private void appendLedgersMap() throws IOException {
+        void appendLedgersMap() throws IOException {
 
             long ledgerMapOffset = this.position();
 
@@ -358,8 +355,12 @@ public class EntryLogger {
         }
         this.recentlyCreatedEntryLogsStatus = new RecentEntryLogsStatus(logId + 1);
 
+        this.entryLoggerAllocator = new EntryLoggerAllocator(conf, ledgerDirsManager,
+                                                             recentlyCreatedEntryLogsStatus, logId);
+
         if (entryLogPerLedgerEnabled) {
-            this.entryLogManager = new EntryLogManagerForSingleEntryLog(listeners, recentlyCreatedEntryLogsStatus) {
+            this.entryLogManager = new EntryLogManagerForSingleEntryLog(ledgerDirsManager, entryLoggerAllocator,
+                                                                        listeners, recentlyCreatedEntryLogsStatus) {
                 @Override
                 public void checkpoint() throws IOException {
                     /*
@@ -385,11 +386,9 @@ public class EntryLogger {
                 }
             };
         } else {
-            this.entryLogManager = new EntryLogManagerForSingleEntryLog(listeners, recentlyCreatedEntryLogsStatus);
+            this.entryLogManager = new EntryLogManagerForSingleEntryLog(ledgerDirsManager, entryLoggerAllocator,
+                                                                        listeners, recentlyCreatedEntryLogsStatus);
         }
-        this.entryLoggerAllocator = new EntryLoggerAllocator(conf, ledgerDirsManager, entryLogManager,
-                                                             recentlyCreatedEntryLogsStatus, logId);
-        this.entryLogManager.setAllocator(this.entryLoggerAllocator);
     }
 
     void addListener(EntryLogListener listener) {
@@ -687,164 +686,9 @@ public class EntryLogger {
 
         void createNewLog(Long ledgerId) throws IOException;
 
-        void setAllocator(EntryLoggerAllocator entryLoggerAllocator);
-
         void flushRotatedLogs() throws IOException;
-    }
 
-    static class EntryLogManagerForSingleEntryLog implements EntryLogManager {
-
-        private BufferedLogChannel activeLogChannel;
-        private Lock lockForActiveLogChannel;
-        private final Set<BufferedLogChannel> rotatedLogChannels;
-        private EntryLoggerAllocator entryLoggerAllocator;
-        private final List<EntryLogListener> listeners;
-        private final RecentEntryLogsStatus recentlyCreatedEntryLogsStatus;
-
-        EntryLogManagerForSingleEntryLog(List<EntryLogListener> listeners,
-                                         RecentEntryLogsStatus recentlyCreatedEntryLogsStatus) {
-            rotatedLogChannels = ConcurrentHashMap.newKeySet();
-            lockForActiveLogChannel = new ReentrantLock();
-            this.listeners = listeners;
-            this.recentlyCreatedEntryLogsStatus = recentlyCreatedEntryLogsStatus;
-        }
-
-        @Override
-        public void setAllocator(EntryLoggerAllocator entryLoggerAllocator) {
-            this.entryLoggerAllocator = entryLoggerAllocator;
-        }
-
-        /**
-         * Creates a new log file.
-         */
-        @Override
-        public void createNewLog(Long ledgerId) throws IOException {
-            acquireLock(ledgerId);
-            try {
-                BufferedLogChannel logChannel = getCurrentLogForLedger(ledgerId);
-                // first tried to create a new log channel. add current log channel to ToFlush list only when
-                // there is a new log channel. it would prevent that a log channel is referenced by both
-                // *logChannel* and *ToFlush* list.
-                if (null != logChannel) {
-
-                    // flush the internal buffer back to filesystem but not sync disk
-                    logChannel.flush();
-
-                    // Append ledgers map at the end of entry log
-                    logChannel.appendLedgersMap();
-
-                    BufferedLogChannel newLogChannel = entryLoggerAllocator.createNewLog();
-                    setCurrentLogForLedger(ledgerId, newLogChannel);
-                    LOG.info("Flushing entry logger {} back to filesystem, pending for syncing entry loggers : {}.",
-                             logChannel.getLogId(), getCopyOfRotatedLogChannels());
-                    for (EntryLogListener listener : listeners) {
-                        listener.onRotateEntryLog();
-                    }
-                } else {
-                    setCurrentLogForLedger(ledgerId, entryLoggerAllocator.createNewLog());
-                }
-            } finally {
-                releaseLock(ledgerId);
-            }
-        }
-
-        /*
-         * since entryLogPerLedger is not enabled, it is just one lock for all
-         * ledgers.
-         */
-        @Override
-        public void acquireLock(Long ledgerId) {
-            lockForActiveLogChannel.lock();
-        }
-
-        @Override
-        public void acquireLockByCreatingIfRequired(Long ledgerId) {
-            acquireLock(ledgerId);
-        }
-
-        @Override
-        public void releaseLock(Long ledgerId) {
-            lockForActiveLogChannel.unlock();
-        }
-
-        @Override
-        public void setCurrentLogForLedger(Long ledgerId, BufferedLogChannel logChannel) {
-            acquireLock(ledgerId);
-            try {
-                BufferedLogChannel hasToRotateLogChannel = activeLogChannel;
-                activeLogChannel = logChannel;
-                if (hasToRotateLogChannel != null) {
-                    rotatedLogChannels.add(hasToRotateLogChannel);
-                }
-            } finally {
-                releaseLock(ledgerId);
-            }
-        }
-
-        @Override
-        public BufferedLogChannel getCurrentLogForLedger(Long ledgerId) {
-            return activeLogChannel;
-        }
-
-        @Override
-        public Set<BufferedLogChannel> getCopyOfRotatedLogChannels() {
-            return new HashSet<BufferedLogChannel>(rotatedLogChannels);
-        }
-
-        @Override
-        public Set<BufferedLogChannel> getCopyOfCurrentLogs() {
-            HashSet<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>();
-            copyOfCurrentLogs.add(activeLogChannel);
-            return copyOfCurrentLogs;
-        }
-
-        @Override
-        public BufferedLogChannel getCurrentLogIfPresent(long entryLogId) {
-            BufferedLogChannel activeLogChannelTemp = activeLogChannel;
-            if ((activeLogChannelTemp != null) && (activeLogChannelTemp.getLogId() == entryLogId)) {
-                return activeLogChannelTemp;
-            }
-            return null;
-        }
-
-        @Override
-        public void removeFromRotatedLogChannels(BufferedLogChannel rotatedLogChannelToRemove) {
-            rotatedLogChannels.remove(rotatedLogChannelToRemove);
-        }
-
-        @Override
-        public File getDirForNextEntryLog(List<File> writableLedgerDirs) {
-            Collections.shuffle(writableLedgerDirs);
-            return writableLedgerDirs.get(0);
-        }
-
-        @Override
-        public void checkpoint() throws IOException {
-            flushRotatedLogs();
-        }
-
-        @Override
-        public void rollLogs() throws IOException {
-            createNewLog(INVALID_LEDGERID);
-        }
-
-        @Override
-        public void flushRotatedLogs() throws IOException {
-            Set<BufferedLogChannel> channels = getCopyOfRotatedLogChannels();
-            if (null == channels) {
-                return;
-            }
-            for (BufferedLogChannel channel : channels) {
-                channel.flushAndForceWrite(true);
-                // since this channel is only used for writing, after flushing the channel,
-                // we had to close the underlying file channel. Otherwise, we might end up
-                // leaking fds which cause the disk spaces could not be reclaimed.
-                closeFileChannel(channel);
-                recentlyCreatedEntryLogsStatus.flushRotatedEntryLog(channel.getLogId());
-                removeFromRotatedLogChannels(channel);
-                LOG.info("Synced entry logger {} to disk.", channel.getLogId());
-            }
-        }
+        BufferedLogChannel createNewLogForCompaction() throws IOException;
     }
 
     /**
@@ -974,7 +818,7 @@ public class EntryLogger {
     void createNewCompactionLog() throws IOException {
         synchronized (compactionLogLock) {
             if (compactionLogChannel == null) {
-                compactionLogChannel = entryLoggerAllocator.createNewLogForCompaction();
+                compactionLogChannel = entryLogManager.createNewLogForCompaction();
             }
         }
     }
@@ -1432,7 +1276,7 @@ public class EntryLogger {
         entryLoggerAllocator.stop();
     }
 
-    private static void closeFileChannel(BufferedChannelBase channel) throws IOException {
+    static void closeFileChannel(BufferedChannelBase channel) throws IOException {
         if (null == channel) {
             return;
         }

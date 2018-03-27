@@ -44,7 +44,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,16 +62,13 @@ class EntryLoggerAllocator {
     private final boolean entryLogPreAllocationEnabled;
     private final ServerConfiguration conf;
     private final LedgerDirsManager ledgerDirsManager;
-    private final EntryLogger.EntryLogManager entryLogManager;
     private final EntryLogger.RecentEntryLogsStatus recentlyCreatedEntryLogsStatus;
 
     EntryLoggerAllocator(ServerConfiguration conf, LedgerDirsManager ledgerDirsManager,
-                         EntryLogger.EntryLogManager entryLogManager,
                          EntryLogger.RecentEntryLogsStatus recentlyCreatedEntryLogsStatus,
                          long logId) {
         this.conf = conf;
         this.ledgerDirsManager = ledgerDirsManager;
-        this.entryLogManager = entryLogManager;
         this.recentlyCreatedEntryLogsStatus = recentlyCreatedEntryLogsStatus;
 
         // Initialize the entry log header buffer. This cannot be a static object
@@ -93,11 +89,11 @@ class EntryLoggerAllocator {
         return preallocatedLogId;
     }
 
-    synchronized EntryLogger.BufferedLogChannel createNewLog() throws IOException {
+    synchronized EntryLogger.BufferedLogChannel createNewLog(File dir) throws IOException {
         EntryLogger.BufferedLogChannel bc;
         if (!entryLogPreAllocationEnabled || null == preallocation) {
             // initialization time to create a new log
-            bc = allocateNewLog();
+            bc = allocateNewLog(dir);
         } else {
             // has a preallocated entry log
             try {
@@ -132,7 +128,7 @@ class EntryLoggerAllocator {
             } catch (TimeoutException e) {
                 LOG.debug("Received TimeoutException while trying to get preallocation future result,"
                           + " which means that Future is waiting for acquiring lock on EntryLoggerAllocator.this");
-                bc = allocateNewLog();
+                bc = allocateNewLog(dir);
             }
         }
         if (entryLogPreAllocationEnabled) {
@@ -145,7 +141,7 @@ class EntryLoggerAllocator {
                 preallocation = allocatorExecutor.submit(new Callable<EntryLogger.BufferedLogChannel>() {
                         @Override
                         public EntryLogger.BufferedLogChannel call() throws IOException {
-                            return allocateNewLog();
+                            return allocateNewLog(dir);
                         }
                     });
             }
@@ -154,34 +150,19 @@ class EntryLoggerAllocator {
         return bc;
     }
 
-    synchronized EntryLogger.BufferedLogChannel createNewLogForCompaction() throws IOException {
-        return allocateNewLog(COMPACTING_SUFFIX);
+    synchronized EntryLogger.BufferedLogChannel createNewLogForCompaction(File dir) throws IOException {
+        return allocateNewLog(dir, COMPACTING_SUFFIX);
     }
 
-    synchronized EntryLogger.BufferedLogChannel allocateNewLog() throws IOException {
-        return allocateNewLog(EntryLogger.LOG_FILE_SUFFIX);
+    synchronized EntryLogger.BufferedLogChannel allocateNewLog(File dir) throws IOException {
+        return allocateNewLog(dir, EntryLogger.LOG_FILE_SUFFIX);
     }
 
     /**
      * Allocate a new log file.
      */
-    synchronized EntryLogger.BufferedLogChannel allocateNewLog(String suffix) throws IOException {
-        File dirForNextEntryLog;
-        List<File> list;
-
-        try {
-            list = ledgerDirsManager.getWritableLedgerDirs();
-        } catch (NoWritableLedgerDirException nwe) {
-            if (!ledgerDirsManager.hasWritableLedgerDirs()) {
-                list = ledgerDirsManager.getWritableLedgerDirsForNewLog();
-            } else {
-                LOG.error("All Disks are not full, but getWritableLedgerDirs threw exception ", nwe);
-                throw nwe;
-            }
-        }
-
-        dirForNextEntryLog = entryLogManager.getDirForNextEntryLog(list);
-
+    synchronized EntryLogger.BufferedLogChannel allocateNewLog(File dirForNextEntryLog, String suffix)
+            throws IOException {
         List<File> ledgersDirs = ledgerDirsManager.getAllLedgerDirs();
         String logFileName;
         while (true) {
