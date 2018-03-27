@@ -372,7 +372,7 @@ public class EntryLogger {
         this.recentlyCreatedEntryLogsStatus = new RecentEntryLogsStatus(logId + 1);
 
         if (entryLogPerLedgerEnabled) {
-            this.entryLogManager = new EntryLogManagerForSingleEntryLog() {
+            this.entryLogManager = new EntryLogManagerForSingleEntryLog(listeners, recentlyCreatedEntryLogsStatus) {
                 @Override
                 public void checkpoint() throws IOException {
                     /*
@@ -398,10 +398,11 @@ public class EntryLogger {
                 }
             };
         } else {
-            this.entryLogManager = new EntryLogManagerForSingleEntryLog();
+            this.entryLogManager = new EntryLogManagerForSingleEntryLog(listeners, recentlyCreatedEntryLogsStatus);
         }
         this.entryLoggerAllocator = new EntryLoggerAllocator(conf, ledgerDirsManager, entryLogManager,
                                                              recentlyCreatedEntryLogsStatus, logId);
+        this.entryLogManager.setAllocator(this.entryLoggerAllocator);
     }
 
     void addListener(EntryLogListener listener) {
@@ -518,7 +519,7 @@ public class EntryLogger {
                     if (reachEntryLogLimit(ledgerId, 0L)) {
                         rolledLog = true;
                         LOG.info("Rolling entry logger since it reached size limitation");
-                        createNewLog(ledgerId);
+                        entryLogManager.createNewLog(ledgerId);
                     }
                 } finally {
                     entryLogManager.releaseLock(ledgerId);
@@ -547,38 +548,6 @@ public class EntryLogger {
         entryLogManager.rollLogs();
     }
 
-    /**
-     * Creates a new log file.
-     */
-    void createNewLog(Long ledgerId) throws IOException {
-        entryLogManager.acquireLock(ledgerId);
-        try {
-            BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledgerId);
-            // first tried to create a new log channel. add current log channel to ToFlush list only when
-            // there is a new log channel. it would prevent that a log channel is referenced by both
-            // *logChannel* and *ToFlush* list.
-            if (null != logChannel) {
-
-                // flush the internal buffer back to filesystem but not sync disk
-                logChannel.flush();
-
-                // Append ledgers map at the end of entry log
-                logChannel.appendLedgersMap();
-
-                BufferedLogChannel newLogChannel = entryLoggerAllocator.createNewLog();
-                entryLogManager.setCurrentLogForLedger(ledgerId, newLogChannel);
-                LOG.info("Flushing entry logger {} back to filesystem, pending for syncing entry loggers : {}.",
-                        logChannel.getLogId(), entryLogManager.getCopyOfRotatedLogChannels());
-                for (EntryLogListener listener : listeners) {
-                    listener.onRotateEntryLog();
-                }
-            } else {
-                entryLogManager.setCurrentLogForLedger(ledgerId, entryLoggerAllocator.createNewLog());
-            }
-        } finally {
-            entryLogManager.releaseLock(ledgerId);
-        }
-    }
 
     /**
      * get EntryLoggerAllocator, Just for tests.
@@ -949,17 +918,68 @@ public class EntryLogger {
          * roll entryLogs.
          */
         void rollLogs() throws IOException;
+
+        void createNewLog(Long ledgerId) throws IOException;
+
+        void setAllocator(EntryLoggerAllocator entryLoggerAllocator);
+
+        void flushRotatedLogs() throws IOException;
     }
 
-    class EntryLogManagerForSingleEntryLog implements EntryLogManager {
+    static class EntryLogManagerForSingleEntryLog implements EntryLogManager {
 
         private BufferedLogChannel activeLogChannel;
         private Lock lockForActiveLogChannel;
         private final Set<BufferedLogChannel> rotatedLogChannels;
+        private EntryLoggerAllocator entryLoggerAllocator;
+        private final List<EntryLogListener> listeners;
+        private final RecentEntryLogsStatus recentlyCreatedEntryLogsStatus;
 
-        EntryLogManagerForSingleEntryLog() {
+        EntryLogManagerForSingleEntryLog(List<EntryLogListener> listeners,
+                                         RecentEntryLogsStatus recentlyCreatedEntryLogsStatus) {
             rotatedLogChannels = ConcurrentHashMap.newKeySet();
             lockForActiveLogChannel = new ReentrantLock();
+            this.listeners = listeners;
+            this.recentlyCreatedEntryLogsStatus = recentlyCreatedEntryLogsStatus;
+        }
+
+        @Override
+        public void setAllocator(EntryLoggerAllocator entryLoggerAllocator) {
+            this.entryLoggerAllocator = entryLoggerAllocator;
+        }
+
+        /**
+         * Creates a new log file.
+         */
+        @Override
+        public void createNewLog(Long ledgerId) throws IOException {
+            acquireLock(ledgerId);
+            try {
+                BufferedLogChannel logChannel = getCurrentLogForLedger(ledgerId);
+                // first tried to create a new log channel. add current log channel to ToFlush list only when
+                // there is a new log channel. it would prevent that a log channel is referenced by both
+                // *logChannel* and *ToFlush* list.
+                if (null != logChannel) {
+
+                    // flush the internal buffer back to filesystem but not sync disk
+                    logChannel.flush();
+
+                    // Append ledgers map at the end of entry log
+                    logChannel.appendLedgersMap();
+
+                    BufferedLogChannel newLogChannel = entryLoggerAllocator.createNewLog();
+                    setCurrentLogForLedger(ledgerId, newLogChannel);
+                    LOG.info("Flushing entry logger {} back to filesystem, pending for syncing entry loggers : {}.",
+                             logChannel.getLogId(), getCopyOfRotatedLogChannels());
+                    for (EntryLogListener listener : listeners) {
+                        listener.onRotateEntryLog();
+                    }
+                } else {
+                    setCurrentLogForLedger(ledgerId, entryLoggerAllocator.createNewLog());
+                }
+            } finally {
+                releaseLock(ledgerId);
+            }
         }
 
         /*
@@ -1041,6 +1061,24 @@ public class EntryLogger {
         public void rollLogs() throws IOException {
             createNewLog(INVALID_LEDGERID);
         }
+
+        @Override
+        public void flushRotatedLogs() throws IOException {
+            Set<BufferedLogChannel> channels = getCopyOfRotatedLogChannels();
+            if (null == channels) {
+                return;
+            }
+            for (BufferedLogChannel channel : channels) {
+                channel.flushAndForceWrite(true);
+                // since this channel is only used for writing, after flushing the channel,
+                // we had to close the underlying file channel. Otherwise, we might end up
+                // leaking fds which cause the disk spaces could not be reclaimed.
+                closeFileChannel(channel);
+                recentlyCreatedEntryLogsStatus.flushRotatedEntryLog(channel.getLogId());
+                removeFromRotatedLogChannels(channel);
+                LOG.info("Synced entry logger {} to disk.", channel.getLogId());
+            }
+        }
     }
 
     /**
@@ -1051,26 +1089,10 @@ public class EntryLogger {
         entryLogManager.checkpoint();
     }
 
-    void flushRotatedLogs() throws IOException {
-        Set<BufferedLogChannel> channels = entryLogManager.getCopyOfRotatedLogChannels();
-        if (null == channels) {
-            return;
-        }
-        for (BufferedLogChannel channel : channels) {
-            channel.flushAndForceWrite(true);
-            // since this channel is only used for writing, after flushing the channel,
-            // we had to close the underlying file channel. Otherwise, we might end up
-            // leaking fds which cause the disk spaces could not be reclaimed.
-            closeFileChannel(channel);
-            recentlyCreatedEntryLogsStatus.flushRotatedEntryLog(channel.getLogId());
-            entryLogManager.removeFromRotatedLogChannels(channel);
-            LOG.info("Synced entry logger {} to disk.", channel.getLogId());
-        }
-    }
 
     public void flush() throws IOException {
         flushCurrentLogs();
-        flushRotatedLogs();
+        entryLogManager.flushRotatedLogs();
     }
 
     void flushCurrentLogs() throws IOException {
@@ -1128,7 +1150,7 @@ public class EntryLogger {
              */
             if ((diskFull && (!allDisksFull)) || reachEntryLogLimit || (logChannel == null)) {
                 flushCurrentLog(logChannel, false);
-                createNewLog(ledger);
+                entryLogManager.createNewLog(ledger);
             }
 
             logChannel = entryLogManager.getCurrentLogForLedger(ledger);

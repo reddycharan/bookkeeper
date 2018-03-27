@@ -37,7 +37,7 @@ public class ReadOnlyEntryLogger extends EntryLogger {
                 new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold())));
     }
 
-    @Override
+    //@Override
     void createNewLog(Long ledgerId) throws IOException {
         throw new IOException("Can't create new entry log using a readonly entry logger.");
     }
