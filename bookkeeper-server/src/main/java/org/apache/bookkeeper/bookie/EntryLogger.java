@@ -232,7 +232,6 @@ public class EntryLogger {
 
     final EntryLoggerAllocator entryLoggerAllocator;
     final EntryLogManager entryLogManager;
-    private final boolean entryLogPreAllocationEnabled;
     private final CopyOnWriteArrayList<EntryLogListener> listeners = new CopyOnWriteArrayList<EntryLogListener>();
 
     private static final int HEADER_V0 = 0; // Old log file format (no ledgers map index)
@@ -264,7 +263,6 @@ public class EntryLogger {
      * </pre>
      */
     static final int LOGFILE_HEADER_SIZE = 1024;
-    final ByteBuf logfileHeader = Unpooled.buffer(LOGFILE_HEADER_SIZE);
 
     static final int HEADER_VERSION_POSITION = 4;
     static final int LEDGERS_MAP_OFFSET_POSITION = HEADER_VERSION_POSITION + 4;
@@ -357,16 +355,7 @@ public class EntryLogger {
         }
         // log size limit
         this.logSizeLimit = Math.min(conf.getEntryLogSizeLimit(), MAX_LOG_SIZE_LIMIT);
-        this.entryLogPreAllocationEnabled = conf.isEntryLogFilePreAllocationEnabled();
 
-        // Initialize the entry log header buffer. This cannot be a static object
-        // since in our unit tests, we run multiple Bookies and thus EntryLoggers
-        // within the same JVM. All of these Bookie instances access this header
-        // so there can be race conditions when entry logs are rolled over and
-        // this header buffer is cleared before writing it into the new logChannel.
-        logfileHeader.writeBytes("BKLO".getBytes(UTF_8));
-        logfileHeader.writeInt(HEADER_CURRENT_VERSION);
-        logfileHeader.writerIndex(LOGFILE_HEADER_SIZE);
 
         // Find the largest logId
         long logId = INVALID_LID;
@@ -381,7 +370,7 @@ public class EntryLogger {
             }
         }
         this.recentlyCreatedEntryLogsStatus = new RecentEntryLogsStatus(logId + 1);
-        this.entryLoggerAllocator = new EntryLoggerAllocator(logId);
+
         if (entryLogPerLedgerEnabled) {
             this.entryLogManager = new EntryLogManagerForSingleEntryLog() {
                 @Override
@@ -411,6 +400,8 @@ public class EntryLogger {
         } else {
             this.entryLogManager = new EntryLogManagerForSingleEntryLog();
         }
+        this.entryLoggerAllocator = new EntryLoggerAllocator(conf, ledgerDirsManager, entryLogManager,
+                                                             recentlyCreatedEntryLogsStatus, logId);
     }
 
     void addListener(EntryLogListener listener) {
@@ -599,15 +590,38 @@ public class EntryLogger {
     /**
      * An allocator pre-allocates entry log files.
      */
-    class EntryLoggerAllocator {
+    static class EntryLoggerAllocator {
+        final ByteBuf logfileHeader = Unpooled.buffer(LOGFILE_HEADER_SIZE);
 
         private long preallocatedLogId;
         Future<BufferedLogChannel> preallocation = null;
         private ExecutorService allocatorExecutor;
+        private final boolean entryLogPreAllocationEnabled;
+        private final ServerConfiguration conf;
+        private final LedgerDirsManager ledgerDirsManager;
+        private final EntryLogManager entryLogManager;
+        private final RecentEntryLogsStatus recentlyCreatedEntryLogsStatus;
 
-        EntryLoggerAllocator(long logId) {
+        EntryLoggerAllocator(ServerConfiguration conf, LedgerDirsManager ledgerDirsManager,
+                             EntryLogManager entryLogManager, RecentEntryLogsStatus recentlyCreatedEntryLogsStatus,
+                             long logId) {
+            this.conf = conf;
+            this.ledgerDirsManager = ledgerDirsManager;
+            this.entryLogManager = entryLogManager;
+            this.recentlyCreatedEntryLogsStatus = recentlyCreatedEntryLogsStatus;
+
+            // Initialize the entry log header buffer. This cannot be a static object
+            // since in our unit tests, we run multiple Bookies and thus EntryLoggers
+            // within the same JVM. All of these Bookie instances access this header
+            // so there can be race conditions when entry logs are rolled over and
+            // this header buffer is cleared before writing it into the new logChannel.
+            logfileHeader.writeBytes("BKLO".getBytes(UTF_8));
+            logfileHeader.writeInt(HEADER_CURRENT_VERSION);
+            logfileHeader.writerIndex(LOGFILE_HEADER_SIZE);
+
             preallocatedLogId = logId;
             allocatorExecutor = Executors.newSingleThreadExecutor();
+            this.entryLogPreAllocationEnabled = conf.isEntryLogFilePreAllocationEnabled();
         }
 
         synchronized long getPreallocatedLogId(){
@@ -798,7 +812,7 @@ public class EntryLogger {
     /**
      * writes the given id to the "lastId" file in the given directory.
      */
-    private void setLastLogId(File dir, long logId) throws IOException {
+    private static void setLastLogId(File dir, long logId) throws IOException {
         FileOutputStream fos;
         fos = new FileOutputStream(new File(dir, "lastId"));
         BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos, UTF_8));
