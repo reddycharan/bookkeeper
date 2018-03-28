@@ -25,3 +25,7 @@ dependency-reduced-pom.xml
 
 deploy*
 */logs/*
+bookkeeper-server/src/test/resources/*.pem
+bookkeeper-server/src/test/resources/*.jks
+bookkeeper-server/src/test/resources/*.p12
+bookkeeper-server/src/test/resources/keyStore*.txt
