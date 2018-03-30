@@ -211,37 +211,25 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
             public void run() {
                 try {
                     LOG.info("Started flushing mem table.");
-                    long prevAllocLogIdBeforeFlush = entryLogger.getPreviousAllocatedEntryLogId();
+                    long logIdBeforeFlush = entryLogger.getCurrentLogId();
                     memTable.flush(SortedLedgerStorage.this);
-                    long afterAllocLogIdBeforeFlush = entryLogger.getPreviousAllocatedEntryLogId();
+                    long logIdAfterFlush = entryLogger.getCurrentLogId();
                     // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
                     // if a memory table is flushed spanning over two entry log files, we also roll log. this is
                     // for performance consideration: since we don't wanna checkpoint a new log file that ledger
                     // storage is writing to.
                     if (entryLogger.rollLogsIfEntryLogLimitReached()) {
                         checkpointer.startCheckpoint(cp);
-                    } else if ((prevAllocLogIdBeforeFlush != afterAllocLogIdBeforeFlush)
-                            && !isTransactionalCompactionEnabled) {
+                    } else if (logIdBeforeFlush != logIdAfterFlush) {
                         /*
-                         * if logId is different before and after flush, we
-                         * should do rollLogs and startCheckpoint only if
-                         * TransactionalCompaction is not enabled. This is
-                         * because only when TransactionalCompaction is disabled
-                         * entries of compaction go to the same active entrylog
-                         * and can rolllog if the entrylog reaches its capacity.
-                         * If TransactionalCompaction is enabled then compaction
-                         * entries would go to different entrylog and
-                         * memTable.flush wouldn't cause active entrylog to
-                         * rollover, but still prevAllocLogIdBeforeFlush could
-                         * be different from afterAllocLogIdBeforeFlush because
-                         * PreviousAllocatedEntryLogId would covers both active
-                         * entrylog and compaction log.
-                         *
-                         * In the case of entrylogperledger both the methods
-                         * rollLogs and startCheckpoint would be no-op, because
-                         * there will be separate entrylog for each ledger (even
-                         * during compaction) and SyncThread drives periodic
-                         * checkpoint.
+                         * In the case of entrylogperledger since there will be
+                         * separate entrylog for each ledger (even during
+                         * compaction) and SyncThread drives periodic
+                         * checkpoint, this if block wouldn't be needed. In the
+                         * first place, it wouldn't get to this if block since
+                         * logIdBeforeFlush and logIdAfterFlush would be some
+                         * constant value and both the methods rollLogs and
+                         * startCheckpoint would be no-op.
                          */
                         entryLogger.rollLogs();
                         checkpointer.startCheckpoint(cp);

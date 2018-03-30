@@ -407,6 +407,15 @@ public class EntryLogger {
                      * logic.
                      */
                 }
+
+                @Override
+                public long getCurrentLogId() {
+                    /*
+                     * EntryLogManager for entrylogperledger would
+                     * return some constant ledgerid value.
+                     */
+                    return INVALID_LEDGERID;
+                }
             };
         } else {
             this.entryLogManager = new EntryLogManagerForSingleEntryLog();
@@ -549,11 +558,12 @@ public class EntryLogger {
         }
     }
 
-    /*
-     *
-     */
-    synchronized void rollLogs() throws IOException {
+    void rollLogs() throws IOException {
         entryLogManager.rollLogs();
+    }
+
+    long getCurrentLogId() {
+        return entryLogManager.getCurrentLogId();
     }
 
     /**
@@ -935,11 +945,19 @@ public class EntryLogger {
          * roll entryLogs.
          */
         void rollLogs() throws IOException;
+
+        /*
+         * gets the log id of the current activeEntryLog. for
+         * EntryLogManagerForSingleEntryLog it returns logid of current
+         * activelog, for EntryLogManagerForEntryLogPerLedger it would return
+         * some constant value.
+         */
+        long getCurrentLogId();
     }
 
     class EntryLogManagerForSingleEntryLog implements EntryLogManager {
 
-        private BufferedLogChannel activeLogChannel;
+        private volatile BufferedLogChannel activeLogChannel;
         private Lock lockForActiveLogChannel;
         private final Set<BufferedLogChannel> rotatedLogChannels;
 
@@ -1026,6 +1044,11 @@ public class EntryLogger {
         @Override
         public void rollLogs() throws IOException {
             createNewLog(INVALID_LEDGERID);
+        }
+
+        @Override
+        public long getCurrentLogId() {
+            return activeLogChannel.getLogId();
         }
     }
 
@@ -1155,7 +1178,7 @@ public class EntryLogger {
     void flushCompactionLog() throws IOException {
         synchronized (compactionLogLock) {
             if (compactionLogChannel != null) {
-                appendLedgersMap(compactionLogChannel);
+                compactionLogChannel.appendLedgersMap();
                 compactionLogChannel.flushAndForceWrite(false);
                 LOG.info("Flushed compaction log file {} with logId.",
                     compactionLogChannel.getLogFile(),
