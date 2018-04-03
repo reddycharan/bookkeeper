@@ -856,11 +856,20 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
     /**
      * Closes the bookie client permanently. It cannot be reused.
+     * But, does not wait for completion of channel close.
      */
     public void close() {
-        close(true);
+        close(false);
     }
 
+    /**
+     * Closes the bookie client permanently. It cannot be reused.
+     *
+     * @param wait will wait for channel to close if set to true.
+     *             when true, caller will be blocked indefinitely until
+     *             channel is closed. So, this method should be called
+     *             outside of netty IO thread context to avoid deadlock.
+     */
     public void close(boolean wait) {
         LOG.info("Closing the per channel bookie client for {}", addr);
         closeLock.writeLock().lock();
@@ -884,7 +893,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     }
 
     private void closeInternal(boolean permanent, boolean wait) {
-        Channel toClose = null;
+        Channel toClose;
         synchronized (this) {
             if (permanent) {
                 state = ConnectionState.CLOSED;
@@ -895,6 +904,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             channel = null;
             makeWritable();
         }
+
+        LOG.info("Closing channel: {} with wait: {}, pcbc new state: {}", toClose, wait, state);
         if (toClose != null) {
             ChannelFuture cf = closeChannel(toClose);
             if (wait) {
@@ -2193,7 +2204,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         LOG.error("TLS failure on: {}, rc: {}", channel, rc);
         Queue<GenericCallback<PerChannelBookieClient>> oldPendingOps;
         synchronized (this) {
-            disconnect();
+            disconnect(false);
             oldPendingOps = pendingOps;
             pendingOps = new ArrayDeque<>();
         }
