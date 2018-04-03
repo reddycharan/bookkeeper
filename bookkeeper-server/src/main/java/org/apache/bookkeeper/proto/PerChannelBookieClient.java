@@ -859,11 +859,20 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
     /**
      * Closes the bookie client permanently. It cannot be reused.
+     * But, does not wait for completion of channel close.
      */
     public void close() {
-        close(true);
+        close(false);
     }
 
+    /**
+     * Closes the bookie client permanently. It cannot be reused.
+     *
+     * @param wait will wait for channel to close if set to true.
+     *             when true, caller will be blocked indefinitely until
+     *             channel is closed. So, this method should be called
+     *             outside of netty IO thread context to avoid deadlock.
+     */
     public void close(boolean wait) {
         LOG.info("Closing the per channel bookie client for {}", addr);
         closeLock.writeLock().lock();
@@ -880,7 +889,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     }
 
     private void closeInternal(boolean permanent, boolean wait) {
-        Channel toClose = null;
+        Channel toClose;
         synchronized (this) {
             if (permanent) {
                 state = ConnectionState.CLOSED;
@@ -890,6 +899,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             toClose = channel;
             channel = null;
         }
+
+        LOG.info("Closing channel: {} with wait: {}, pcbc new state: {}", toClose, wait, state);
         if (toClose != null) {
             ChannelFuture cf = closeChannel(toClose);
             if (wait) {
@@ -1937,7 +1948,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     public ChannelFuture channelWrite(Object msg, long timeoutMillis) {
         if (channel == null) {
             return new DefaultChannelPromise(channel)
-                    .setFailure(new Exception("cannot write to disconnected channel"));
+                    .setFailure(new Exception("cannot write to disconnected channel. Channel state: " + state));
         }
         if (!channel.isWritable() && timeoutMillis > 0) {
             final long startTime = MathUtils.nowInNano();
@@ -1946,7 +1957,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                 while (channel == null || !channel.isWritable()) {
                     if (channel == null || !channel.isActive() || MathUtils.nowInNano() > maxSleepUntil) {
                         sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
-                        return new DefaultChannelPromise(channel).setFailure(new Exception("cannot write to disconnected channel"));
+                        return new DefaultChannelPromise(channel).setFailure(
+                                new Exception("cannot write to disconnected channel. Channel state: " + state));
                     }
                     try {
                         long sleepFor = TimeUnit.NANOSECONDS.toMillis(maxSleepUntil - MathUtils.nowInNano());
@@ -2008,7 +2020,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         LOG.error("SSL failure on: {}, rc: {}", channel, rc);
         Queue<GenericCallback<PerChannelBookieClient>> oldPendingOps;
         synchronized(this) {
-            disconnect();
+            disconnect(false);
             oldPendingOps = pendingOps;
             pendingOps = new ArrayDeque<>();
         }
