@@ -38,11 +38,6 @@ public class ReadOnlyEntryLogger extends EntryLogger {
     }
 
     @Override
-    void createNewLog(Long ledgerId) throws IOException {
-        throw new IOException("Can't create new entry log using a readonly entry logger.");
-    }
-
-    @Override
     protected boolean removeEntryLog(long entryLogId) {
         // can't remove entry log in readonly mode
         return false;
