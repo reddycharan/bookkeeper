@@ -161,5 +161,14 @@ class ReadEntryProcessorV3 extends PacketProcessorBaseV3 {
                      response.build(),
                      requestProcessor.readRequestStats);
     }
+
+    /**
+     * this toString method filters out masterKey from the output. masterKey
+     * contains the password of the ledger.
+     */
+    @Override
+    public String toString() {
+        return RequestUtils.toSafeString(request);
+    }
 }
 
