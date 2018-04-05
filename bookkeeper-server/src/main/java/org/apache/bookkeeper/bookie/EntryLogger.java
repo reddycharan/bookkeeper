@@ -68,8 +68,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -522,28 +520,7 @@ public class EntryLogger {
     }
 
     boolean rollLogsIfEntryLogLimitReached() throws IOException {
-        // for this add ledgerid to bufferedlogchannel, getcopyofcurrentlogs get
-        // ledgerid, lock it only if there is new data
-        // so that cache accesstime is not changed
-
-        boolean rolledLog = false;
-        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
-        for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
-            if (currentLog.position() > logSizeLimit) {
-                Long ledgerId = currentLog.getLedgerId();
-                entryLogManager.acquireLock(ledgerId);
-                try {
-                    if (reachEntryLogLimit(ledgerId, 0L)) {
-                        rolledLog = true;
-                        LOG.info("Rolling entry logger since it reached size limitation");
-                        createNewLog(ledgerId);
-                    }
-                } finally {
-                    entryLogManager.releaseLock(ledgerId);
-                }
-            }
-        }
-        return rolledLog;
+        return entryLogManager.rollLogsIfEntryLogLimitReached();
     }
 
     /**
@@ -564,39 +541,6 @@ public class EntryLogger {
 
     long getCurrentLogId() {
         return entryLogManager.getCurrentLogId();
-    }
-
-    /**
-     * Creates a new log file.
-     */
-    void createNewLog(Long ledgerId) throws IOException {
-        entryLogManager.acquireLock(ledgerId);
-        try {
-            BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledgerId);
-            // first tried to create a new log channel. add current log channel to ToFlush list only when
-            // there is a new log channel. it would prevent that a log channel is referenced by both
-            // *logChannel* and *ToFlush* list.
-            if (null != logChannel) {
-
-                // flush the internal buffer back to filesystem but not sync disk
-                logChannel.flush();
-
-                // Append ledgers map at the end of entry log
-                logChannel.appendLedgersMap();
-
-                BufferedLogChannel newLogChannel = entryLoggerAllocator.createNewLog();
-                entryLogManager.setCurrentLogForLedger(ledgerId, newLogChannel);
-                LOG.info("Flushing entry logger {} back to filesystem, pending for syncing entry loggers : {}.",
-                        logChannel.getLogId(), entryLogManager.getCopyOfRotatedLogChannels());
-                for (EntryLogListener listener : listeners) {
-                    listener.onRotateEntryLog();
-                }
-            } else {
-                entryLogManager.setCurrentLogForLedger(ledgerId, entryLoggerAllocator.createNewLog());
-            }
-        } finally {
-            entryLogManager.releaseLock(ledgerId);
-        }
     }
 
     /**
@@ -882,54 +826,18 @@ public class EntryLogger {
     }
 
     interface EntryLogManager {
-        /*
-         * acquire lock for this ledger.
-         */
-        void acquireLock(Long ledgerId);
 
         /*
-         * acquire lock for this ledger if it is not already available for this
-         * ledger then it will create a new one and then acquire lock.
+         * add entry to the corresponding entrylog and return the position of
+         * the entry in the entrylog
          */
-        void acquireLockByCreatingIfRequired(Long ledgerId);
-
-        /*
-         * release lock for this ledger
-         */
-        void releaseLock(Long ledgerId);
-
-        /*
-         * sets the logChannel for the given ledgerId. The previous one will be
-         * removed from replicaOfCurrentLogChannels. Previous logChannel will be
-         * added to rotatedLogChannels.
-         */
-        void setCurrentLogForLedger(Long ledgerId, BufferedLogChannel logChannel);
-
-        /*
-         * gets the logChannel for the given ledgerId.
-         */
-        BufferedLogChannel getCurrentLogForLedger(Long ledgerId);
-
-        /*
-         * gets the copy of rotatedLogChannels
-         */
-        Set<BufferedLogChannel> getCopyOfRotatedLogChannels();
-
-        /*
-         * gets the copy of replicaOfCurrentLogChannels
-         */
-        Set<BufferedLogChannel> getCopyOfCurrentLogs();
+        long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException;
 
         /*
          * gets the active logChannel with the given entryLogId. null if it is
          * not existing.
          */
         BufferedLogChannel getCurrentLogIfPresent(long entryLogId);
-
-        /*
-         * removes the logChannel from rotatedLogChannels collection
-         */
-        void removeFromRotatedLogChannels(BufferedLogChannel rotatedLogChannelToRemove);
 
         /*
          * Returns eligible writable ledger dir for the creation next entrylog
@@ -953,175 +861,46 @@ public class EntryLogger {
          * some constant value.
          */
         long getCurrentLogId();
-    }
-
-    class EntryLogManagerForSingleEntryLog implements EntryLogManager {
-
-        private volatile BufferedLogChannel activeLogChannel;
-        private Lock lockForActiveLogChannel;
-        private final Set<BufferedLogChannel> rotatedLogChannels;
-
-        EntryLogManagerForSingleEntryLog() {
-            rotatedLogChannels = ConcurrentHashMap.newKeySet();
-            lockForActiveLogChannel = new ReentrantLock();
-        }
 
         /*
-         * since entryLogPerLedger is not enabled, it is just one lock for all
-         * ledgers.
+         * roll entryLogs if entrylog has reached its limit.
          */
-        @Override
-        public void acquireLock(Long ledgerId) {
-            lockForActiveLogChannel.lock();
-        }
+        boolean rollLogsIfEntryLogLimitReached() throws IOException;
 
-        @Override
-        public void acquireLockByCreatingIfRequired(Long ledgerId) {
-            acquireLock(ledgerId);
-        }
+        /*
+         * flush rotated logs.
+         */
+        void flushRotatedLogs() throws IOException;
 
-        @Override
-        public void releaseLock(Long ledgerId) {
-            lockForActiveLogChannel.unlock();
-        }
+        /*
+         * flush current logs.
+         */
+        void flushCurrentLogs() throws IOException;
 
-        @Override
-        public void setCurrentLogForLedger(Long ledgerId, BufferedLogChannel logChannel) {
-            acquireLock(ledgerId);
-            try {
-                BufferedLogChannel hasToRotateLogChannel = activeLogChannel;
-                activeLogChannel = logChannel;
-                if (hasToRotateLogChannel != null) {
-                    rotatedLogChannels.add(hasToRotateLogChannel);
-                }
-            } finally {
-                releaseLock(ledgerId);
-            }
-        }
+        /*
+         * close current logs.
+         */
+        void closeCurrentLogs() throws IOException;
 
-        @Override
-        public BufferedLogChannel getCurrentLogForLedger(Long ledgerId) {
-            return activeLogChannel;
-        }
-
-        @Override
-        public Set<BufferedLogChannel> getCopyOfRotatedLogChannels() {
-            return new HashSet<BufferedLogChannel>(rotatedLogChannels);
-        }
-
-        @Override
-        public Set<BufferedLogChannel> getCopyOfCurrentLogs() {
-            HashSet<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>();
-            copyOfCurrentLogs.add(activeLogChannel);
-            return copyOfCurrentLogs;
-        }
-
-        @Override
-        public BufferedLogChannel getCurrentLogIfPresent(long entryLogId) {
-            BufferedLogChannel activeLogChannelTemp = activeLogChannel;
-            if ((activeLogChannelTemp != null) && (activeLogChannelTemp.getLogId() == entryLogId)) {
-                return activeLogChannelTemp;
-            }
-            return null;
-        }
-
-        @Override
-        public void removeFromRotatedLogChannels(BufferedLogChannel rotatedLogChannelToRemove) {
-            rotatedLogChannels.remove(rotatedLogChannelToRemove);
-        }
-
-        @Override
-        public File getDirForNextEntryLog(List<File> writableLedgerDirs) {
-            Collections.shuffle(writableLedgerDirs);
-            return writableLedgerDirs.get(0);
-        }
-
-        @Override
-        public void checkpoint() throws IOException {
-            flushRotatedLogs();
-        }
-
-        @Override
-        public void rollLogs() throws IOException {
-            createNewLog(INVALID_LEDGERID);
-        }
-
-        @Override
-        public long getCurrentLogId() {
-            return activeLogChannel.getLogId();
-        }
+        /*
+         * force close current logs.
+         */
+        void forceCloseCurrentLogs();
     }
 
-    /**
-     * Flushes all rotated log channels. After log channels are flushed,
-     * move leastUnflushedLogId ptr to current logId.
-     */
-    void checkpoint() throws IOException {
-        entryLogManager.checkpoint();
-    }
+    abstract class EntryLogManagerBase implements EntryLogManager {
+        private final Set<BufferedLogChannel> rotatedLogChannels;
 
-    void flushRotatedLogs() throws IOException {
-        Set<BufferedLogChannel> channels = entryLogManager.getCopyOfRotatedLogChannels();
-        if (null == channels) {
-            return;
+        EntryLogManagerBase() {
+            rotatedLogChannels = ConcurrentHashMap.newKeySet();
         }
-        for (BufferedLogChannel channel : channels) {
-            channel.flushAndForceWrite(true);
-            // since this channel is only used for writing, after flushing the channel,
-            // we had to close the underlying file channel. Otherwise, we might end up
-            // leaking fds which cause the disk spaces could not be reclaimed.
-            closeFileChannel(channel);
-            recentlyCreatedEntryLogsStatus.flushRotatedEntryLog(channel.getLogId());
-            entryLogManager.removeFromRotatedLogChannels(channel);
-            LOG.info("Synced entry logger {} to disk.", channel.getLogId());
-        }
-    }
 
-    public void flush() throws IOException {
-        flushCurrentLogs();
-        flushRotatedLogs();
-    }
+        public long nonSynchronizedAddEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
 
-    void flushCurrentLogs() throws IOException {
-        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
-        for (BufferedLogChannel logChannel : copyOfCurrentLogs) {
-            /**
-             * flushCurrentLogs method is called during checkpoint, so metadata
-             * of the file also should be force written.
-             */
-            flushCurrentLog(logChannel, true);
-        }
-    }
-
-    void flushCurrentLog(BufferedLogChannel logChannel, boolean forceMetadata) throws IOException {
-        if (logChannel != null) {
-            logChannel.flushAndForceWrite(forceMetadata);
-            LOG.debug("Flush and sync current entry logger {}", logChannel.getLogId());
-        }
-    }
-
-    long addEntry(Long ledger, ByteBuffer entry) throws IOException {
-        return addEntry(ledger, Unpooled.wrappedBuffer(entry), true);
-    }
-
-    long addEntry(Long ledger, ByteBuf entry) throws IOException {
-        return addEntry(ledger, entry, true);
-    }
-
-    private final FastThreadLocal<ByteBuf> sizeBuffer = new FastThreadLocal<ByteBuf>() {
-        @Override
-        protected ByteBuf initialValue() throws Exception {
-            return Unpooled.buffer(4);
-        }
-    };
-
-    public long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
-        entryLogManager.acquireLockByCreatingIfRequired(ledger);
-        try {
             int entrySize = entry.readableBytes() + 4; // Adding 4 bytes to prepend the size
-            boolean reachEntryLogLimit = rollLog ? reachEntryLogLimit(ledger, entrySize)
-                    : readEntryLogHardLimit(ledger, entrySize);
-            BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledger);
+            BufferedLogChannel logChannel = getCurrentLogForLedger(ledger);
+            boolean reachEntryLogLimit = rollLog ? reachEntryLogLimit(logChannel, entrySize)
+                    : readEntryLogHardLimit(logChannel, entrySize);
             // Create new log if logSizeLimit reached or current disk is full
             boolean diskFull = (logChannel == null) ? false
                     : ledgerDirsManager.isDirFull(logChannel.getLogFile().getParentFile());
@@ -1140,8 +919,8 @@ public class EntryLogger {
                 createNewLog(ledger);
             }
 
-            logChannel = entryLogManager.getCurrentLogForLedger(ledger);
-            ByteBuf sizeBuffer = this.sizeBuffer.get();
+            logChannel = getCurrentLogForLedger(ledger);
+            ByteBuf sizeBuffer = EntryLogger.this.sizeBuffer.get();
             sizeBuffer.clear();
             sizeBuffer.writeInt(entry.readableBytes());
             logChannel.write(sizeBuffer);
@@ -1151,10 +930,224 @@ public class EntryLogger {
             logChannel.registerWrittenEntry(ledger, entrySize);
 
             return (logChannel.getLogId() << 32L) | pos;
-        } finally {
-            entryLogManager.releaseLock(ledger);
+        }
+
+        boolean reachEntryLogLimit(BufferedLogChannel logChannel, long size) {
+            if (logChannel == null) {
+                return false;
+            }
+            return logChannel.position() + size > logSizeLimit;
+        }
+
+        boolean readEntryLogHardLimit(BufferedLogChannel logChannel, long size) {
+            if (logChannel == null) {
+                return false;
+            }
+            return logChannel.position() + size > Integer.MAX_VALUE;
+        }
+
+        abstract BufferedLogChannel getCurrentLogForLedger(Long ledgerId);
+
+        abstract void setCurrentLogForLedger(Long ledgerId, BufferedLogChannel logChannel);
+
+        public Set<BufferedLogChannel> getCopyOfRotatedLogChannels() {
+            return new HashSet<BufferedLogChannel>(rotatedLogChannels);
+        }
+
+        @Override
+        public void flushRotatedLogs() throws IOException {
+            Set<BufferedLogChannel> channels = getCopyOfRotatedLogChannels();
+            if (null == channels) {
+                return;
+            }
+            for (BufferedLogChannel channel : channels) {
+                channel.flushAndForceWrite(true);
+                // since this channel is only used for writing, after flushing the channel,
+                // we had to close the underlying file channel. Otherwise, we might end up
+                // leaking fds which cause the disk spaces could not be reclaimed.
+                closeFileChannel(channel);
+                recentlyCreatedEntryLogsStatus.flushRotatedEntryLog(channel.getLogId());
+                rotatedLogChannels.remove(channel);
+                LOG.info("Synced entry logger {} to disk.", channel.getLogId());
+            }
+        }
+
+        /**
+         * Creates a new log file. This method should be guarded by a lock,
+         * so callers of this method should be in right scope of the lock.
+         */
+        void createNewLog(Long ledgerId) throws IOException {
+            BufferedLogChannel logChannel = getCurrentLogForLedger(ledgerId);
+            // first tried to create a new log channel. add current log channel to ToFlush list only when
+            // there is a new log channel. it would prevent that a log channel is referenced by both
+            // *logChannel* and *ToFlush* list.
+            if (null != logChannel) {
+
+                // flush the internal buffer back to filesystem but not sync disk
+                logChannel.flush();
+
+                // Append ledgers map at the end of entry log
+                logChannel.appendLedgersMap();
+
+                BufferedLogChannel newLogChannel = entryLoggerAllocator.createNewLog();
+                setCurrentLogForLedger(ledgerId, newLogChannel);
+                LOG.info("Flushing entry logger {} back to filesystem, pending for syncing entry loggers : {}.",
+                        logChannel.getLogId(), getCopyOfRotatedLogChannels());
+                for (EntryLogListener listener : listeners) {
+                    listener.onRotateEntryLog();
+                }
+            } else {
+                setCurrentLogForLedger(ledgerId, entryLoggerAllocator.createNewLog());
+            }
         }
     }
+
+    class EntryLogManagerForSingleEntryLog extends EntryLogManagerBase {
+
+        private volatile BufferedLogChannel activeLogChannel;
+        //private Lock lockForActiveLogChannel;
+        private final Set<BufferedLogChannel> rotatedLogChannels;
+
+        EntryLogManagerForSingleEntryLog() {
+            rotatedLogChannels = ConcurrentHashMap.newKeySet();
+        }
+
+        @Override
+        public synchronized long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
+            return nonSynchronizedAddEntry(ledger, entry, rollLog);
+        }
+
+        @Override
+        public synchronized void setCurrentLogForLedger(Long ledgerId, BufferedLogChannel logChannel) {
+            BufferedLogChannel hasToRotateLogChannel = activeLogChannel;
+            activeLogChannel = logChannel;
+            if (hasToRotateLogChannel != null) {
+                rotatedLogChannels.add(hasToRotateLogChannel);
+            }
+        }
+
+        @Override
+        public BufferedLogChannel getCurrentLogForLedger(Long ledgerId) {
+            return activeLogChannel;
+        }
+
+        @Override
+        public boolean rollLogsIfEntryLogLimitReached() throws IOException {
+            boolean rolledLog = false;
+            if (activeLogChannel != null) {
+                if (activeLogChannel.position() > logSizeLimit) {
+                    synchronized (this) {
+                        if (reachEntryLogLimit(activeLogChannel, 0L)) {
+                            rolledLog = true;
+                            LOG.info("Rolling entry logger since it reached size limitation");
+                            createNewLog(INVALID_LEDGERID);
+                        }
+                    }
+                }
+            }
+            return rolledLog;
+        }
+
+
+        @Override
+        public BufferedLogChannel getCurrentLogIfPresent(long entryLogId) {
+            BufferedLogChannel activeLogChannelTemp = activeLogChannel;
+            if ((activeLogChannelTemp != null) && (activeLogChannelTemp.getLogId() == entryLogId)) {
+                return activeLogChannelTemp;
+            }
+            return null;
+        }
+
+
+
+        @Override
+        public File getDirForNextEntryLog(List<File> writableLedgerDirs) {
+            Collections.shuffle(writableLedgerDirs);
+            return writableLedgerDirs.get(0);
+        }
+
+        @Override
+        public void checkpoint() throws IOException {
+            flushRotatedLogs();
+        }
+
+        @Override
+        public synchronized void rollLogs() throws IOException {
+            createNewLog(INVALID_LEDGERID);
+        }
+
+        @Override
+        public long getCurrentLogId() {
+            return activeLogChannel.getLogId();
+        }
+
+        @Override
+        public void flushCurrentLogs() throws IOException {
+            BufferedLogChannel currentActiveLogChannel = activeLogChannel;
+            if (currentActiveLogChannel != null) {
+                /**
+                 * flushCurrentLogs method is called during checkpoint, so
+                 * metadata of the file also should be force written.
+                 */
+                flushCurrentLog(currentActiveLogChannel, true);
+            }
+        }
+
+        @Override
+        public void closeCurrentLogs() throws IOException {
+            if (activeLogChannel != null) {
+                closeFileChannel(activeLogChannel);
+            }
+        }
+
+        @Override
+        public void forceCloseCurrentLogs() {
+            if (activeLogChannel != null) {
+                forceCloseFileChannel(activeLogChannel);
+            }
+        }
+    }
+
+    /**
+     * Flushes all rotated log channels. After log channels are flushed,
+     * move leastUnflushedLogId ptr to current logId.
+     */
+    void checkpoint() throws IOException {
+        entryLogManager.checkpoint();
+    }
+
+
+
+    public void flush() throws IOException {
+        entryLogManager.flushCurrentLogs();
+        entryLogManager.flushRotatedLogs();
+    }
+
+    void flushCurrentLog(BufferedLogChannel logChannel, boolean forceMetadata) throws IOException {
+        if (logChannel != null) {
+            logChannel.flushAndForceWrite(forceMetadata);
+            LOG.debug("Flush and sync current entry logger {}", logChannel.getLogId());
+        }
+    }
+
+    long addEntry(Long ledger, ByteBuffer entry) throws IOException {
+        return entryLogManager.addEntry(ledger, Unpooled.wrappedBuffer(entry), true);
+    }
+
+    long addEntry(Long ledger, ByteBuf entry) throws IOException {
+        return entryLogManager.addEntry(ledger, entry, true);
+    }
+
+    public long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
+        return entryLogManager.addEntry(ledger, entry, true);
+    }
+
+    private final FastThreadLocal<ByteBuf> sizeBuffer = new FastThreadLocal<ByteBuf>() {
+        @Override
+        protected ByteBuf initialValue() throws Exception {
+            return Unpooled.buffer(4);
+        }
+    };
 
     long addEntryForCompaction(long ledgerId, ByteBuf entry) throws IOException {
         synchronized (compactionLogLock) {
@@ -1225,31 +1218,7 @@ public class EntryLogger {
         return offset >> 32L;
     }
 
-    boolean reachEntryLogLimit(Long ledger, long size) {
-        entryLogManager.acquireLock(ledger);
-        try {
-            BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledger);
-            if (logChannel == null) {
-                return false;
-            }
-            return logChannel.position() + size > logSizeLimit;
-        } finally {
-            entryLogManager.releaseLock(ledger);
-        }
-    }
 
-    boolean readEntryLogHardLimit(Long ledger, long size) {
-        entryLogManager.acquireLock(ledger);
-        try {
-            BufferedLogChannel logChannel = entryLogManager.getCurrentLogForLedger(ledger);
-            if (logChannel == null) {
-                return false;
-            }
-            return logChannel.position() + size > Integer.MAX_VALUE;
-        } finally {
-            entryLogManager.releaseLock(ledger);
-        }
-    }
 
     public ByteBuf internalReadEntry(long ledgerId, long entryId, long location)
             throws IOException, Bookie.NoEntryException {
@@ -1620,7 +1589,6 @@ public class EntryLogger {
     public void shutdown() {
         // since logChannel is buffered channel, do flush when shutting down
         LOG.info("Stopping EntryLogger");
-        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogManager.getCopyOfCurrentLogs();
         try {
             flush();
             for (FileChannel fc : logid2FileChannel.values()) {
@@ -1628,10 +1596,7 @@ public class EntryLogger {
             }
             // clear the mapping, so we don't need to go through the channels again in finally block in normal case.
             logid2FileChannel.clear();
-            for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
-                // close current writing log file
-                closeFileChannel(currentLog);
-            }
+            entryLogManager.closeCurrentLogs();
             synchronized (compactionLogLock) {
                 closeFileChannel(compactionLogChannel);
                 compactionLogChannel = null;
@@ -1643,9 +1608,8 @@ public class EntryLogger {
             for (FileChannel fc : logid2FileChannel.values()) {
                 IOUtils.close(LOG, fc);
             }
-            for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
-                forceCloseFileChannel(currentLog);
-            }
+
+            entryLogManager.forceCloseCurrentLogs();
             synchronized (compactionLogLock) {
                 forceCloseFileChannel(compactionLogChannel);
             }
