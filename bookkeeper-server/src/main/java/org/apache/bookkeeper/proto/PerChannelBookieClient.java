@@ -52,7 +52,6 @@ import io.netty.util.concurrent.GenericFutureListener;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.channels.ClosedChannelException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -172,6 +171,20 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     /* collect stats on all Ops that flows through netty pipeline */
     private final OpStatsLogger nettyOpLogger;
 
+    // to remove cost of syscalls on thread stack collection create these exceptions once and reuse. 
+    private final static Exception notWritableTooLongEx = 
+            new Exception("waited for channel to become writable for too long, failing");
+    private final static Exception failingConsequentWriteEx = 
+            new Exception("waited for the channel to become writable for too long, " 
+                    + "fast failing consequent writes");
+    static {
+        // clear stack trace to reduce amount of logging in extreme cases
+        // this a bit complicates troubleshooting (no exact stack and stack lines)
+        // but not too much as exception messages are unique
+        notWritableTooLongEx.setStackTrace(new StackTraceElement[0]);
+        failingConsequentWriteEx.setStackTrace(new StackTraceElement[0]);
+    }
+
     /**
      * The following member variables do not need to be concurrent, or volatile
      * because they are always updated under a lock
@@ -181,6 +194,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     volatile Channel channel = null;
     private final ClientConnectionPeer connectionPeer;
     private volatile BookKeeperPrincipal authorizedId = BookKeeperPrincipal.ANONYMOUS;
+
+    private volatile boolean fastFailEnabled = false;
 
     enum ConnectionState {
         DISCONNECTED, CONNECTING, CONNECTED, CLOSED, START_TLS
@@ -1946,27 +1961,37 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
     }
 
     public ChannelFuture channelWrite(Object msg, long timeoutMillis) {
-        if (channel == null) {
-            return new DefaultChannelPromise(channel)
-                    .setFailure(new Exception("cannot write to disconnected channel. Channel state: " + state));
-        }
-        if (!channel.isWritable() && timeoutMillis > 0) {
+        Channel c = channel;
+        if (c != null && !c.isWritable() && timeoutMillis > 0) {
+            if (fastFailEnabled) {
+                LOG.info("Failing consquent channelWrite attempt to non-writable channel");
+                sendWaitTimer.registerFailedEvent(0L, TimeUnit.NANOSECONDS);
+                return new DefaultChannelPromise(c).setFailure(failingConsequentWriteEx);
+            }
+
             final long startTime = MathUtils.nowInNano();
             final long maxSleepUntil = startTime + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
             synchronized (channelMonitor) {
-                while (channel == null || !channel.isWritable()) {
-                    if (channel == null || !channel.isActive() || MathUtils.nowInNano() > maxSleepUntil) {
+                c = channel;
+                while (c != null && !c.isWritable()) {
+                    final long nowInNanos = MathUtils.nowInNano();
+                    if (!c.isActive()) {
                         sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
-                        return new DefaultChannelPromise(channel).setFailure(
-                                new Exception("cannot write to disconnected channel. Channel state: " + state));
+                        return new DefaultChannelPromise(c)
+                                .setFailure(new Exception("cannot write to inactive channel, PCBC state = " + state));
+                    } else if (nowInNanos > maxSleepUntil) {
+                        // fast fail writes until channel becomes writable
+                        fastFailEnabled = true;
+                        sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
+                        return new DefaultChannelPromise(c).setFailure(notWritableTooLongEx);
                     }
                     try {
-                        long sleepFor = TimeUnit.NANOSECONDS.toMillis(maxSleepUntil - MathUtils.nowInNano());
+                        long sleepFor = TimeUnit.NANOSECONDS.toMillis(maxSleepUntil - nowInNanos);
                         sleepFor = (sleepFor < 1) ? 1 : sleepFor;
                         if (sleepFor > 1000) {
                             // I encountered case when no events get triggered to call channelMonitor.notify()
                             // Overall it looks like there is a condition (possibly netty bug) when 
-                            // channelWritabilityChanged is not fired and so ar eother available events. 
+                            // channelWritabilityChanged is not fired and so are other available events. 
                             // I've tried other events that ChannelInboundHandlerAdapter provides but without any luck.
                             // The only reliable solution I found so far is to force wake thread even when channel 
                             // is not being connected/disconnected/channelWritabilityChanged.
@@ -1976,9 +2001,10 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     } catch (InterruptedException ie) {
                         sendWaitTimer.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                         Thread.currentThread().interrupt();
-                        return new DefaultChannelPromise(channel).setFailure(ie);
+                        return new DefaultChannelPromise(c).setFailure(ie);
                     }
-                }
+                    c = channel;
+                } //while
             }
             final long elapsed = MathUtils.elapsedNanos(startTime);
             sendWaitTimer.registerSuccessfulEvent(elapsed, TimeUnit.NANOSECONDS);
@@ -1987,7 +2013,16 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                         TimeUnit.NANOSECONDS.toMillis(elapsed), channel);
             }
         }
-        return channel.writeAndFlush(msg);
+
+        fastFailEnabled = false;
+
+        c = channel;
+        if (c == null) {
+            return new DefaultChannelPromise(c)
+                    .setFailure(new Exception("cannot write to disconnected channel, PCBC state = " + state));
+        }
+
+        return c.writeAndFlush(msg);
     }
 
     private void initiateSSL() {

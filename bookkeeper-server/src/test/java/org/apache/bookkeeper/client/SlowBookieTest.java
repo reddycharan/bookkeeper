@@ -95,6 +95,41 @@ public class SlowBookieTest extends BookKeeperClusterTestCase {
     }
 
     @Test(timeout=60000)
+    public void testFastFailWithSlowBookie() throws Exception {
+        ClientConfiguration conf = new ClientConfiguration();
+        conf.setZkServers(zkUtil.getZooKeeperConnectString()).setReadTimeout(5);
+
+        conf.setChannelWaitOnWriteMillis(500);
+
+        conf.setReadEntryTimeout(60)
+            .setSpeculativeReadTimeout(1);
+
+        conf.setClientWriteBufferLowWaterMark(0)
+            .setClientWriteBufferHighWaterMark(0);
+
+        BookKeeper bkc = new BookKeeper(conf);
+
+        byte[] pwd = new byte[] {};
+        final LedgerHandle lh = bkc.createLedgerAdv(4, 4, 4, BookKeeper.DigestType.CRC32, pwd);
+        final byte[] entry = "Test Entry".getBytes();
+
+        // establishes connection, expected to succeed (as initially channels are writable).
+        lh.addEntry(0, entry);
+        // without fastFail with given channelWaitOnWriteMillis=500
+        // this would cause test timeout
+        for (int i = 1; i < 500; i++) {
+            try {
+                lh.readEntries(0, 0); //(i, entry);
+                fail("expected to fail");
+            } catch (BKException bke) {
+                // expected, ignore
+            }
+        }
+        lh.close();
+        bkc.close();
+    }
+
+    @Test(timeout=60000)
     public void testBookieFailureWithSlowBookie() throws Exception {
         ClientConfiguration conf = new ClientConfiguration();
         conf.setZkServers(zkUtil.getZooKeeperConnectString()).setReadTimeout(5);
