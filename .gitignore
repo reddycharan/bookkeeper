@@ -8,6 +8,8 @@
 .idea/
 *.iml
 *.iws
+*.ipr
+*.ipw
 
 # NetBeans
 /**/nb-configuration.xml
@@ -20,3 +22,6 @@ lib/
 log/
 target/
 dependency-reduced-pom.xml
+
+deploy*
+*/logs/*
