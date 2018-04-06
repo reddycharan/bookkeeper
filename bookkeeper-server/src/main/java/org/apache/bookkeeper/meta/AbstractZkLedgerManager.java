@@ -410,7 +410,7 @@ public abstract class AbstractZkLedgerManager implements LedgerManager, Watcher 
                     metadata.setVersion(zv.setZnodeVersion(stat.getVersion()));
                     cb.operationComplete(BKException.Code.OK, null);
                 } else {
-                    LOG.warn("Conditional update ledger metadata failed: ", KeeperException.Code.get(rc));
+                    LOG.warn("Conditional update ledger metadata failed: {}", KeeperException.Code.get(rc));
                     cb.operationComplete(BKException.Code.ZKException, null);
                 }
             }
