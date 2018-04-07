@@ -78,7 +78,7 @@ fi
 COMMAND=$1
 shift
 
-ENV_TYPE="dev"
+ENV_TYPE=${ENV_TYPE:-"dev"}
 if [ "$1" == "dev" ] || [ "$1" == "vpod" ] || [ "$1" == "prod" ] || [ "$1" == "min" ]; then
     ENV_TYPE="$1"
     shift
