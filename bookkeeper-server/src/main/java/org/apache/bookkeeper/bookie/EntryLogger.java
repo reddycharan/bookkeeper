@@ -88,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryLogger {
     private static final Logger LOG = LoggerFactory.getLogger(EntryLogger.class);
-    static final Long INVALID_LEDGERID = Long.valueOf(-1);
+    static final Long UNASSIGNED_LEDGERID = Long.valueOf(-1);
     // log file suffix
     private static final String LOG_FILE_SUFFIX = ".log";
 
@@ -96,7 +96,7 @@ public class EntryLogger {
         private final long logId;
         private final EntryLogMetadata entryLogMetadata;
         private final File logFile;
-        private Long ledgerId = INVALID_LEDGERID;
+        private Long ledgerIdAssigned = UNASSIGNED_LEDGERID;
 
         public BufferedLogChannel(FileChannel fc, int writeCapacity, int readCapacity, long logId, File logFile,
                 long unpersistedBytesBound) throws IOException {
@@ -121,12 +121,12 @@ public class EntryLogger {
             return entryLogMetadata.getLedgersMap();
         }
 
-        public Long getLedgerId() {
-            return ledgerId;
+        public Long getLedgerIdAssigned() {
+            return ledgerIdAssigned;
         }
 
-        public void setLedgerId(Long ledgerId) {
-            this.ledgerId = ledgerId;
+        public void setLedgerIdAssigned(Long ledgerId) {
+            this.ledgerIdAssigned = ledgerId;
         }
 
         @Override
@@ -134,6 +134,7 @@ public class EntryLogger {
             return MoreObjects.toStringHelper(BufferedChannel.class)
                 .add("logId", logId)
                 .add("logFile", logFile)
+                .add("ledgerIdAssigned", ledgerIdAssigned)
                 .toString();
         }
 
@@ -418,13 +419,13 @@ public class EntryLogger {
                     // lock it only if there is new data
                     // so that cache accesstime is not changed
                     Set<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
-                            Arrays.asList(super.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
+                            Arrays.asList(super.getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID)));
                     for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
                         if (reachEntryLogLimit(currentLog, 0L)) {
                             synchronized (this) {
                                 if (reachEntryLogLimit(currentLog, 0L)) {
                                     LOG.info("Rolling entry logger since it reached size limitation");
-                                    createNewLog(EntryLogger.INVALID_LEDGERID);
+                                    createNewLog(EntryLogger.UNASSIGNED_LEDGERID);
                                 }
                             }
                         }
@@ -1094,7 +1095,7 @@ public class EntryLogger {
 
         @Override
         public synchronized void rollLogs() throws IOException {
-            createNewLog(INVALID_LEDGERID);
+            createNewLog(UNASSIGNED_LEDGERID);
         }
 
         public long getCurrentLogId() {

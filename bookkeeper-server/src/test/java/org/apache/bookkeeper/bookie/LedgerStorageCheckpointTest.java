@@ -527,7 +527,7 @@ public class LedgerStorageCheckpointTest {
         handle.close();
 
         Set<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
-                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
+                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID)));
         for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
             Assert.assertNotEquals("bytesWrittenSinceLastFlush shouldn't be zero", 0,
                     currentLog.getUnpersistedBytes());
@@ -549,7 +549,7 @@ public class LedgerStorageCheckpointTest {
                 ((copyOfRotatedLogChannels == null) || (copyOfRotatedLogChannels.size() == 0)));
 
         copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
-                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
+                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID)));
         for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
             Assert.assertEquals("bytesWrittenSinceLastFlush should be zero", 0,
                     currentLog.getUnpersistedBytes());

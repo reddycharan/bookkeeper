@@ -98,7 +98,7 @@ public class CreateNewLogTest {
         // Extracted from createNewLog()
         String logFileName = Long.toHexString(1) + ".log";
         File dir = ledgerDirsManager.pickRandomWritableDir();
-        LOG.info("Picked this directory: " + dir);
+        LOG.info("Picked this directory: {}", dir);
         File newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
@@ -106,7 +106,7 @@ public class CreateNewLogTest {
         // Calls createNewLog, and with the number of directories we
         // are using, if it picks one at random it will fail.
         ((EntryLogManagerBase) el.entryLogManager).createNewLog(0L);
-        LOG.info("This is the current log id: " + el.getPreviousAllocatedEntryLogId());
+        LOG.info("This is the current log id: {}", el.getPreviousAllocatedEntryLogId());
         assertTrue("Wrong log id", el.getPreviousAllocatedEntryLogId() > 1);
     }
 
@@ -123,7 +123,7 @@ public class CreateNewLogTest {
         // Extracted from createNewLog()
         String logFileName = Long.toHexString(1) + ".log";
         File dir = ledgerDirsManager.pickRandomWritableDir();
-        LOG.info("Picked this directory: " + dir);
+        LOG.info("Picked this directory: {}", dir);
         File newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
@@ -137,7 +137,7 @@ public class CreateNewLogTest {
         // Calls createNewLog, and with the number of directories we
         // are using, if it picks one at random it will fail.
         ((EntryLogManagerBase) el.entryLogManager).createNewLog(0L);
-        LOG.info("This is the current log id: " + el.getPreviousAllocatedEntryLogId());
+        LOG.info("This is the current log id: {}", el.getPreviousAllocatedEntryLogId());
         assertTrue("Wrong log id", el.getPreviousAllocatedEntryLogId() > 1);
     }
 
@@ -213,7 +213,7 @@ public class CreateNewLogTest {
         // Extracted from createNewLog()
         String logFileName = Long.toHexString(1) + ".log";
         File dir = ledgerDirsManager.pickRandomWritableDir();
-        LOG.info("Picked this directory: " + dir);
+        LOG.info("Picked this directory: {}", dir);
         File newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
@@ -224,7 +224,7 @@ public class CreateNewLogTest {
         // Extracted from createNewLog()
         logFileName = Long.toHexString(3) + TransactionalEntryLogCompactor.COMPACTING_SUFFIX;
         dir = ledgerDirsManager.pickRandomWritableDir();
-        LOG.info("Picked this directory: " + dir);
+        LOG.info("Picked this directory: {}", dir);
         newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
@@ -250,7 +250,7 @@ public class CreateNewLogTest {
         // Extracted from createNewLog()
         String logFileName = Long.toHexString(2) + TransactionalEntryLogCompactor.COMPACTED_SUFFIX;
         File dir = ledgerDirsManager.pickRandomWritableDir();
-        LOG.info("Picked this directory: " + dir);
+        LOG.info("Picked this directory: {}", dir);
         File newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
