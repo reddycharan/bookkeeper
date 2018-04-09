@@ -50,6 +50,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -69,6 +70,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.bookkeeper.bookie.EntryLogger.BufferedLogChannel;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.NoWritableLedgerDirException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.util.IOUtils;
@@ -86,7 +88,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryLogger {
     private static final Logger LOG = LoggerFactory.getLogger(EntryLogger.class);
-    private static final Long INVALID_LEDGERID = Long.valueOf(-1);
+    static final Long INVALID_LEDGERID = Long.valueOf(-1);
     // log file suffix
     private static final String LOG_FILE_SUFFIX = ".log";
 
@@ -407,12 +409,33 @@ public class EntryLogger {
                 }
 
                 @Override
-                public long getCurrentLogId() {
+                public void prepareEntryMemTableFlush() {
+                    // do nothing
+                }
+
+                @Override
+                public boolean commitEntryMemTableFlush() throws IOException {
+                    // lock it only if there is new data
+                    // so that cache accesstime is not changed
+                    Set<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
+                            Arrays.asList(super.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
+                    for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
+                        if (reachEntryLogLimit(currentLog, 0L)) {
+                            synchronized (this) {
+                                if (reachEntryLogLimit(currentLog, 0L)) {
+                                    LOG.info("Rolling entry logger since it reached size limitation");
+                                    createNewLog(EntryLogger.INVALID_LEDGERID);
+                                }
+                            }
+                        }
+                    }
                     /*
-                     * EntryLogManager for entrylogperledger would
-                     * return some constant ledgerid value.
+                     * in the case of entrylogperledger, SyncThread drives
+                     * checkpoint logic for every flushInterval. So
+                     * EntryMemtable doesn't need to call checkpoint in the case
+                     * of entrylogperledger.
                      */
-                    return INVALID_LEDGERID;
+                    return false;
                 }
             };
         } else {
@@ -519,10 +542,6 @@ public class EntryLogger {
         return entryLoggerAllocator.getPreallocatedLogId();
     }
 
-    boolean rollLogsIfEntryLogLimitReached() throws IOException {
-        return entryLogManager.rollLogsIfEntryLogLimitReached();
-    }
-
     /**
      * Get the current log file for compaction.
      */
@@ -539,8 +558,12 @@ public class EntryLogger {
         entryLogManager.rollLogs();
     }
 
-    long getCurrentLogId() {
-        return entryLogManager.getCurrentLogId();
+    void prepareEntryMemTableFlush() {
+        entryLogManager.prepareEntryMemTableFlush();
+    }
+
+    boolean commitEntryMemTableFlush() throws IOException {
+        return entryLogManager.commitEntryMemTableFlush();
     }
 
     /**
@@ -855,19 +878,6 @@ public class EntryLogger {
         void rollLogs() throws IOException;
 
         /*
-         * gets the log id of the current activeEntryLog. for
-         * EntryLogManagerForSingleEntryLog it returns logid of current
-         * activelog, for EntryLogManagerForEntryLogPerLedger it would return
-         * some constant value.
-         */
-        long getCurrentLogId();
-
-        /*
-         * roll entryLogs if entrylog has reached its limit.
-         */
-        boolean rollLogsIfEntryLogLimitReached() throws IOException;
-
-        /*
          * flush rotated logs.
          */
         void flushRotatedLogs() throws IOException;
@@ -886,16 +896,44 @@ public class EntryLogger {
          * force close current logs.
          */
         void forceCloseCurrentLogs();
+
+        /*
+         * this method should be called before doing entrymemtable flush, it
+         * would save the state of the entrylogger before entrymemtable flush
+         * and commitEntryMemTableFlush would take appropriate action after
+         * entrymemtable flush.
+         */
+        void prepareEntryMemTableFlush();
+
+        /*
+         * this method should be called after doing entrymemtable flush,it would
+         * take appropriate action after entrymemtable flush depending on the
+         * current state of the entrylogger and the state of the entrylogger
+         * during prepareEntryMemTableFlush.
+         *
+         * It is assumed that there would be corresponding
+         * prepareEntryMemTableFlush for every commitEntryMemTableFlush and both
+         * would be called from the same thread.
+         *
+         * returns boolean value indicating whether EntryMemTable should do checkpoint
+         * after this commit method.
+         */
+        boolean commitEntryMemTableFlush() throws IOException;
     }
 
     abstract class EntryLogManagerBase implements EntryLogManager {
-        private final Set<BufferedLogChannel> rotatedLogChannels;
+        final Set<BufferedLogChannel> rotatedLogChannels;
 
         EntryLogManagerBase() {
             rotatedLogChannels = ConcurrentHashMap.newKeySet();
         }
 
-        public long nonSynchronizedAddEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
+        /*
+         * This method should be guarded by a lock, so callers of this method
+         * should be in the right scope of the lock.
+         */
+        @Override
+        public long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
 
             int entrySize = entry.readableBytes() + 4; // Adding 4 bytes to prepend the size
             BufferedLogChannel logChannel = getCurrentLogForLedger(ledger);
@@ -972,7 +1010,7 @@ public class EntryLogger {
             }
         }
 
-        /**
+        /*
          * Creates a new log file. This method should be guarded by a lock,
          * so callers of this method should be in right scope of the lock.
          */
@@ -1005,16 +1043,19 @@ public class EntryLogger {
     class EntryLogManagerForSingleEntryLog extends EntryLogManagerBase {
 
         private volatile BufferedLogChannel activeLogChannel;
-        //private Lock lockForActiveLogChannel;
-        private final Set<BufferedLogChannel> rotatedLogChannels;
+        private long logIdBeforeFlush = INVALID_LID;
 
         EntryLogManagerForSingleEntryLog() {
-            rotatedLogChannels = ConcurrentHashMap.newKeySet();
         }
 
         @Override
         public synchronized long addEntry(Long ledger, ByteBuf entry, boolean rollLog) throws IOException {
-            return nonSynchronizedAddEntry(ledger, entry, rollLog);
+            return super.addEntry(ledger, entry, rollLog);
+        }
+
+        @Override
+        synchronized void createNewLog(Long ledgerId) throws IOException {
+            super.createNewLog(ledgerId);
         }
 
         @Override
@@ -1032,24 +1073,6 @@ public class EntryLogger {
         }
 
         @Override
-        public boolean rollLogsIfEntryLogLimitReached() throws IOException {
-            boolean rolledLog = false;
-            if (activeLogChannel != null) {
-                if (activeLogChannel.position() > logSizeLimit) {
-                    synchronized (this) {
-                        if (reachEntryLogLimit(activeLogChannel, 0L)) {
-                            rolledLog = true;
-                            LOG.info("Rolling entry logger since it reached size limitation");
-                            createNewLog(INVALID_LEDGERID);
-                        }
-                    }
-                }
-            }
-            return rolledLog;
-        }
-
-
-        @Override
         public BufferedLogChannel getCurrentLogIfPresent(long entryLogId) {
             BufferedLogChannel activeLogChannelTemp = activeLogChannel;
             if ((activeLogChannelTemp != null) && (activeLogChannelTemp.getLogId() == entryLogId)) {
@@ -1057,8 +1080,6 @@ public class EntryLogger {
             }
             return null;
         }
-
-
 
         @Override
         public File getDirForNextEntryLog(List<File> writableLedgerDirs) {
@@ -1076,9 +1097,13 @@ public class EntryLogger {
             createNewLog(INVALID_LEDGERID);
         }
 
-        @Override
         public long getCurrentLogId() {
-            return activeLogChannel.getLogId();
+            BufferedLogChannel currentActiveLogChannel = activeLogChannel;
+            if (currentActiveLogChannel != null) {
+                return currentActiveLogChannel.getLogId();
+            } else {
+                return INVALID_LID;
+            }
         }
 
         @Override
@@ -1105,6 +1130,29 @@ public class EntryLogger {
             if (activeLogChannel != null) {
                 forceCloseFileChannel(activeLogChannel);
             }
+        }
+
+        @Override
+        public void prepareEntryMemTableFlush() {
+            logIdBeforeFlush = getCurrentLogId();
+        }
+
+        @Override
+        public boolean commitEntryMemTableFlush() throws IOException {
+            long logIdAfterFlush = getCurrentLogId();
+            /*
+             * in any case that an entry log reaches the limit, we roll the log
+             * and start checkpointing. if a memory table is flushed spanning
+             * over two entry log files, we also roll log. this is for
+             * performance consideration: since we don't wanna checkpoint a new
+             * log file that ledger storage is writing to.
+             */
+            if (reachEntryLogLimit(activeLogChannel, 0L) || logIdAfterFlush != logIdBeforeFlush) {
+                LOG.info("Rolling entry logger since it reached size limitation");
+                rollLogs();
+                return true;
+            }
+            return false;
         }
     }
 

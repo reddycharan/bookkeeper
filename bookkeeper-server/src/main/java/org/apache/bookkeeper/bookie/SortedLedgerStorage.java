@@ -211,27 +211,9 @@ public class SortedLedgerStorage extends InterleavedLedgerStorage
             public void run() {
                 try {
                     LOG.info("Started flushing mem table.");
-                    long logIdBeforeFlush = entryLogger.getCurrentLogId();
+                    entryLogger.prepareEntryMemTableFlush();
                     memTable.flush(SortedLedgerStorage.this);
-                    long logIdAfterFlush = entryLogger.getCurrentLogId();
-                    // in any case that an entry log reaches the limit, we roll the log and start checkpointing.
-                    // if a memory table is flushed spanning over two entry log files, we also roll log. this is
-                    // for performance consideration: since we don't wanna checkpoint a new log file that ledger
-                    // storage is writing to.
-                    if (entryLogger.rollLogsIfEntryLogLimitReached()) {
-                        checkpointer.startCheckpoint(cp);
-                    } else if (logIdBeforeFlush != logIdAfterFlush) {
-                        /*
-                         * In the case of entrylogperledger since there will be
-                         * separate entrylog for each ledger (even during
-                         * compaction) and SyncThread drives periodic
-                         * checkpoint, this if block wouldn't be needed. In the
-                         * first place, it wouldn't get to this if block since
-                         * logIdBeforeFlush and logIdAfterFlush would be some
-                         * constant value and both the methods rollLogs and
-                         * startCheckpoint would be no-op.
-                         */
-                        entryLogger.rollLogs();
+                    if (entryLogger.commitEntryMemTableFlush()) {
                         checkpointer.startCheckpoint(cp);
                     }
                 } catch (IOException e) {

@@ -45,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManager;
+import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerBase;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.util.DiskChecker;
@@ -247,7 +248,7 @@ public class EntryLogTest {
         ledgerStorage.addEntry(generateEntry(1, 1));
         ledgerStorage.addEntry(generateEntry(2, 1));
         // Add entry with disk full failure simulation
-        bookie.getLedgerDirsManager().addToFilledDirs(entryLogger.entryLogManager
+        bookie.getLedgerDirsManager().addToFilledDirs(((EntryLogManagerBase) entryLogger.entryLogManager)
                 .getCurrentLogForLedger(EntryLogger.INVALID_LID).getLogFile().getParentFile());
         ledgerStorage.addEntry(generateEntry(3, 1));
         // Verify written entries
@@ -279,8 +280,8 @@ public class EntryLogTest {
         logger.addEntry(3L, generateEntry(3, 1).nioBuffer());
         logger.addEntry(2L, generateEntry(2, 1).nioBuffer());
         logger.addEntry(1L, generateEntry(1, 2).nioBuffer());
-        logger.createNewLog(EntryLogger.INVALID_LID);
-        logger.flushRotatedLogs();
+        ((EntryLogManagerBase) logger.entryLogManager).createNewLog(EntryLogger.INVALID_LID);
+        logger.entryLogManager.flushRotatedLogs();
 
         EntryLogMetadata meta = logger.extractEntryLogMetadataFromIndex(0L);
         LOG.info("Extracted Meta From Entry Log {}", meta);
@@ -314,7 +315,7 @@ public class EntryLogTest {
         logger.addEntry(3L, generateEntry(3, 1).nioBuffer());
         logger.addEntry(2L, generateEntry(2, 1).nioBuffer());
         logger.addEntry(1L, generateEntry(1, 2).nioBuffer());
-        logger.createNewLog(EntryLogger.INVALID_LID);
+        ((EntryLogManagerBase) logger.entryLogManager).createNewLog(EntryLogger.INVALID_LID);
 
         // Rewrite the entry log header to be on V0 format
         File f = new File(curDir, "0.log");
@@ -362,7 +363,7 @@ public class EntryLogTest {
         Bookie bookie = new Bookie(conf);
         // create a logger whose initialization phase allocating a new entry log
         EntryLogger logger = ((InterleavedLedgerStorage) bookie.ledgerStorage).entryLogger;
-        logger.createNewLog(EntryLogger.INVALID_LID);
+        ((EntryLogManagerBase) logger.entryLogManager).createNewLog(EntryLogger.INVALID_LID);
         assertNotNull(logger.getEntryLoggerAllocator().getPreallocationFuture());
 
         logger.addEntry(1L, generateEntry(1, 1).nioBuffer());
@@ -402,16 +403,16 @@ public class EntryLogTest {
 
         // create some entries
         EntryLogger logger = ((InterleavedLedgerStorage) bookie.ledgerStorage).entryLogger;
-
+        EntryLogManagerBase entryLogManagerBase = ((EntryLogManagerBase) logger.entryLogManager);
         assertEquals(Sets.newHashSet(), logger.getEntryLogsSet());
 
-        logger.createNewLog(EntryLogger.INVALID_LID);
-        logger.flushRotatedLogs();
+        entryLogManagerBase.createNewLog(EntryLogger.INVALID_LID);
+        entryLogManagerBase.flushRotatedLogs();
 
         assertEquals(Sets.newHashSet(0L, 1L), logger.getEntryLogsSet());
 
-        logger.createNewLog(EntryLogger.INVALID_LID);
-        logger.flushRotatedLogs();
+        entryLogManagerBase.createNewLog(EntryLogger.INVALID_LID);
+        entryLogManagerBase.flushRotatedLogs();
 
         assertEquals(Sets.newHashSet(0L, 1L, 2L), logger.getEntryLogsSet());
     }
@@ -645,7 +646,7 @@ public class EntryLogTest {
         LedgerDirsManager ledgerDirsManager = new LedgerDirsManager(conf, conf.getLedgerDirs(),
                 new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
         EntryLogger entryLogger = new EntryLogger(conf, ledgerDirsManager);
-        EntryLogManager entryLogManager = entryLogger.entryLogManager;
+        EntryLogManagerBase entryLogManagerBase = ((EntryLogManagerBase) entryLogger.entryLogManager);
 
         /*
          * when entryLogger is created Header of length EntryLogger.LOGFILE_HEADER_SIZE is created
@@ -656,7 +657,7 @@ public class EntryLogTest {
         // entrylogger writes length of the entry (4 bytes) before writing entry
         long expectedUnpersistedBytes = EntryLogger.LOGFILE_HEADER_SIZE + firstEntrySize + 4;
         Assert.assertEquals("Unpersisted Bytes of entrylog", expectedUnpersistedBytes,
-                entryLogManager.getCurrentLogForLedger(ledgerId).getUnpersistedBytes());
+                entryLogManagerBase.getCurrentLogForLedger(ledgerId).getUnpersistedBytes());
 
         /*
          * 'flushIntervalInBytes' number of bytes are flushed so BufferedChannel should be forcewritten
@@ -664,7 +665,7 @@ public class EntryLogTest {
         int secondEntrySize = (int) (flushIntervalInBytes - expectedUnpersistedBytes);
         long entry1Position = entryLogger.addEntry(0L, generateEntry(ledgerId, 1L, secondEntrySize));
         Assert.assertEquals("Unpersisted Bytes of entrylog", 0,
-                entryLogManager.getCurrentLogForLedger(ledgerId).getUnpersistedBytes());
+                entryLogManagerBase.getCurrentLogForLedger(ledgerId).getUnpersistedBytes());
 
         /*
          * since entrylog/Bufferedchannel is persisted (forcewritten), we should be able to read the entrylog using

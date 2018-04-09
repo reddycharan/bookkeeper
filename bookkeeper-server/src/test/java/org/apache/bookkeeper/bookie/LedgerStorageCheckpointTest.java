@@ -28,7 +28,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -41,6 +43,7 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 import org.apache.bookkeeper.bookie.EntryLogger.BufferedLogChannel;
+import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerBase;
 import org.apache.bookkeeper.bookie.Journal.LastLogMark;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
@@ -361,7 +364,7 @@ public class LedgerStorageCheckpointTest {
         }
         handle.close();
         // simulate rolling entrylog
-        ledgerStorage.entryLogger.createNewLog(ledgerId);
+        ((EntryLogManagerBase) ledgerStorage.entryLogger.entryLogManager).createNewLog(ledgerId);
         // sleep for a bit for checkpoint to do its task
         executorController.advance(Duration.ofMillis(500));
 
@@ -493,6 +496,7 @@ public class LedgerStorageCheckpointTest {
         BookKeeper bkClient = new BookKeeper(clientConf);
         InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
         EntryLogger entryLogger = ledgerStorage.entryLogger;
+        EntryLogManagerBase entryLogManagerBase = (EntryLogManagerBase) entryLogger.entryLogManager;
 
         int numOfEntries = 5;
         byte[] dataBytes = "data".getBytes();
@@ -504,7 +508,7 @@ public class LedgerStorageCheckpointTest {
         }
         handle.close();
         // simulate rolling entrylog
-        ledgerStorage.entryLogger.createNewLog(ledgerId);
+        entryLogManagerBase.createNewLog(ledgerId);
 
         ledgerId = 20;
         handle = bkClient.createLedgerAdv(ledgerId, 1, 1, 1, DigestType.CRC32, "passwd".getBytes(), null);
@@ -513,7 +517,7 @@ public class LedgerStorageCheckpointTest {
         }
         handle.close();
         // simulate rolling entrylog
-        ledgerStorage.entryLogger.createNewLog(ledgerId);
+        entryLogManagerBase.createNewLog(ledgerId);
 
         ledgerId = 30;
         handle = bkClient.createLedgerAdv(ledgerId, 1, 1, 1, DigestType.CRC32, "passwd".getBytes(), null);
@@ -522,13 +526,14 @@ public class LedgerStorageCheckpointTest {
         }
         handle.close();
 
-        Set<BufferedLogChannel> copyOfCurrentLogs = entryLogger.entryLogManager.getCopyOfCurrentLogs();
+        Set<BufferedLogChannel> copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
+                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
         for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
             Assert.assertNotEquals("bytesWrittenSinceLastFlush shouldn't be zero", 0,
                     currentLog.getUnpersistedBytes());
         }
         Assert.assertNotEquals("There should be logChannelsToFlush", 0,
-                entryLogger.entryLogManager.getCopyOfRotatedLogChannels().size());
+                entryLogManagerBase.getCopyOfRotatedLogChannels().size());
 
         /*
          * wait for atleast flushInterval period, so that checkpoint can happen.
@@ -539,11 +544,12 @@ public class LedgerStorageCheckpointTest {
          * since checkpoint happenend, there shouldn't be any logChannelsToFlush
          * and bytesWrittenSinceLastFlush should be zero.
          */
-        Set<BufferedLogChannel> copyOfRotatedLogChannels = entryLogger.entryLogManager.getCopyOfRotatedLogChannels();
+        Set<BufferedLogChannel> copyOfRotatedLogChannels = entryLogManagerBase.getCopyOfRotatedLogChannels();
         Assert.assertTrue("There shouldn't be logChannelsToFlush",
                 ((copyOfRotatedLogChannels == null) || (copyOfRotatedLogChannels.size() == 0)));
 
-        copyOfCurrentLogs = entryLogger.entryLogManager.getCopyOfCurrentLogs();
+        copyOfCurrentLogs = new HashSet<BufferedLogChannel>(
+                Arrays.asList(entryLogManagerBase.getCurrentLogForLedger(EntryLogger.INVALID_LEDGERID)));
         for (BufferedLogChannel currentLog : copyOfCurrentLogs) {
             Assert.assertEquals("bytesWrittenSinceLastFlush should be zero", 0,
                     currentLog.getUnpersistedBytes());

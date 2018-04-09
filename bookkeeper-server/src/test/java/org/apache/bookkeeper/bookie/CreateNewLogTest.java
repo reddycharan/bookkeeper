@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 
+import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerBase;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.util.DiskChecker;
@@ -104,7 +105,7 @@ public class CreateNewLogTest {
         EntryLogger el = new EntryLogger(conf, ledgerDirsManager);
         // Calls createNewLog, and with the number of directories we
         // are using, if it picks one at random it will fail.
-        el.createNewLog(0L);
+        ((EntryLogManagerBase) el.entryLogManager).createNewLog(0L);
         LOG.info("This is the current log id: " + el.getPreviousAllocatedEntryLogId());
         assertTrue("Wrong log id", el.getPreviousAllocatedEntryLogId() > 1);
     }
@@ -135,7 +136,7 @@ public class CreateNewLogTest {
         EntryLogger el = new EntryLogger(conf, ledgerDirsManager);
         // Calls createNewLog, and with the number of directories we
         // are using, if it picks one at random it will fail.
-        el.createNewLog(0L);
+        ((EntryLogManagerBase) el.entryLogManager).createNewLog(0L);
         LOG.info("This is the current log id: " + el.getPreviousAllocatedEntryLogId());
         assertTrue("Wrong log id", el.getPreviousAllocatedEntryLogId() > 1);
     }
@@ -169,7 +170,7 @@ public class CreateNewLogTest {
 
         IntStream.range(0, createNewLogNumOfTimes).parallel().forEach((i) -> {
             try {
-                el.createNewLog((long) i);
+                ((EntryLogManagerBase) el.entryLogManager).createNewLog((long) i);
             } catch (IOException e) {
                 LOG.error("Received exception while creating newLog", e);
                 receivedException.set(true);
@@ -189,7 +190,7 @@ public class CreateNewLogTest {
                         + " number of times createNewLog is called",
                 expectedPreviousAllocatedEntryLogId, el.getPreviousAllocatedEntryLogId());
         Assert.assertEquals("Number of RotatedLogChannels", createNewLogNumOfTimes - 1,
-                el.entryLogManager.getCopyOfRotatedLogChannels().size());
+                ((EntryLogManagerBase) el.entryLogManager).getCopyOfRotatedLogChannels().size());
     }
 
     @Test
@@ -204,7 +205,8 @@ public class CreateNewLogTest {
                 new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
 
         EntryLogger el = new EntryLogger(conf, ledgerDirsManager);
-        el.createNewLog(0L);
+        EntryLogManagerBase entryLogManagerBase = (EntryLogManagerBase) el.entryLogManager;
+        entryLogManagerBase.createNewLog(0L);
 
         Assert.assertEquals("previousAllocatedEntryLogId after initialization", 0, el.getPreviousAllocatedEntryLogId());
 
@@ -215,7 +217,7 @@ public class CreateNewLogTest {
         File newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
-        el.createNewLog(0L);
+        entryLogManagerBase.createNewLog(0L);
         Assert.assertEquals("previousAllocatedEntryLogId since entrylogid 1 is already taken", 2,
                 el.getPreviousAllocatedEntryLogId());
 
@@ -226,7 +228,7 @@ public class CreateNewLogTest {
         newLogFile = new File(dir, logFileName);
         newLogFile.createNewFile();
 
-        el.createNewLog(0L);
+        entryLogManagerBase.createNewLog(0L);
         Assert.assertEquals("previousAllocatedEntryLogId since entrylogid 3 is already taken", 4,
                 el.getPreviousAllocatedEntryLogId());
     }
@@ -255,7 +257,7 @@ public class CreateNewLogTest {
         IntStream.range(0, 2).parallel().forEach((i) -> {
             try {
                 if (i % 2 == 0) {
-                    el.createNewLog((long) i);
+                    ((EntryLogManagerBase) el.entryLogManager).createNewLog((long) i);
                 } else {
                     el.createNewCompactionLog();
                 }

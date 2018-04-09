@@ -36,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
+import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerBase;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.junit.After;
@@ -222,7 +223,7 @@ public class SortedLedgerStorageCheckpointTest extends LedgerStorageTestBase {
         });
 
         // simulate entry log is rotated (due to compaction)
-        storage.entryLogger.createNewLog(EntryLogger.INVALID_LID);
+        ((EntryLogManagerBase) storage.entryLogger.entryLogManager).createNewLog(EntryLogger.INVALID_LID);
         long leastUnflushedLogId = storage.entryLogger.getLeastUnflushedLogId();
         long currentLogId = storage.entryLogger.getPreviousAllocatedEntryLogId();
         log.info("Least unflushed entry log : current = {}, leastUnflushed = {}", currentLogId, leastUnflushedLogId);
