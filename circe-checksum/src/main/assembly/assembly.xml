@@ -37,7 +37,7 @@
   </dependencySets>
   <fileSets>
     <fileSet>
-      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-MacOSX-gpp-jni/lib/${os.arch}-MacOSX-gpp/jni
+      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-MacOSX-gcc-jni/lib/${os.arch}-MacOSX-gcc/jni
       </directory>
       <outputDirectory>lib</outputDirectory>
       <includes>
@@ -45,7 +45,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-Linux-gpp-jni/lib/${os.arch}-Linux-gpp/jni
+      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-Linux-gcc-jni/lib/${os.arch}-Linux-gcc/jni
       </directory>
       <outputDirectory>lib</outputDirectory>
       <includes>
@@ -53,7 +53,7 @@
       </includes>
     </fileSet>
     <fileSet>
-      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-${os.name}-gpp-jni/lib/${os.arch}-${os.name}-gpp/jni
+      <directory>${project.build.directory}/nar/${project.artifactId}-${project.version}-${os.arch}-${os.name}-gcc-jni/lib/${os.arch}-${os.name}-gcc/jni
       </directory>
       <outputDirectory>lib</outputDirectory>
       <includes>

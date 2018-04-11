@@ -35,7 +35,7 @@
 
   <properties>
     <nar.runtime>dynamic</nar.runtime>
-    <nar.cpp.optionSet>-msse4.2 -mpclmul</nar.cpp.optionSet>
+    <nar.c.optionSet>-msse4.2 -mpclmul</nar.c.optionSet>
   </properties>
 
   <dependencies>
@@ -140,12 +140,15 @@
                   <narSystemPackage>com.scurrilous.circe.checksum</narSystemPackage>
                 </library>
               </libraries>
-              <cpp>
-                <optionSet>${nar.cpp.optionSet}</optionSet>
+              <c>
+                <optionSet>${nar.c.optionSet}</optionSet>
                 <exceptions>false</exceptions>
                 <rtti>false</rtti>
                 <optimize>full</optimize>
-              </cpp>
+              </c>
+              <linker>
+                <name>gcc</name>
+              </linker>
             </configuration>
           </plugin>
         </plugins>
@@ -174,14 +177,14 @@
                   <narSystemPackage>com.scurrilous.circe.checksum</narSystemPackage>
                 </library>
               </libraries>
-              <cpp>
-                <optionSet>${nar.cpp.optionSet}</optionSet>
+              <c>
+                <optionSet>${nar.c.optionSet}</optionSet>
                 <exceptions>false</exceptions>
                 <rtti>false</rtti>
                 <optimize>full</optimize>
-              </cpp>
+              </c>
               <linker>
-                <libSet>rt</libSet>
+                <name>gcc</name>
               </linker>
             </configuration>
           </plugin>
