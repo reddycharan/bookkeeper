@@ -29,34 +29,71 @@ then
   exit 1
 fi
 
-# See the following page for extensive details on setting
-# up the JVM to accept JMX remote management:
-# http://java.sun.com/javase/6/docs/technotes/guides/management/agent.html
-# by default we allow local JMX connections
-if [ "x$JMXLOCALONLY" = "x" ]
-then
-  JMXLOCALONLY=false
-fi
-
-if [ "x$JMXDISABLE" = "x" ]
-then
-  # for some reason these two options are necessary on jdk6 on Ubuntu
-  #   accord to the docs they are not necessary, but otw jconsole cannot
-  #   do a local attach
-  JMX_ARGS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=$JMXLOCALONLY"
-else
-  echo "JMX disabled by user request" >&2
-fi
-
 BINDIR=`dirname "$0"`
 BK_HOME=`cd $BINDIR/..;pwd`
 
+DEFAULT_VERSION=0.0
+# the default cluster name is used for the config value only for dev local machines like one box.
+DEFAULT_CLUSTER_NAME=LOCALBOX
 DEFAULT_CONF=$BK_HOME/conf/bk_server.conf
-DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.properties
+DEFAULT_REPLICATION_CONF=$BK_HOME/conf/bk_replication.conf
+DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.server.xml
+# this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
+DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
 
-source $BK_HOME/conf/bkenv.sh
+bookkeeper_help() {
+    cat <<EOF
+Usage: bookkeeper <command>
+where command is one of:
+    bookie         	Run a bookie server
+    autorecovery   	Run AutoRecovery service daemon
+    localbookie <n>	Run a test ensemble of <n> bookies locally
+    upgrade        	Upgrade bookie filesystem
+    shell 		Run shell for admin commands
+    help                This help message
 
-LOCALBOOKIES_CONFIG_DIR="${LOCALBOOKIES_CONFIG_DIR:-/tmp/localbookies-config}"
+or command is the full name of a class with a defined main() method.
+
+Environment variables:
+   SFSTORE_CLUSTER_NAME        	The full cluster name including DC and SP
+   BOOKIE_VERSION        	Version of the current bits
+   BOOKIE_LOG_CONF        	Log4j configuration file (default $DEFAULT_LOG_CONF)
+   BOOKIE_CONF            	Configuration file (default: $DEFAULT_CONF)
+   BOOKIE_EXTRA_OPTS      	Extra options to be passed to the jvm
+   BOOKIE_EXTRA_CLASSPATH 	Add extra paths to the bookkeeper classpath
+   BOOKIE_PID_DIR         	Folder where the Bookie server PID file should be stored
+   BOOKIE_STOP_TIMEOUT    	Wait time before forcefully kill the Bookie server instance, if the stop is not successful
+
+These variable can also be set in conf/bkenv.sh
+EOF
+}
+
+# if no args specified, show usage
+if [ $# = 0 ]; then
+    bookkeeper_help;
+    exit 1;
+fi
+
+# get arguments
+COMMAND=$1
+shift
+
+ENV_TYPE=${ENV_TYPE:-"dev"}
+if [ "$1" == "dev" ] || [ "$1" == "vpod" ] || [ "$1" == "prod" ] || [ "$1" == "min" ]; then
+    ENV_TYPE="$1"
+    shift
+fi
+
+#Source the correct environment variables depending on environment
+if [[ $ENV_TYPE == "dev" ]]; then
+    source $BK_HOME/conf/bkenv.sh
+elif [[ $ENV_TYPE == "prod" ]]; then
+    source $BK_HOME/conf/bkenv.prod.sh
+elif [[ $ENV_TYPE == "vpod" ]]; then
+    source $BK_HOME/conf/bkenv.vpod.sh
+elif [[ $ENV_TYPE == "min" ]]; then
+    source $BK_HOME/conf/bkenv.min.sh
+fi
 
 # Check for the java to use
 if [[ -z $JAVA_HOME ]]; then
@@ -71,30 +108,14 @@ else
   JAVA=$JAVA_HOME/bin/java
 fi
 
-find-server-jar() {
-  DIR=$1
-  if [ -d $DIR ]; then
-    cd $DIR
-    for f in *.jar; do
-      if [[ $f =~ ^(org.apache.bookkeeper-)?bookkeeper-server-[0-9\\.]*(-SNAPSHOT)?.jar$ ]]; then
-        echo $DIR/$f
-          return
-      fi
-    done
-  fi
-}
-
-RELEASE_JAR=$(find-server-jar ${BK_HOME})
+# exclude tests jar
+RELEASE_JAR=$(ls ${BK_HOME}/bookkeeper-server-*.jar 2> /dev/null | grep -v tests | tail -1)
 if [ -n "${RELEASE_JAR}" ]; then
-  BOOKIE_JAR=${RELEASE_JAR}
-else
-  RELEASE_JAR=$(find-server-jar ${BK_HOME}/lib)
-  if [ -n "${RELEASE_JAR}" ]; then
-    BOOKIE_JAR=${RELEASE_JAR}
-  fi
+  BOOKIE_JAR=$RELEASE_JAR
 fi
 
-BUILT_JAR=$(find-server-jar ${BK_HOME}/target)
+# exclude tests jar
+BUILT_JAR=$(ls ${BK_HOME}/target/bookkeeper-server-*.jar 2> /dev/null | grep -v tests | tail -1)
 
 if [ -z "${BUILT_JAR}" ] && [ -z "${BOOKIE_JAR}" ]; then
   echo "Couldn't find bookkeeper jar."
@@ -108,7 +129,7 @@ if [ -z "${BUILT_JAR}" ] && [ -z "${BOOKIE_JAR}" ]; then
       ;;
   esac
 
-  BUILT_JAR=$(find-server-jar ${BK_HOME}/target)
+  BUILT_JAR=$(ls ${BK_HOME}/target/bookkeeper-server-*.jar 2> /dev/null | grep -v tests | tail -1)
   if [ -n "${BUILT_JAR}" ]; then
     BOOKIE_JAR=$BUILT_JAR
   fi
@@ -122,32 +143,6 @@ if [ ! -e "${BOOKIE_JAR}" ]; then
   echo "Could not find bookkeeper jar."
   exit 1
 fi
-
-bookkeeper_help() {
-    cat <<EOF
-Usage: bookkeeper <command>
-where command is one of:
-    bookie              Run a bookie server
-    autorecovery        Run AutoRecovery service daemon
-    localbookie <n>     Run a test ensemble of <n> bookies locally
-    upgrade             Upgrade bookie filesystem
-    shell               Run shell for admin commands
-    help                This help message
-
-or command is the full name of a class with a defined main() method.
-
-Environment variables:
-   BOOKIE_LOG_CONF        Log4j configuration file (default $DEFAULT_LOG_CONF)
-   BOOKIE_CONF            Configuration file (default: $DEFAULT_CONF)
-   BOOKIE_EXTRA_OPTS      Extra options to be passed to the jvm
-   BOOKIE_EXTRA_CLASSPATH Add extra paths to the bookkeeper classpath
-   ENTRY_FORMATTER_CLASS  Entry formatter class to format entries.
-   BOOKIE_PID_DIR         Folder where the Bookie server PID file should be stored
-   BOOKIE_STOP_TIMEOUT    Wait time before forcefully kill the Bookie server instance, if the stop is not successful
-
-These variable can also be set in conf/bkenv.sh
-EOF
-}
 
 add_maven_deps_to_classpath() {
   MVN="mvn"
@@ -174,41 +169,51 @@ else
   add_maven_deps_to_classpath
 fi
 
-# if no args specified, show usage
-if [ $# = 0 ]; then
-  bookkeeper_help;
-  exit 1;
-fi
-
-# get arguments
-COMMAND=$1
-shift
-
 if [ $COMMAND == "shell" ]; then
-  DEFAULT_LOG_CONF=$BK_HOME/conf/log4j.shell.properties
+    DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.shell.xml
     if [[ $1 == "-localbookie"  ]]; then
         if [[ $2 == *:* ]];
         then
-            BOOKIE_CONF=$LOCALBOOKIES_CONFIG_DIR/$2.conf
+            BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/$2.conf
             shift 2
         else
-            BOOKIE_CONF=$LOCALBOOKIES_CONFIG_DIR/baseconf.conf
+            BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/baseconf.conf
             shift
         fi
     fi
+fi
+
+
+if [ -z "$BOOKIE_VERSION" ]; then
+  BOOKIE_VERSION=$DEFAULT_VERSION
+fi
+
+if [ -z "$SFSTORE_CLUSTER_NAME" ]; then
+  SFSTORE_CLUSTER_NAME=$DEFAULT_CLUSTER_NAME
 fi
 
 if [ -z "$BOOKIE_CONF" ]; then
   BOOKIE_CONF=$DEFAULT_CONF
 fi
 
+if [ -z "$REPLICATION_CONF" ]; then
+  REPLICATION_CONF=$DEFAULT_REPLICATION_CONF
+fi
+
 if [ -z "$BOOKIE_LOG_CONF" ]; then
   BOOKIE_LOG_CONF=$DEFAULT_LOG_CONF
 fi
 
+BOOKIE_LOG_FORMAT=${BOOKIE_LOG_FORMAT:-"$HOSTNAME.sfstore"}
+BOOKIE_LOG_FILE_PATTERN=${BOOKIE_LOG_FILE_PATTERN:-"$HOSTNAME.sfstore.%d{yyyyMMddHH}.log"}
+BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"$BOOKIE_LOG_FORMAT.log"}
 BOOKIE_CLASSPATH="$BOOKIE_JAR:$BOOKIE_CLASSPATH:$BOOKIE_EXTRA_CLASSPATH"
 BOOKIE_CLASSPATH="`dirname $BOOKIE_LOG_CONF`:$BOOKIE_CLASSPATH"
-OPTS="$OPTS -Dlog4j.configuration=`basename $BOOKIE_LOG_CONF`"
+OPTS="$OPTS -Dlog4j.configurationFile=`basename $BOOKIE_LOG_CONF`"
+OPTS="$OPTS -Dlog4j2.is.webapp=false -Dlog4j2.garbagefreeThreadContextMap=true"
+
+#Allow the jvm to use the limits of the host
+OPTS="$OPTS -XX:-MaxFDLimit "
 
 OPTS="-cp $BOOKIE_CLASSPATH $OPTS"
 
@@ -217,34 +222,79 @@ OPTS="$OPTS $BOOKIE_EXTRA_OPTS"
 # Disable ipv6 as it can cause issues
 OPTS="$OPTS -Djava.net.preferIPv4Stack=true"
 
+#Cache FQDN that we retrieve for an hour
+OPTS="$OPTS -Dnetworkaddress.cache.ttl=3600"
+
+#Fixing Java's ByteBuffer native memory "leak"
+OPTS="$OPTS -Djdk.nio.maxCachedBufferSize=0"
+
 # log directory & file
 BOOKIE_ROOT_LOGGER=${BOOKIE_ROOT_LOGGER:-"INFO,CONSOLE"}
 BOOKIE_LOG_DIR=${BOOKIE_LOG_DIR:-"$BK_HOME/logs"}
 BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"bookkeeper-server.log"}
+BOOKIE_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/bk-gc-log"
+if [ $COMMAND == "shell" ]; then
+    BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"ERROR"}
+    BOOKIESHELL_LOGGER_APPENDER=${BOOKIESHELL_LOGGER_APPENDER:-"CONSOLE"}
+else
+    BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"INFO"}
+fi
+BOOKIE_LOG_FILE_SIZE=${BOOKIE_LOG_FILE_SIZE:-"100MB"}
+BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
+#Delete logs with a last modified older than "P[days]D"
+BOOKIE_LOG_MAX_AGE=${BOOKIE_LOG_MAX_AGE:-"P20D"}
+
+AR_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/ar-gc-log"
 
 #Configure log configuration system properties
 OPTS="$OPTS -Dbookkeeper.root.logger=$BOOKIE_ROOT_LOGGER"
 OPTS="$OPTS -Dbookkeeper.log.dir=$BOOKIE_LOG_DIR"
 OPTS="$OPTS -Dbookkeeper.log.file=$BOOKIE_LOG_FILE"
+OPTS="$OPTS -Dbookkeeper.log.pattern=$BOOKIE_LOG_FILE_PATTERN"
+OPTS="$OPTS -Dbookkeeper.log.max.fileAge=$BOOKIE_LOG_MAX_AGE"
+
+#Make all loggers synchronous for bookie shell commands and asynchronous in other cases
+if [ $COMMAND != "shell" ]; then
+    OPTS="$OPTS -DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
+fi
+
+if [ $COMMAND == "shell" ]; then
+    OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog -Dbookieshell.logger.appender=$BOOKIESHELL_LOGGER_APPENDER"
+elif [[ $COMMAND == "autorecovery" ]]; then
+    OPTS="$OPTS -Xloggc:$AR_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+else
+    OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+fi
+
+OPTS="$OPTS -Dcluster.loc=$SFSTORE_CLUSTER_NAME"
+OPTS="$OPTS -Dbookkeeper.sfstore.version=$BOOKIE_VERSION"
+OPTS="$OPTS -Dbookkeeper.log.level=$BOOKIE_LOG_LEVEL"
+OPTS="$OPTS -Dbookkeeper.log.filesize=$BOOKIE_LOG_FILE_SIZE"
+OPTS="$OPTS -Dbookkeeper.log.filecount=$BOOKIE_LOG_FILE_COUNT"
 
 #Change to BK_HOME to support relative paths
 cd "$BK_HOME"
 if [ $COMMAND == "bookie" ]; then
-  exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.server.Main --conf $BOOKIE_CONF $@
+  exec $JAVA -Dname=BookieServer $OPTS org.apache.bookkeeper.proto.BookieServer --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "autorecovery" ]; then
-  exec $JAVA $OPTS $JMX_ARGS org.apache.bookkeeper.replication.AutoRecoveryMain --conf $BOOKIE_CONF $@
+    exec $JAVA -Dname=AutoRecovery $OPTS org.apache.bookkeeper.replication.AutoRecoveryMain -c $REPLICATION_CONF $@
+elif [ $COMMAND == "class" ]; then
+    exec $JAVA $OPTS $@
 elif [ $COMMAND == "localbookie" ]; then
-  NUMBER=$1
-  shift
-  exec $JAVA $OPTS $JMX_ARGS -Dzookeeper.4lw.commands.whitelist='*' org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
+    NUMBER=$1
+    shift
+    exec $JAVA $OPTS org.apache.bookkeeper.util.LocalBookKeeper $NUMBER $BOOKIE_CONF $@
 elif [ $COMMAND == "upgrade" ]; then
   exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "shell" ]; then
-  ENTRY_FORMATTER_ARG="-DentryFormatterClass=${ENTRY_FORMATTER_CLASS:-org.apache.bookkeeper.util.StringEntryFormatter}"
-  exec $JAVA $OPTS $ENTRY_FORMATTER_ARG org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
+    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
 elif [ $COMMAND == "help" ]; then
-  bookkeeper_help;
+    bookkeeper_help;
 else
   exec $JAVA $OPTS $COMMAND $@
 fi
+
+
+
+
 

@@ -20,9 +20,14 @@
 
 usage() {
     cat <<EOF
-Usage: bookkeeper-daemon.sh (start|stop) <command> <args...>
+Usage: bookkeeper-daemon.sh (start|stop) <command> <sourceJvm> <args...>
 where command is one of:
     bookie           Run the bookie server
+
+where sourceJvm is one of:
+    prod             Source the prod JVM arguments
+    vpod             Source the vpod JVM arguments
+    dev              Source the dev JVM arguments (also the default if none provided)
 
 where argument is one of:
     -force (accepted only with stop command): Decides whether to stop the Bookie Server forcefully if not stopped by normal shutdown
@@ -73,7 +78,13 @@ esac
 
 export BOOKIE_LOG_DIR=$BOOKIE_LOG_DIR
 export BOOKIE_ROOT_LOGGER=$BOOKIE_ROOT_LOGGER
-export BOOKIE_LOG_FILE=bookkeeper-$command-$HOSTNAME.log
+if [ -z "${BOOKIE_LOG_FORMAT+x}"  ]; then
+  export BOOKIE_LOG_FILE_PATTERN="bookkeeper-$command-$HOSTNAME-%d{yyyyMMddHH}.log"
+  export BOOKIE_LOG_FILE=bookkeeper-$command-$HOSTNAME.log
+else
+  export BOOKIE_LOG_FILE_PATTERN="$BOOKIE_LOG_FORMAT-%d{yyyyMMddHH}.log"
+  export BOOKIE_LOG_FILE=$BOOKIE_LOG_FORMAT.log
+fi
 
 pid_file="${BOOKIE_PID_DIR}/bookkeeper-${command}.pid"
 out=$BOOKIE_LOG_DIR/bookkeeper-$command-$HOSTNAME.out

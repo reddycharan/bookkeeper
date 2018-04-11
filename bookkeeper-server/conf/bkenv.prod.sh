@@ -35,12 +35,18 @@
 # BOOKIE_LOG_DIR=
 
 GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:+HeapDumpOnOutOfMemoryError"
-GC_OPTS="$GC_OPTS -XX:G1HeapRegionSize=8M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:StringTableSize=1000003" 
-GC_OPTS="$GC_OPTS -XX:InitiatingHeapOccupancyPercent=75"
+GC_OPTS="$GC_OPTS -XX:G1HeapRegionSize=16M -XX:ParallelGCThreads=12 -XX:+ParallelRefProcEnabled -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:StringTableSize=1000003" 
+GC_OPTS="$GC_OPTS -XX:InitiatingHeapOccupancyPercent=40"
+GC_OPTS="$GC_OPTS -XX:+UseLargePages"
 GC_OPTS="$GC_OPTS -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintClassHistogramBeforeFullGC -XX:+PrintClassHistogramAfterFullGC -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics"
-MEM_OPTS="-Xms6G -Xmx6G"
-
+#Bookie & autorecovery receive different memory allocations
+if [[ "$COMMAND" == "bookie" ]]; then
+    MEM_OPTS="-Xms31G -Xmx31G"
+elif [[ "$COMMAND" == "autorecovery" ]]; then
+    MEM_OPTS="-Xms4G -Xmx4G"
+fi
 # Extra options to be passed to the jvm
+# In production we presume we have > 256GB of RAM
 # BOOKIE_EXTRA_OPTS=
 BOOKIE_EXTRA_OPTS="$MEM_OPTS $GC_OPTS -Duser.timezone=UTC -XX:+UnlockDiagnosticVMOptions -XX:-OmitStackTraceInFastThrow "
 

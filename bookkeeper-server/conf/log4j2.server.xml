@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="${sys:bookkeeper.log.level}" monitorInterval="15">
+  <Appenders>
+    <Console name="CONSOLE" target="SYSTEM_OUT">
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSS}{GMT}000 [%-5p] [%t] [%F:%L] - %m%n"/>
+    </Console>
+    <RollingFile name="BOOKKEEPER-SERVER" fileName="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.file}"
+    	filePattern="${sys:bookkeeper.log.dir}/${sys:bookkeeper.log.pattern}"
+    	immediateFlush="false" filePermissions="rw-r-----">
+      <PatternLayout pattern="%d{yyyyMMddHHmmss.SSS}{GMT}000 [%-5p] [%t] [%F:%L] - %m%n"/>
+      <Policies>
+      	<!-- Rollover logs every 3 hours -->
+      	<TimeBasedTriggeringPolicy interval="3"/>
+      </Policies>
+      <DefaultRolloverStrategy>
+	<Delete basePath="${sys:bookkeeper.log.dir}" maxDepth="3">
+		<!-- Delete log files older than P[days]D old -->
+		<IfLastModified age="${sys:bookkeeper.log.max.fileAge}" />
+		<IfAny>
+			<IfFileName regex=".*SNAP.*\.json" />
+			<IfFileName regex=".*\.log\.{0,1}.*" />
+			<IfFileName regex=".*\.out\.{0,1}.*" />
+		</IfAny>
+	</Delete>
+      </DefaultRolloverStrategy>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Root level="${sys:bookkeeper.log.level}" includeLocation="true">
+      <AppenderRef ref="BOOKKEEPER-SERVER"/>
+    </Root>
+  </Loggers>
+</Configuration>
+
