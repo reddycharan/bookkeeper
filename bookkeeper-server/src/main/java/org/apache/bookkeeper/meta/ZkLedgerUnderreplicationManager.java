@@ -43,6 +43,7 @@ import java.util.regex.Pattern;
 
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
+import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.DNS;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.DataFormats.LedgerRereplicationLayoutFormat;
@@ -120,7 +121,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     public ZkLedgerUnderreplicationManager(AbstractConfiguration conf, ZooKeeper zkc)
             throws KeeperException, InterruptedException, ReplicationException.CompatibilityException {
         this.conf = conf;
-        basePath = getBasePath(conf.getZkLedgersRootPath());
+        basePath = getBasePath(ZKMetadataDriverBase.resolveZkLedgersRootPath(conf));
         layoutZNode = basePath + '/' + BookKeeperConstants.LAYOUT_ZNODE;
         urLedgerPath = basePath
                 + BookKeeperConstants.DEFAULT_ZK_LEDGERS_ROOT_PATH;

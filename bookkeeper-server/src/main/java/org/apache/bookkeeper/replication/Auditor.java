@@ -52,6 +52,7 @@ import org.apache.bookkeeper.meta.AbstractZkLedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
+import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
@@ -75,6 +76,8 @@ import org.slf4j.LoggerFactory;
  * bookie failed or disconnected from zk, he will start initiating the
  * re-replication activities by keeping all the corresponding ledgers of the
  * failed bookie as underreplicated znode in zk.
+ *
+ * <p>TODO: eliminate the direct usage of zookeeper here {@link https://github.com/apache/bookkeeper/issues/1332}
  */
 public class Auditor implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(Auditor.class);
@@ -599,7 +602,7 @@ public class Auditor implements AutoCloseable {
      */
     void checkAllLedgers() throws BKException, IOException, InterruptedException, KeeperException {
         ZooKeeper newzk = ZooKeeperClient.newBuilder()
-                .connectString(conf.getZkServers())
+                .connectString(ZKMetadataDriverBase.resolveZkServers(conf))
                 .sessionTimeoutMs(conf.getZkTimeout())
                 .build();
 
