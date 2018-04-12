@@ -50,6 +50,7 @@ import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
 import org.apache.bookkeeper.meta.ZkLayoutManager;
 import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
+import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.DNS;
 import org.apache.bookkeeper.proto.DataFormats.UnderreplicatedLedgerFormat;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
@@ -95,7 +96,7 @@ public class TestLedgerUnderreplicationManager {
         zkUtil.startServer();
 
         conf = TestBKConfiguration.newServerConfiguration();
-        conf.setZkServers(zkUtil.getZooKeeperConnectString());
+        conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
 
         executor = Executors.newCachedThreadPool();
 
@@ -108,7 +109,9 @@ public class TestLedgerUnderreplicationManager {
                 .sessionTimeoutMs(10000)
                 .build();
 
-        basePath = conf.getZkLedgersRootPath() + '/'
+        String zkLedgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
+
+        basePath = zkLedgersRootPath + '/'
                 + BookKeeperConstants.UNDER_REPLICATION_NODE;
         urLedgerPath = basePath
                 + BookKeeperConstants.DEFAULT_ZK_LEDGERS_ROOT_PATH;
@@ -117,13 +120,13 @@ public class TestLedgerUnderreplicationManager {
             conf,
             new ZkLayoutManager(
                 zkc1,
-                conf.getZkLedgersRootPath(),
+                zkLedgersRootPath,
                 ZkUtils.getACLs(conf)));
         lmf2 = AbstractZkLedgerManagerFactory.newLedgerManagerFactory(
             conf,
             new ZkLayoutManager(
                 zkc2,
-                conf.getZkLedgersRootPath(),
+                zkLedgersRootPath,
                 ZkUtils.getACLs(conf)));
 
     }

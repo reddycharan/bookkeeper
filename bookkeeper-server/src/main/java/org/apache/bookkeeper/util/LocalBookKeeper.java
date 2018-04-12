@@ -18,6 +18,7 @@
 package org.apache.bookkeeper.util;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static org.apache.bookkeeper.util.BookKeeperConstants.AVAILABLE_NODE;
 import static org.apache.bookkeeper.util.BookKeeperConstants.READONLY;
 
 import com.google.common.collect.Lists;
@@ -38,6 +39,7 @@ import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
+import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
@@ -61,6 +63,10 @@ import org.slf4j.LoggerFactory;
 public class LocalBookKeeper {
     protected static final Logger LOG = LoggerFactory.getLogger(LocalBookKeeper.class);
     public static final int CONNECTION_TIMEOUT = 30000;
+
+    private static String newMetadataServiceUri(String zkServers, int port) {
+        return "zk://" + zkServers + ":" + port + "/ledgers";
+    }
 
     int numberOfBookies;
 
@@ -125,12 +131,14 @@ public class LocalBookKeeper {
                     .sessionTimeoutMs(zkSessionTimeOut)
                     .build()) {
             List<Op> multiOps = Lists.newArrayListWithExpectedSize(3);
+            String zkLedgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
             multiOps.add(
-                Op.create(conf.getZkLedgersRootPath(), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
+                Op.create(zkLedgersRootPath, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
             multiOps.add(
-                Op.create(conf.getZkAvailableBookiesPath(), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
+                Op.create(zkLedgersRootPath + "/" + AVAILABLE_NODE,
+                    new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
             multiOps.add(
-                Op.create(conf.getZkAvailableBookiesPath() + "/" + READONLY,
+                Op.create(zkLedgersRootPath + "/" + AVAILABLE_NODE + "/" + READONLY,
                     new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
 
             zkc.multi(multiOps);
@@ -249,9 +257,9 @@ public class LocalBookKeeper {
                 bsConfs[i].setBookiePort(initialPort + i);
             }
 
-            if (null == baseConf.getZkServers()) {
-                bsConfs[i].setZkServers(InetAddress.getLocalHost().getHostAddress() + ":"
-                                  + zooKeeperDefaultPort);
+            if (null == baseConf.getMetadataServiceUriUnchecked()) {
+                bsConfs[i].setMetadataServiceUri(
+                    newMetadataServiceUri(InetAddress.getLocalHost().getHostAddress(), zooKeeperDefaultPort));
             }
 
             bsConfs[i].setJournalDirName(journalDirs[i].getPath());
@@ -280,9 +288,9 @@ public class LocalBookKeeper {
          */
         ServerConfiguration baseConfWithCorrectZKServers = new ServerConfiguration(
                 (ServerConfiguration) baseConf.clone());
-        if (null == baseConf.getZkServers()) {
-            baseConfWithCorrectZKServers
-                    .setZkServers(InetAddress.getLocalHost().getHostAddress() + ":" + zooKeeperDefaultPort);
+        if (null == baseConf.getMetadataServiceUriUnchecked()) {
+            baseConfWithCorrectZKServers.setMetadataServiceUri(
+                newMetadataServiceUri(InetAddress.getLocalHost().getHostAddress(), zooKeeperDefaultPort));
         }
         serializeLocalBookieConfig(baseConfWithCorrectZKServers, "baseconf.conf");
     }
@@ -324,6 +332,7 @@ public class LocalBookKeeper {
                 initialBookiePort, true, dirSuffix, null, defaultLocalBookiesConfigDir);
     }
 
+    @SuppressWarnings("deprecation")
     static void startLocalBookiesInternal(ServerConfiguration conf,
                                           String zkHost,
                                           int zkPort,
@@ -358,8 +367,9 @@ public class LocalBookKeeper {
                 zks = LocalBookKeeper.runZookeeper(1000, zkPort, zkTmpDir);
             }
 
+            conf.setMetadataServiceUri(newMetadataServiceUri(zkHost, zkPort));
+
             lb.initializeZookeeper(conf, zkHost, zkPort);
-            conf.setZkServers(zkHost + ":" + zkPort);
             bkTmpDirs = lb.runBookies(conf, dirSuffix);
 
             Class<? extends StatsProvider> statsProviderClass = null;
