@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(SyncThread.class)
-@PowerMockIgnore("javax.*")
+@PowerMockIgnore({"javax.*", "com.sun.org.apache.xerces.*", "org.xml.*", "org.w3c.*"})
 public class LedgerStorageCheckpointTest {
     private static final Logger LOG = LoggerFactory
             .getLogger(LedgerStorageCheckpointTest.class);
