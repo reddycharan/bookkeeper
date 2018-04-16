@@ -307,6 +307,33 @@
         <artifactId>spotbugs-maven-plugin</artifactId>
       </plugin>
       <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.libdir}</outputDirectory>
+	      <includeScope>runtime</includeScope>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>2.5</version>
+	<configuration>
+	  <filesets>
+            <fileset>
+              <directory>${project.libdir}</directory>
+              <followSymlinks>false</followSymlinks>
+            </fileset>
+          </filesets>
+	</configuration>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>${maven-javadoc-plugin.version}</version>
