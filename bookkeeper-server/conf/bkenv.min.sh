@@ -20,6 +20,9 @@
 # * limitations under the License.
 # */
 
+# Environment variables:
+#   BK_HEAP_DUMP         -- dump memory heap on out of memory error
+
 # Set JAVA_HOME here to override the environment setting
 # JAVA_HOME=
 
@@ -34,11 +37,18 @@
 # Logs location
 # BOOKIE_LOG_DIR=
 
-GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:+HeapDumpOnOutOfMemoryError"
+GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
 GC_OPTS="$GC_OPTS -XX:G1HeapRegionSize=8M -XX:ParallelGCThreads=6 -XX:+ParallelRefProcEnabled -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:StringTableSize=1000003"
 GC_OPTS="$GC_OPTS -XX:InitiatingHeapOccupancyPercent=75"
 GC_OPTS="$GC_OPTS -verbose:gc -XX:+PrintHeapAtGC -XX:+PrintPromotionFailure -XX:+PrintClassHistogramBeforeFullGC -XX:+PrintClassHistogramAfterFullGC -XX:+PrintTenuringDistribution -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCApplicationConcurrentTime -XX:PrintFLSStatistics=1 -XX:+PrintStringTableStatistics"
 MEM_OPTS="-Xms512M -Xmx512M"
+
+# Set Heap Dump if HEAP_DUMP is set, else exit immediately.
+if [ "${BK_HEAP_DUMP}" != "" ]; then
+    GC_OPTS="$GC_OPTS -XX:+HeapDumpOnOutOfMemoryError"
+else
+    GC_OPTS="$GC_OPTS -XX:+ExitOnOutOfMemoryError"
+fi
 
 # Extra options to be passed to the jvm
 # BOOKIE_EXTRA_OPTS=

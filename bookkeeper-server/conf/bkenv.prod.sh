@@ -20,6 +20,9 @@
 # * limitations under the License.
 # */
 
+# Environment variables:
+#   BK_HEAP_DUMP         -- dump memory heap on out of memory error
+
 # Set JAVA_HOME here to override the environment setting
 # JAVA_HOME=
 
@@ -34,7 +37,7 @@
 # Logs location
 # BOOKIE_LOG_DIR=
 
-GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:+HeapDumpOnOutOfMemoryError"
+GC_OPTS="-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ResizeTLAB -XX:-ResizePLAB -XX:MetaspaceSize=128m -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80"
 GC_OPTS="$GC_OPTS -XX:G1HeapRegionSize=16M -XX:ParallelGCThreads=12 -XX:+ParallelRefProcEnabled -XX:StackShadowPages=20 -XX:+UseCompressedOops -XX:+DisableExplicitGC -XX:StringTableSize=1000003" 
 GC_OPTS="$GC_OPTS -XX:InitiatingHeapOccupancyPercent=40"
 GC_OPTS="$GC_OPTS -XX:+UseLargePages"
@@ -45,6 +48,14 @@ if [[ "$COMMAND" == "bookie" ]]; then
 elif [[ "$COMMAND" == "autorecovery" ]]; then
     MEM_OPTS="-Xms4G -Xmx4G"
 fi
+
+# Set Heap Dump if HEAP_DUMP is set, else exit immediately.
+if [ "${BK_HEAP_DUMP}" != "" ]; then
+    GC_OPTS="$GC_OPTS -XX:+HeapDumpOnOutOfMemoryError"
+else
+    GC_OPTS="$GC_OPTS -XX:+ExitOnOutOfMemoryError"
+fi
+
 # Extra options to be passed to the jvm
 # In production we presume we have > 256GB of RAM
 # BOOKIE_EXTRA_OPTS=
