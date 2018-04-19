@@ -38,12 +38,17 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.bookkeeper.bookie.EntryLogger.BufferedLogChannel;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManager;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerBase;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogManagerForSingleEntryLog;
@@ -413,6 +418,103 @@ public class EntryLogTest {
 
         // the Future<BufferedLogChannel> is null all the time
         assertNull(entryLogger.getEntryLoggerAllocator().getPreallocationFuture());
+    }
+
+    @Test
+    public void testFlushOrder() throws Exception {
+        entryLogger.shutdown();
+
+        // enable pre-allocation case
+        conf.setEntryLogPerLedgerEnabled(false);
+        conf.setEntryLogFilePreAllocationEnabled(false);
+        conf.setFlushIntervalInBytes(0);
+        conf.setEntryLogSizeLimit(256 * 1024);
+
+        entryLogger = new EntryLogger(conf, dirsMgr);
+        EntryLogManagerBase entryLogManager = (EntryLogManagerBase) entryLogger
+                .getEntryLogManager();
+        AtomicBoolean exceptionHappened = new AtomicBoolean(false);
+
+        CyclicBarrier barrier = new CyclicBarrier(2);
+        List<BufferedLogChannel> rotatedLogChannels;
+        BufferedLogChannel currentActiveChannel;
+        for (int i = 0; i < 10; i++) {
+            exceptionHappened.set(false);
+
+            addEntriesAndRotateLogs(entryLogger, 2);
+
+            rotatedLogChannels = new LinkedList<BufferedLogChannel>(
+                    entryLogManager.getRotatedLogChannels());
+            currentActiveChannel = entryLogManager
+                    .getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID);
+
+            Thread flushThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        barrier.await();
+                        entryLogger.flush();
+                    } catch (InterruptedException | BrokenBarrierException | IOException e) {
+                        LOG.error("Exception happened for entryLogger.flush", e);
+                        exceptionHappened.set(true);
+                    }
+                }
+            });
+
+            Thread createdNewLogThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        barrier.await();
+                        //Thread.sleep(1000);
+                        //entryLogManager.createNewLog(EntryLogger.UNASSIGNED_LEDGERID);
+                        entryLogger.addEntry(123, entryLogger.addEntry(123, generateEntry(123, 456).nioBuffer()), true);
+                    } catch (InterruptedException | BrokenBarrierException | IOException e) {
+                        LOG.error("Exception happened for entryLogManager.createNewLog", e);
+                        exceptionHappened.set(true);
+                    }
+                }
+            });
+
+            /*flushThread.start();
+            createdNewLogThread.start();
+            flushThread.join();
+            createdNewLogThread.join();*/
+
+            entryLogManager.flushRotatedLogs();
+            entryLogManager.createNewLog(EntryLogger.UNASSIGNED_LEDGERID);
+            entryLogManager.flushCurrentLogs();
+
+
+            Assert.assertFalse("Exception happened in one of the operation", exceptionHappened.get());
+
+            Assert.assertEquals("previous active entrylog should be flushandforcewritten", 0,
+                    currentActiveChannel.getUnpersistedBytes());
+            for (BufferedLogChannel rotatedLogChannel : rotatedLogChannels) {
+                Assert.assertEquals("previous rotated entrylog should be flushandforcewritten", 0,
+                        rotatedLogChannel.getUnpersistedBytes());
+            }
+        }
+    }
+
+    void addEntriesAndRotateLogs(EntryLogger entryLogger, int numOfRotations)
+            throws IOException {
+        EntryLogManagerBase entryLogManager = (EntryLogManagerBase) entryLogger.getEntryLogManager();
+        entryLogManager.setCurrentLogForLedgerAndAddToRotate(EntryLogger.UNASSIGNED_LEDGERID, null);
+        Random rand = new Random();
+        for (int i = 0; i < numOfRotations; i++) {
+            addEntries(entryLogger, 10);
+            entryLogManager.setCurrentLogForLedgerAndAddToRotate(EntryLogger.UNASSIGNED_LEDGERID, null);
+        }
+        addEntries(entryLogger, 10);
+    }
+
+    void addEntries(EntryLogger entryLogger, int noOfEntries) throws IOException {
+        for (int j = 0; j < noOfEntries; j++) {
+            int ledgerId = Math.abs(rand.nextInt());
+            int entryId = Math.abs(rand.nextInt());
+            entryLogger.addEntry(ledgerId, generateEntry(ledgerId, entryId).nioBuffer());
+        }
     }
 
     /**
