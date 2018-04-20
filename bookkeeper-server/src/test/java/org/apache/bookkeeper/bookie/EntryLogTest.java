@@ -420,80 +420,98 @@ public class EntryLogTest {
         assertNull(entryLogger.getEntryLoggerAllocator().getPreallocationFuture());
     }
 
+    /**
+     * In this testcase, entryLogger flush and entryLogger addEntry (which would
+     * call createNewLog) are called concurrently. Since entryLogger flush
+     * method flushes both currentlog and rotatedlogs, it is expected all the
+     * currentLog and rotatedLogs are supposed to be flush and forcewritten.
+     *
+     * @throws Exception
+     */
     @Test
     public void testFlushOrder() throws Exception {
         entryLogger.shutdown();
 
-        // enable pre-allocation case
+        int logSizeLimit = 256 * 1024;
         conf.setEntryLogPerLedgerEnabled(false);
         conf.setEntryLogFilePreAllocationEnabled(false);
         conf.setFlushIntervalInBytes(0);
-        conf.setEntryLogSizeLimit(256 * 1024);
+        conf.setEntryLogSizeLimit(logSizeLimit);
 
         entryLogger = new EntryLogger(conf, dirsMgr);
-        EntryLogManagerBase entryLogManager = (EntryLogManagerBase) entryLogger
-                .getEntryLogManager();
+        EntryLogManagerBase entryLogManager = (EntryLogManagerBase) entryLogger.getEntryLogManager();
         AtomicBoolean exceptionHappened = new AtomicBoolean(false);
 
         CyclicBarrier barrier = new CyclicBarrier(2);
         List<BufferedLogChannel> rotatedLogChannels;
         BufferedLogChannel currentActiveChannel;
-        for (int i = 0; i < 10; i++) {
-            exceptionHappened.set(false);
 
-            addEntriesAndRotateLogs(entryLogger, 2);
+        exceptionHappened.set(false);
 
-            rotatedLogChannels = new LinkedList<BufferedLogChannel>(
-                    entryLogManager.getRotatedLogChannels());
-            currentActiveChannel = entryLogManager
-                    .getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID);
+        /*
+         * higher the number of rotated logs, it would be easier to reproduce
+         * the issue regarding flush order
+         */
+        addEntriesAndRotateLogs(entryLogger, 30);
 
-            Thread flushThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        barrier.await();
-                        entryLogger.flush();
-                    } catch (InterruptedException | BrokenBarrierException | IOException e) {
-                        LOG.error("Exception happened for entryLogger.flush", e);
-                        exceptionHappened.set(true);
-                    }
+        rotatedLogChannels = new LinkedList<BufferedLogChannel>(entryLogManager.getRotatedLogChannels());
+        currentActiveChannel = entryLogManager.getCurrentLogForLedger(EntryLogger.UNASSIGNED_LEDGERID);
+        long currentActiveChannelUnpersistedBytes = currentActiveChannel.getUnpersistedBytes();
+
+        Thread flushThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    barrier.await();
+                    entryLogger.flush();
+                } catch (InterruptedException | BrokenBarrierException | IOException e) {
+                    LOG.error("Exception happened for entryLogger.flush", e);
+                    exceptionHappened.set(true);
                 }
-            });
-
-            Thread createdNewLogThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        barrier.await();
-                        //Thread.sleep(1000);
-                        //entryLogManager.createNewLog(EntryLogger.UNASSIGNED_LEDGERID);
-                        entryLogger.addEntry(123, entryLogger.addEntry(123, generateEntry(123, 456).nioBuffer()), true);
-                    } catch (InterruptedException | BrokenBarrierException | IOException e) {
-                        LOG.error("Exception happened for entryLogManager.createNewLog", e);
-                        exceptionHappened.set(true);
-                    }
-                }
-            });
-
-            /*flushThread.start();
-            createdNewLogThread.start();
-            flushThread.join();
-            createdNewLogThread.join();*/
-
-            entryLogManager.flushRotatedLogs();
-            entryLogManager.createNewLog(EntryLogger.UNASSIGNED_LEDGERID);
-            entryLogManager.flushCurrentLogs();
-
-
-            Assert.assertFalse("Exception happened in one of the operation", exceptionHappened.get());
-
-            Assert.assertEquals("previous active entrylog should be flushandforcewritten", 0,
-                    currentActiveChannel.getUnpersistedBytes());
-            for (BufferedLogChannel rotatedLogChannel : rotatedLogChannels) {
-                Assert.assertEquals("previous rotated entrylog should be flushandforcewritten", 0,
-                        rotatedLogChannel.getUnpersistedBytes());
             }
+        });
+
+        Thread createdNewLogThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    barrier.await();
+                    /*
+                     * here we are adding entry of size logSizeLimit with
+                     * rolllog=true, so it would create a new entrylog.
+                     */
+                    entryLogger.addEntry(123, generateEntry(123, 456, logSizeLimit), true);
+                } catch (InterruptedException | BrokenBarrierException | IOException e) {
+                    LOG.error("Exception happened for entryLogManager.createNewLog", e);
+                    exceptionHappened.set(true);
+                }
+            }
+        });
+
+        /*
+         * concurrently entryLogger flush and entryLogger addEntry (which would
+         * call createNewLog) would be called from different threads.
+         */
+        flushThread.start();
+        createdNewLogThread.start();
+        flushThread.join();
+        createdNewLogThread.join();
+
+        Assert.assertFalse("Exception happened in one of the operation", exceptionHappened.get());
+
+        /*
+         * if flush of the previous current channel is called then the
+         * unpersistedBytes should be less than what it was before, actually it
+         * would be close to zero (but when new log is created with addEntry
+         * call, ledgers map will be appended at the end of entry log)
+         */
+        Assert.assertTrue(
+                "previous currentChannel unpersistedBytes should be less than " + currentActiveChannelUnpersistedBytes
+                        + ", but it is actually " + currentActiveChannel.getUnpersistedBytes(),
+                currentActiveChannel.getUnpersistedBytes() < currentActiveChannelUnpersistedBytes);
+        for (BufferedLogChannel rotatedLogChannel : rotatedLogChannels) {
+            Assert.assertEquals("previous rotated entrylog should be flushandforcewritten", 0,
+                    rotatedLogChannel.getUnpersistedBytes());
         }
     }
 
