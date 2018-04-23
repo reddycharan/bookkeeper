@@ -23,7 +23,7 @@ BINDIR=`dirname "$0"`
 BK_HOME=`cd $BINDIR/..;pwd`
 if [ -f $BK_HOME/conf/bkenv.sh ]
 then
- . $BK_HOME/conf/bkenv.sh
+ . $BK_HOME/conf/bkenv.sh "dev-start"
 fi
 
 BKCFG=$BK_HOME/conf/bk_server.conf

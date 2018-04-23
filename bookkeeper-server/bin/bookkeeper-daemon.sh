@@ -39,7 +39,7 @@ BK_HOME=$(cd $BINDIR/..;pwd)
 
 if [ -f $BK_HOME/conf/bkenv.sh ]
 then
- . $BK_HOME/conf/bkenv.sh
+ . $BK_HOME/conf/bkenv.sh "dev-start"
 fi
 
 BOOKIE_LOG_DIR=${BOOKIE_LOG_DIR:-"$BK_HOME/logs"}
