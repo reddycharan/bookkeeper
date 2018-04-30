@@ -42,29 +42,27 @@ DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.server.xml
 DEFAULT_LOCALBOOKIES_CONFIG_DIR=/tmp/localbookies-config
 
 bookkeeper_help() {
-cat <<EOF
+    cat <<EOF
 Usage: bookkeeper <command>
 where command is one of:
-    bookie             Run a bookie server
-    autorecovery       Run AutoRecovery service daemon
-    localbookie <n>    Run a test ensemble of <n> bookies locally
-    upgrade            Upgrade bookie filesystem
-    shell              Run shell for admin commands
-    help               This help message 
+    bookie         	Run a bookie server
+    autorecovery   	Run AutoRecovery service daemon
+    localbookie <n>	Run a test ensemble of <n> bookies locally
+    upgrade        	Upgrade bookie filesystem
+    shell 		Run shell for admin commands
+    help                This help message
 
 or command is the full name of a class with a defined main() method.
 
 Environment variables:
-   SFSTORE_CLUSTER_NAME        The full cluster name including DC and SP
-   BOOKIE_VERSION              Version of the current bits
-   BOOKIE_LOG_CONF             Log4j configuration file (default $DEFAULT_LOG_CONF)
-   BOOKIE_CONF                 Configuration file (default: $DEFAULT_CONF)
-   BOOKIE_EXTRA_OPTS           Extra options to be passed to the jvm
-   BOOKIE_EXTRA_CLASSPATH      Add extra paths to the bookkeeper classpath
-   BOOKIE_PID_DIR              Folder where the Bookie server PID file should be stored
-   BOOKIE_STOP_TIMEOUT         Wait time before forcefully kill the Bookie server instance, if the stop is not successful
-   SFSTORE_ENV_TYPE            The startup configuration environment to be used for the bookies. Default is "dev"
-                               Available Environment Types - dev, min, vpod, prod
+   SFSTORE_CLUSTER_NAME        	The full cluster name including DC and SP
+   BOOKIE_VERSION        	Version of the current bits
+   BOOKIE_LOG_CONF        	Log4j configuration file (default $DEFAULT_LOG_CONF)
+   BOOKIE_CONF            	Configuration file (default: $DEFAULT_CONF)
+   BOOKIE_EXTRA_OPTS      	Extra options to be passed to the jvm
+   BOOKIE_EXTRA_CLASSPATH 	Add extra paths to the bookkeeper classpath
+   BOOKIE_PID_DIR         	Folder where the Bookie server PID file should be stored
+   BOOKIE_STOP_TIMEOUT    	Wait time before forcefully kill the Bookie server instance, if the stop is not successful
 
 These variable can also be set in conf/bkenv.sh
 EOF
@@ -80,16 +78,21 @@ fi
 COMMAND=$1
 shift
 
+ENV_TYPE=${ENV_TYPE:-"dev"}
+if [ "$1" == "dev" ] || [ "$1" == "vpod" ] || [ "$1" == "prod" ] || [ "$1" == "min" ]; then
+    ENV_TYPE="$1"
+    shift
+fi
+
 #Source the correct environment variables depending on environment
-SFSTORE_ENV_TYPE=${SFSTORE_ENV_TYPE:-"dev"}
-if [[ $SFSTORE_ENV_TYPE == "dev" ]]; then
-    source $BK_HOME/conf/bkenv.sh "dev-start"
-elif [[ $SFSTORE_ENV_TYPE == "prod" ]]; then
-    source $BK_HOME/conf/bkenv.sh "prod-start"
-elif [[ $SFSTORE_ENV_TYPE == "vpod" ]]; then
-    source $BK_HOME/conf/bkenv.sh "vpod-start"
-elif [[ $SFSTORE_ENV_TYPE == "min" ]]; then
-    source $BK_HOME/conf/bkenv.sh "min-start"
+if [[ $ENV_TYPE == "dev" ]]; then
+    source $BK_HOME/conf/bkenv.sh
+elif [[ $ENV_TYPE == "prod" ]]; then
+    source $BK_HOME/conf/bkenv.prod.sh
+elif [[ $ENV_TYPE == "vpod" ]]; then
+    source $BK_HOME/conf/bkenv.vpod.sh
+elif [[ $ENV_TYPE == "min" ]]; then
+    source $BK_HOME/conf/bkenv.min.sh
 fi
 
 # Check for the java to use
@@ -116,7 +119,7 @@ BUILT_JAR=$(ls ${BK_HOME}/target/bookkeeper-server-*.jar 2> /dev/null | grep -v 
 
 if [ -z "${BUILT_JAR}" ] && [ -z "${BOOKIE_JAR}" ]; then
   echo "Couldn't find bookkeeper jar."
-  read -p "Do you want me to run \`mvn package -DskipTests\` for you ? " answer
+  read -p "Do you want me to run \`mvn package -DskiptTests\` for you ? " answer
   case "${answer:0:1}" in
     y|Y )
       mvn package -DskipTests
