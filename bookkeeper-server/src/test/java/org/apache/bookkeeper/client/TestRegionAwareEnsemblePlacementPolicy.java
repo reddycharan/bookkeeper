@@ -588,6 +588,52 @@ public class TestRegionAwareEnsemblePlacementPolicy extends TestCase {
     }
 
     @Test
+    public void testNewEnsembleWithMultipleRegionsRacks() throws Exception {
+        repp.uninitalize();
+        repp = new RegionAwareEnsemblePlacementPolicy();
+        repp.initialize(conf, Optional.<DNSToSwitchMapping>empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+        BookieSocketAddress addr1 = new BookieSocketAddress("128.0.0.1", 3181);
+        BookieSocketAddress addr2 = new BookieSocketAddress("128.0.0.2", 3181);
+        BookieSocketAddress addr3 = new BookieSocketAddress("128.0.0.3", 3181);
+        BookieSocketAddress addr4 = new BookieSocketAddress("128.0.0.4", 3181);
+        BookieSocketAddress addr5 = new BookieSocketAddress("128.0.0.5", 3181);
+        BookieSocketAddress addr6 = new BookieSocketAddress("128.0.0.6", 3181);
+        BookieSocketAddress addr7 = new BookieSocketAddress("128.0.0.7", 3181);
+        BookieSocketAddress addr8 = new BookieSocketAddress("128.0.0.8", 3181);
+        // update dns mapping
+        StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/region1/r1");
+        StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/region1/r1");
+        StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/region1/r2");
+        StaticDNSResolver.addNodeToRack(addr4.getHostName(), "/region1/r2");
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/region2/r3");
+        StaticDNSResolver.addNodeToRack(addr6.getHostName(), "/region2/r3");
+        StaticDNSResolver.addNodeToRack(addr7.getHostName(), "/region2/r4");
+        StaticDNSResolver.addNodeToRack(addr8.getHostName(), "/region2/r4");
+        int numOfRacks = 4;
+        // Update cluster
+        Set<BookieSocketAddress> addrs = new HashSet<BookieSocketAddress>();
+        addrs.add(addr1);
+        addrs.add(addr2);
+        addrs.add(addr3);
+        addrs.add(addr4);
+        addrs.add(addr5);
+        addrs.add(addr6);
+        addrs.add(addr7);
+        addrs.add(addr8);
+        repp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
+        try {
+            int ensembleSize = 8;
+            int writeQuorumSize = 4;
+            ArrayList<BookieSocketAddress> ensemble = repp.newEnsemble(ensembleSize, writeQuorumSize, writeQuorumSize,
+                    null, new HashSet<BookieSocketAddress>());
+            int numCovered = getNumCoveredRegionsInWriteQuorum(ensemble, writeQuorumSize);
+            assertEquals("Number of covered writeQuorums. Ensemble: " + ensemble, ensembleSize, numCovered);
+        } catch (BKNotEnoughBookiesException bnebe) {
+            fail("Should not get not enough bookies exception even there are sufficient bookies.");
+        }
+    }
+
+    @Test
     public void testNewEnsembleWithEnoughRegions() throws Exception {
         BookieSocketAddress addr1 = new BookieSocketAddress("127.0.0.2", 3181);
         BookieSocketAddress addr2 = new BookieSocketAddress("127.0.0.3", 3181);
@@ -1392,6 +1438,26 @@ public class TestRegionAwareEnsemblePlacementPolicy extends TestCase {
                 regions.add(StaticDNSResolver.getRegion(addr.getHostName()));
             }
             numCoveredWriteQuorums += (regions.size() > 1 ? 1 : 0);
+        }
+        return numCoveredWriteQuorums;
+    }
+
+    private int getNumCoveredRegionsRacksInWriteQuorum(ArrayList<BookieSocketAddress> ensemble, int writeQuorumSize,
+            int availableNumOfRacks) throws Exception {
+        int ensembleSize = ensemble.size();
+        int numCoveredWriteQuorums = 0;
+        for (int i = 0; i < ensembleSize; i++) {
+            Set<String> regions = new HashSet<String>();
+            Set<String> racks = new HashSet<String>();
+            for (int j = 0; j < writeQuorumSize; j++) {
+                int bookieIdx = (i + j) % ensembleSize;
+                BookieSocketAddress addr = ensemble.get(bookieIdx);
+                String region = StaticDNSResolver.getRegion(addr.getHostName());
+                regions.add(region);
+                racks.add(region + StaticDNSResolver.getRack(addr.getHostName()));
+            }
+            numCoveredWriteQuorums += (regions.size() > 1
+                    ? (racks.size() == Math.min(writeQuorumSize, Math.max(availableNumOfRacks, 2)) ? 1 : 0) : 0);
         }
         return numCoveredWriteQuorums;
     }
