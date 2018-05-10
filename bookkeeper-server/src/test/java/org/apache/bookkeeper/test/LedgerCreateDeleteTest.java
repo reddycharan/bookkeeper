@@ -45,6 +45,7 @@ public class LedgerCreateDeleteTest extends BookKeeperClusterTestCase {
     @Before
     public void setUp() throws Exception {
         baseConf.setOpenFileLimit(1);
+        baseClientConf.setZkOpRetryCount(0);
         super.setUp();
     }
 
