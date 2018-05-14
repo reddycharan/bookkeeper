@@ -174,6 +174,14 @@ public class OrderedExecutor implements ExecutorService {
         @Override
         public void run() {
             taskPendingStats.registerSuccessfulEvent(MathUtils.elapsedNanos(initNanos), TimeUnit.NANOSECONDS);
+
+            long queuedMicroSec = MathUtils.elapsedMicroSec(initNanos);
+            if (queuedMicroSec >= warnTimeMicroSec) {
+                log.warn("Runnable {}:{} waited too long {} micros to execute.",
+                        runnable, runnable.getClass(), queuedMicroSec);
+            }
+
+
             long startNanos = MathUtils.nowInNano();
             this.runnable.run();
             long elapsedMicroSec = MathUtils.elapsedMicroSec(startNanos);
@@ -181,6 +189,12 @@ public class OrderedExecutor implements ExecutorService {
             if (elapsedMicroSec >= warnTimeMicroSec) {
                 log.warn("Runnable {}:{} took too long {} micros to execute.", runnable, runnable.getClass(),
                         elapsedMicroSec);
+            }
+
+            long totalMicroSec = MathUtils.elapsedMicroSec(initNanos);
+            if (totalMicroSec >= warnTimeMicroSec) {
+                log.warn("Runnable {}:{} waited & run for too long: {} micros.",
+                        runnable, runnable.getClass(), totalMicroSec);
             }
         }
     }
