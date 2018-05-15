@@ -60,7 +60,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ BookKeeperCLI.class, CmdBase.class })
-@PowerMockIgnore("org.apache.log4j.*")
+@PowerMockIgnore({"javax.*", "com.sun.org.apache.xerces.*", "org.xml.*", "org.w3c.*", "org.apache.logging.log4j.*"})
 @Slf4j
 public class BookKeeperCLITest {
 
