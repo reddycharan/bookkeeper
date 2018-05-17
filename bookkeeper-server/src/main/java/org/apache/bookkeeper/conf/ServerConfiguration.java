@@ -97,6 +97,8 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String ZK_RETRY_BACKOFF_START_MS = "zkRetryBackoffStartMs";
     protected final static String ZK_RETRY_BACKOFF_MAX_MS = "zkRetryBackoffMaxMs";
     protected final static String OPEN_LEDGER_REREPLICATION_GRACE_PERIOD = "openLedgerRereplicationGracePeriod";
+    protected static final String LOCK_RELEASE_OF_FAILED_LEDGER_GRACE_PERIOD = "lockReleaseOfFailedLedgerGracePeriod";
+
     //ReadOnly mode support on all disk full
     protected final static String READ_ONLY_MODE_ENABLED = "readOnlyModeEnabled";
     //Whether the bookie is force started in ReadOnly mode
@@ -111,8 +113,8 @@ public class ServerConfiguration extends AbstractConfiguration {
     protected final static String AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL = "auditorPeriodicCheckRetryInterval";
     protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_INTERVAL = "auditorPeriodicBookieCheckInterval";
     protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW = "isAuditorPeriodicBookieCheckOkToRunNow";
-    protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL = "auditorPeriodicBookieCheckRetryInterval";    
-    
+    protected final static String AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL = "auditorPeriodicBookieCheckRetryInterval";
+
     protected final static String AUTO_RECOVERY_DAEMON_ENABLED = "autoRecoveryDaemonEnabled";
     protected final static String LOST_BOOKIE_RECOVERY_DELAY = "lostBookieRecoveryDelay";
 
@@ -143,7 +145,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     // Bookie auth provider factory class name
     protected final static String BOOKIE_AUTH_PROVIDER_FACTORY_CLASS = "bookieAuthProviderFactoryClass";
-    
+
     protected final static String MIN_USABLESIZE_FOR_INDEXFILE_CREATION = "minUsableSizeForIndexFileCreation";
     protected final static String ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION = "allowMultipleDirsUnderSamePartition";
 
@@ -241,7 +243,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get wait time in millis for garbage collection of overreplicated ledgers
-     * 
+     *
      * @return gc wait time
      */
     public long getGcOverreplicatedLedgerWaitTimeMillis() {
@@ -250,14 +252,14 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set wait time for garbage collection of overreplicated ledgers. Default: 1 day
-     * 
+     *
      * A ledger can be overreplicated under the following circumstances:
      * 1. The ledger with few entries has bk1 and bk2 as its ensemble.
      * 2. bk1 crashes.
      * 3. bk3 replicates the ledger from bk2 and updates the ensemble to bk2 and bk3.
      * 4. bk1 comes back up.
      * 5. Now there are 3 copies of the ledger.
-     *  
+     *
      * @param gcWaitTime
      * @return server configuration
      */
@@ -270,7 +272,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      * Get flush interval. Default value is 10 second. It isn't useful to decrease
      * this value, since ledger storage only checkpoints when an entry logger file
      * is rolled.
-     * 
+     *
      * @return flush interval
      */
     public int getFlushInterval() {
@@ -291,13 +293,13 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set entry log flush interval in bytes.
-     * 
+     *
      * Default is 0. 0 or less disables this feature and effectively flush
      * happens on log rotation.
      *
      * Flushing in smaller chunks but more frequently reduces spikes in disk
      * I/O. Flushing too frequently may also affect performance negatively.
-     * 
+     *
      * @return Entry log flush interval in bytes
      */
     public long getFlushIntervalInBytes() {
@@ -314,8 +316,8 @@ public class ServerConfiguration extends AbstractConfiguration {
         this.setProperty(FLUSH_ENTRYLOG_INTERVAL_BYTES, Long.toString(flushInterval));
         return this;
     }
-    
-    
+
+
     /**
      * Get bookie death watch interval
      *
@@ -606,7 +608,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     /**
      * Set dir name to store config files of bookies which are started as part of LocalBookKeeper cluster
      *
-     * @param localBookiesConfigDirName 
+     * @param localBookiesConfigDirName
      * @return server configuration
      */
     public ServerConfiguration setLocalBookiesConfigDirName(String localBookiesConfigDirName) {
@@ -764,7 +766,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set socket linger timeout on close.
-     * 
+     *
      * When enabled, a close or shutdown will not return until all queued messages for the socket have been successfully
      * sent or the linger timeout has been reached. Otherwise, the call returns immediately and the closing is done in
      * the background.
@@ -780,7 +782,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * get socket keepalive
-     * 
+     *
      * @return socket keepalive setting
      */
     public boolean getServerSockKeepalive() {
@@ -789,9 +791,9 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set socket keepalive setting.
-     * 
+     *
      * This setting is used to send keep-alive messages on connection-oriented sockets.
-     * 
+     *
      * @param keepalive
      *            KeepAlive setting
      * @return server configuration
@@ -1069,6 +1071,33 @@ public class ServerConfiguration extends AbstractConfiguration {
      */
     public long getOpenLedgerRereplicationGracePeriod() {
         return getLong(OPEN_LEDGER_REREPLICATION_GRACE_PERIOD, 30000);
+    }
+
+    /**
+     * Set the grace period so that if the replication worker fails to replicate
+     * a underreplicatedledger for more than
+     * ReplicationWorker.MAXNUMBER_REPLICATION_FAILURES_ALLOWED_BEFORE_DEFERRING
+     * number of times, then instead of releasing the lock immediately after
+     * failed attempt, it will hold under replicated ledger lock for this grace
+     * period and then it will release the lock.
+     *
+     * @param waitTime
+     */
+    public void setLockReleaseOfFailedLedgerGracePeriod(String waitTime) {
+        setProperty(LOCK_RELEASE_OF_FAILED_LEDGER_GRACE_PERIOD, waitTime);
+    }
+
+    /**
+     * Get the grace period which the replication worker to wait before
+     * releasing the lock after replication worker failing to replicate for more
+     * than
+     * ReplicationWorker.MAXNUMBER_REPLICATION_FAILURES_ALLOWED_BEFORE_DEFERRING
+     * number of times.
+     *
+     * @return
+     */
+    public long getLockReleaseOfFailedLedgerGracePeriod() {
+        return getLong(LOCK_RELEASE_OF_FAILED_LEDGER_GRACE_PERIOD, 60000);
     }
 
     /**
@@ -1394,14 +1423,14 @@ public class ServerConfiguration extends AbstractConfiguration {
         return getFloat(DISK_USAGE_THRESHOLD, 0.95f);
     }
 
-    
+
     /**
-     * Set the disk free space low water mark threshold. 
+     * Set the disk free space low water mark threshold.
      * Disk is considered full when usage threshold is exceeded.
      * Disk returns back to non-full state when usage is below low water mark threshold.
-     * This prevents it from going back and forth between these states frequently 
-     * when concurrent writes and compaction are happening. This also prevent bookie from 
-     * switching frequently between read-only and read-writes states in the same cases.  
+     * This prevents it from going back and forth between these states frequently
+     * when concurrent writes and compaction are happening. This also prevent bookie from
+     * switching frequently between read-only and read-writes states in the same cases.
      *
      * @param threshold threshold to declare a disk full
      *
@@ -1413,7 +1442,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Returns disk free space low water mark threshold. By default it is the 
+     * Returns disk free space low water mark threshold. By default it is the
      * same as usage threshold (for backwards-compatibility).
      *
      * @return the percentage below which a disk will NOT be considered full
@@ -1422,7 +1451,7 @@ public class ServerConfiguration extends AbstractConfiguration {
         return getFloat(DISK_USAGE_LWM_THRESHOLD, getDiskUsageThreshold());
     }
 
-    
+
     /**
      * Set the disk checker interval to monitor ledger disk space
      *
@@ -1469,8 +1498,8 @@ public class ServerConfiguration extends AbstractConfiguration {
      * enable/disable AuditorPeriodicCheck depending on the system date/time. So if the auditorPeriodicCheck is scheduled
      * to execute now, but if isAuditorPeriodicCheckOkToRunNow is false, then Auditor will reschedule periodiccheck after
      * AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL
-     * 
-     * @return boolean value 
+     *
+     * @return boolean value
      */
     public boolean isAuditorPeriodicCheckOkToRunNow() {
         return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_CHECK_OKTORUNNOW), true);
@@ -1481,9 +1510,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * setter to enable/disable AuditorPeriodicCheckOkToRunNow. If it is disabled then Auditor will retry after 
+     * setter to enable/disable AuditorPeriodicCheckOkToRunNow. If it is disabled then Auditor will retry after
      * AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL.
-     * 
+     *
      * @param enabled
      * @return
      */
@@ -1496,7 +1525,7 @@ public class ServerConfiguration extends AbstractConfiguration {
      * as mentioned above, if isAuditorPeriodicCheckOkToRunNow is false when it is time to execute PeriodicCheck,
      * then Auditor will reschedule it to execute after AUDITOR_PERIODIC_CHECK_RETRY_INTERVAL. This is the setter
      * method for it.
-     * 
+     *
      * @param retryInterval
      */
     public void setAuditorPeriodicCheckRetryInterval(long retryInterval) {
@@ -1539,8 +1568,8 @@ public class ServerConfiguration extends AbstractConfiguration {
      * enable/disable AuditorPeriodicBookieCheck depending on the system date/time. So if the AuditorPeriodicBookieCheck is scheduled
      * to execute now, but if isAuditorPeriodicBookieCheckOkToRunNow is false, then Auditor will reschedule periodicbookiecheck after
      * AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL
-     * 
-     * @return boolean value 
+     *
+     * @return boolean value
      */
     public boolean isAuditorPeriodicBookieCheckOkToRunNow() {
         return getBoolean(this.getPropertyNameForFirstActiveTimerange(AUDITOR_PERIODIC_BOOKIE_CHECK_OKTORUNNOW), true);
@@ -1552,7 +1581,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * setter to enable/disable AuditorPeriodicBookieCheckOkToRunNow. If it is disabled then Auditor will retry after 
+     * setter to enable/disable AuditorPeriodicBookieCheckOkToRunNow. If it is disabled then Auditor will retry after
      * AUDITOR_PERIODIC_BOOKIE_CHECK_RETRY_INTERVAL.
      * @param enabled
      * @return
@@ -1869,7 +1898,7 @@ public class ServerConfiguration extends AbstractConfiguration {
         setProperty(USE_SHORT_HOST_NAME, useShortHostName);
         return this;
     }
-    
+
     /**
      * Get whether to listen for local JVM clients. Defaults to false.
      *
@@ -1937,7 +1966,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get Recv ByteBuf allocator initial buf size
-     * 
+     *
      * @return initial byteBuf size
      */
     public int getRecvByteBufAllocatorSizeInitial() {
@@ -1946,7 +1975,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set Recv ByteBuf allocator initial buf size
-     * 
+     *
      * @param size
      *            buffer size
      */
@@ -1956,7 +1985,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get Recv ByteBuf allocator min buf size
-     * 
+     *
      * @return min byteBuf size
      */
     public int getRecvByteBufAllocatorSizeMin() {
@@ -1965,7 +1994,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set Recv ByteBuf allocator min buf size
-     * 
+     *
      * @param size
      *            buffer size
      */
@@ -1975,7 +2004,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get Recv ByteBuf allocator max buf size
-     * 
+     *
      * @return max byteBuf size
      */
     public int getRecvByteBufAllocatorSizeMax() {
@@ -1984,7 +2013,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set Recv ByteBuf allocator max buf size
-     * 
+     *
      * @param size
      *            buffer size
      */
@@ -2015,9 +2044,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Gets the minimum safe Usable size to be available in index directory for Bookie to create Index File while replaying 
+     * Gets the minimum safe Usable size to be available in index directory for Bookie to create Index File while replaying
      * journal at the time of Bookie Start in Readonly Mode (in bytes)
-     * 
+     *
      * @return
      */
     public long getMinUsableSizeForIndexFileCreation() {
@@ -2025,9 +2054,9 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * Sets the minimum safe Usable size to be available in index directory for Bookie to create Index File while replaying 
+     * Sets the minimum safe Usable size to be available in index directory for Bookie to create Index File while replaying
      * journal at the time of Bookie Start in Readonly Mode (in bytes)
-     * 
+     *
      * @param minUsableSizeForIndexFileCreation
      * @return
      */
@@ -2037,21 +2066,21 @@ public class ServerConfiguration extends AbstractConfiguration {
     }
 
     /**
-     * returns whether it is allowed to have multiple ledger/index Directories in the same 
+     * returns whether it is allowed to have multiple ledger/index Directories in the same
      * filesystem partition
      *
-     * @return  
+     * @return
      */
     public boolean isAllowMultipleDirsUnderSamePartition() {
         return this.getBoolean(ALLOW_MULTIPLEDIRS_UNDER_SAME_PARTITION, true);
     }
 
     /**
-     * Configure the Bookie to allow/disallow multiple ledger/index directories in the same 
+     * Configure the Bookie to allow/disallow multiple ledger/index directories in the same
      * filesystem partition
      *
      * @param allow
-     *          
+     *
      * @return server configuration object.
      */
     public ServerConfiguration setAllowMultipleDirsUnderSamePartition(boolean allow) {
@@ -2061,7 +2090,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the trustfile type for client. Default is JKS.
-     * 
+     *
      * @return
      */
     public String getSSLTrustFileType() {
@@ -2070,7 +2099,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the keyfile type for client.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLKeyFileType(String arg) {
@@ -2080,7 +2109,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the keyfile path for the client.
-     * 
+     *
      * @return
      */
     public String getSSLKeyFilePath() {
@@ -2089,7 +2118,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the keyfile path for the client.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLKeyFilePath(String arg) {
@@ -2099,7 +2128,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the path to file containing keyfile password if the client keyfile is password protected. Default is null.
-     * 
+     *
      * @return
      */
     public String getSSLKeyFilePasswordPath() {
@@ -2108,7 +2137,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the path to file containing keyfile password, if the client keyfile is password protected.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLKeyFilePasswordPath(String arg) {
@@ -2118,7 +2147,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the keyfile type for client. Default is JKS.
-     * 
+     *
      * @return
      */
     public String getSSLKeyFileType() {
@@ -2127,7 +2156,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the trustfile type for client.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLTrustFileType(String arg) {
@@ -2137,7 +2166,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the trustfile path for the client.
-     * 
+     *
      * @return
      */
     public String getSSLTrustFilePath() {
@@ -2146,7 +2175,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the trustfile path for the client.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLTrustFilePath(String arg) {
@@ -2157,7 +2186,7 @@ public class ServerConfiguration extends AbstractConfiguration {
     /**
      * Get the path to file containing trustfile password if the client trustfile is password protected. Default is
      * null.
-     * 
+     *
      * @return
      */
     public String getSSLTrustFilePasswordPath() {
@@ -2166,7 +2195,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the path to file containing trustfile password, if the client trustfile is password protected.
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLTrustFilePasswordPath(String arg) {
@@ -2176,7 +2205,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Get the path to file containing SSL Certificate
-     * 
+     *
      * @return
      */
     public String getSSLCertificatePath() {
@@ -2185,7 +2214,7 @@ public class ServerConfiguration extends AbstractConfiguration {
 
     /**
      * Set the path to file containing SSL Certificate
-     * 
+     *
      * @return
      */
     public ServerConfiguration setSSLCertificatePath(String arg) {

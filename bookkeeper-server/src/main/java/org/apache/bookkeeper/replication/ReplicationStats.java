@@ -45,6 +45,7 @@ public interface ReplicationStats {
     public final static String NUM_BYTES_WRITTEN = "NUM_BYTES_WRITTEN";
     public final static String NUM_READS_OUTSTANDING = "NUM_READS_OUTSTANDING";
     public final static String NUM_WRITES_OUTSTANDING = "NUM_WRITES_OUTSTANDING";
+    public final static String NUM_DEFER_LEDGER_LOCK_RELEASE_OF_FAILED_LEDGER = "NUM_DEFER_LEDGER_LOCK_RELEASE_OF_FAILED_LEDGER";
 
     public final static String BK_CLIENT_SCOPE = "bk_client";
 
