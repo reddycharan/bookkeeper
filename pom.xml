@@ -65,7 +65,7 @@
     <module>shaded</module>
     <module>tests</module>
     <module>bookkeeper-dist</module>
-<!-- <module>microbenchmarks</module> -->
+    <module>microbenchmarks</module>
     <module>stream/distributedlog</module>
   </modules>
   <mailingLists>
