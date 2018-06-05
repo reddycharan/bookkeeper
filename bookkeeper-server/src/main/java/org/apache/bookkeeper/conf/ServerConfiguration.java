@@ -201,6 +201,13 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      */
     protected static final String MAXIMUM_NUMBER_OF_ACTIVE_ENTRYLOGS = "maximumNumberOfActiveEntryLogs";
 
+    /*
+     * in EntryLogManagerForEntryLogPerLedger, this config value specifies the
+     * metrics cache size limits in multiples of entrylogMap cache size limits.
+     */
+    protected static final String ENTRY_LOG_PER_LEDGER_COUNTER_LIMITS_MULT_FACTOR =
+            "entryLogPerLedgerCounterLimitsMultFactor";
+
     /**
      * Construct a default configuration object.
      */
@@ -2802,6 +2809,25 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     public ServerConfiguration setMaximumNumberOfActiveEntryLogs(int maximumNumberOfActiveEntryLogs) {
         this.setProperty(MAXIMUM_NUMBER_OF_ACTIVE_ENTRYLOGS,
                 Integer.toString(maximumNumberOfActiveEntryLogs));
+        return this;
+    }
+
+    /*
+     * in EntryLogManagerForEntryLogPerLedger, this config value specifies the
+     * metrics cache size limits in multiples of entrylogMap cache size limits.
+     */
+    public int getEntryLogPerLedgerCounterLimitsMultFactor() {
+        return this.getInt(ENTRY_LOG_PER_LEDGER_COUNTER_LIMITS_MULT_FACTOR, 10);
+    }
+
+    /*
+     * in EntryLogManagerForEntryLogPerLedger, this config value specifies the
+     * metrics cache size limits in multiples of entrylogMap cache size limits.
+     */
+    public ServerConfiguration setEntryLogPerLedgerCounterLimitsMultFactor(
+            int entryLogPerLedgerCounterLimitsMultFactor) {
+        this.setProperty(ENTRY_LOG_PER_LEDGER_COUNTER_LIMITS_MULT_FACTOR,
+                Integer.toString(entryLogPerLedgerCounterLimitsMultFactor));
         return this;
     }
 }

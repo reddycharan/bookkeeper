@@ -226,7 +226,7 @@ Apache Software License, Version 2.
 - lib/log4j-log4j-1.2.17.jar [16]
 - lib/net.java.dev.jna-jna-3.2.7.jar [17]
 - lib/org.apache.commons-commons-collections4-4.1.jar [18]
-- lib/org.apache.commons-commons-lang3-3.3.2.jar [19]
+- lib/org.apache.commons-commons-lang3-3.6.jar [19]
 - lib/org.apache.zookeeper-zookeeper-3.5.3-beta.jar [20]
 - lib/org.eclipse.jetty-jetty-http-9.4.5.v20170502.jar [21]
 - lib/org.eclipse.jetty-jetty-io-9.4.5.v20170502.jar [21]
@@ -284,7 +284,7 @@ Base64 Encoder and Decoder, which can be obtained at:
   * HOMEPAGE:
     * http://iharder.sourceforge.net/current/java/base64/
 
-lib/io.netty-netty-all-4.1.12.Final.jar contains a modified portion of 'Webbit', an event based  
+lib/io.netty-netty-all-4.1.12.Final.jar contains a modified portion of 'Webbit', an event based
 WebSocket and HTTP server, which can be obtained at:
 
   * LICENSE:
@@ -384,4 +384,3 @@ Bundled as
   - lib/org.slf4j-slf4j-api-1.7.25.jar
   - lib/org.slf4j-slf4j-log4j12-1.7.25.jar
 Source available at https://github.com/qos-ch/slf4j/tree/v_1.7.25
-
