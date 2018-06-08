@@ -254,6 +254,8 @@ public class LocalBookKeeper {
 
             bsConfs[i].setJournalDirName(journalDirs[i].getPath());
             bsConfs[i].setLedgerDirNames(ledgerDirs);
+            bsConfs[i].setIndexDirName(ledgerDirs);
+            bsConfs[i].setAllowLoopback(true);
 
             // write config into file before start so we can know what's wrong if start failed
             String fileName = Bookie.getBookieAddress(bsConfs[i]).toString() + ".conf";

@@ -210,6 +210,17 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
                 super.getList(name, defaultValue);
     }
 
+    @Override
+    public void setProperty(String name, Object value) {
+        String clusterProperty = cluster + name;
+        // only set the cluster prefixed value
+        super.setProperty(clusterProperty, value);
+    }
+
+    public void setPropertyUnPrefixed(String name, Object value) {
+        super.setProperty(name, value);
+    }
+
     public static String getClusterLoc() {
         return cluster;
     }
@@ -240,7 +251,7 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
         PropertiesConfiguration loadedConf = new PropertiesConfiguration(confURL);
         for (Iterator<String> iter = loadedConf.getKeys(); iter.hasNext(); ) {
             String key = iter.next();
-            setProperty(key, loadedConf.getProperty(key));
+            setPropertyUnPrefixed(key, loadedConf.getProperty(key));
         }
     }
 
@@ -254,7 +265,7 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     public void loadConf(CompositeConfiguration baseConf) {
         for (Iterator<String> iter = baseConf.getKeys(); iter.hasNext(); ) {
             String key = iter.next();
-            setProperty(key, baseConf.getProperty(key));
+            setPropertyUnPrefixed(key, baseConf.getProperty(key));
         }
     }
 
