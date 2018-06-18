@@ -1043,14 +1043,14 @@
 	<plugins>
           <plugin>
             <artifactId>maven-compiler-plugin</artifactId>
-            <version>3.5.1</version>
-            <configuration>
-              <source>1.8</source>
-              <target>1.8</target>
-              <compilerArguments>
-	        <Xlint:deprecation />
-	        <Xlint:unchecked />
-	      </compilerArguments>
+            <version>${maven-compiler-plugin.version}</version>
+            <configuration combine.self="override">
+              <source>${javac.target}</source>
+              <target>${javac.target}</target>
+              <compilerArgs>
+                <compilerArg>-Xlint:deprecation</compilerArg>
+                <compilerArg>-Xlint:unchecked</compilerArg>
+              </compilerArgs>
             </configuration>
           </plugin>
           <plugin>
@@ -1085,6 +1085,21 @@
                 <exclude>**/bookkeeper/perf/*.java</exclude>
               </excludes>
             </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-checkstyle-plugin</artifactId>
+            <configuration>
+              <skip>true</skip>
+            </configuration>
+	    <dependencies combine.self="override">
+	    </dependencies>
+            <executions>
+              <execution>
+                <id>checkstyle</id>
+                <phase>none</phase>
+              </execution>
+            </executions>
           </plugin>
 	</plugins>
       </build>
