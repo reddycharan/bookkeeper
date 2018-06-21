@@ -15,7 +15,7 @@
 # Please don't change the formatting of the following because sftools/bk_scripts/sfstore_version.sh
 # script relies on this formatting. If you do need to change, please update that script as well.
 #
-SFSTORE_MAJOR_VERSION=1
-SFSTORE_MINOR_VERSION=48
+SFSTORE_MAJOR_VERSION=2
+SFSTORE_MINOR_VERSION=1
 SFSTORE_PATCH_VERSION=0
-APACHE_BOOKKEEPER_VERSION=4.5.0
+APACHE_BOOKKEEPER_VERSION=4.7.0
