@@ -43,8 +43,10 @@ import org.apache.bookkeeper.replication.ReplicationException.CompatibilityExcep
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.shims.zk.ZooKeeperServerShim;
 import org.apache.bookkeeper.shims.zk.ZooKeeperServerShimFactory;
+import org.apache.bookkeeper.stats.StatsProvider;
 import org.apache.bookkeeper.tls.SecurityException;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.io.FileUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -360,6 +362,23 @@ public class LocalBookKeeper {
             conf.setZkServers(zkHost + ":" + zkPort);
             bkTmpDirs = lb.runBookies(conf, dirSuffix);
 
+            Class<? extends StatsProvider> statsProviderClass = null;
+            StatsProvider statsProvider = null;
+
+            boolean statsEnabled = conf.areStatsEnabled();
+            boolean localLogsEnabled = containsAndIsVal("enableLocalStats", "true", conf);
+            boolean runLocalLogs = statsEnabled && localLogsEnabled;
+            if (runLocalLogs) {
+                LOG.info("Collecting local stats...");
+                try {
+                    statsProviderClass = conf.getStatsProviderClass();
+                } catch (ConfigurationException e) {
+                    LOG.warn("Failed to instantiate stats provider class: {}, {}", e, e.getStackTrace());
+                }
+                statsProvider = ReflectionUtils.newInstance(statsProviderClass);
+                statsProvider.start(conf);
+            }
+
             try {
                 while (true) {
                     Thread.sleep(5000);
@@ -367,6 +386,9 @@ public class LocalBookKeeper {
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 if (stopOnExit) {
+                    if (runLocalLogs) {
+                        statsProvider.stop();
+                    }
                     lb.shutdownBookies();
 
                     if (null != zks) {
@@ -466,6 +488,10 @@ public class LocalBookKeeper {
              */
             System.exit(-1);
         }
+    }
+
+    private static boolean containsAndIsVal(String key, String val, ServerConfiguration config) {
+        return config.containsKey(key) && config.getString(key).equals(val);
     }
 
     private static void usage() {
