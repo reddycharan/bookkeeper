@@ -1216,7 +1216,9 @@ public class Bookie extends BookieCriticalThread {
             long ledgerId = entry.getLong(entry.readerIndex());
             LedgerDescriptor handle = handles.getHandle(ledgerId, masterKey);
             synchronized (handle) {
+                entry.markReaderIndex();
                 handle.setExplicitLac(entry);
+                entry.resetReaderIndex();
                 ByteBuf explicitLACEntry = createExplicitLACEntry(ledgerId, entry);
                 getJournal(ledgerId).logAddEntry(explicitLACEntry, false /* ackBeforeSync */, writeCallback, ctx);
             }
