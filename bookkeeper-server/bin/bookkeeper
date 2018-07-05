@@ -35,7 +35,8 @@ BK_HOME=`cd $BINDIR/..;pwd`
 DEFAULT_VERSION=0.0
 # the default cluster name is used for the config value only for dev local machines like one box.
 DEFAULT_CLUSTER_NAME=LOCALBOX
-DEFAULT_CONF=$BK_HOME/conf/bk_server.conf
+DEFAULT_BOOKIE_CONF=$BK_HOME/conf/bk_server.conf
+DEFAULT_BKSHELL_CONF=$BK_HOME/conf/bk_shell.conf
 DEFAULT_REPLICATION_CONF=$BK_HOME/conf/bk_replication.conf
 DEFAULT_LOG_CONF=$BK_HOME/conf/log4j2.server.xml
 # this default config dir should match the 'localBookiesConfigDirectory' config value in the conf file of LocalBookKeeper
@@ -58,7 +59,8 @@ Environment variables:
    SFSTORE_CLUSTER_NAME        	The full cluster name including DC and SP
    BOOKIE_VERSION        	Version of the current bits
    BOOKIE_LOG_CONF        	Log4j configuration file (default $DEFAULT_LOG_CONF)
-   BOOKIE_CONF            	Configuration file (default: $DEFAULT_CONF)
+   BOOKIE_CONF            	Configuration file (default: $DEFAULT_BOOKIE_CONF)
+   BKSHELL_CONF           	Configuration file for shell commands (default: $DEFAULT_BKSHELL_CONF)
    BOOKIE_EXTRA_OPTS      	Extra options to be passed to the jvm
    BOOKIE_EXTRA_CLASSPATH 	Add extra paths to the bookkeeper classpath
    BOOKIE_PID_DIR         	Folder where the Bookie server PID file should be stored
@@ -174,10 +176,10 @@ if [ $COMMAND == "shell" ]; then
     if [[ $1 == "-localbookie"  ]]; then
         if [[ $2 == *:* ]];
         then
-            BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/$2.conf
+            BKSHELL_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/$2.conf
             shift 2
         else
-            BOOKIE_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/baseconf.conf
+            BKSHELL_CONF=$DEFAULT_LOCALBOOKIES_CONFIG_DIR/baseconf.conf
             shift
         fi
     fi
@@ -193,7 +195,11 @@ if [ -z "$SFSTORE_CLUSTER_NAME" ]; then
 fi
 
 if [ -z "$BOOKIE_CONF" ]; then
-  BOOKIE_CONF=$DEFAULT_CONF
+  BOOKIE_CONF=$DEFAULT_BOOKIE_CONF
+fi
+
+if [ -z "$BKSHELL_CONF" ]; then
+  BKSHELL_CONF=$DEFAULT_BKSHELL_CONF
 fi
 
 if [ -z "$REPLICATION_CONF" ]; then
@@ -287,7 +293,7 @@ elif [ $COMMAND == "localbookie" ]; then
 elif [ $COMMAND == "upgrade" ]; then
   exec $JAVA $OPTS org.apache.bookkeeper.bookie.FileSystemUpgrade --conf $BOOKIE_CONF $@
 elif [ $COMMAND == "shell" ]; then
-    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} org.apache.bookkeeper.bookie.BookieShell -conf $BOOKIE_CONF $@
+    exec $JAVA ${OPTS/-XX:+PrintStringTableStatistics/} org.apache.bookkeeper.bookie.BookieShell -conf $BKSHELL_CONF $@
 elif [ $COMMAND == "help" ]; then
     bookkeeper_help;
 else
