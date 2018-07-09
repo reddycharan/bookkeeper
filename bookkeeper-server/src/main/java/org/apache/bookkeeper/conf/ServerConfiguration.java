@@ -93,6 +93,9 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     // NIO Parameters
     protected static final String SERVER_TCP_NODELAY = "serverTcpNoDelay";
     protected static final String SERVER_SOCK_KEEPALIVE = "serverSockKeepalive";
+    protected static final String SERVER_SOCK_KEEPALIVE_IDLE = "serverSockKeepaliveIdle";
+    protected static final String SERVER_SOCK_KEEPALIVE_INTERVAL = "serverSockKeepaliveInterval";
+    protected static final String SERVER_SOCK_KEEPALIVE_COUNT = "serverSockKeepaliveCount";
     protected static final String SERVER_SOCK_LINGER = "serverTcpLinger";
 
     // Zookeeper Parameters
@@ -998,6 +1001,78 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     public ServerConfiguration setServerSockKeepalive(boolean keepalive) {
         setProperty(SERVER_SOCK_KEEPALIVE, Boolean.toString(keepalive));
         return this;
+    }
+
+
+    /**
+     * get socket keepalive idle timeout.
+     *
+     * @return socket keepalive idle timeout in seconds
+     */
+    public int getServerSockKeepaliveIdle() {
+        return getInt(SERVER_SOCK_KEEPALIVE_IDLE, 10 * 60);
+    }
+
+    /**
+     * Set socket keepalive idle timeout.
+     *
+     * <p>This setting is used to set a timeout on how long to idle on the socket
+     * before sending keep-alive message.
+     *
+     * @param timeout
+     *            KeepAlive idle timeout (in seconds)
+     * @return server configuration
+     */
+    public ServerConfiguration setServerSockKeepaliveIdle(int timeout) {
+        setProperty(SERVER_SOCK_KEEPALIVE_IDLE, timeout);
+        return this;
+    }
+
+    /**
+     * Set socket keepalive idle count.
+     *
+     * <p>This setting is used to set keepalive count after which the connection is
+     * determined as closed.
+     *
+     * @param count
+     *            KeepAlive message count
+     * @return server configuration
+     */
+    public ServerConfiguration setServerSockKeepaliveCount(int count) {
+        setProperty(SERVER_SOCK_KEEPALIVE_COUNT, count);
+        return this;
+    }
+
+    /**
+     * get socket keepalive count.
+     *
+     * @return socket keepalive count
+     */
+    public int getServerSockKeepaliveCount() {
+        return getInt(SERVER_SOCK_KEEPALIVE_COUNT, 3);
+    }
+
+    /**
+     * Set socket keepalive interval.
+     *
+     * <p>This setting is used to set the time duration between two keepalive requests.
+     *
+     * @param duration
+     *            KeepAlive message interval
+     * @return server configuration
+     */
+    public ServerConfiguration setServerSockKeepaliveInterval(int duration) {
+        setProperty(SERVER_SOCK_KEEPALIVE_INTERVAL, duration);
+        return this;
+    }
+
+    /**
+     * get socket keepalive idle timeout.
+     *
+     * @return socket keepalive interval in seconds
+     */
+    public int getServerSockKeepaliveInterval() {
+        return getInt(SERVER_SOCK_KEEPALIVE_INTERVAL, 5);
     }
 
     /**

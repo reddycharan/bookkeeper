@@ -49,6 +49,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannelConfig;
 import io.netty.channel.local.LocalChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.CorruptedFrameException;
@@ -2122,6 +2123,13 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     LOG.info("Successfully connected to bookie: {}", future.channel());
                     rc = BKException.Code.OK;
                     channel = future.channel();
+                    if (channel instanceof EpollSocketChannel) {
+                        EpollSocketChannelConfig channelConfig = (EpollSocketChannelConfig) channel.config();
+                        channelConfig.setTcpKeepIdle(conf.getClientSockKeepaliveIdle());
+                        channelConfig.setTcpKeepCntl(conf.getClientSockKeepaliveCount());
+                        channelConfig.setTcpKeepIntvl(conf.getClientSockKeepaliveInterval());
+                    }
+
                     if (shFactory != null) {
                         makeWritable();
                         initiateTLS();

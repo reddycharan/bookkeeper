@@ -37,6 +37,8 @@ import io.netty.channel.DefaultEventLoopGroup;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannelConfig;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -126,14 +128,14 @@ class BookieNettyServer {
             }
 
             this.eventLoopGroup = eventLoopGroup;
-            allChannels = new CleanupChannelGroup(eventLoopGroup);
+            allChannels = new CleanupChannelGroup(eventLoopGroup, conf);
         } else {
             this.eventLoopGroup = null;
         }
 
         if (conf.isEnableLocalTransport()) {
             jvmEventLoopGroup = new DefaultEventLoopGroup();
-            allChannels = new CleanupChannelGroup(jvmEventLoopGroup);
+            allChannels = new CleanupChannelGroup(jvmEventLoopGroup, conf);
         } else {
             jvmEventLoopGroup = null;
         }
@@ -429,13 +431,21 @@ class BookieNettyServer {
     private static class CleanupChannelGroup extends DefaultChannelGroup {
 
         private AtomicBoolean closed = new AtomicBoolean(false);
+        private ServerConfiguration conf;
 
-        public CleanupChannelGroup(EventLoopGroup eventLoopGroup) {
+        public CleanupChannelGroup(EventLoopGroup eventLoopGroup, ServerConfiguration conf) {
             super("BookieChannelGroup", eventLoopGroup.next());
+            this.conf = conf;
         }
 
         @Override
         public boolean add(Channel channel) {
+            if (channel instanceof EpollSocketChannel) {
+                EpollSocketChannelConfig channelConfig = (EpollSocketChannelConfig) channel.config();
+                channelConfig.setTcpKeepIdle(conf.getServerSockKeepaliveIdle());
+                channelConfig.setTcpKeepCntl(conf.getServerSockKeepaliveCount());
+                channelConfig.setTcpKeepIntvl(conf.getServerSockKeepaliveInterval());
+            }
             boolean ret = super.add(channel);
             if (closed.get()) {
                 channel.close();

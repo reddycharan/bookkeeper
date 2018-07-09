@@ -91,6 +91,9 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
     // NIO Parameters
     protected static final String CLIENT_TCP_NODELAY = "clientTcpNoDelay";
     protected static final String CLIENT_SOCK_KEEPALIVE = "clientSockKeepalive";
+    protected static final String CLIENT_SOCK_KEEPALIVE_IDLE = "clientSockKeepaliveIdle";
+    protected static final String CLIENT_SOCK_KEEPALIVE_INTERVAL = "clientSockKeepaliveInterval";
+    protected static final String CLIENT_SOCK_KEEPALIVE_COUNT = "clientSockKeepaliveCount";
     protected static final String CLIENT_SENDBUFFER_SIZE = "clientSendBufferSize";
     protected static final String CLIENT_RECEIVEBUFFER_SIZE = "clientReceiveBufferSize";
     protected static final String CLIENT_WRITEBUFFER_LOW_WATER_MARK = "clientWriteBufferLowWaterMark";
@@ -369,6 +372,77 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
     public ClientConfiguration setClientSockKeepalive(boolean keepalive) {
         setProperty(CLIENT_SOCK_KEEPALIVE, Boolean.toString(keepalive));
         return this;
+    }
+
+    /**
+     * get socket keepalive idle timeout.
+     *
+     * @return socket keepalive idle timeout in seconds
+     */
+    public int getClientSockKeepaliveIdle() {
+        return getInt(CLIENT_SOCK_KEEPALIVE_IDLE, 10 * 60);
+    }
+
+    /**
+     * Set socket keepalive idle timeout.
+     *
+     * <p>This setting is used to set a timeout on how long to idle on the socket
+     * before sending keep-alive message.
+     *
+     * @param timeout
+     *            KeepAlive idle timeout (in seconds)
+     * @return client configuration
+     */
+    public ClientConfiguration setClientSockKeepaliveIdle(int timeout) {
+        setProperty(CLIENT_SOCK_KEEPALIVE_IDLE, timeout);
+        return this;
+    }
+
+    /**
+     * Set socket keepalive idle count.
+     *
+     * <p>This setting is used to set keepalive count after which the connection is
+     * determined as closed.
+     *
+     * @param count
+     *            KeepAlive message count
+     * @return client configuration
+     */
+    public ClientConfiguration setClientSockKeepaliveCount(int count) {
+        setProperty(CLIENT_SOCK_KEEPALIVE_COUNT, count);
+        return this;
+    }
+
+    /**
+     * get socket keepalive count.
+     *
+     * @return socket keepalive count
+     */
+    public int getClientSockKeepaliveCount() {
+        return getInt(CLIENT_SOCK_KEEPALIVE_COUNT, 3);
+    }
+
+    /**
+     * Set socket keepalive interval.
+     *
+     * <p>This setting is used to set the time duration between two keepalive requests.
+     *
+     * @param duration
+     *            KeepAlive message interval
+     * @return client configuration
+     */
+    public ClientConfiguration setClientSockKeepaliveInterval(int duration) {
+        setProperty(CLIENT_SOCK_KEEPALIVE_INTERVAL, duration);
+        return this;
+    }
+
+    /**
+     * get socket keepalive idle timeout.
+     *
+     * @return socket keepalive interval in seconds
+     */
+    public int getClientSockKeepaliveInterval() {
+        return getInt(CLIENT_SOCK_KEEPALIVE_INTERVAL, 5);
     }
 
     /**
@@ -738,10 +812,10 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
 
     /**
      * Get the tick duration in milliseconds that used for the
-     * {@link org.jboss.netty.util.HashedWheelTimer} that used by PCBC to timeout
+     * {@link io.netty.util.HashedWheelTimer} that used by PCBC to timeout
      * requests.
      *
-     * @see org.jboss.netty.util.HashedWheelTimer
+     * @see io.netty.util.HashedWheelTimer
      *
      * @return tick duration in milliseconds
      */
@@ -752,8 +826,8 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
 
     /**
      * Set the tick duration in milliseconds that used for
-     * {@link org.jboss.netty.util.HashedWheelTimer} that used by PCBC to timeout
-     * requests. Be aware of {@link org.jboss.netty.util.HashedWheelTimer} if you
+     * {@link io.netty.util.HashedWheelTimer} that used by PCBC to timeout
+     * requests. Be aware of {@link io.netty.util.HashedWheelTimer} if you
      * are going to modify this setting.
      *
      * @see #getPCBCTimeoutTimerTickDurationMs()
@@ -770,10 +844,10 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
 
     /**
      * Get number of ticks that used for
-     * {@link org.jboss.netty.util.HashedWheelTimer} that used by PCBC to timeout
+     * {@link io.netty.util.HashedWheelTimer} that used by PCBC to timeout
      * requests.
      *
-     * @see org.jboss.netty.util.HashedWheelTimer
+     * @see io.netty.util.HashedWheelTimer
      *
      * @return number of ticks that used for timeout timer.
      */
@@ -784,8 +858,8 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
 
     /**
      * Set number of ticks that used for
-     * {@link org.jboss.netty.util.HashedWheelTimer} that used by PCBC to timeout request.
-     * Be aware of {@link org.jboss.netty.util.HashedWheelTimer} if you are going to modify
+     * {@link io.netty.util.HashedWheelTimer} that used by PCBC to timeout request.
+     * Be aware of {@link io.netty.util.HashedWheelTimer} if you are going to modify
      * this setting.
      *
      * @see #getPCBCTimeoutTimerNumTicks()
@@ -1283,8 +1357,7 @@ public class ClientConfiguration extends AbstractConfiguration<ClientConfigurati
      * Note: Please {@link #enableBookieHealthCheck()} to use this configuration.
      * </p>
      *
-     * @param threshold
-     * @param unit
+     * @param thresholdPerInterval
      * @return client configuration
      */
     public ClientConfiguration setBookieErrorThresholdPerInterval(long thresholdPerInterval) {
