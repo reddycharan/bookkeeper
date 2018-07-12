@@ -50,17 +50,21 @@ public class RackawareEnsemblePlacementPolicy extends RackawareEnsemblePlacement
                                                           HashedWheelTimer timer,
                                                           boolean reorderReadsRandom,
                                                           int stabilizePeriodSeconds,
+                                                          int reorderThresholdPendingRequests,
                                                           boolean isWeighted,
                                                           int maxWeightMultiple,
                                                           StatsLogger statsLogger) {
         if (stabilizePeriodSeconds > 0) {
-            super.initialize(dnsResolver, timer, reorderReadsRandom, 0, isWeighted, maxWeightMultiple, statsLogger);
+            super.initialize(dnsResolver, timer, reorderReadsRandom, 0, reorderThresholdPendingRequests, isWeighted,
+                    maxWeightMultiple, statsLogger);
             slave = new RackawareEnsemblePlacementPolicyImpl(enforceDurability);
-            slave.initialize(dnsResolver, timer, reorderReadsRandom, stabilizePeriodSeconds, isWeighted,
-                    maxWeightMultiple, statsLogger);
+            slave.initialize(dnsResolver, timer, reorderReadsRandom, stabilizePeriodSeconds,
+                    reorderThresholdPendingRequests, isWeighted, maxWeightMultiple,
+                    statsLogger);
         } else {
-            super.initialize(dnsResolver, timer, reorderReadsRandom, stabilizePeriodSeconds, isWeighted,
-                    maxWeightMultiple, statsLogger);
+            super.initialize(dnsResolver, timer, reorderReadsRandom, stabilizePeriodSeconds,
+                    reorderThresholdPendingRequests, isWeighted, maxWeightMultiple,
+                    statsLogger);
             slave = null;
         }
         return this;
