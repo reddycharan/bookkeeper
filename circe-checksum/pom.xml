@@ -65,6 +65,7 @@
         <configuration>
           <source>1.8</source>
           <target>1.8</target>
+          <skipTests>true</skipTests>
           <compilerArgs>
             <!-- Object.finalize() is deprecated at java 9 -->
             <!-- <compilerArg>-Werror</compilerArg> -->
@@ -86,6 +87,7 @@
         <artifactId>maven-assembly-plugin</artifactId>
         <version>${maven-assembly-plugin.version}</version>
         <configuration>
+          <skipTests>true</skipTests>
           <descriptors>
             <descriptor>src/main/assembly/assembly.xml</descriptor>
           </descriptors>
@@ -132,6 +134,7 @@
             <version>${nar-maven-plugin.version}</version>
             <extensions>true</extensions>
             <configuration>
+              <skipTests>true</skipTests>
               <runtime>${nar.runtime}</runtime>
               <output>circe-checksum</output>
               <libraries>
@@ -169,6 +172,7 @@
             <version>${nar-maven-plugin.version}</version>
             <extensions>true</extensions>
             <configuration>
+              <skipTests>true</skipTests>
               <runtime>${nar.runtime}</runtime>
               <output>circe-checksum</output>
               <libraries>
