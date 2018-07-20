@@ -92,7 +92,7 @@ public class CodahaleMetricsProvider implements StatsProvider {
             // "metrics.json", respectively, as default.
             LOG.info("Configuring stats on port: " + jettyPort);
             try {
-                JettyServices jettyServices = new JettyServices(conf, this);
+                jettyServices = new JettyServices(conf, this);
                 jettyServices.start();
             } catch (Exception e) {
                 LOG.error("Failed to start logging servlet!\n" + e.getMessage(), e);
