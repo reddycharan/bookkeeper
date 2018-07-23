@@ -483,7 +483,7 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         conf.setBookiePort(port)
             .setJournalDirName(tmpDir.getPath())
             .setLedgerDirNames(new String[] { tmpDir.getPath() })
-            .setMetadataServiceUri(metadataServiceUri);
+            .setZkServers(zkUtil.getZooKeeperConnectString());
 
         BookieConfiguration bkConf = new BookieConfiguration(conf);
         BookieService service = new BookieService(bkConf, NullStatsLogger.INSTANCE);
