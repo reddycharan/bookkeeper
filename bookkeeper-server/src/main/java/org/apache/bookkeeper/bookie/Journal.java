@@ -571,6 +571,8 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
     private final boolean flushWhenQueueEmpty;
     // should we hint the filesystem to remove pages from cache after force write
     private final boolean removePagesFromCache;
+    private final int journalFormatVersionToWrite;
+    private final int journalAlignmentSize;
 
     // Should data be fsynced on disk before triggering the callback
     private final boolean syncData;
@@ -631,6 +633,8 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
         this.maxGroupWaitInNanos = TimeUnit.MILLISECONDS.toNanos(conf.getJournalMaxGroupWaitMSec());
         this.bufferedWritesThreshold = conf.getJournalBufferedWritesThreshold();
         this.bufferedEntriesThreshold = conf.getJournalBufferedEntriesThreshold();
+        this.journalFormatVersionToWrite = conf.getJournalFormatVersionToWrite();
+        this.journalAlignmentSize = conf.getJournalAlignmentSize();
         if (conf.getNumJournalCallbackThreads() > 0) {
             this.cbThreadPool = Executors.newFixedThreadPool(conf.getNumJournalCallbackThreads(),
                                                          new DefaultThreadFactory("bookie-journal-callback"));
@@ -902,8 +906,7 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
         ByteBuf lenBuff = Unpooled.buffer(4);
         ByteBuf paddingBuff = Unpooled.buffer(2 * conf.getJournalAlignmentSize());
         paddingBuff.writeZero(paddingBuff.capacity());
-        final int journalFormatVersionToWrite = conf.getJournalFormatVersionToWrite();
-        final int journalAlignmentSize = conf.getJournalAlignmentSize();
+
         BufferedChannel bc = null;
         JournalChannel logFile = null;
         forceWriteThread.start();
@@ -1070,23 +1073,33 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
                 if (qe == null) { // no more queue entry
                     continue;
                 }
+                if ((qe.entryId == Bookie.METAENTRY_ID_LEDGER_EXPLICITLAC)
+                        && (journalFormatVersionToWrite < JournalChannel.V6)) {
+                    /*
+                     * this means we are using new code which supports
+                     * persisting explicitLac, but "journalFormatVersionToWrite"
+                     * is set to some older value (< V6). In this case we
+                     * shouldn't write this special entry
+                     * (METAENTRY_ID_LEDGER_EXPLICITLAC) to Journal.
+                     */
+                    qe.entry.release();
+                } else {
+                    int entrySize = qe.entry.readableBytes();
+                    journalWriteBytes.add(entrySize);
+                    journalQueueSize.dec();
 
-                int entrySize = qe.entry.readableBytes();
-                journalWriteBytes.add(entrySize);
-                journalQueueSize.dec();
+                    batchSize += (4 + entrySize);
 
-                batchSize += (4 + entrySize);
+                    lenBuff.clear();
+                    lenBuff.writeInt(entrySize);
 
-                lenBuff.clear();
-                lenBuff.writeInt(entrySize);
+                    // preAlloc based on size
+                    logFile.preAllocIfNeeded(4 + entrySize);
 
-                // preAlloc based on size
-                logFile.preAllocIfNeeded(4 + entrySize);
-
-                bc.write(lenBuff);
-                bc.write(qe.entry);
-                qe.entry.release();
-
+                    bc.write(lenBuff);
+                    bc.write(qe.entry);
+                    qe.entry.release();
+                }
                 toFlush.add(qe);
                 numEntriesToFlush++;
                 qe = null;
