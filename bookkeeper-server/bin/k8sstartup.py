@@ -52,6 +52,7 @@ def start_bookie(env_vars):
                                             pattern="%d{yyyyMMddHH}"))
     os.environ["BOOKIE_LOG_FORMAT"]="%s.sfstore.bookie" % os.environ["HOSTNAME"]
     os.environ["BOOKIE_LOG_FILE"]="bookkeeper-bookie-%s.log" % os.environ["HOSTNAME"]
+    set_configs("/sfs/sfsbuild/conf/bk_shell.conf", env_vars)
     set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
     os.system("/sfs/sfsbuild/bin/bookkeeper shell initnewcluster")
     os.system("/sfs/sfsbuild/bin/bookkeeper shell bookieformat -d -nonInteractive")
@@ -101,7 +102,7 @@ if __name__ == '__main__':
         start_autorecovery(env_vars)
         print "Started autorecovery"
     elif process == "adminpod":
-        set_configs("/sfs/sfsbuild/conf/bk_server.conf", env_vars)
+        set_configs("/sfs/sfsbuild/conf/bk_shell.conf", env_vars)
         print "Configs set using adminpod command."
         if JOB_CMD in env_vars.keys():
             admin_command = env_vars[JOB_CMD]
