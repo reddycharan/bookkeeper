@@ -25,7 +25,6 @@ import com.google.common.base.Joiner;
 import com.google.protobuf.TextFormat;
 import com.google.protobuf.TextFormat.ParseException;
 import java.net.UnknownHostException;
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -274,6 +273,9 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                                                    final List<ACL> zkAcls,
                                                    final CompletableFuture<Void> finalFuture) {
         final UnderreplicatedLedgerFormat.Builder builder = UnderreplicatedLedgerFormat.newBuilder();
+        if (conf.getStoreSystemTimeAsLedgerUnderreplicatedMarkTime()) {
+            builder.setCtime(System.currentTimeMillis());
+        }
         missingReplicas.forEach(builder::addReplica);
         final byte[] urLedgerData = TextFormat.printToString(builder.build()).getBytes(UTF_8);
         ZkUtils.asyncCreateFullPathOptimistic(
@@ -389,27 +391,22 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     }
 
     /**
-     * Get a list of all the ledgers which have been
+     * Get a list of all the underreplicated ledgers which have been
      * marked for rereplication, filtered by the predicate on the replicas list.
      *
      * <p>Replicas list of an underreplicated ledger is the list of the bookies which are part of
      * the ensemble of this ledger and are currently unavailable/down.
      *
-     * <p>If filtering is not needed then it is suggested to pass null for predicate,
-     * otherwise it will read the content of the ZNode to decide on filtering.
-     *
      * @param predicate filter to use while listing under replicated ledgers. 'null' if filtering is not required.
-     * @param includeReplicaList whether to include missing replicalist in the output.
-     * @return an iterator which returns ledger ids
+     * @return an iterator which returns underreplicated ledgers.
      */
     @Override
-    public Iterator<Map.Entry<Long, List<String>>> listLedgersToRereplicate(final Predicate<List<String>> predicate,
-            boolean includeReplicaList) {
+    public Iterator<UnderreplicatedLedger> listLedgersToRereplicate(final Predicate<List<String>> predicate) {
         final Queue<String> queue = new LinkedList<String>();
         queue.add(urLedgerPath);
 
-        return new Iterator<Map.Entry<Long, List<String>>>() {
-            final Queue<Map.Entry<Long, List<String>>> curBatch = new LinkedList<Map.Entry<Long, List<String>>>();
+        return new Iterator<UnderreplicatedLedger>() {
+            final Queue<UnderreplicatedLedger> curBatch = new LinkedList<UnderreplicatedLedger>();
 
             @Override
             public void remove() {
@@ -430,11 +427,18 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                                 String child = parent + "/" + c;
                                 if (c.startsWith("urL")) {
                                     long ledgerId = getLedgerId(child);
-                                    List<String> replicaList = getLedgerUnreplicationInfo(ledgerId).getReplicaList();
-                                    if ((predicate == null)
-                                            || predicate.test(replicaList)) {
-                                        curBatch.add(new AbstractMap.SimpleImmutableEntry<Long, List<String>>(ledgerId,
-                                                ((includeReplicaList) ? replicaList : null)));
+                                    UnderreplicatedLedgerFormat underreplicatedLedgerFormat =
+                                            getLedgerUnreplicationInfo(ledgerId);
+                                    List<String> replicaList = underreplicatedLedgerFormat.getReplicaList();
+                                    long ctime = (underreplicatedLedgerFormat.hasCtime()
+                                            ? underreplicatedLedgerFormat.getCtime()
+                                            : UnderreplicatedLedger.UNASSIGNED_CTIME);
+                                    if ((predicate == null) || predicate.test(replicaList)) {
+                                        UnderreplicatedLedger underreplicatedLedger = new UnderreplicatedLedger(
+                                                ledgerId);
+                                        underreplicatedLedger.setCtime(ctime);
+                                        underreplicatedLedger.setReplicaList(replicaList);
+                                        curBatch.add(underreplicatedLedger);
                                     }
                                 } else {
                                     queue.add(child);
@@ -456,7 +460,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
             }
 
             @Override
-            public Map.Entry<Long, List<String>> next() {
+            public UnderreplicatedLedger next() {
                 assert curBatch.size() > 0;
                 return curBatch.remove();
             }
