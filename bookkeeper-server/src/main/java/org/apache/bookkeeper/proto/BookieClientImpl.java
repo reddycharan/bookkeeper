@@ -57,6 +57,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ForceLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfALedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -307,6 +308,31 @@ public class BookieClientImpl implements BookieClient, PerChannelBookieClientFac
                       ledgerId);
     }
 
+    @Override
+    public void getListOfEntriesOfALedger(BookieSocketAddress address, long ledgerId,
+            GetListOfEntriesOfALedgerCallback cb, Object ctx) {
+        final PerChannelBookieClientPool client = lookupClient(address);
+        if (client == null) {
+            cb.getListOfEntriesOfALedgerComplete(getRc(BKException.Code.BookieHandleNotAvailableException), ledgerId,
+                    null, ctx);
+            return;
+        }
+        client.obtain((rc, pcbc) -> {
+            if (rc != BKException.Code.OK) {
+                try {
+                    executor.executeOrdered(ledgerId, safeRun(() -> {
+                        cb.getListOfEntriesOfALedgerComplete(rc, ledgerId, null, ctx);
+                    }));
+                } catch (RejectedExecutionException re) {
+                    cb.getListOfEntriesOfALedgerComplete(getRc(BKException.Code.InterruptedException), ledgerId, null,
+                            ctx);
+                }
+            } else {
+                pcbc.getListOfEntriesOfALedger(ledgerId, cb, ctx);
+            }
+        }, ledgerId);
+    }
+
     private void completeRead(final int rc,
                               final long ledgerId,
                               final long entryId,
@@ -405,6 +431,7 @@ public class BookieClientImpl implements BookieClient, PerChannelBookieClientFac
         }
     }
 
+    @Override
     public void readLac(final BookieSocketAddress addr, final long ledgerId, final ReadLacCallback cb,
             final Object ctx) {
         final PerChannelBookieClientPool client = lookupClient(addr);
