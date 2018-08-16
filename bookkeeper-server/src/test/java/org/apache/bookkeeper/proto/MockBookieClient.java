@@ -42,6 +42,7 @@ import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ForceLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfALedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -238,6 +239,14 @@ public class MockBookieClient implements BookieClient {
                         cb.getBookieInfoComplete(BKException.Code.IllegalOpException,
                                                  null, ctx);
                     }));
+    }
+
+    @Override
+    public void getListOfEntriesOfALedger(BookieSocketAddress address, long ledgerId,
+            GetListOfEntriesOfALedgerCallback cb, Object ctx) {
+        executor.executeOrdered(address, safeRun(() -> {
+            cb.getListOfEntriesOfALedgerComplete(BKException.Code.IllegalOpException, ledgerId, null, ctx);
+        }));
     }
 
     @Override
