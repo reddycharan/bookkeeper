@@ -36,8 +36,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -56,6 +58,7 @@ import org.apache.bookkeeper.client.api.WriteAdvHandle;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.net.BookieSocketAddress;
+import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.zookeeper.KeeperException;
@@ -264,7 +267,7 @@ public class BookieWriteLedgerTest extends
         lh.close();
     }
     /**
-     * Verty delayedWriteError causes ensemble changes.
+     * Verify delayedWriteError causes ensemble changes.
      */
     @Test
     public void testDelayedWriteEnsembleChange() throws Exception {
@@ -287,6 +290,7 @@ public class BookieWriteLedgerTest extends
 
         // get bookie at index-0
         BookieSocketAddress bookie1 = lh.getLedgerMetadata().currentEnsemble.get(0);
+        // Put one bookie to sleep in the last ensemble and continue writing
         sleepBookie(bookie1, sleepLatch1);
 
         int i = numEntriesToWrite;
@@ -326,12 +330,26 @@ public class BookieWriteLedgerTest extends
         sleepLatch1.countDown();
         // get the bookie at index-0 again, this must be different.
         BookieSocketAddress bookie2 = lh.getLedgerMetadata().currentEnsemble.get(0);
+        long secondSegStartEntryId = -1;
+        Iterator<Entry<Long, ArrayList<BookieSocketAddress>>> iterator =
+                lh.getLedgerMetadata().getEnsembles().entrySet().iterator();
+        while (iterator.hasNext()) {
+            secondSegStartEntryId = iterator.next().getKey();
+        }
 
         assertFalse(
                 "Delayed write error must have forced ensemble change",
                         bookie1.equals(bookie2));
+        CompletableFuture<Object> done = new CompletableFuture<>();
+        lh.bk.getBookieClient().readEntry(bookie2, lh.ledgerId, secondSegStartEntryId,
+                (int rc, long ledgerId, final long entryId, final ByteBuf buffer, Object ctx) -> {
+                    assertTrue("Failed to write on the new bookie", rc == BKException.Code.OK);
+                    SyncCallbackUtils.finish(rc, null, done);
+                    }, null, BookieProtocol.FLAG_NONE);
+        done.get();
         lh.close();
     }
+
     /**
      * Verify the functionality Ledgers with different digests.
      *
