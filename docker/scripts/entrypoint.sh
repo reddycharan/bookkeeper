@@ -21,7 +21,7 @@
 # */
 
 export PATH=$PATH:/opt/bookkeeper/bin
-export JAVA_HOME=/usr
+#export JAVA_HOME=/usr
 
 # env var used often
 PORT0=${PORT0:-${BOOKIE_PORT}}

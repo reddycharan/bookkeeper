@@ -1,4 +1,4 @@
-FROM ops0-artifactrepo1-0-prd.data.sfdc.net/docker-dev-base/tnrp/centos:7
+FROM ops0-artifactrepo1-0-prd.data.sfdc.net/dva/sfdc_centos7_openjdk8u172:latest
 
 ARG pipeline_args
 ARG version
@@ -6,13 +6,13 @@ ARG version
 LABEL maintainer="Storage Cloud Foundation \"storagefoundation@salesforce.com\"" \
       pipeline=$pipeline_args \
       version=$version \
-      name=storagecloud/sfstore:latest
+      name=storagecloud/sfstore-openjdk:latest
 
 ADD sfstore.tar.gz /sfs/sfsbuild
 
 # Install necessary packages
 RUN touch /var/lib/rpm/* && \
-    yum install -y --nogpgcheck which java bzip2 wget net-tools nmap-ncat && \
+    yum install -y --nogpgcheck which bzip2 wget net-tools nmap-ncat && \
     yum clean all && \
     set -x && \
     mkdir -p /sfs/sfsbuild /sfs/sfsdata /sfs/sfslogs/ /sfs/sfsdata/journal /sfs/sfsdata/ledger && \
