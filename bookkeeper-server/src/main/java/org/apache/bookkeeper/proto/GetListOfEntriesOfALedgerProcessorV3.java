@@ -20,10 +20,18 @@
  */
 package org.apache.bookkeeper.proto;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse;
+import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,16 +46,37 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
         super(request, channel, requestProcessor);
     }
 
+    private GetListOfEntriesOfALedgerResponse getListOfEntriesOfALedgerResponse() {
+        long startTimeNanos = MathUtils.nowInNano();
+        GetListOfEntriesOfALedgerRequest getListOfEntriesOfALedgerRequest = request
+                .getGetListOfEntriesOfALedgerRequest();
+
+        GetListOfEntriesOfALedgerResponse.Builder getListOfEntriesOfALedgerResponse = GetListOfEntriesOfALedgerResponse
+                .newBuilder();
+
+        if (!isVersionCompatible()) {
+            getListOfEntriesOfALedgerResponse.setStatus(StatusCode.EBADVERSION);
+            requestProcessor.getGetListOfEntriesOfALedgerStats()
+                    .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
+            return getListOfEntriesOfALedgerResponse.build();
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Received new getListOfEntriesOfALedger request: {}", request);
+        }
+        StatusCode status = StatusCode.EOK;
+
+    }
+
     @Override
     public void safeRun() {
         GetListOfEntriesOfALedgerResponse listOfEntriesOfALedgerResponse = getListOfEntriesOfALedgerResponse();
-        if (null != listOfEntriesOfALedgerResponse) {
-            Response.Builder response = Response.newBuilder().setHeader(getHeader())
-                    .setStatus(listOfEntriesOfALedgerResponse.getStatus())
-                    .setGetListOfEntriesOfALedgerResponse(listOfEntriesOfALedgerResponse);
-            Response resp = response.build();
-            sendResponse(listOfEntriesOfALedgerResponse.getStatus(), resp,
-                    requestProcessor.getListOfEntriesOfALedgerRequestStats);
-        }
+        Response.Builder response = Response.newBuilder()
+                .setHeader(getHeader())
+                .setStatus(listOfEntriesOfALedgerResponse.getStatus())
+                .setGetListOfEntriesOfALedgerResponse(listOfEntriesOfALedgerResponse);
+        Response resp = response.build();
+        sendResponse(listOfEntriesOfALedgerResponse.getStatus(), resp,
+                requestProcessor.getListOfEntriesOfALedgerRequestStats);
     }
 }
