@@ -23,10 +23,12 @@ package org.apache.bookkeeper.proto;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
@@ -35,15 +37,23 @@ import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.protobuf.ByteString;
+
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.util.ReferenceCountUtil;
 
 public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(GetListOfEntriesOfALedgerProcessorV3.class);
+    protected final GetListOfEntriesOfALedgerRequest getListOfEntriesOfALedgerRequest;
+    protected final long ledgerId;
 
     public GetListOfEntriesOfALedgerProcessorV3(Request request, Channel channel,
             BookieRequestProcessor requestProcessor) {
         super(request, channel, requestProcessor);
+        this.getListOfEntriesOfALedgerRequest = request.getGetListOfEntriesOfALedgerRequest();
+        this.ledgerId = getListOfEntriesOfALedgerRequest.getLedgerId();
     }
 
     private GetListOfEntriesOfALedgerResponse getListOfEntriesOfALedgerResponse() {
@@ -53,6 +63,7 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
 
         GetListOfEntriesOfALedgerResponse.Builder getListOfEntriesOfALedgerResponse = GetListOfEntriesOfALedgerResponse
                 .newBuilder();
+        getListOfEntriesOfALedgerResponse.setLedgerId(ledgerId);
 
         if (!isVersionCompatible()) {
             getListOfEntriesOfALedgerResponse.setStatus(StatusCode.EBADVERSION);
@@ -65,7 +76,34 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
             LOG.debug("Received new getListOfEntriesOfALedger request: {}", request);
         }
         StatusCode status = StatusCode.EOK;
-
+        ByteBuf listOfEntriesOfALedger = null;
+        try {
+            listOfEntriesOfALedger = requestProcessor.bookie.getListOfEntriesOfALedger(ledgerId);
+            if (listOfEntriesOfALedger != null) {
+                getListOfEntriesOfALedgerResponse
+                        .setAvailabilityOfEntriesOfLedger(ByteString.copyFrom(listOfEntriesOfALedger.nioBuffer()));
+            }
+        } catch (Bookie.NoLedgerException e) {
+            status = StatusCode.ENOLEDGER;
+            LOG.error("No ledger found while performing getListOfEntriesOfALedger from ledger: {}", ledgerId,
+                    e);
+        } catch (IOException e) {
+            status = StatusCode.EIO;
+            LOG.error("IOException while performing getListOfEntriesOfALedger from ledger: {}", ledgerId);
+        } finally {
+            ReferenceCountUtil.release(listOfEntriesOfALedger);
+        }
+        
+        if (status == StatusCode.EOK) {
+            requestProcessor.getListOfEntriesOfALedgerStats.registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos),
+                    TimeUnit.NANOSECONDS);
+        } else {
+            requestProcessor.getListOfEntriesOfALedgerStats.registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos),
+                    TimeUnit.NANOSECONDS);
+        }
+        // Finally set the status and return
+        getListOfEntriesOfALedgerResponse.setStatus(status);
+        return getListOfEntriesOfALedgerResponse.build();
     }
 
     @Override
