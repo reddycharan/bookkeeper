@@ -1077,7 +1077,7 @@ public class EntryLogTest {
         final int cacheMaximumSize = 20;
 
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
-        conf.setEntryLogFilePreAllocationEnabled(true);
+        conf.setEntryLogFilePreAllocationEnabled(false);
         conf.setEntryLogPerLedgerEnabled(true);
         conf.setLedgerDirNames(createAndGetLedgerDirs(1));
         conf.setMaximumNumberOfActiveEntryLogs(cacheMaximumSize);
