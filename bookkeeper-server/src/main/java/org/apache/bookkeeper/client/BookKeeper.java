@@ -475,6 +475,10 @@ public class BookKeeper implements org.apache.bookkeeper.client.api.BookKeeper {
             this.ownEventLoopGroup = false;
         }
 
+        // initialize bookie client
+        this.bookieClient = new BookieClient(conf, this.eventLoopGroup, this.mainWorkerPool,
+                                             scheduler, statsLogger);
+
         if (null == requestTimer) {
             this.requestTimer = new HashedWheelTimer(
                     new ThreadFactoryBuilder().setNameFormat("BookieClientTimer-%d").build(),
@@ -509,9 +513,6 @@ public class BookKeeper implements org.apache.bookkeeper.client.api.BookKeeper {
         } else {
             this.readLACSpeculativeRequestPolicy = Optional.<SpeculativeRequestExecutionPolicy>absent();
         }
-        // initialize bookie client
-        this.bookieClient = new BookieClient(conf, this.eventLoopGroup, this.mainWorkerPool,
-                                             scheduler, statsLogger);
         this.bookieWatcher = new BookieWatcher(
                 conf, this.placementPolicy, metadataDriver.getRegistrationClient(),
                 this.statsLogger.scope(WATCHER_SCOPE));

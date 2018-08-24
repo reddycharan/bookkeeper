@@ -2126,7 +2126,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     if (channel instanceof EpollSocketChannel) {
                         EpollSocketChannelConfig channelConfig = (EpollSocketChannelConfig) channel.config();
                         channelConfig.setTcpKeepIdle(conf.getClientSockKeepaliveIdle());
-                        channelConfig.setTcpKeepCntl(conf.getClientSockKeepaliveCount());
+                        channelConfig.setTcpKeepCnt(conf.getClientSockKeepaliveCount());
                         channelConfig.setTcpKeepIntvl(conf.getClientSockKeepaliveInterval());
                     }
 

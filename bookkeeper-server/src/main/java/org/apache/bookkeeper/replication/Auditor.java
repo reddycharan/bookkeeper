@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * re-replication activities by keeping all the corresponding ledgers of the
  * failed bookie as underreplicated znode in zk.
  */
-public class Auditor {
+public class Auditor implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(Auditor.class);
     private final ServerConfiguration conf;
     private BookKeeper bkc;
@@ -725,6 +725,11 @@ public class Auditor {
         } catch (BKException bke) {
             LOG.warn("Exception while shutting down auditor bookie", bke);
         }
+    }
+
+    @Override
+    public void close() {
+        shutdown();
     }
 
     /**

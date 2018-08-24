@@ -443,7 +443,7 @@ class BookieNettyServer {
             if (channel instanceof EpollSocketChannel) {
                 EpollSocketChannelConfig channelConfig = (EpollSocketChannelConfig) channel.config();
                 channelConfig.setTcpKeepIdle(conf.getServerSockKeepaliveIdle());
-                channelConfig.setTcpKeepCntl(conf.getServerSockKeepaliveCount());
+                channelConfig.setTcpKeepCnt(conf.getServerSockKeepaliveCount());
                 channelConfig.setTcpKeepIntvl(conf.getServerSockKeepaliveInterval());
             }
             boolean ret = super.add(channel);
