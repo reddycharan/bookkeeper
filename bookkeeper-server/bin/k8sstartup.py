@@ -24,7 +24,7 @@ def set_configs(config_file, env_vars):
         # This will be an assignment -- either real or commented out.
         if "=" in line.strip() and not line.strip().startswith("#"):
             elems = line.strip().split("=")
-            key = elems[0]
+            key = elems[0].strip()
             # Check to see if there's an override provided for this config.
             if key in env_vars:
                 # Print the overridden value with no comment.
