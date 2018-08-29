@@ -240,31 +240,38 @@ public class LedgerHandle implements WriteHandle {
                                                   return pendingAddOps.size();
                                               }
                                           });
-        initializeExplicitLacFlushPolicy();
-
-        if (bk.getConf().getAddEntryQuorumTimeout() > 0) {
-            SafeRunnable monitor = new SafeRunnable() {
-                    @Override
-                    public void safeRun() {
-                        monitorPendingAddOps();
-                    }
-                };
-            this.timeoutFuture = bk.scheduler.scheduleAtFixedRate(monitor,
-                                                                  bk.getConf().getTimeoutMonitorIntervalSec(),
-                                                                  bk.getConf().getTimeoutMonitorIntervalSec(),
-                                                                  TimeUnit.SECONDS);
-        }
+        initializeWriteHandleState();
     }
 
     BookKeeper getBk() {
         return bk;
     }
 
-    protected void initializeExplicitLacFlushPolicy() {
-        if (!metadata.isClosed() && !(this instanceof ReadOnlyLedgerHandle) && bk.getExplicitLacInterval() > 0) {
+    protected void initializeWriteHandleState() {
+        if (bk.getExplicitLacInterval() > 0) {
             explicitLacFlushPolicy = new ExplicitLacFlushPolicy.ExplicitLacFlushPolicyImpl(this);
         } else {
             explicitLacFlushPolicy = ExplicitLacFlushPolicy.VOID_EXPLICITLAC_FLUSH_POLICY;
+        }
+
+        if (bk.getConf().getAddEntryQuorumTimeout() > 0) {
+            SafeRunnable monitor = new SafeRunnable() {
+                @Override
+                public void safeRun() {
+                    monitorPendingAddOps();
+                }
+            };
+            this.timeoutFuture = bk.scheduler.scheduleAtFixedRate(monitor,
+                    bk.getConf().getTimeoutMonitorIntervalSec(),
+                    bk.getConf().getTimeoutMonitorIntervalSec(),
+                    TimeUnit.SECONDS);
+        }
+    }
+
+    private void tearDownWriteHandleState() {
+        explicitLacFlushPolicy.stopExplicitLacFlush();
+        if (timeoutFuture != null) {
+            timeoutFuture.cancel(false);
         }
     }
 
@@ -435,10 +442,6 @@ public class LedgerHandle implements WriteHandle {
         CompletableFuture<Void> result = new CompletableFuture<>();
         SyncCloseCallback callback = new SyncCloseCallback(result);
         asyncClose(callback, null);
-        explicitLacFlushPolicy.stopExplicitLacFlush();
-        if (timeoutFuture != null) {
-            timeoutFuture.cancel(false);
-        }
         return result;
     }
 
@@ -611,7 +614,7 @@ public class LedgerHandle implements WriteHandle {
                 }
 
                 writeLedgerConfig(new CloseCb());
-
+                tearDownWriteHandleState();
             }
 
             @Override
