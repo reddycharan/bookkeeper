@@ -58,7 +58,6 @@ import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.MetadataClientDriver;
 import org.apache.bookkeeper.meta.MetadataDrivers;
 import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.proto.DataFormats.UnderreplicatedLedgerFormat;
@@ -93,7 +92,9 @@ public class AuditorLedgerCheckerTest extends BookKeeperClusterTestCase {
 
     private DigestType digestType;
 
-    private String underreplicatedPath;
+    private final String underreplicatedPath = baseClientConf
+            .getZkLedgersRootPath()
+            + "/underreplication/ledgers";
     private Map<String, AuditorElector> auditorElectors = new ConcurrentHashMap<>();
     private ZkLedgerUnderreplicationManager urLedgerMgr;
     private Set<Long> urLedgerList;
@@ -118,23 +119,20 @@ public class AuditorLedgerCheckerTest extends BookKeeperClusterTestCase {
         baseConf.setLedgerManagerFactoryClassName(ledgerManagerFactoryClass);
         baseClientConf
                 .setLedgerManagerFactoryClassName(ledgerManagerFactoryClass);
+        electionPath = baseConf.getZkLedgersRootPath()
+                + "/underreplication/auditorelection";
     }
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        underreplicatedPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(baseClientConf)
-            + "/underreplication/ledgers";
-        electionPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(baseConf)
-            + "/underreplication/auditorelection";
-
         urLedgerMgr = new ZkLedgerUnderreplicationManager(baseClientConf, zkc);
         startAuditorElectors();
         rng = new Random(System.currentTimeMillis()); // Initialize the Random
         urLedgerList = new HashSet<Long>();
         ledgerList = new ArrayList<Long>(2);
-        baseClientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseClientConf.setZkServers(zkUtil.getZooKeeperConnectString());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
     }
 
     @Override

@@ -68,7 +68,6 @@ import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
@@ -135,7 +134,7 @@ public class BookKeeperAdmin implements AutoCloseable {
      *             BookKeeper client.
      */
     public BookKeeperAdmin(String zkServers) throws IOException, InterruptedException, BKException {
-        this(new ClientConfiguration().setMetadataServiceUri("zk+null://" + zkServers + "/ledgers"));
+        this(new ClientConfiguration().setZkServers(zkServers));
     }
 
     /**
@@ -1206,7 +1205,7 @@ public class BookKeeperAdmin implements AutoCloseable {
      */
     public static boolean nukeExistingCluster(ServerConfiguration conf, String ledgersRootPath, String instanceId,
             boolean force) throws Exception {
-        String confLedgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
+        String confLedgersRootPath = conf.getZkLedgersRootPath();
         if (!confLedgersRootPath.equals(ledgersRootPath)) {
             LOG.error("Provided ledgerRootPath : {} is not matching with config's ledgerRootPath: {}, "
                     + "so exiting nuke operation", ledgersRootPath, confLedgersRootPath);

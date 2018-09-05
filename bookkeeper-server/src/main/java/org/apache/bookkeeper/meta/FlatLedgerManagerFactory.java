@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.bookkeeper.conf.AbstractConfiguration;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.replication.ReplicationException;
 import org.apache.bookkeeper.util.ZkUtils;
 import org.apache.zookeeper.KeeperException;
@@ -73,8 +72,7 @@ public class FlatLedgerManagerFactory extends AbstractZkLedgerManagerFactory {
     @Override
     public LedgerIdGenerator newLedgerIdGenerator() {
         List<ACL> zkAcls = ZkUtils.getACLs(conf);
-        String ledgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
-        return new ZkLedgerIdGenerator(zk, ledgersRootPath, null, zkAcls);
+        return new ZkLedgerIdGenerator(zk, conf.getZkLedgersRootPath(), null, zkAcls);
     }
 
     @Override

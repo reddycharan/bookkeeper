@@ -73,7 +73,7 @@ public class BookieWriteToJournalTest {
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
         conf.setJournalDirName(journalDir.getPath())
             .setLedgerDirNames(new String[]{ledgerDir.getPath()})
-            .setMetadataServiceUri(null);
+            .setZkServers(null);
         BookieSocketAddress bookieAddress = Bookie.getBookieAddress(conf);
         CountDownLatch journalJoinLatch = new CountDownLatch(1);
         Journal journal = mock(Journal.class);

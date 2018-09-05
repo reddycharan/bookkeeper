@@ -59,6 +59,7 @@ public class SingleBookieInitializationTest {
         this.conf.setJournalDirsName(new String[] { journalDir.getAbsolutePath() });
         this.conf.setLedgerDirNames(new String[] { ledgerDir.getAbsolutePath() });
         this.conf.setMetadataServiceUri(null);
+        this.conf.setZkServers(null);
     }
 
     @After

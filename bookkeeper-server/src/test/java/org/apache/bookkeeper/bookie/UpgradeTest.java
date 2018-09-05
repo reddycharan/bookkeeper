@@ -152,7 +152,7 @@ public class UpgradeTest extends BookKeeperClusterTestCase {
 
     private static void testUpgradeProceedure(String zkServers, String journalDir, String ledgerDir) throws Exception {
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
-        conf.setMetadataServiceUri("zk://" + zkServers + "/ledgers");
+        conf.setZkServers(zkServers);
         conf.setJournalDirName(journalDir)
             .setLedgerDirNames(new String[] { ledgerDir })
             .setBookiePort(bookiePort);
@@ -219,7 +219,7 @@ public class UpgradeTest extends BookKeeperClusterTestCase {
         conf.setJournalDirName(journalDir.getPath())
             .setLedgerDirNames(new String[] { ledgerDir.getPath() })
             .setBookiePort(bookiePort)
-            .setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+            .setZkServers(zkUtil.getZooKeeperConnectString());
         FileSystemUpgrade.upgrade(conf); // should work fine with current directory
         Bookie b = new Bookie(conf);
         b.start();

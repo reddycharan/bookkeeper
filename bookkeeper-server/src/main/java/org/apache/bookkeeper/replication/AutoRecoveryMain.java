@@ -37,7 +37,6 @@ import org.apache.bookkeeper.bookie.ExitCode;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.HttpServer;
 import org.apache.bookkeeper.http.HttpServerLoader;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.server.http.BKHttpServiceProvider;
@@ -61,8 +60,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Class to start/stop the AutoRecovery daemons Auditor and ReplicationWorker.
- *
- * <p>TODO: eliminate the direct usage of zookeeper here {@link https://github.com/apache/bookkeeper/issues/1332}
  */
 public class AutoRecoveryMain {
     private static final Logger LOG = LoggerFactory
@@ -104,7 +101,7 @@ public class AutoRecoveryMain {
             }
         });
         zk = ZooKeeperClient.newBuilder()
-                .connectString(ZKMetadataDriverBase.resolveZkServers(conf))
+                .connectString(conf.getZkServers())
                 .sessionTimeoutMs(conf.getZkTimeout())
                 .watchers(watchers)
                 .build();
@@ -302,8 +299,8 @@ public class AutoRecoveryMain {
         }
 
         String hello = String.format(
-                           "Hello, I'm your AutoRecovery. Metadata service uri is %1$s.",
-                           conf.getMetadataServiceUriUnchecked());
+                           "Hello, I'm your AutoRecovery. ZKServers are on %1$s, zkLedgersRootPath is %2$s.",
+                           conf.getZkServers(), conf.getZkLedgersRootPath());
         LOG.info(hello);
 
         try {

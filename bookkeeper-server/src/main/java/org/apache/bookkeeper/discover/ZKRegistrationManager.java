@@ -49,7 +49,6 @@ import org.apache.bookkeeper.meta.LayoutManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.ZkLayoutManager;
 import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.util.ZkUtils;
@@ -112,7 +111,7 @@ public class ZKRegistrationManager implements RegistrationManager {
         this.zk = zk;
         this.zkAcls = ZkUtils.getACLs(conf);
 
-        this.ledgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
+        this.ledgersRootPath = conf.getZkLedgersRootPath();
         this.cookiePath = ledgersRootPath + "/" + COOKIE_NODE;
         this.bookieRegistrationPath = ledgersRootPath + "/" + AVAILABLE_NODE;
         this.bookieReadonlyRegistrationPath = this.bookieRegistrationPath + "/" + READONLY;
@@ -120,7 +119,7 @@ public class ZKRegistrationManager implements RegistrationManager {
 
         this.layoutManager = new ZkLayoutManager(
             zk,
-            ledgersRootPath,
+            conf.getZkLedgersRootPath(),
             zkAcls);
 
         this.zk.register(event -> {
@@ -406,7 +405,7 @@ public class ZKRegistrationManager implements RegistrationManager {
 
     @Override
     public boolean initNewCluster() throws Exception {
-        String zkServers = ZKMetadataDriverBase.resolveZkServers(conf);
+        String zkServers = conf.getZkServers();
         String instanceIdPath = ledgersRootPath + "/" + INSTANCEID;
         log.info("Initializing ZooKeeper metadata for new cluster, ZKServers: {} ledger root path: {}", zkServers,
                 ledgersRootPath);
@@ -451,7 +450,7 @@ public class ZKRegistrationManager implements RegistrationManager {
 
     @Override
     public boolean nukeExistingCluster() throws Exception {
-        String zkServers = ZKMetadataDriverBase.resolveZkServers(conf);
+        String zkServers = conf.getZkServers();
         log.info("Nuking ZooKeeper metadata of existing cluster, ZKServers: {} ledger root path: {}",
                 zkServers, ledgersRootPath);
 

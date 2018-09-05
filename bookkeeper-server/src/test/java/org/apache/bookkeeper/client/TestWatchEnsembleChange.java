@@ -111,7 +111,7 @@ public class TestWatchEnsembleChange extends BookKeeperClusterTestCase {
 
     @Test
     public void testWatchMetadataRemoval() throws Exception {
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         runFunctionWithLedgerManagerFactory(baseConf, factory -> {
             try {
                 testWatchMetadataRemoval(factory);

@@ -47,7 +47,7 @@ public class NetworkLessBookieTest extends BookKeeperClusterTestCase {
     @Test
     public void testUseLocalBookie() throws Exception {
         ClientConfiguration conf = new ClientConfiguration();
-        conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        conf.setZkServers(zkUtil.getZooKeeperConnectString());
         conf.setZkTimeout(20000);
 
         try (BookKeeper bkc = new BookKeeper(conf)) {

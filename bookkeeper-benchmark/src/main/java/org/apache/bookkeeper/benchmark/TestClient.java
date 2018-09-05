@@ -126,7 +126,7 @@ public class TestClient {
 
                 ClientConfiguration conf = new ClientConfiguration();
                 conf.setThrottleValue(bkthrottle);
-                conf.setMetadataServiceUri("zk://" + zkservers + "/ledgers");
+                conf.setZkServers(zkservers);
 
                 bkc = new BookKeeper(conf);
                 List<LedgerHandle> handles = new ArrayList<LedgerHandle>();

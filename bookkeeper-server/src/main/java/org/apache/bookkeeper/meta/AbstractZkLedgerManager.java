@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.LedgerMetadata;
 import org.apache.bookkeeper.conf.AbstractConfiguration;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.LedgerMetadataListener;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
@@ -160,7 +159,7 @@ public abstract class AbstractZkLedgerManager implements LedgerManager, Watcher 
     protected AbstractZkLedgerManager(AbstractConfiguration conf, ZooKeeper zk) {
         this.conf = conf;
         this.zk = zk;
-        this.ledgerRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
+        this.ledgerRootPath = conf.getZkLedgersRootPath();
         this.scheduler = Executors
                 .newSingleThreadScheduledExecutor(new DefaultThreadFactory("ZkLedgerManagerScheduler"));
         if (LOG.isDebugEnabled()) {

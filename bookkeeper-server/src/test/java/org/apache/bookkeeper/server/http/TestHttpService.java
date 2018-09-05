@@ -82,7 +82,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         this.bkHttpServiceProvider = new BKHttpServiceProvider.Builder()
             .setBookieServer(bs.get(numberOfBookies - 1))
             .setServerConfiguration(baseConf)
@@ -162,6 +162,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testListBookiesService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         HttpEndpointService listBookiesService = bkHttpServiceProvider
           .provideHttpEndpointService(HttpServer.ApiType.LIST_BOOKIES);
 
@@ -229,6 +230,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
      */
     @Test
     public void testListLedgerService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 430;
         LedgerHandle[] lh = new LedgerHandle[numLedgers];
@@ -292,7 +294,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
      */
     @Test
     public void testDeleteLedgerService() throws Exception {
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 4;
         int numMsgs = 100;
@@ -347,7 +349,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testGetLedgerMetaService() throws Exception {
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 4;
         int numMsgs = 100;
@@ -392,6 +394,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testReadLedgerEntryService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 1;
         int numMsgs = 100;
@@ -450,6 +453,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testListBookieInfoService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         HttpEndpointService listBookieInfoService = bkHttpServiceProvider
           .provideHttpEndpointService(HttpServer.ApiType.LIST_BOOKIE_INFO);
 
@@ -472,6 +476,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testGetLastLogMarkService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 4;
         int numMsgs = 100;
@@ -511,6 +516,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testListDiskFilesService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper.DigestType digestType = BookKeeper.DigestType.CRC32;
         int numLedgers = 4;
         int numMsgs = 100;
@@ -555,6 +561,8 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testRecoveryBookieService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
+
         HttpEndpointService recoveryBookieService = bkHttpServiceProvider
           .provideHttpEndpointService(HttpServer.ApiType.RECOVERY_BOOKIE);
 
@@ -593,7 +601,6 @@ public class TestHttpService extends BookKeeperClusterTestCase {
         String addr = bs.get(0).getLocalAddress().toString();
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
         conf.setAuditorPeriodicBookieCheckInterval(1);
-        conf.setMetadataServiceUri("zk://" + zkUtil.getZooKeeperConnectString() + "/ledgers");
         auditorElector = new AuditorElector(addr, conf,
           auditorZookeeper);
         auditorElector.start();
@@ -606,6 +613,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testTriggerAuditService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         startAuditorElector();
 
         HttpEndpointService triggerAuditService = bkHttpServiceProvider
@@ -627,6 +635,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testWhoIsAuditorService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         startAuditorElector();
 
         HttpEndpointService whoIsAuditorService = bkHttpServiceProvider
@@ -642,6 +651,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testListUnderReplicatedLedgerService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         runFunctionWithLedgerManagerFactory(baseConf, mFactory -> {
             try {
                 testListUnderReplicatedLedgerService(mFactory);
@@ -695,6 +705,8 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testLostBookieRecoveryDelayService() throws Exception {
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
+
         HttpEndpointService lostBookieRecoveryDelayService = bkHttpServiceProvider
           .provideHttpEndpointService(HttpServer.ApiType.LOST_BOOKIE_RECOVERY_DELAY);
 
@@ -717,7 +729,7 @@ public class TestHttpService extends BookKeeperClusterTestCase {
 
     @Test
     public void testDecommissionService() throws Exception {
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
         startAuditorElector();
 
         HttpEndpointService decommissionService = bkHttpServiceProvider

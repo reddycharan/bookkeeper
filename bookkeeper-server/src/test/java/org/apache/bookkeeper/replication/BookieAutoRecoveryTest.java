@@ -79,7 +79,8 @@ public class BookieAutoRecoveryTest extends BookKeeperClusterTestCase {
     private LedgerManager ledgerManager;
     private OrderedScheduler scheduler;
 
-    private final String underreplicatedPath = "/ledgers/underreplication/ledgers";
+    private final String underreplicatedPath = baseClientConf
+            .getZkLedgersRootPath() + "/underreplication/ledgers";
 
     public BookieAutoRecoveryTest() throws IOException, KeeperException,
             InterruptedException, UnavailableException, CompatibilityException {
@@ -98,8 +99,8 @@ public class BookieAutoRecoveryTest extends BookKeeperClusterTestCase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
-        baseClientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
+        baseClientConf.setZkServers(zkUtil.getZooKeeperConnectString());
 
         scheduler = OrderedScheduler.newSchedulerBuilder()
             .name("test-scheduler")

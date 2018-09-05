@@ -56,7 +56,7 @@ public class TestAddEntryQuorumTimeout extends BookKeeperClusterTestCase impleme
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        baseConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        baseConf.setZkServers(zkUtil.getZooKeeperConnectString());
     }
 
     private static class SyncObj {

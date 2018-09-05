@@ -77,8 +77,8 @@ public class TestSpeculativeRead extends BookKeeperClusterTestCase {
             .setSpeculativeReadTimeout(specTimeout)
             .setReadTimeout(30000)
             .setReorderReadSequenceEnabled(true)
-            .setEnsemblePlacementPolicySlowBookies(true)
-            .setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+            .setEnsemblePlacementPolicySlowBookies(true);
+        conf.setZkServers(zkUtil.getZooKeeperConnectString());
         return new BookKeeperTestClient(conf, new TestStatsProvider());
     }
 

@@ -84,7 +84,7 @@ public class ConcurrentLedgerTest {
         ledgerDir.mkdirs();
 
         conf.setBookiePort(5000);
-        conf.setMetadataServiceUri(null);
+        conf.setZkServers(null);
         conf.setJournalDirName(txnDir.getPath());
         conf.setLedgerDirNames(new String[] { ledgerDir.getPath() });
         bookie = new Bookie(conf);

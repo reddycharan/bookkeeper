@@ -45,7 +45,7 @@ public abstract class AbstractZkLedgerManagerFactory implements LedgerManagerFac
     public void format(AbstractConfiguration<?> conf, LayoutManager layoutManager)
             throws InterruptedException, KeeperException, IOException {
         try (AbstractZkLedgerManager ledgerManager = (AbstractZkLedgerManager) newLedgerManager()) {
-            String ledgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
+            String ledgersRootPath = conf.getZkLedgersRootPath();
             List<String> children = zk.getChildren(ledgersRootPath, false);
             for (String child : children) {
                 if (!AbstractZkLedgerManager.isSpecialZnode(child) && ledgerManager.isLedgerParentNode(child)) {
@@ -69,8 +69,8 @@ public abstract class AbstractZkLedgerManagerFactory implements LedgerManagerFac
     @Override
     public boolean validateAndNukeExistingCluster(AbstractConfiguration<?> conf, LayoutManager layoutManager)
             throws InterruptedException, KeeperException, IOException {
-        String zkLedgersRootPath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf);
-        String zkServers = ZKMetadataDriverBase.resolveZkServers(conf);
+        String zkLedgersRootPath = conf.getZkLedgersRootPath();
+        String zkServers = conf.getZkServers();
         AbstractZkLedgerManager zkLedgerManager = (AbstractZkLedgerManager) newLedgerManager();
 
         /*

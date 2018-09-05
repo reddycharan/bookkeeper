@@ -142,7 +142,8 @@ public class StreamCluster
         try (StorageController controller = new HelixStorageController(zkEnsemble)) {
             // initialize the configuration
             ServerConfiguration serverConf = new ServerConfiguration();
-            serverConf.setMetadataServiceUri("zk://" + zkEnsemble + LEDGERS_PATH);
+            serverConf.setZkServers(zkEnsemble);
+            serverConf.setZkLedgersRootPath(LEDGERS_PATH);
             serverConf.setAllowLoopback(true);
             serverConf.setGcWaitTime(300000);
             serverConf.setDiskUsageWarnThreshold(0.9999f);

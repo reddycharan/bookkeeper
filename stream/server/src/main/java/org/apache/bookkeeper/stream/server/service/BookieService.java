@@ -54,10 +54,10 @@ public class BookieService extends AbstractLifecycleComponent<BookieConfiguratio
             indexDirs = Arrays.asList(serverConf.getIndexDirs());
         }
         log.info("Hello, I'm your bookie, listening on port {} :"
-                + " metadata service uri = {}, journals = {}, ledgers = {}, index = {}",
+                + " zkServers = {}, journals = {}, ledgers = {}, index = {}",
             new Object[]{
                 serverConf.getBookiePort(),
-                serverConf.getMetadataServiceUriUnchecked(),
+                serverConf.getZkServers(),
                 Arrays.asList(serverConf.getJournalDirNames()),
                 Arrays.asList(serverConf.getLedgerDirs()),
                 indexDirs

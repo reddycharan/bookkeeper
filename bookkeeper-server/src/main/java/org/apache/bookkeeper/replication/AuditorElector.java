@@ -37,7 +37,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.DataFormats.AuditorVoteFormat;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
@@ -134,7 +133,7 @@ public class AuditorElector {
         this.zkc = zkc;
         this.statsLogger = statsLogger;
         this.electionAttempts = statsLogger.getCounter(ELECTION_ATTEMPTS);
-        basePath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf) + '/'
+        basePath = conf.getZkLedgersRootPath() + '/'
                 + BookKeeperConstants.UNDER_REPLICATION_NODE;
         electionPath = basePath + '/' + ELECTION_ZNODE;
         createElectorPath();
@@ -316,7 +315,7 @@ public class AuditorElector {
      */
     public static BookieSocketAddress getCurrentAuditor(ServerConfiguration conf, ZooKeeper zk)
             throws KeeperException, InterruptedException, IOException {
-        String electionRoot = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf) + '/'
+        String electionRoot = conf.getZkLedgersRootPath() + '/'
             + BookKeeperConstants.UNDER_REPLICATION_NODE + '/' + ELECTION_ZNODE;
 
         List<String> children = zk.getChildren(electionRoot, false);

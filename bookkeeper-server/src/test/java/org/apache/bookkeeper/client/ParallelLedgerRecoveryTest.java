@@ -204,15 +204,19 @@ public class ParallelLedgerRecoveryTest extends BookKeeperClusterTestCase {
     }
 
     @Override
-    protected void startBKCluster(String metadataServiceUri) throws Exception {
+    protected void startBKCluster() throws Exception {
         MetadataDrivers.registerClientDriver("zk", TestMetadataClientDriver.class, true);
         MetadataDrivers.registerBookieDriver("zk", TestMetadataBookieDriver.class, true);
+        baseConf.setMetadataServiceUri(
+            "zk://" + zkUtil.getZooKeeperConnectString() + baseConf.getZkLedgersRootPath());
         baseConf.setLedgerManagerFactoryClass(TestLedgerManagerFactory.class);
+        baseClientConf.setMetadataServiceUri(
+            "zk://" + zkUtil.getZooKeeperConnectString() + baseConf.getZkLedgersRootPath());
         baseClientConf.setLedgerManagerFactoryClass(TestLedgerManagerFactory.class);
         baseClientConf.setReadEntryTimeout(60000);
         baseClientConf.setAddEntryTimeout(60000);
 
-        super.startBKCluster(metadataServiceUri);
+        super.startBKCluster();
     }
 
     @After

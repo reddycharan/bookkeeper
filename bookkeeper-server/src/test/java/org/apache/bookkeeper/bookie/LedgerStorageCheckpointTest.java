@@ -204,7 +204,7 @@ public class LedgerStorageCheckpointTest {
         File tmpDir = createTempDir("DiskCheck", "test");
 
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setMetadataServiceUri(zkUtil.getMetadataServiceUri())
+                .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000)
                 .setJournalDirName(tmpDir.getPath())
                 .setLedgerDirNames(new String[] { tmpDir.getPath() })
@@ -220,7 +220,7 @@ public class LedgerStorageCheckpointTest {
         BookieServer server = new BookieServer(conf);
         server.start();
         ClientConfiguration clientConf = new ClientConfiguration();
-        clientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        clientConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper bkClient = new BookKeeper(clientConf);
 
         int numOfLedgers = 2;
@@ -330,7 +330,7 @@ public class LedgerStorageCheckpointTest {
         File tmpDir = createTempDir("DiskCheck", "test");
 
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setMetadataServiceUri(zkUtil.getMetadataServiceUri())
+                .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000)
                 .setJournalDirName(tmpDir.getPath())
                 .setLedgerDirNames(new String[] { tmpDir.getPath() })
@@ -348,7 +348,7 @@ public class LedgerStorageCheckpointTest {
         BookieServer server = new BookieServer(conf);
         server.start();
         ClientConfiguration clientConf = new ClientConfiguration();
-        clientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        clientConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper bkClient = new BookKeeper(clientConf);
         InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
 
@@ -405,7 +405,7 @@ public class LedgerStorageCheckpointTest {
         File tmpDir = createTempDir("DiskCheck", "test");
 
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setMetadataServiceUri(zkUtil.getMetadataServiceUri())
+                .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000)
                 .setJournalDirName(tmpDir.getPath())
                 .setLedgerDirNames(new String[] { tmpDir.getPath() })
@@ -426,8 +426,9 @@ public class LedgerStorageCheckpointTest {
         BookieServer server = new BookieServer(conf);
         server.start();
         ClientConfiguration clientConf = new ClientConfiguration();
-        clientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        clientConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper bkClient = new BookKeeper(clientConf);
+        InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
 
         Random rand = new Random();
         byte[] dataBytes = new byte[10 * 1000];
@@ -469,7 +470,7 @@ public class LedgerStorageCheckpointTest {
         File tmpDir = createTempDir("DiskCheck", "test");
 
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setMetadataServiceUri(zkUtil.getMetadataServiceUri())
+                .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000)
                 .setJournalDirName(tmpDir.getPath())
                 .setLedgerDirNames(new String[] { tmpDir.getPath() })
@@ -489,7 +490,7 @@ public class LedgerStorageCheckpointTest {
         BookieServer server = new BookieServer(conf);
         server.start();
         ClientConfiguration clientConf = new ClientConfiguration();
-        clientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        clientConf.setZkServers(zkUtil.getZooKeeperConnectString());
         BookKeeper bkClient = new BookKeeper(clientConf);
         InterleavedLedgerStorage ledgerStorage = (InterleavedLedgerStorage) server.getBookie().ledgerStorage;
         EntryLogger entryLogger = ledgerStorage.entryLogger;
@@ -576,7 +577,7 @@ public class LedgerStorageCheckpointTest {
         File tmpDir = createTempDir("DiskCheck", "test");
 
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
-                .setMetadataServiceUri(zkUtil.getMetadataServiceUri())
+                .setZkServers(zkUtil.getZooKeeperConnectString())
                 .setZkTimeout(5000)
                 .setJournalDirName(tmpDir.getPath())
                 .setLedgerDirNames(new String[] { tmpDir.getPath() })
@@ -593,7 +594,7 @@ public class LedgerStorageCheckpointTest {
         BookieServer server = new BookieServer(conf);
         server.start();
         ClientConfiguration clientConf = new ClientConfiguration();
-        clientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        clientConf.setZkServers(zkUtil.getZooKeeperConnectString());
         final BookKeeper bkClient = new BookKeeper(clientConf);
 
         int numOfLedgers = 12;

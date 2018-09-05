@@ -63,7 +63,7 @@ public class ExplicitLacTest extends BookKeeperClusterTestCase {
     @Test
     public void testReadHandleWithNoExplicitLAC() throws Exception {
         ClientConfiguration confWithNoExplicitLAC = new ClientConfiguration();
-        confWithNoExplicitLAC.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        confWithNoExplicitLAC.setZkServers(zkUtil.getZooKeeperConnectString());
         confWithNoExplicitLAC.setExplictLacInterval(0);
 
         BookKeeper bkcWithNoExplicitLAC = new BookKeeper(confWithNoExplicitLAC);
@@ -126,7 +126,7 @@ public class ExplicitLacTest extends BookKeeperClusterTestCase {
     @Test
     public void testReadHandleWithExplicitLAC() throws Exception {
         ClientConfiguration confWithExplicitLAC = new ClientConfiguration();
-        confWithExplicitLAC.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        confWithExplicitLAC.setZkServers(zkUtil.getZooKeeperConnectString());
         int explicitLacIntervalMillis = 1000;
         confWithExplicitLAC.setExplictLacInterval(explicitLacIntervalMillis);
 

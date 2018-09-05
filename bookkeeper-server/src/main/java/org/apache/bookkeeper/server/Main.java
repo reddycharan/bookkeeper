@@ -32,7 +32,6 @@ import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.common.component.LifecycleComponentStack;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-import org.apache.bookkeeper.conf.UncheckedConfigurationException;
 import org.apache.bookkeeper.server.component.ServerLifecycleComponent;
 import org.apache.bookkeeper.server.conf.BookieConfiguration;
 import org.apache.bookkeeper.server.http.BKHttpServiceProvider;
@@ -109,7 +108,6 @@ public class Main {
         log.info("Using configuration file {}, Cluster full name: {}", confFile, conf.getClusterLoc());
     }
 
-    @SuppressWarnings("deprecation")
     private static ServerConfiguration parseArgs(String[] args)
         throws IllegalArgumentException {
         try {
@@ -135,27 +133,18 @@ public class Main {
                 conf.setForceReadOnlyBookie(true);
             }
 
-            boolean overwriteMetadataServiceUri = false;
-            String sZkLedgersRootPath = "/ledgers";
-            if (cmdLine.hasOption('m')) {
-                sZkLedgersRootPath = cmdLine.getOptionValue('m');
-                log.info("Get cmdline zookeeper ledger path: {}", sZkLedgersRootPath);
-                overwriteMetadataServiceUri = true;
-            }
-
-
-            String sZK = conf.getZkServers();
-            if (cmdLine.hasOption('z')) {
-                sZK = cmdLine.getOptionValue('z');
-                log.info("Get cmdline zookeeper instance: {}", sZK);
-                overwriteMetadataServiceUri = true;
-            }
 
             // command line arguments overwrite settings in configuration file
-            if (overwriteMetadataServiceUri) {
-                String metadataServiceUri = "zk://" + sZK + sZkLedgersRootPath;
-                conf.setMetadataServiceUri(metadataServiceUri);
-                log.info("Overwritten service uri to {}", metadataServiceUri);
+            if (cmdLine.hasOption('z')) {
+                String sZK = cmdLine.getOptionValue('z');
+                log.info("Get cmdline zookeeper instance: {}", sZK);
+                conf.setZkServers(sZK);
+            }
+
+            if (cmdLine.hasOption('m')) {
+                String sZkLedgersRootPath = cmdLine.getOptionValue('m');
+                log.info("Get cmdline zookeeper ledger path: {}", sZkLedgersRootPath);
+                conf.setZkLedgersRootPath(sZkLedgersRootPath);
             }
 
             if (cmdLine.hasOption('p')) {
@@ -236,7 +225,7 @@ public class Main {
     }
 
     private static ServerConfiguration parseCommandLine(String[] args)
-            throws IllegalArgumentException, UncheckedConfigurationException {
+            throws IllegalArgumentException {
         ServerConfiguration conf;
         try {
             conf = parseArgs(args);
@@ -257,12 +246,13 @@ public class Main {
         }
 
         String hello = String.format(
-            "Hello, I'm your bookie, listening on port %1$s. Metadata service uri is %2$s."
-                + " Journals are in %3$s. Ledgers are stored in %4$s.",
-            conf.getBookiePort(),
-            conf.getMetadataServiceUriUnchecked(),
-            Arrays.asList(conf.getJournalDirNames()),
-            sb);
+                "Hello, I'm your bookie, listening on port %1$s. ZKServers are on %2$s. zkLedgersRootPath is %3$s."
+                        + " Journals are in %4$s. Ledgers are stored in %5$s.",
+                conf.getBookiePort(),
+                conf.getZkServers(),
+                conf.getZkLedgersRootPath(),
+                Arrays.asList(conf.getJournalDirNames()),
+                sb);
         log.info(hello);
 
         return conf;

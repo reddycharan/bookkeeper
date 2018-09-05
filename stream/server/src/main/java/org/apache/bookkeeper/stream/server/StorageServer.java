@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.common.component.LifecycleComponentStack;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stream.proto.common.Endpoint;
 import org.apache.bookkeeper.stream.server.conf.BookieConfiguration;
@@ -202,7 +201,7 @@ public class StorageServer {
             // with the storage container manager (currently it is helix)
             .withStorageContainerManagerFactory((ignored, storeConf, registry) ->
                 new HelixStorageContainerManager(
-                    ZKMetadataDriverBase.resolveZkServers(bookieService.serverConf()),
+                    bookieService.serverConf().getZkServers(),
                     "stream/helix",
                     storeConf,
                     registry,

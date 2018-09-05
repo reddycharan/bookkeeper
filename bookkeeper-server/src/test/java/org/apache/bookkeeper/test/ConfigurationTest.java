@@ -44,28 +44,28 @@ public class ConfigurationTest {
 
     @Test
     public void testConfigurationOverwrite() {
-        System.clearProperty("metadataServiceUri");
+        System.clearProperty("zkServers");
 
         ServerConfiguration conf = new ServerConfiguration();
-        assertEquals(null, conf.getMetadataServiceUriUnchecked());
+        assertEquals(null, conf.getZkServers());
 
         // override setting from property
-        System.setProperty("metadataServiceUri", "zk://server:2181/ledgers");
+        System.setProperty("zkServers", "server1");
         // it affects previous created configurations, if the setting is not overwrite
-        assertEquals("zk://server:2181/ledgers", conf.getMetadataServiceUriUnchecked());
+        assertEquals("server1", conf.getZkServers());
 
         ServerConfiguration conf2 = new ServerConfiguration();
-        assertEquals("zk://server:2181/ledgers", conf2.getMetadataServiceUriUnchecked());
+        assertEquals("server1", conf2.getZkServers());
 
-        System.clearProperty("metadataServiceUri");
+        System.clearProperty("zkServers");
 
         // load other configuration
         ServerConfiguration newConf = new ServerConfiguration();
-        assertEquals(null, newConf.getMetadataServiceUriUnchecked());
-        newConf.setMetadataServiceUri("zk://newserver:2181/ledgers");
-        assertEquals("zk://newserver:2181/ledgers", newConf.getMetadataServiceUriUnchecked());
+        assertEquals(null, newConf.getZkServers());
+        newConf.setZkServers("newserver");
+        assertEquals("newserver", newConf.getZkServers());
         conf2.loadConf(newConf);
-        assertEquals("zk://newserver:2181/ledgers", conf2.getMetadataServiceUriUnchecked());
+        assertEquals("newserver", conf2.getZkServers());
     }
 
     @Test
@@ -91,12 +91,12 @@ public class ConfigurationTest {
 
     @Test
     public void testGetZkServers() {
-        System.setProperty("metadataServiceUri", "zk://server1:port1;server2:port2/ledgers");
+        System.setProperty("zkServers", "server1:port1,server2:port2");
         ServerConfiguration conf = new ServerConfiguration();
         ClientConfiguration clientConf = new ClientConfiguration();
         assertEquals("zookeeper connect string doesn't match in server configuration",
-                     "zk://server1:port1;server2:port2/ledgers", conf.getMetadataServiceUriUnchecked());
+                     "server1:port1,server2:port2", conf.getZkServers());
         assertEquals("zookeeper connect string doesn't match in client configuration",
-                     "zk://server1:port1;server2:port2/ledgers", clientConf.getMetadataServiceUriUnchecked());
+                     "server1:port1,server2:port2", clientConf.getZkServers());
     }
 }

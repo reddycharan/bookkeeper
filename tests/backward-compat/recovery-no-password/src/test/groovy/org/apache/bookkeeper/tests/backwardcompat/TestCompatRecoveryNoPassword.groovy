@@ -145,7 +145,6 @@ class TestCompatRecoveryNoPassword {
      * Test that when we try to recover a ledger which doesn't have
      * the password stored in the configuration, we don't succeed.
      */
-    @SuppressWarnings("deprecation")
     @Test
     public void testRecoveryWithoutPasswordInMetadata() throws Exception {
         int numEntries = 10

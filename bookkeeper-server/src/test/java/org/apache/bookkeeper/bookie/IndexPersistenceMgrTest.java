@@ -66,7 +66,7 @@ public class IndexPersistenceMgrTest {
         Bookie.getCurrentDirectory(ledgerDir).mkdir();
 
         conf = new ServerConfiguration();
-        conf.setMetadataServiceUri(null);
+        conf.setZkServers(null);
         conf.setJournalDirName(journalDir.getPath());
         conf.setLedgerDirNames(new String[] { ledgerDir.getPath() });
 
