@@ -61,6 +61,7 @@ import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.component.ComponentStarter;
 import org.apache.bookkeeper.common.component.Lifecycle;
 import org.apache.bookkeeper.common.component.LifecycleComponent;
+import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.TestBKConfiguration;
@@ -1094,6 +1095,10 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
                 .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
                 .setBookiePort(PortManager.nextFreePort());
+        String clusterName = "unrelatedcluster";
+        String configKey = "configKey";
+        String configValue = "configValue";
+        conf.setPropertyUnPrefixed(clusterName + AbstractConfiguration.CLUSTER_SEPARATOR + configKey, configValue);
 
         String statServletContext = "/stats";
         String statEndpoint = "/metrics.json";
@@ -1127,6 +1132,10 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         Map<String, Object> configMap = om.readValue(url, Map.class);
         if (configMap.isEmpty() || !(configMap.containsKey("jettyPort") && configMap.containsKey("bookiePort"))) {
             Assert.fail("Failed to map /rest/resources/v1/configurations to valid JSON entries.");
+        }
+        if (configMap.containsKey(configKey)
+                || configMap.containsKey(clusterName + AbstractConfiguration.CLUSTER_SEPARATOR + configKey)) {
+            Assert.fail("configMap isn't supposed to contain config values of unrelated cluster");
         }
         if (bkServer.isRunning()) {
             bkServer.shutdown();

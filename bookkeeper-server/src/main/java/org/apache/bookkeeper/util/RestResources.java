@@ -24,14 +24,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-import org.apache.commons.configuration.AbstractConfiguration;
+
+import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,12 +65,7 @@ public class RestResources {
                     return "{ \"error \" : \"no such config \" }";
                 }
             }
-            Iterator<String> configKeys = conf.getKeys();
-            while (configKeys.hasNext()) {
-                String config = configKeys.next();
-                configs.put(config, String.valueOf(conf.getProperty(config)));
-            }
-            return om.writeValueAsString(configs);
+            return conf.asJson();
         } catch (JsonProcessingException e) {
             if (!Strings.isNullOrEmpty(configName)) {
                 LOG.error("Error processing JSON for configName: " + configName, e);

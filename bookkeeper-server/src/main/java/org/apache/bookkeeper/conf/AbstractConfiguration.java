@@ -68,6 +68,7 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
 
     // for per Cluster based configuration
     public static final String CLUSTER_LOC_PROPERTY = "cluster.loc";
+    public static final String CLUSTER_SEPARATOR = "$";
     private static final String cluster;
     static {
         String name = System.getProperty(CLUSTER_LOC_PROPERTY);
@@ -75,7 +76,7 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
         if (name == null || name.length() < 1) {
             cluster = "";
         } else {
-            cluster = name + "$";
+            cluster = name + CLUSTER_SEPARATOR;
         }
     }
 
@@ -977,6 +978,13 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
         Iterator<String> iterator = this.getKeys();
         while (iterator.hasNext()) {
             String key = iterator.next().toString();
+            if (key.contains(CLUSTER_SEPARATOR)) {
+                /*
+                 * if key contains CLUSTER_SEPARATOR, then remove the CLUSTER
+                 * name and the CLUSTER_SEPARATOR.
+                 */
+                key = key.substring(key.indexOf(CLUSTER_SEPARATOR) + CLUSTER_SEPARATOR.length());
+            }
             Object property = this.getProperty(key);
             if (property != null) {
                 configMap.put(key, property.toString());

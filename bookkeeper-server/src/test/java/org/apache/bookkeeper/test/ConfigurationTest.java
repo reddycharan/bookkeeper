@@ -21,13 +21,17 @@
 package org.apache.bookkeeper.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.HashMap;
+
 import org.apache.bookkeeper.conf.AbstractConfiguration;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
-
+import org.apache.bookkeeper.util.JsonUtil;
+import org.apache.bookkeeper.util.JsonUtil.ParseJsonException;
 import org.junit.Test;
 
 /**
@@ -69,24 +73,56 @@ public class ConfigurationTest {
     }
 
     @Test
-    public void testClusterOverride() {
+    public void testClusterOverride() throws ParseJsonException {
         ServerConfiguration conf = new ServerConfiguration();
 
-        // Assign a value to our environment; should get same value with and without prefix.
+        // Assign a value to our environment; should get same value with and
+        // without prefix.
         conf.setProperty("testProp", "specific");
         conf.setProperty("genericTestInt", 100);
+        conf.setPropertyUnPrefixed("simpleconfig", "simplevalue");
+        conf.setPropertyUnPrefixed("dfw.sp2.testCluster$dfwconfig", "dfwvalue");
+        conf.setPropertyUnPrefixed("phx.sp1.testCluster$newconfig", "newconfigvalue");
+        conf.setPropertyUnPrefixed("overriddenconfig", "overriddenbasevalue");
+        conf.setPropertyUnPrefixed("phx.sp1.testCluster$overriddenconfig", "overriddenconfigvalue");
 
         assertTrue(conf.getString("testProp").equals("specific"));
         assertTrue(conf.getString("phx.sp1.testCluster$testProp").equals("specific"));
         assertTrue(conf.getInt("genericTestInt") == 100);
         assertTrue(conf.getInt("phx.sp1.testCluster$genericTestInt") == 100);
 
+        @SuppressWarnings("unchecked")
+        HashMap<String, String> confAsMap = JsonUtil.fromJson(conf.asJson(), HashMap.class);
+        /*
+         * since READ_SYSTEM_PROPERTIES_PROPERTY is set, conf should contain
+         * system properties.
+         *
+         */
+        assertEquals("CLUSTER_LOC_PROPERTY", "phx.sp1.testCluster",
+                confAsMap.get(AbstractConfiguration.CLUSTER_LOC_PROPERTY));
+        assertFalse("CLUSTER_LOC_PROPERTY with SEPARATOR", confAsMap
+                .containsKey(AbstractConfiguration.CLUSTER_LOC_PROPERTY + AbstractConfiguration.CLUSTER_SEPARATOR));
+        /*
+         * should be able to get this cluster config values.
+         */
+        assertEquals("simpleconfig property", "simplevalue", confAsMap.get("simpleconfig"));
+        assertEquals("newconfig property", "newconfigvalue", confAsMap.get("newconfig"));
+        assertEquals("overriddenconfig config should be overridden value", "overriddenconfigvalue",
+                confAsMap.get("overriddenconfig"));
+        /*
+         * since conf.asJson() is only going to contain trimmed config keys of
+         * this cluster, all other config properties should be removed from
+         * returned conf.asJson().
+         */
+        assertFalse("phx.sp1.testCluster$newconfig property", confAsMap.containsKey("phx.sp1.testCluster$newconfig"));
+        assertFalse("dfwconfig property", confAsMap.containsKey("dfwconfig"));
+        assertFalse("dfw.sp2.testCluster$dfwconfig property", confAsMap.containsKey("dfw.sp2.testCluster$dfwconfig"));
+
         // GetStringArray should also work
-        String arr[] = {"v1", "v2", "v3"};
+        String arr[] = { "v1", "v2", "v3" };
         conf.setProperty("testList", "v1,v2,v3");
         assertTrue(Arrays.equals(conf.getStringArray("testList"), arr));
         assertTrue(Arrays.equals(conf.getStringArray("phx.sp1.testCluster$testList"), arr));
-
     }
 
     @Test
