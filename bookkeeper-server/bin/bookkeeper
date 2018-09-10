@@ -267,9 +267,9 @@ fi
 if [ $COMMAND == "shell" ]; then
     OPTS="$OPTS -Xloggc:/tmp/bookieshellgclog -Dbookieshell.logger.appender=$BOOKIESHELL_LOGGER_APPENDER"
 elif [[ $COMMAND == "autorecovery" ]]; then
-    OPTS="$OPTS -Xloggc:$AR_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+    OPTS="$OPTS -Xloggc:$AR_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=45M"
 else
-    OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=100M"
+    OPTS="$OPTS -Xloggc:$BOOKIE_GC_LOGS_FILE -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=$BOOKIE_LOG_FILE_COUNT -XX:GCLogFileSize=45M"
 fi
 
 OPTS="$OPTS -Dcluster.loc=$SFSTORE_CLUSTER_NAME"
