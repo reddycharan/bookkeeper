@@ -332,9 +332,7 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      * <p>`zkServers` is deprecating, in favor of using `metadataServiceUri`
      *
      * @return zookeeper servers
-     * @deprecated since 4.7.0
      */
-    @Deprecated
     public String getZkServers() {
         List servers = getList(ZK_SERVERS, null);
         if (null == servers || 0 == servers.size()) {
@@ -351,7 +349,6 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      * @param zkServers
      *          ZooKeeper servers to connect
      */
-    @Deprecated
     public T setZkServers(String zkServers) {
         setProperty(ZK_SERVERS, zkServers);
         return getThis();
@@ -597,7 +594,6 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      *
      * @param zkLedgersPath zk ledgers root path
      */
-    @Deprecated
     public void setZkLedgersRootPath(String zkLedgersPath) {
         setProperty(ZK_LEDGERS_ROOT_PATH, zkLedgersPath);
     }
@@ -607,7 +603,6 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      *
      * @return zk ledgers root path
      */
-    @Deprecated
     public String getZkLedgersRootPath() {
         return getString(ZK_LEDGERS_ROOT_PATH, "/ledgers");
     }
