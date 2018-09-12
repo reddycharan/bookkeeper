@@ -32,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.bookkeeper.meta.LongHierarchicalLedgerManagerFactory;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.bookkeeper.zookeeper.ZooKeeperWatcherBase;
@@ -88,7 +89,7 @@ public class ZooKeeperUtil {
     }
 
     public String getMetadataServiceUri(String zkLedgersRootPath) {
-        return "zk://" + connectString + zkLedgersRootPath;
+        return getMetadataServiceUri(zkLedgersRootPath, LongHierarchicalLedgerManagerFactory.NAME);
     }
 
     public String getMetadataServiceUri(String zkLedgersRootPath, String type) {

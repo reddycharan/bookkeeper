@@ -308,7 +308,7 @@ public abstract class AbstractZkLedgerManagerFactory implements LedgerManagerFac
             // for backward compatibility, check manager type
             String lmType = conf.getLedgerManagerType();
             if (lmType == null) {
-                factoryClass = HierarchicalLedgerManagerFactory.class;
+                factoryClass = LongHierarchicalLedgerManagerFactory.class;
             } else {
                 if (FlatLedgerManagerFactory.NAME.equals(lmType)) {
                     factoryClass = FlatLedgerManagerFactory.class;

@@ -95,7 +95,7 @@ public class TestLedgerManager extends BookKeeperClusterTestCase {
         m.close();
 
         // mismatching conf
-        conf.setLedgerManagerFactoryClass(LongHierarchicalLedgerManagerFactory.class);
+        conf.setLedgerManagerFactoryClass(HierarchicalLedgerManagerFactory.class);
         try {
             AbstractZkLedgerManagerFactory.newLedgerManagerFactory(conf, zkLayoutManager);
             fail("Shouldn't reach here");
@@ -207,7 +207,7 @@ public class TestLedgerManager extends BookKeeperClusterTestCase {
                    Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         conf.setMetadataServiceUri(newMetadataServiceUri(root1));
 
-        LedgerLayout layout1 = new LedgerLayout(HierarchicalLedgerManagerFactory.class.getName(),
+        LedgerLayout layout1 = new LedgerLayout(LongHierarchicalLedgerManagerFactory.class.getName(),
                          0xdeadbeef);
         ZkLayoutManager zkLayoutManager1 = new ZkLayoutManager(zkc, root1, ZooDefs.Ids.OPEN_ACL_UNSAFE);
         zkLayoutManager1.storeLedgerLayout(layout1);
