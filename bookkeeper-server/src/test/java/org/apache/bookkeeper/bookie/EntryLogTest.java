@@ -1074,6 +1074,7 @@ public class EntryLogTest {
      */
     @Test
     public void testCacheMaximumSizeEvictionPolicy() throws Exception {
+        entryLogger.shutdown();
         final int cacheMaximumSize = 20;
 
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
@@ -1084,7 +1085,7 @@ public class EntryLogTest {
         LedgerDirsManager ledgerDirsManager = new LedgerDirsManager(conf, conf.getLedgerDirs(),
                 new DiskChecker(conf.getDiskUsageThreshold(), conf.getDiskUsageWarnThreshold()));
 
-        EntryLogger entryLogger = new EntryLogger(conf, ledgerDirsManager);
+        entryLogger = new EntryLogger(conf, ledgerDirsManager);
         EntryLogManagerForEntryLogPerLedger entryLogManager =
                 (EntryLogManagerForEntryLogPerLedger) entryLogger.getEntryLogManager();
 
