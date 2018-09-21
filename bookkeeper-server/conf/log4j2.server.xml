@@ -20,6 +20,8 @@
 			<IfFileName regex=".*SNAP.*\.json" />
 			<IfFileName regex=".*\.log\.{0,1}.*" />
 			<IfFileName regex=".*\.out\.{0,1}.*" />
+			<IfFileName regex=".*bk-gc-log.*" />
+			<IfFileName regex=".*ar-gc-log.*" />
 		</IfAny>
 	</Delete>
       </DefaultRolloverStrategy>

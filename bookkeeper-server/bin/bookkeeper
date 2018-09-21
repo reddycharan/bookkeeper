@@ -238,7 +238,8 @@ OPTS="$OPTS -Djdk.nio.maxCachedBufferSize=0"
 BOOKIE_ROOT_LOGGER=${BOOKIE_ROOT_LOGGER:-"INFO,CONSOLE"}
 BOOKIE_LOG_DIR=${BOOKIE_LOG_DIR:-"$BK_HOME/logs"}
 BOOKIE_LOG_FILE=${BOOKIE_LOG_FILE:-"bookkeeper-server.log"}
-BOOKIE_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/bk-gc-log"
+# any change in gc log file pattern should reflect in Delete section of log4j2.server.xml
+BOOKIE_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/bk-gc-log-$(date +%Y%m%d%H%M%S)"
 if [ $COMMAND == "shell" ]; then
     BOOKIE_LOG_LEVEL=${BOOKIE_LOG_LEVEL:-"ERROR"}
     BOOKIESHELL_LOGGER_APPENDER=${BOOKIESHELL_LOGGER_APPENDER:-"CONSOLE"}
@@ -249,8 +250,8 @@ BOOKIE_LOG_FILE_SIZE=${BOOKIE_LOG_FILE_SIZE:-"100MB"}
 BOOKIE_LOG_FILE_COUNT=${BOOKIE_LOG_FILE_COUNT:-"10"}
 #Delete logs with a last modified older than "P[days]D"
 BOOKIE_LOG_MAX_AGE=${BOOKIE_LOG_MAX_AGE:-"P20D"}
-
-AR_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/ar-gc-log"
+# any change in gc log file pattern should reflect in Delete section of log4j2.server.xml
+AR_GC_LOGS_FILE="${BOOKIE_LOG_DIR}/ar-gc-log-$(date +%Y%m%d%H%M%S)"
 
 #Configure log configuration system properties
 OPTS="$OPTS -Dbookkeeper.root.logger=$BOOKIE_ROOT_LOGGER"
@@ -299,8 +300,4 @@ elif [ $COMMAND == "help" ]; then
 else
   exec $JAVA $OPTS $COMMAND $@
 fi
-
-
-
-
 
