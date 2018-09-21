@@ -1,4 +1,4 @@
-/**
+/*
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,18 +18,25 @@
  * under the License.
  *
  */
-
 package org.apache.bookkeeper.stats.codahale;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.servlets.MetricsServlet;
 import java.util.concurrent.TimeUnit;
+import org.apache.bookkeeper.common.tls.JettyTlsContextFactoryBuilder;
+import org.apache.bookkeeper.common.tls.TLSUtils;
 import org.apache.commons.configuration.Configuration;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.slf4j.Logger;
@@ -65,7 +72,7 @@ public class JettyServices {
         if ((statsEnabled || restEnabled) && port == 0) {
             throw new Exception("REST and/or Stats enabled, but port is zero.");
         } else if ((statsEnabled || restEnabled)) {
-            jettyServer = new Server(port);
+            jettyServer = new Server();
             // True arg identifies this as "MutableWhenRunning" allowing us to
             // append handlers at runtime
             handlerCollection = new HandlerCollection(true);
@@ -139,6 +146,40 @@ public class JettyServices {
      */
     public void start() throws Exception {
         if (jettyServer != null && !jettyServer.isRunning()) {
+
+            // secure connections to jetty with TLS
+            if (conf.getBoolean("jettyTLS", false)) {
+                SslContextFactory sslContextFactory = new JettyTlsContextFactoryBuilder()
+                        .setKeyStoreType(conf.getString(TLSUtils.CONFIG_TLS_KEYSTORE_TYPE, "PEM"))
+                        .setKeyStorePath(conf.getString(TLSUtils.CONFIG_TLS_KEYSTORE_PATH, null))
+                        .setKeyStorePasswordPath(conf.getString(TLSUtils.CONFIG_TLS_KEYSTORE_PASSWORD_PATH, null))
+                        .setTrustStoreType(conf.getString(TLSUtils.CONFIG_TLS_KEYSTORE_TYPE, "PEM"))
+                        .setTrustStorePath(conf.getString(TLSUtils.CONFIG_TLS_TRUSTSTORE_PATH, null))
+                        .setTrustStorePasswordPath(conf.getString(TLSUtils.CONFIG_TLS_TRUSTSTORE_PASSWORD_PATH, null))
+                        .setCertificatePath(conf.getString(TLSUtils.CONFIG_TLS_CERTIFICATE_PATH, null))
+                        .setClientAuthentication(conf.getBoolean(TLSUtils.CONFIG_TLS_CLIENT_AUTHENTICATION, true))
+                        .build();
+
+                HttpConfiguration http = new HttpConfiguration();
+                http.setSecureScheme("https");
+                http.setSecurePort(this.port);
+
+                HttpConfiguration https = new HttpConfiguration(http);
+                https.addCustomizer(new SecureRequestCustomizer());
+
+                ServerConnector sslConnector = new ServerConnector(jettyServer,
+                        new SslConnectionFactory(sslContextFactory, "http/1.1"),
+                        new HttpConnectionFactory(https));
+
+                sslConnector.setPort(this.port);
+                sslConnector.setIdleTimeout(50000);
+                jettyServer.setConnectors(new ServerConnector[] { sslConnector });
+            } else {
+                ServerConnector serverConnector = new ServerConnector(jettyServer);
+                serverConnector.setPort(this.port);
+                jettyServer.setConnectors(new ServerConnector[] { serverConnector });
+            }
+
             jettyServer.setHandler(handlerCollection);
             jettyServer.start();
             enableMetricEndpoint();

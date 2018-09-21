@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,24 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.bookkeeper.tls;
+package org.apache.bookkeeper.common.tls;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyException;
-import java.security.KeyFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.UnrecoverableKeyException;
+import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -41,17 +33,13 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.crypto.Cipher;
-import javax.crypto.EncryptedPrivateKeyInfo;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
+import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -61,6 +49,46 @@ import org.slf4j.LoggerFactory;
  * Commonly used TLS util methods.
  */
 public class TLSUtils {
+    /**
+     * Type of Key Store (PEM, JKS, PKCS12).
+     */
+    public static final String CONFIG_TLS_KEYSTORE_TYPE = "tlsKeyStoreType";
+
+    /**
+     * Path to Key Store.
+     */
+    public static final String CONFIG_TLS_KEYSTORE_PATH = "tlsKeyStore";
+
+    /**
+     * Key Store password file.
+     */
+    public static final String CONFIG_TLS_KEYSTORE_PASSWORD_PATH = "tlsKeyStorePasswordPath";
+
+    /**
+     * Path to Certificate file.
+     */
+    public static final String CONFIG_TLS_CERTIFICATE_PATH = "tlsCertificatePath";
+
+    /**
+     * Type of Trust Store (PEM, JKS, PKCS12).
+     */
+    public static final String CONFIG_TLS_TRUSTSTORE_TYPE = "tlsTrustStoreType";
+
+    /**
+     * Trust Store password file.
+     */
+    public static final String CONFIG_TLS_TRUSTSTORE_PASSWORD_PATH = "tlsTrustStorePasswordPath";
+
+    /**
+     * Trust store path.
+     */
+    public static final String CONFIG_TLS_TRUSTSTORE_PATH = "tlsTrustStore";
+
+    /**
+     * Enable client authentication.
+     */
+    public static final String CONFIG_TLS_CLIENT_AUTHENTICATION = "tlsClientAuthentication";
+
     private static final Logger LOG = LoggerFactory.getLogger(TLSUtils.class);
     private static final Pattern KEY_PATTERN = Pattern.compile(
             "-+BEGIN\\s+.*PRIVATE\\s+KEY[^-]*-+(?:\\s|\\r|\\n)+([a-z0-9+/=\\r\\n]+)-+END\\s+.*PRIVATE\\s+KEY[^-]*-+",
@@ -91,23 +119,17 @@ public class TLSUtils {
         byte[] der = Base64.decodeBase64(m.group(1));
         PKCS8EncodedKeySpec spec = getKeySpec(der, keyPassword);
 
-        try {
-            return KeyFactory.getInstance("RSA").generatePrivate(spec);
-        } catch (InvalidKeySpecException ikse) {
+        InvalidKeySpecException lastException = null;
+        final List<String> keyTypes = Lists.newArrayList("RSA", "DSA", "EC", "DiffeHellman");
+        for (String keyType: keyTypes) {
             try {
-                return KeyFactory.getInstance("DSA").generatePrivate(spec);
-            } catch (InvalidKeySpecException ikse1) {
-                try {
-                    return KeyFactory.getInstance("EC").generatePrivate(spec);
-                } catch (InvalidKeySpecException ikse2) {
-                    try {
-                        return KeyFactory.getInstance("DiffieHellman").generatePrivate(spec);
-                    } catch (InvalidKeySpecException ikse3) {
-                        throw new InvalidKeySpecException("Neither RSA, DSA, EC nor DH worked", ikse3);
-                    }
-                }
+                return KeyFactory.getInstance(keyType).generatePrivate(spec);
+            } catch (InvalidKeySpecException e) {
+                lastException = e;
             }
         }
+
+        throw new InvalidKeySpecException("Neither RSA, DSA, EC nor DH worked", lastException);
     }
 
     private static PKCS8EncodedKeySpec getKeySpec(byte[] key, String password) throws IOException,
@@ -174,6 +196,10 @@ public class TLSUtils {
 
     public static String getPasswordFromFile(String path) throws IOException {
         byte[] pwd;
+
+        if (path == null) {
+            return "";
+        }
 
         File passwdFile = new File(path);
         if (passwdFile.length() == 0) {
