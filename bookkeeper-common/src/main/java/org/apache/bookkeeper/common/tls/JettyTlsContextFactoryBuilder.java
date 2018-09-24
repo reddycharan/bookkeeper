@@ -20,11 +20,23 @@
  */
 package org.apache.bookkeeper.common.tls;
 
+import static org.apache.bookkeeper.common.tls.TLSUtils.getCertificates;
+import static org.apache.bookkeeper.common.tls.TLSUtils.getPasswordFromFile;
+import static org.apache.bookkeeper.common.tls.TLSUtils.getPrivateKey;
+
 import com.google.common.base.Strings;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.*;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidParameterException;
+import java.security.KeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.SecureRandom;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -36,10 +48,6 @@ import javax.net.ssl.TrustManagerFactory;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-
-import static org.apache.bookkeeper.common.tls.TLSUtils.getCertificates;
-import static org.apache.bookkeeper.common.tls.TLSUtils.getPasswordFromFile;
-import static org.apache.bookkeeper.common.tls.TLSUtils.getPrivateKey;
 
 /**
  * Creates SslContextFactory necessary to build SSL server connector
