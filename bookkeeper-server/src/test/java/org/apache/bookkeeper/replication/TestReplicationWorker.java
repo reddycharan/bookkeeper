@@ -53,7 +53,6 @@ import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
-import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,7 +153,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
             lh.addEntry(data);
         }
 
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
 
         rw.start();
         try {
@@ -199,7 +198,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
         LOG.info("New Bookie addr :" + newBkAddr);
 
         killAllBookies(lh, newBkAddr);
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
 
         rw.start();
         try {
@@ -249,16 +248,12 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
         // Starte RW1
         BookieSocketAddress newBkAddr1 = startNewBookieAndReturnAddress();
         LOG.info("New Bookie addr : {}", newBkAddr1);
-        ReplicationWorker rw1 = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw1 = new ReplicationWorker(baseConf);
 
         // Starte RW2
         BookieSocketAddress newBkAddr2 = startNewBookieAndReturnAddress();
         LOG.info("New Bookie addr : {}", newBkAddr2);
-        ZooKeeper zkc1 = ZooKeeperClient.newBuilder()
-                .connectString(zkUtil.getZooKeeperConnectString())
-                .sessionTimeoutMs(10000)
-                .build();
-        ReplicationWorker rw2 = new ReplicationWorker(zkc1, baseConf);
+        ReplicationWorker rw2 = new ReplicationWorker(baseConf);
         rw1.start();
         rw2.start();
 
@@ -284,7 +279,6 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
         } finally {
             rw1.shutdown();
             rw2.shutdown();
-            zkc1.close();
         }
     }
 
@@ -309,7 +303,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
 
         BookieSocketAddress newBkAddr = startNewBookieAndReturnAddress();
         LOG.info("New Bookie addr : {}", newBkAddr);
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
         rw.start();
 
         try {
@@ -364,7 +358,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
         BookieSocketAddress newBkAddr = startNewBookieAndReturnAddress();
         LOG.info("New Bookie addr : {}", newBkAddr);
 
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
 
         rw.start();
         try {
@@ -420,7 +414,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
 
         // set to 3s instead of default 30s
         baseConf.setOpenLedgerRereplicationGracePeriod("3000");
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
 
         @Cleanup MetadataClientDriver clientDriver = MetadataDrivers.getClientDriver(
             URI.create(baseClientConf.getMetadataServiceUri()));
@@ -490,8 +484,8 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
 
         // create couple of replicationworkers
         baseConf.setLockReleaseOfFailedLedgerGracePeriod("500");
-        ReplicationWorker rw1 = new ReplicationWorker(zkc, baseConf);
-        ReplicationWorker rw2 = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw1 = new ReplicationWorker(baseConf);
+        ReplicationWorker rw2 = new ReplicationWorker(baseConf);
 
         @Cleanup
         MetadataClientDriver clientDriver = MetadataDrivers
@@ -611,7 +605,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
             lh.addEntry(data);
         }
 
-        ReplicationWorker rw = new ReplicationWorker(zkc, baseConf);
+        ReplicationWorker rw = new ReplicationWorker(baseConf);
 
         baseClientConf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
 
@@ -661,7 +655,7 @@ public class TestReplicationWorker extends BookKeeperClusterTestCase {
                 .sessionTimeoutMs(10000)
                 .build()) {
 
-            ReplicationWorker rw = new ReplicationWorker(zk, baseConf);
+            ReplicationWorker rw = new ReplicationWorker(baseConf);
             rw.start();
             for (int i = 0; i < 10; i++) {
                 if (rw.isRunning()) {
