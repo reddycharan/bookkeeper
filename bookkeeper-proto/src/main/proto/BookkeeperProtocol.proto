@@ -75,6 +75,11 @@ message BKPacketHeader {
     optional uint32 priority = 4 [default = 0];
 }
 
+message ContextPair {
+    required string key = 1;
+    required string value = 2;
+}
+
 message Request {
     required BKPacketHeader header = 1;
     // Requests
@@ -85,6 +90,8 @@ message Request {
     optional ReadLacRequest readLacRequest = 104;
     optional GetBookieInfoRequest getBookieInfoRequest = 105;
     optional StartTLSRequest startTLSRequest = 106;
+    // to pass MDC context
+    repeated ContextPair requestContext = 200;
 }
 
 message ReadRequest {

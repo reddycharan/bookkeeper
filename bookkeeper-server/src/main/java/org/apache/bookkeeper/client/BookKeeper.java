@@ -428,6 +428,7 @@ public class BookKeeper implements org.apache.bookkeeper.client.api.BookKeeper {
                 .numThreads(conf.getNumWorkerThreads())
                 .statsLogger(statsLogger)
                 .traceTaskExecution(conf.getEnableTaskExecutionStats())
+                .preserveMdcForTaskExecution(conf.getPreserveMdcForTaskExecution())
                 .traceTaskWarnTimeMicroSec(conf.getTaskExecutionWarnTimeMicros())
                 .build();
 
