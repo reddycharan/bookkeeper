@@ -62,6 +62,7 @@ import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -187,6 +188,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
      * test that the period checker will detect corruptions in
      * the bookie index files.
      */
+    @Ignore("Test flapper - W-5474001")
     @Test
     public void testIndexCorruption() throws Exception {
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
