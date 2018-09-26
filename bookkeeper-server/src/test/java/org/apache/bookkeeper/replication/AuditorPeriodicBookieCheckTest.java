@@ -34,12 +34,9 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
-import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.test.TestCallbacks;
-import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
-import org.apache.zookeeper.ZooKeeper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +52,6 @@ public class AuditorPeriodicBookieCheckTest extends BookKeeperClusterTestCase {
             .getLogger(AuditorPeriodicBookieCheckTest.class);
 
     private AuditorElector auditorElector = null;
-    private ZooKeeper auditorZookeeper = null;
 
     private static final int CHECK_INTERVAL = 1; // run every second
 
@@ -74,13 +70,7 @@ public class AuditorPeriodicBookieCheckTest extends BookKeeperClusterTestCase {
         conf.setMetadataServiceUri(metadataServiceUri);
         String addr = bs.get(0).getLocalAddress().toString();
 
-        auditorZookeeper = ZooKeeperClient.newBuilder()
-                .connectString(ZKMetadataDriverBase.resolveZkServers(conf))
-                .sessionTimeoutMs(10000)
-                .build();
-
-        auditorElector = new AuditorElector(addr, conf,
-                auditorZookeeper);
+        auditorElector = new AuditorElector(addr, conf);
         auditorElector.start();
     }
 
@@ -88,7 +78,6 @@ public class AuditorPeriodicBookieCheckTest extends BookKeeperClusterTestCase {
     @Override
     public void tearDown() throws Exception {
         auditorElector.shutdown();
-        auditorZookeeper.close();
 
         super.tearDown();
     }

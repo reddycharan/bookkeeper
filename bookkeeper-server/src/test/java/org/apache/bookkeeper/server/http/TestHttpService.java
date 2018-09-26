@@ -50,8 +50,6 @@ import org.apache.bookkeeper.replication.AuditorElector;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.test.TestCallbacks;
 import org.apache.bookkeeper.util.JsonUtil;
-import org.apache.bookkeeper.zookeeper.ZooKeeperClient;
-import org.apache.zookeeper.ZooKeeper;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -584,25 +582,18 @@ public class TestHttpService extends BookKeeperClusterTestCase {
         assertEquals(HttpServer.StatusCode.OK.getValue(), response5.getStatusCode());
     }
 
-    ZooKeeper auditorZookeeper;
     AuditorElector auditorElector;
     private Future<?> startAuditorElector() throws Exception {
-        auditorZookeeper = ZooKeeperClient.newBuilder()
-          .connectString(zkUtil.getZooKeeperConnectString())
-          .sessionTimeoutMs(10000)
-          .build();
         String addr = bs.get(0).getLocalAddress().toString();
         ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
         conf.setAuditorPeriodicBookieCheckInterval(1);
         conf.setMetadataServiceUri("zk://" + zkUtil.getZooKeeperConnectString() + "/ledgers");
-        auditorElector = new AuditorElector(addr, conf,
-          auditorZookeeper);
+        auditorElector = new AuditorElector(addr, conf);
         return auditorElector.start();
     }
 
     private void stopAuditorElector() throws Exception {
         auditorElector.shutdown();
-        auditorZookeeper.close();
     }
 
     @Test
