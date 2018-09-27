@@ -195,12 +195,15 @@ public class OrderedExecutor implements ExecutorService {
 
 
             long startNanos = MathUtils.nowInNano();
-            this.runnable.run();
-            long elapsedMicroSec = MathUtils.elapsedMicroSec(startNanos);
-            taskExecutionStats.registerSuccessfulEvent(elapsedMicroSec, TimeUnit.MICROSECONDS);
-            if (elapsedMicroSec >= warnTimeMicroSec) {
-                log.warn("Runnable {}:{} took too long {} micros to execute.", runnable, runnable.getClass(),
-                        elapsedMicroSec);
+            try {
+                this.runnable.run();
+            } finally {
+                long elapsedMicroSec = MathUtils.elapsedMicroSec(startNanos);
+                taskExecutionStats.registerSuccessfulEvent(elapsedMicroSec, TimeUnit.MICROSECONDS);
+                if (elapsedMicroSec >= warnTimeMicroSec) {
+                    log.warn("Runnable {}:{} took too long {} micros to execute.", runnable, runnable.getClass(),
+                            elapsedMicroSec);
+                }
             }
 
             long totalMicroSec = MathUtils.elapsedMicroSec(initNanos);
