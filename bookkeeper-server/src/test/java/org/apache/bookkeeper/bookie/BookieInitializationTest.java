@@ -59,21 +59,27 @@ import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.common.component.ComponentStarter;
+import org.apache.bookkeeper.common.component.Lifecycle;
+import org.apache.bookkeeper.common.component.LifecycleComponent;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.conf.TestBKConfiguration;
 import org.apache.bookkeeper.discover.RegistrationManager;
+import org.apache.bookkeeper.http.HttpRouter;
+import org.apache.bookkeeper.http.HttpServerLoader;
 import org.apache.bookkeeper.meta.MetadataBookieDriver;
 import org.apache.bookkeeper.meta.zk.ZKMetadataBookieDriver;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.proto.BookieServer;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
+import org.apache.bookkeeper.server.Main;
 import org.apache.bookkeeper.server.conf.BookieConfiguration;
 import org.apache.bookkeeper.server.service.BookieService;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.StatsProvider;
+import org.apache.bookkeeper.stats.codahale.CodahaleMetricsProvider;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
 import org.apache.bookkeeper.test.PortManager;
 import org.apache.bookkeeper.tls.SecurityException;
@@ -1125,6 +1131,58 @@ public class BookieInitializationTest extends BookKeeperClusterTestCase {
         if (bkServer.isRunning()) {
             bkServer.shutdown();
         }
+    }
+
+    @Test
+    public void testIOVertexHTTPServerEndpointStart() throws Exception {
+        File tmpDir = createTempDir("bookie", "test");
+
+        final ServerConfiguration conf = TestBKConfiguration.newServerConfiguration()
+                .setJournalDirName(tmpDir.getPath()).setLedgerDirNames(new String[] { tmpDir.getPath() })
+                .setBookiePort(PortManager.nextFreePort()).setMetadataServiceUri(metadataServiceUri)
+                .setListeningInterface(null);
+        /*
+         * disable our HTTP server.
+         */
+        conf.setJettyPort(0);
+        conf.setStatsEnabled(false);
+        conf.setEnableRestEndpoints(false);
+        conf.setRestPackage("");
+
+        /*
+         * enable io.vertx http server
+         */
+        int nextFreePort = PortManager.nextFreePort();
+        conf.setStatsProviderClass(CodahaleMetricsProvider.class);
+        conf.setHttpServerEnabled(true);
+        conf.setProperty(HttpServerLoader.HTTP_SERVER_CLASS, "org.apache.bookkeeper.http.vertx.VertxHttpServer");
+        conf.setHttpServerPort(nextFreePort);
+
+        // 1. building the component stack:
+        LifecycleComponent server = Main.buildBookieServer(new BookieConfiguration(conf));
+        // 2. start the server
+        CompletableFuture<Void> stackComponentFuture = ComponentStarter.startComponent(server);
+        while (server.lifecycleState() != Lifecycle.State.STARTED) {
+            Thread.sleep(100);
+        }
+
+        // Now, hit the rest endpoint for metrics
+        URL url = new URL("http://localhost:" + nextFreePort + HttpRouter.METRICS);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> statMap = om.readValue(url, Map.class);
+        if (statMap.isEmpty() || !statMap.containsKey("counters")) {
+            Assert.fail("Failed to map metrics to valid JSON entries on servlet.");
+        }
+
+        // Now, hit the rest endpoint for configs
+        url = new URL("http://localhost:" + nextFreePort + HttpRouter.SERVER_CONFIG);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> configMap = om.readValue(url, Map.class);
+        if (configMap.isEmpty() || !configMap.containsKey("bookiePort")) {
+            Assert.fail("Failed to map configurations to valid JSON entries.");
+        }
+
+        stackComponentFuture.cancel(true);
     }
 
     @Test (timeout = 20000)

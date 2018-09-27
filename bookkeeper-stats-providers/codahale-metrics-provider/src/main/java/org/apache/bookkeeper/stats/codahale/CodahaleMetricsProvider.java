@@ -31,9 +31,12 @@ import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -57,7 +60,10 @@ public class CodahaleMetricsProvider implements StatsProvider {
     List<ScheduledReporter> reporters = new ArrayList<ScheduledReporter>();
     JmxReporter jmx = null;
     private JettyServices jettyServices;
+    private final ObjectMapper objMapper;
+
     public CodahaleMetricsProvider() {
+        objMapper = new ObjectMapper();
     }
 
     synchronized void initIfNecessary() {
@@ -167,5 +173,11 @@ public class CodahaleMetricsProvider implements StatsProvider {
     public StatsLogger getStatsLogger(String name) {
         initIfNecessary();
         return new CodahaleStatsLogger(getMetrics(), name);
+    }
+
+    @Override
+    public void writeAllMetrics(Writer writer) throws IOException {
+        objMapper.writeValue(writer, getMetrics());
+        writer.flush();
     }
 }

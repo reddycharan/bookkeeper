@@ -232,6 +232,11 @@
       <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.bookkeeper.http</groupId>
+      <artifactId>vertx-http-server</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
