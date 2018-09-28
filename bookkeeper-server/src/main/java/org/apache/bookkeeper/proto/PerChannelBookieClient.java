@@ -126,6 +126,7 @@ import org.apache.bookkeeper.tls.SecurityHandlerFactory.NodeType;
 import org.apache.bookkeeper.util.ByteBufList;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SafeRunnable;
+import org.apache.bookkeeper.util.StringUtils;
 import org.apache.bookkeeper.util.collections.ConcurrentOpenHashMap;
 import org.apache.bookkeeper.util.collections.SynchronizedHashMultiMap;
 import org.slf4j.Logger;
@@ -935,7 +936,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                            final Object request,
                            final boolean allowFastFail) {
         if (channel == null) {
-            LOG.warn("Operation {} failed: channel == null", requestToString(request));
+            LOG.warn("Operation {} failed: channel == null", StringUtils.requestToString(request));
             errorOut(key);
             return;
         }
@@ -948,7 +949,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         if (allowFastFail && !isWritable) {
             LOG.warn("Operation {} failed: TooManyRequestsException",
-                    requestToString(request));
+                    StringUtils.requestToString(request));
 
             errorOut(key, BKException.Code.TooManyRequestsException);
             return;
@@ -971,19 +972,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
             channel.writeAndFlush(request, promise);
         } catch (Throwable e) {
-            LOG.warn("Operation {} failed", requestToString(request), e);
+            LOG.warn("Operation {} failed", StringUtils.requestToString(request), e);
             errorOut(key);
-        }
-    }
-
-    private static String requestToString(Object request) {
-        if (request instanceof BookkeeperProtocol.Request) {
-            BookkeeperProtocol.BKPacketHeader header = ((BookkeeperProtocol.Request) request).getHeader();
-            return String.format("Req(txnId=%d,op=%s,version=%s)",
-                                 header.getTxnId(), header.getOperation(),
-                                 header.getVersion());
-        } else {
-            return request.toString();
         }
     }
 

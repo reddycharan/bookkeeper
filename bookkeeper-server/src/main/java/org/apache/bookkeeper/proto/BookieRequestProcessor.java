@@ -22,14 +22,20 @@ package org.apache.bookkeeper.proto;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_BLOCKED;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_BLOCKED_WAIT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_IN_PROGRESS;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.ADD_ENTRY_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.CHANNEL_WRITE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED_WAIT;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_FENCE_READ;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_FENCE_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_FENCE_WAIT;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_IN_PROGRESS;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_LONG_POLL_PRE_WAIT;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_LONG_POLL_READ;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_LONG_POLL_REQUEST;
@@ -43,6 +49,9 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_LAC_REQUEST;
 import static org.apache.bookkeeper.proto.RequestUtils.hasFlag;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 
@@ -54,9 +63,13 @@ import io.netty.util.concurrent.GenericFutureListener;
 
 import java.net.InetSocketAddress;
 import java.security.cert.Certificate;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -64,10 +77,12 @@ import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
 import org.apache.bookkeeper.auth.AuthToken;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.common.tls.TLSUtils;
+import org.apache.bookkeeper.common.util.MathUtils;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.bookkeeper.stats.Counter;
+import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.tls.SecurityException;
@@ -91,6 +106,7 @@ public class BookieRequestProcessor implements RequestProcessor {
      */
     private final ServerConfiguration serverCfg;
     private final boolean preserveMdcForTaskExecution;
+    private final long waitTimeoutOnBackpressureMillis;
 
     /**
      * This is the Bookie instance that is used to handle all read and write requests.
@@ -151,11 +167,28 @@ public class BookieRequestProcessor implements RequestProcessor {
     final OpStatsLogger getBookieInfoRequestStats;
     final OpStatsLogger getBookieInfoStats;
     final OpStatsLogger channelWriteStats;
+    final OpStatsLogger addEntryBlockedStats;
+    final OpStatsLogger readEntryBlockedStats;
+
+    final AtomicInteger addsInProgress = new AtomicInteger(0);
+    final AtomicInteger maxAddsInProgress = new AtomicInteger(0);
+    final AtomicInteger addsBlocked = new AtomicInteger(0);
+    final AtomicInteger readsInProgress = new AtomicInteger(0);
+    final AtomicInteger readsBlocked = new AtomicInteger(0);
+    final AtomicInteger maxReadsInProgress = new AtomicInteger(0);
+
+    final Semaphore addsSemaphore;
+    final Semaphore readsSemaphore;
+
+    // to temporary blacklist channels
+    final Optional<Cache<Channel, Boolean>> blacklistedChannels;
+    final Consumer<Channel> onResponseTimeout;
 
     public BookieRequestProcessor(ServerConfiguration serverCfg, Bookie bookie,
             StatsLogger statsLogger, SecurityHandlerFactory shFactory) throws SecurityException {
         this.serverCfg = serverCfg;
         this.preserveMdcForTaskExecution = serverCfg.getPreserveMdcForTaskExecution();
+        this.waitTimeoutOnBackpressureMillis = serverCfg.getWaitTimeoutOnResponseBackpressureMillis();
         this.bookie = bookie;
         this.readThreadPool = createExecutor(
                 this.serverCfg.getNumReadWorkerThreads(),
@@ -183,15 +216,33 @@ public class BookieRequestProcessor implements RequestProcessor {
                 this.serverCfg.getNumHighPriorityWorkerThreads(),
                 "BookieHighPriorityThread-" + serverCfg.getBookiePort(),
                 OrderedExecutor.NO_TASK_LIMIT, statsLogger);
+        this.requestTimer = new HashedWheelTimer(
+            new ThreadFactoryBuilder().setNameFormat("BookieRequestTimer-%d").build(),
+            this.serverCfg.getRequestTimerTickDurationMs(),
+            TimeUnit.MILLISECONDS, this.serverCfg.getRequestTimerNumTicks());
         this.shFactory = shFactory;
         if (shFactory != null) {
             shFactory.init(NodeType.Server, serverCfg);
         }
 
-        this.requestTimer = new HashedWheelTimer(
-                new ThreadFactoryBuilder().setNameFormat("BookieRequestTimer-%d").build(),
-                this.serverCfg.getRequestTimerTickDurationMs(),
-                TimeUnit.MILLISECONDS, this.serverCfg.getRequestTimerNumTicks());
+        if (waitTimeoutOnBackpressureMillis > 0) {
+            blacklistedChannels = Optional.of(CacheBuilder.newBuilder()
+                    .expireAfterWrite(waitTimeoutOnBackpressureMillis, TimeUnit.MILLISECONDS)
+                    .build());
+        } else {
+            blacklistedChannels = Optional.empty();
+        }
+
+        if (serverCfg.getCloseChannelOnResponseTimeout()) {
+            onResponseTimeout = (ch) -> {
+                LOG.warn("closing channel {} because it was non-writable for longer than {} ms",
+                        ch, waitTimeoutOnBackpressureMillis);
+                ch.close();
+            };
+        } else {
+            // noop
+            onResponseTimeout = (ch) -> {};
+        }
 
         // Expose Stats
         this.statsEnabled = serverCfg.areStatsEnabled();
@@ -215,6 +266,126 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.getBookieInfoStats = statsLogger.getOpStatsLogger(GET_BOOKIE_INFO);
         this.getBookieInfoRequestStats = statsLogger.getOpStatsLogger(GET_BOOKIE_INFO_REQUEST);
         this.channelWriteStats = statsLogger.getOpStatsLogger(CHANNEL_WRITE);
+
+        this.addEntryBlockedStats = statsLogger.getOpStatsLogger(ADD_ENTRY_BLOCKED_WAIT);
+        this.readEntryBlockedStats = statsLogger.getOpStatsLogger(READ_ENTRY_BLOCKED_WAIT);
+
+        int maxAdds = serverCfg.getMaxAddsInProgressLimit();
+        addsSemaphore = maxAdds > 0 ? new Semaphore(maxAdds, true) : null;
+
+        int maxReads = serverCfg.getMaxReadsInProgressLimit();
+        readsSemaphore = maxReads > 0 ? new Semaphore(maxReads, true) : null;
+
+        statsLogger.registerGauge(ADD_ENTRY_IN_PROGRESS, new Gauge<Number>() {
+            @Override
+            public Number getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Number getSample() {
+                return addsInProgress;
+            }
+        });
+
+        statsLogger.registerGauge(ADD_ENTRY_BLOCKED, new Gauge<Number>() {
+            @Override
+            public Number getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Number getSample() {
+                return addsBlocked;
+            }
+        });
+
+        statsLogger.registerGauge(READ_ENTRY_IN_PROGRESS, new Gauge<Number>() {
+            @Override
+            public Number getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Number getSample() {
+                return readsInProgress;
+            }
+        });
+
+        statsLogger.registerGauge(READ_ENTRY_BLOCKED, new Gauge<Number>() {
+            @Override
+            public Number getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Number getSample() {
+                return readsBlocked;
+            }
+        });
+
+    }
+
+    protected void onAddRequestStart(Channel channel) {
+        if (addsSemaphore != null) {
+            if (!addsSemaphore.tryAcquire()) {
+                final long throttlingStartTimeNanos = MathUtils.nowInNano();
+                channel.config().setAutoRead(false);
+                LOG.info("Too many add requests in progress, disabling autoread on channel {}", channel);
+                addsBlocked.incrementAndGet();
+                addsSemaphore.acquireUninterruptibly();
+                channel.config().setAutoRead(true);
+                final long delayNanos = MathUtils.elapsedNanos(throttlingStartTimeNanos);
+                LOG.info("Re-enabled autoread on channel {} after AddRequest delay of {} nanos", channel, delayNanos);
+                addEntryBlockedStats.registerSuccessfulEvent(delayNanos, TimeUnit.NANOSECONDS);
+                addsBlocked.decrementAndGet();
+            }
+        }
+        final int curr = addsInProgress.incrementAndGet();
+        maxAddsInProgress.accumulateAndGet(curr, Integer::max);
+    }
+
+    protected void onAddRequestFinish() {
+        addsInProgress.decrementAndGet();
+        if (addsSemaphore != null) {
+            addsSemaphore.release();
+        }
+    }
+
+    protected void onReadRequestStart(Channel channel) {
+        if (readsSemaphore != null) {
+            if (!readsSemaphore.tryAcquire()) {
+                final long throttlingStartTimeNanos = MathUtils.nowInNano();
+                channel.config().setAutoRead(false);
+                LOG.info("Too many read requests in progress, disabling autoread on channel {}", channel);
+                readsBlocked.incrementAndGet();
+                readsSemaphore.acquireUninterruptibly();
+                channel.config().setAutoRead(true);
+                final long delayNanos = MathUtils.elapsedNanos(throttlingStartTimeNanos);
+                LOG.info("Re-enabled autoread on channel {} after ReadRequest delay of {} nanos", channel, delayNanos);
+                readEntryBlockedStats.registerSuccessfulEvent(delayNanos, TimeUnit.NANOSECONDS);
+                readsBlocked.decrementAndGet();
+            }
+        }
+        final int curr = readsInProgress.incrementAndGet();
+        maxReadsInProgress.accumulateAndGet(curr, Integer::max);
+    }
+
+    protected void onReadRequestFinish() {
+        readsInProgress.decrementAndGet();
+        if (readsSemaphore != null) {
+            readsSemaphore.release();
+        }
+    }
+
+    @VisibleForTesting
+    int maxAddsInProgressCount() {
+        return maxAddsInProgress.get();
+    }
+
+    @VisibleForTesting
+    int maxReadsInProgressCount() {
+        return maxReadsInProgress.get();
     }
 
     @Override
@@ -575,5 +746,29 @@ public class BookieRequestProcessor implements RequestProcessor {
                         ResponseBuilder.buildErrorResponse(BookieProtocol.ETOOMANYREQUESTS, r), readRequestStats);
             }
         }
+    }
+
+    public long getWaitTimeoutOnBackpressureMillis() {
+        return waitTimeoutOnBackpressureMillis;
+    }
+
+    public void blacklistChannel(Channel channel) {
+        blacklistedChannels
+                .ifPresent(x -> x.put(channel, true));
+    }
+
+    public void invalidateBlacklist(Channel channel) {
+        blacklistedChannels
+                .ifPresent(x -> x.invalidate(channel));
+    }
+
+    public boolean isBlacklisted(Channel channel) {
+        return blacklistedChannels
+                .map(x -> x.getIfPresent(channel))
+                .orElse(false);
+    }
+
+    public void handleNonWritableChannel(Channel channel) {
+        onResponseTimeout.accept(channel);
     }
 }
