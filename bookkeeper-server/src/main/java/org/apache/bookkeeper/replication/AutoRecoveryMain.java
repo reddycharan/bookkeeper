@@ -37,6 +37,7 @@ import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.http.HttpServer;
 import org.apache.bookkeeper.http.HttpServerLoader;
+import org.apache.bookkeeper.meta.MetadataClientDriver;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.server.http.BKHttpServiceProvider;
@@ -83,6 +84,11 @@ public class AutoRecoveryMain {
             CompatibilityException {
         this.conf = conf;
         this.bkc = Auditor.createBookKeeperClient(conf);
+        MetadataClientDriver metadataClientDriver = bkc.getMetadataClientDriver();
+        metadataClientDriver.setSessionStateListener(() -> {
+            LOG.error("Client connection to the Metadata server has expired, so shutting down AutoRecoveryMain!");
+            shutdown(ExitCode.ZK_EXPIRED);
+        });
 
         auditorElector = new AuditorElector(
             Bookie.getBookieAddress(conf).toString(),
