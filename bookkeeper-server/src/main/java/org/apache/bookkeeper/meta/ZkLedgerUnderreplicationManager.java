@@ -360,6 +360,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         try {
             Lock l = heldLocks.get(ledgerId);
             if (l != null) {
+                System.out.println("******* deleting url");
                 zkc.delete(getUrLedgerZnode(ledgerId), l.getLedgerZNodeVersion());
 
                 try {

@@ -44,7 +44,7 @@ public class ZooKeeperClusterUtil implements ZooKeeperCluster {
     }
 
     static final Logger LOG = LoggerFactory.getLogger(ZooKeeperClusterUtil.class);
-    private final int numOfZKNodes;
+    public final int numOfZKNodes;
     public QuorumUtil quorumUtil;
     String connectString;
     protected ZooKeeper zkc; // zookeeper client

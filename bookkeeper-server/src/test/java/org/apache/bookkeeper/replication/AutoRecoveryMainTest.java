@@ -180,7 +180,7 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
      * start autoRecoveryMain and make sure all its components are running and
      * myVote node is existing
      */
-    ZKMetadataClientDriver startAutoRecoveryMain(AutoRecoveryMain autoRecoveryMain)
+    static ZKMetadataClientDriver startAutoRecoveryMain(AutoRecoveryMain autoRecoveryMain)
             throws InterruptedException, KeeperException, UnavailableException {
         autoRecoveryMain.start();
         ZKMetadataClientDriver metadataClientDriver = (ZKMetadataClientDriver) autoRecoveryMain.bkc
