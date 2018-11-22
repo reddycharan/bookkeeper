@@ -56,4 +56,21 @@ interface LedgerCache extends Closeable {
 
     void setExplicitLac(long ledgerId, ByteBuf lac) throws IOException;
     ByteBuf getExplicitLac(long ledgerId);
+
+    /**
+     * Represents a page of the index.
+     */
+    interface PageEntries {
+        LedgerEntryPage getLEP() throws IOException;
+        long getFirstEntry();
+        long getLastEntry();
+    }
+
+    /**
+     * Iterable over index pages -- returns PageEntries rather than individual
+     * entries because getEntries() above needs to be able to throw an IOException.
+     */
+    interface PageEntriesIterable extends AutoCloseable, Iterable<PageEntries> {}
+
+    PageEntriesIterable listEntries(long ledgerId) throws IOException;
 }

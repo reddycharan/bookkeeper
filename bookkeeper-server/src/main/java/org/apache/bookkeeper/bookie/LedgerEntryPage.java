@@ -262,4 +262,20 @@ public class LedgerEntryPage {
             return index >= 0 ? (index + entryKey.getEntryId()) : 0;
         }
     }
+
+    public interface EntryVisitor {
+        boolean visit(long entry, long pos) throws IOException;
+    }
+
+    public void getEntries(EntryVisitor vis) throws IOException {
+        // process a page
+        for (int i = 0; i < entriesPerPage; i++) {
+            long offset = getOffset(i * 8);
+            if (offset != 0) {
+                if (!vis.visit(getFirstEntry() + i, offset)) {
+                    return;
+                }
+            }
+        }
+    }
 }

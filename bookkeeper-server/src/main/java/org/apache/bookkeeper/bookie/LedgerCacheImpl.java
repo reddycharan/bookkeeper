@@ -169,4 +169,10 @@ public class LedgerCacheImpl implements LedgerCache {
     public void close() throws IOException {
         indexPersistenceManager.close();
     }
+
+    @Override
+    public PageEntriesIterable listEntries(long ledgerId) throws IOException {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

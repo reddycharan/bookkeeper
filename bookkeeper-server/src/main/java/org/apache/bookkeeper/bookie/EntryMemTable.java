@@ -28,6 +28,11 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.SKIP_LIST_THROT
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NavigableSet;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -52,7 +57,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EntryMemTable implements AutoCloseable{
     private static Logger logger = LoggerFactory.getLogger(Journal.class);
-
+    static long LONG_MAX_VALUE = Long.MAX_VALUE - 1;
     /**
      * Entry skip list.
      */
@@ -466,4 +471,70 @@ public class EntryMemTable implements AutoCloseable{
     public void close() throws Exception {
         // no-op
     }
+    
+    Iterator<EntryKey> getEntriesOfALedger(long ledgerId) {
+        EntryKey thisLedgerFloorEntry = new EntryKey(ledgerId, 0);
+        EntryKey thisLedgerCeilingEntry = new EntryKey(ledgerId, LONG_MAX_VALUE);
+        /*
+         * Gets a view of the portion of this map that corresponds to entries of
+         * this ledger.
+         */
+        Iterator<EntryKey> thisLedgerEntriesInKVMap = this.kvmap.subMap(thisLedgerFloorEntry, thisLedgerCeilingEntry)
+                .keySet().iterator();
+        Iterator<EntryKey> thisLedgerEntriesInSnapshot = this.snapshot
+                .subMap(thisLedgerFloorEntry, thisLedgerCeilingEntry).keySet().iterator();
+
+        return new Iterator<EntryKey>() {
+            private EntryKey curKVMapEntry = null;
+            private EntryKey curSnapshotEntry = null;
+            private boolean hasToPreFetch = true;
+
+            @Override
+            public boolean hasNext() {
+                if (hasToPreFetch) {
+                    if (curKVMapEntry == null) {
+                        curKVMapEntry = thisLedgerEntriesInKVMap.hasNext() ? thisLedgerEntriesInKVMap.next() : null;
+                    }
+                    if (curSnapshotEntry == null) {
+                        curSnapshotEntry = thisLedgerEntriesInSnapshot.hasNext() ? thisLedgerEntriesInSnapshot.next()
+                                : null;
+                    }
+                }
+                hasToPreFetch = false;
+                return (curKVMapEntry != null || curSnapshotEntry != null);
+            }
+
+            @Override
+            public EntryKey next() {
+                if (hasToPreFetch || hasNext()) {
+                    EntryKey returnEntryKey = null;
+                    if (curKVMapEntry != null && curSnapshotEntry != null) {
+                        int compareValue = EntryKey.COMPARATOR.compare(curKVMapEntry, curSnapshotEntry);
+                        if (compareValue == 0) {
+                            returnEntryKey = curKVMapEntry;
+                            curKVMapEntry = null;
+                            curSnapshotEntry = null;
+                        } else if (compareValue < 0) {
+                            returnEntryKey = curKVMapEntry;
+                            curKVMapEntry = null;
+                        } else {
+                            returnEntryKey = curSnapshotEntry;
+                            curSnapshotEntry = null;
+                        }
+                    } else if (curKVMapEntry != null) {
+                        returnEntryKey = curKVMapEntry;
+                        curKVMapEntry = null;
+                    } else {
+                        returnEntryKey = curSnapshotEntry;
+                        curSnapshotEntry = null;
+                    }
+                    hasToPreFetch = true;
+                    return returnEntryKey;
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
+        };
+    }
+    
 }

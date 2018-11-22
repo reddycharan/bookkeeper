@@ -226,5 +226,10 @@ public class InterleavedStorageRegenerateIndexOp {
         public ByteBuf getExplicitLac(long ledgerId) {
             throw new UnsupportedOperationException();
         }
+        @Override
+        public PageEntriesIterable listEntries(long ledgerId) throws IOException {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 }

@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -323,5 +324,11 @@ public class SortedLedgerStorage
     @Override
     public LedgerStorage getUnderlyingLedgerStorage() {
         return interleavedLedgerStorage;
+    }
+
+    @Override
+    public byte[] getEntriesOfALedger(long ledgerId) throws IOException {
+        Iterator<EntryKey> entriesInMemtable = memTable.getEntriesOfALedger(ledgerId);
+        return interleavedLedgerStorage.getEntriesOfALedger(ledgerId, entriesInMemtable);
     }
 }
