@@ -42,6 +42,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
@@ -53,6 +56,8 @@ import lombok.Cleanup;
 import org.apache.bookkeeper.bookie.Bookie.NoLedgerException;
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogListener;
+import org.apache.bookkeeper.bookie.LedgerCache.PageEntries;
+import org.apache.bookkeeper.bookie.LedgerCache.PageEntriesIterable;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -64,8 +69,10 @@ import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.annotations.StatsDoc;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.util.SnapshotMap;
-import org.apache.commons.lang.mutable.MutableBoolean;
-import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableBoolean;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -640,5 +647,165 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     @Override
     public List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return Collections.singletonList(gcThread.getGarbageCollectionStatus());
+
+    @Override
+    public byte[] getEntriesOfALedger(long ledgerId) throws IOException {
+        return getEntriesOfALedger(ledgerId, Collections.emptyIterator());
+    }
+
+    public static final long INVALID_ENTRYID = -1;
+
+    private class SequenceGroup {
+        private final long firstSequenceStart;
+        private int sequenceSize;
+        long lastSequenceStart = INVALID_ENTRYID;
+        int sequencePeriod;
+        private SequenceGroup(long firstSequenceStart, int sequenceSize){
+            this.firstSequenceStart = firstSequenceStart;
+            this.sequenceSize = sequenceSize;
+        }
+    }
+
+    private class StateOfEntriesOfALedger {
+        ArrayList<SequenceGroup> availabilityOfEntriesOfLedger = new ArrayList<SequenceGroup>();
+        MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
+        MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
+        MutableInt curSequenceSize = new MutableInt(0);
+
+        private void initializeCurSequence(long curSequenceStartEntryIdValue){
+            curSequenceStartEntryId.setValue(curSequenceStartEntryIdValue);
+            curSequenceSize.setValue(1);
+        }
+
+        private void resetCurSequence(){
+            curSequenceStartEntryId.setValue(INVALID_ENTRYID);
+            curSequenceSize.setValue(0);
+        }
+
+        private boolean isCurSequenceInitialized(){
+            return curSequenceStartEntryId.longValue() != INVALID_ENTRYID;
+        }
+
+        private boolean isEntryExistingInCurSequence(long entryId) {
+            return (curSequenceStartEntryId.longValue() <= entryId)
+                    && (entryId < (curSequenceStartEntryId.longValue() + curSequenceSize.intValue()));
+        }
+
+        private boolean isEntryAppendableToCurSequence(long entryId) {
+            return ((curSequenceStartEntryId.longValue() + curSequenceSize.intValue()) == entryId);
+        }
+
+        private void incrementCurSequenceSize(){
+            curSequenceSize.increment();
+        }
+
+        private void createNewSequenceGroupWithCurSequence() {
+            SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
+            if (curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) {
+                curSequenceGroupValue.lastSequenceStart = curSequenceGroupValue.firstSequenceStart;
+                curSequenceGroupValue.sequencePeriod = 0;
+            }
+            availabilityOfEntriesOfLedger.add(curSequenceGroupValue);
+            curSequenceGroup
+                    .setValue(new SequenceGroup(curSequenceStartEntryId.longValue(), curSequenceSize.intValue()));
+        }
+
+        private boolean isCurSequenceGroupInitialized() {
+            return curSequenceGroup.getValue() != null;
+        }
+
+        private void initializeCurSequenceGroupWithCurSequence() {
+            curSequenceGroup
+                    .setValue(new SequenceGroup(curSequenceStartEntryId.longValue(), curSequenceSize.intValue()));
+        }
+
+        private boolean doesCurSequenceBelongToCurSequenceGroup() {
+            long curSequenceStartEntryIdValue = curSequenceStartEntryId.longValue();
+            int curSequenceSizeValue = curSequenceSize.intValue();
+            boolean belongsToThisSequenceGroup = false;
+            SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
+            if ((curSequenceGroupValue.sequenceSize == curSequenceSizeValue)
+                    && ((curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) || ((curSequenceStartEntryIdValue
+                            - curSequenceGroupValue.lastSequenceStart) == curSequenceGroupValue.sequencePeriod))) {
+                belongsToThisSequenceGroup = true;
+            }
+            return belongsToThisSequenceGroup;
+        }
+
+        private void appendCurSequenceToCurSequenceGroup() {
+            SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
+            if (curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) {
+                curSequenceGroupValue.lastSequenceStart = curSequenceStartEntryId.longValue();
+                curSequenceGroupValue.sequencePeriod = ((int) (curSequenceGroupValue.lastSequenceStart
+                        - curSequenceGroupValue.firstSequenceStart));
+            } else {
+                curSequenceGroupValue.lastSequenceStart = curSequenceStartEntryId.longValue();
+            }
+        }
+
+        private void addCurSequenceToSequenceGroup() {
+            if (!isCurSequenceGroupInitialized()) {
+                initializeCurSequenceGroupWithCurSequence();
+            } else if (doesCurSequenceBelongToCurSequenceGroup()) {
+                appendCurSequenceToCurSequenceGroup();
+            }else {
+                createNewSequenceGroupWithCurSequence();
+            }
+        }
+
+        private void addEntryToAvailabileEntriesOfLedger(long entryId) {
+            if (!isCurSequenceInitialized()) {
+                initializeCurSequence(entryId);
+            } else if (isEntryExistingInCurSequence(entryId)) {
+                /* this entry is already added so do nothing */
+            } else if (isEntryAppendableToCurSequence(entryId)) {
+                incrementCurSequenceSize();
+            } else {
+                addCurSequenceToSequenceGroup();
+                initializeCurSequence(entryId);
+            }
+        }
+
+        public void closeStateOfEntriesOfALedger(){
+            if (isCurSequenceInitialized()) {
+                addCurSequenceToSequenceGroup();
+                resetCurSequence();
+            }
+        }
+    }
+
+    protected byte[] getEntriesOfALedger(long ledgerId, Iterator<EntryKey> entriesInMemtable) throws IOException {
+        Iterator<LedgerCache.PageEntries> pageEntriesIterator = ledgerCache.listEntries(ledgerId).iterator();
+        MutableLong nextEntryInMemtable = new MutableLong(entriesInMemtable.hasNext() ? entriesInMemtable.next().entryId : INVALID_ENTRYID);
+        StateOfEntriesOfALedger stateOfEntriesOfALedger = new StateOfEntriesOfALedger();
+        while (pageEntriesIterator.hasNext()) {
+            PageEntries pageEntry = pageEntriesIterator.next();
+            LedgerEntryPage lep = pageEntry.getLEP();
+            lep.getEntries((entryId, position) -> {
+                if (nextEntryInMemtable.longValue() != INVALID_ENTRYID) {
+                    while ((nextEntryInMemtable.longValue() != INVALID_ENTRYID)
+                            && (nextEntryInMemtable.longValue() <= entryId)) {
+                        stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
+                        if (entriesInMemtable.hasNext()) {
+                            nextEntryInMemtable.setValue(entriesInMemtable.next().entryId);
+                        } else {
+                            nextEntryInMemtable.setValue(INVALID_ENTRYID);
+                        }
+                    }
+                }
+                stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(entryId);
+                return true;
+            });
+        }
+        while (nextEntryInMemtable.longValue() != INVALID_ENTRYID) {
+            stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
+            if (entriesInMemtable.hasNext()) {
+                nextEntryInMemtable.setValue(entriesInMemtable.next().entryId);
+            } else {
+                nextEntryInMemtable.setValue(INVALID_ENTRYID);
+            }
+        }
+        stateOfEntriesOfALedger.closeStateOfEntriesOfALedger();
+        return null;
     }
 }

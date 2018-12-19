@@ -248,4 +248,6 @@ public interface LedgerStorage {
     default List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return Collections.emptyList();
     }
+
+    byte[] getEntriesOfALedger(long ledgerId) throws IOException;
 }
