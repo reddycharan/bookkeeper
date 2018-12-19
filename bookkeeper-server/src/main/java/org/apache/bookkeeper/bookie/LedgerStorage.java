@@ -175,4 +175,5 @@ public interface LedgerStorage {
         return this;
     }
 
+    byte[] getEntriesOfALedger(long ledgerId) throws IOException;
 }

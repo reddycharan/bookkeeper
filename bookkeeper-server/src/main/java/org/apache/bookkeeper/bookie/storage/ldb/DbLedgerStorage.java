@@ -348,4 +348,10 @@ public class DbLedgerStorage implements LedgerStorage {
         }
     }
 
+    @Override
+    public byte[] getEntriesOfALedger(long ledgerId) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

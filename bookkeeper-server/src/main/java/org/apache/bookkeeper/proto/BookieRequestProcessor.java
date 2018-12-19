@@ -31,6 +31,8 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.FORCE_LEDGER;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.FORCE_LEDGER_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO_REQUEST;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_A_LEDGER;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_A_LEDGER_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED_WAIT;
@@ -170,6 +172,8 @@ public class BookieRequestProcessor implements RequestProcessor {
     final OpStatsLogger channelWriteStats;
     final OpStatsLogger addEntryBlockedStats;
     final OpStatsLogger readEntryBlockedStats;
+    final OpStatsLogger getListOfEntriesOfALedgerRequestStats;
+    final OpStatsLogger getListOfEntriesOfALedgerStats;
 
     final AtomicInteger addsInProgress = new AtomicInteger(0);
     final AtomicInteger maxAddsInProgress = new AtomicInteger(0);
@@ -274,6 +278,9 @@ public class BookieRequestProcessor implements RequestProcessor {
         this.addEntryBlockedStats = statsLogger.getOpStatsLogger(ADD_ENTRY_BLOCKED_WAIT);
         this.readEntryBlockedStats = statsLogger.getOpStatsLogger(READ_ENTRY_BLOCKED_WAIT);
 
+        this.getListOfEntriesOfALedgerStats = statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_A_LEDGER);
+        this.getListOfEntriesOfALedgerRequestStats = statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_A_LEDGER_REQUEST);
+        
         int maxAdds = serverCfg.getMaxAddsInProgressLimit();
         addsSemaphore = maxAdds > 0 ? new Semaphore(maxAdds, true) : null;
 

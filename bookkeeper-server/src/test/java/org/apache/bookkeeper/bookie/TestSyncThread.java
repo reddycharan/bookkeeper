@@ -360,6 +360,12 @@ public class TestSyncThread {
         @Override
         public void registerLedgerDeletionListener(LedgerDeletionListener listener) {
         }
+
+        @Override
+        public byte[] getEntriesOfALedger(long ledgerId) {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 
 }

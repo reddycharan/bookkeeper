@@ -926,4 +926,10 @@ public class SingleDirectoryDbLedgerStorage implements CompactableLedgerStorage 
     }
 
     private static final Logger log = LoggerFactory.getLogger(DbLedgerStorage.class);
+
+    @Override
+    public byte[] getEntriesOfALedger(long ledgerId) throws IOException {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
