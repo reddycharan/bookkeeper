@@ -678,5 +678,11 @@ public class GcLedgersTest extends LedgerManagerTestCase {
                 throws IOException {
             return false;
         }
+
+        @Override
+        public byte[] getEntriesOfLedger(long ledgerId) throws IOException {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 }

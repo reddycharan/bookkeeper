@@ -27,6 +27,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -353,5 +354,11 @@ public class SortedLedgerStorage
     @Override
     public List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return interleavedLedgerStorage.getGarbageCollectionStatus();
+    }
+
+    @Override
+    public byte[] getEntriesOfLedger(long ledgerId) throws Exception {
+        Iterator<EntryKey> entriesInMemtable = memTable.getEntriesOfALedger(ledgerId);
+        return interleavedLedgerStorage.getEntriesOfLedger(ledgerId, entriesInMemtable);
     }
 }

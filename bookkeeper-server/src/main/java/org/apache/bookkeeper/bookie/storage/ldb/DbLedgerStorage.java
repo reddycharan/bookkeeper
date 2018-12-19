@@ -335,4 +335,10 @@ public class DbLedgerStorage implements LedgerStorage {
         return ledgerStorageList.stream()
             .map(single -> single.getGarbageCollectionStatus().get(0)).collect(Collectors.toList());
     }
+
+    @Override
+    public byte[] getEntriesOfLedger(long ledgerId) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

@@ -108,6 +108,13 @@ public class BookkeeperInternalCallbacks {
     }
 
     /**
+     * A callback interface for GetListOfEntriesOfALedger command.
+     */
+    public interface GetListOfEntriesOfALedgerCallback {
+        void getListOfEntriesOfALedgerComplete(int rc, long ledgerId, ByteBuf buffer, Object ctx);
+    }
+
+    /**
      * A generic callback interface.
      */
     public interface GenericCallback<T> {

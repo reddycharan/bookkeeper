@@ -71,6 +71,7 @@ import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfALedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.replication.AuditorElector;
@@ -1661,5 +1662,10 @@ public class BookKeeperAdmin implements AutoCloseable {
             int writeQuorumSize, int ackQuorumSize) {
         return bkc.getPlacementPolicy().isEnsembleAdheringToPlacementPolicy(ensembleBookiesList, writeQuorumSize,
                 ackQuorumSize);
+    }
+
+    public void getListOfEntriesOfALedger(BookieSocketAddress address, long ledgerId,
+            GetListOfEntriesOfALedgerCallback cb, Object ctx) {
+        bkc.getBookieClient().getListOfEntriesOfALedger(address, ledgerId, cb, ctx);
     }
 }

@@ -248,4 +248,20 @@ public interface LedgerStorage {
     default List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return Collections.emptyList();
     }
+
+    /**
+     * Returns the list of entries of the ledger, stored in this LedgerStorage
+     * in an encoded format as described in AvailabilityOfEntriesOfLedger class
+     * description. The returned list provide weakly consistent state of the
+     * ledger. It is guaranteed that entries of the ledger added to this
+     * LedgerStorage by the time this method is called will be available but
+     * modifications made after method invocation may not be available.
+     *
+     * @param ledgerId
+     *            - id of the ledger
+     * @return the list of entries of the ledger available in this
+     *         ledgerstorage.
+     * @throws Exception
+     */
+    byte[] getEntriesOfLedger(long ledgerId) throws Exception;
 }

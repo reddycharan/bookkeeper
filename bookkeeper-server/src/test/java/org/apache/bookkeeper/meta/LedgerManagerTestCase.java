@@ -282,5 +282,11 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
         public ByteBuf getExplicitLac(long ledgerId) {
             return null;
         }
+
+        @Override
+        public byte[] getEntriesOfLedger(long ledgerId) {
+            // TODO Auto-generated method stub
+            return null;
+        }
     }
 }

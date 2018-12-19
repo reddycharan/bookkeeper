@@ -96,6 +96,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ForceLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfALedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallbackCtx;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
@@ -109,6 +110,8 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.ForceLedgerRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ForceLedgerResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest;
@@ -257,6 +260,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         help = "channel stats of connect requests"
     )
     private final OpStatsLogger connectTimer;
+    private final OpStatsLogger getListOfEntriesOfALedgerCompletionOpLogger;
+    private final OpStatsLogger getListOfEntriesOfALedgerCompletionTimeoutOpLogger;
     @StatsDoc(
         name = BookKeeperClientStats.NETTY_EXCEPTION_CNT,
         help = "the number of exceptions received from this channel"
@@ -395,6 +400,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         forceLedgerOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_FORCE_OP);
         readLacOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_READ_LAC_OP);
         getBookieInfoOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.GET_BOOKIE_INFO_OP);
+        getListOfEntriesOfALedgerCompletionOpLogger = statsLogger
+                .getOpStatsLogger(BookKeeperClientStats.GET_LIST_OF_ENTRIES_OF_A_LEDGER_OP);
         readTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_READ);
         addTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_ADD);
         writeLacTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_WRITE_LAC);
@@ -403,6 +410,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         getBookieInfoTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.TIMEOUT_GET_BOOKIE_INFO);
         startTLSOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_START_TLS_OP);
         startTLSTimeoutOpLogger = statsLogger.getOpStatsLogger(BookKeeperClientStats.CHANNEL_TIMEOUT_START_TLS_OP);
+        getListOfEntriesOfALedgerCompletionTimeoutOpLogger = statsLogger
+                .getOpStatsLogger(BookKeeperClientStats.TIMEOUT_GET_LIST_OF_ENTRIES_OF_A_LEDGER);
         exceptionCounter = statsLogger.getCounter(BookKeeperClientStats.NETTY_EXCEPTION_CNT);
         connectTimer = statsLogger.getOpStatsLogger(BookKeeperClientStats.CLIENT_CONNECT_TIMER);
         addEntryOutstanding = statsLogger.getCounter(BookKeeperClientStats.ADD_OP_OUTSTANDING);
@@ -825,6 +834,24 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                               new ReadLacCompletion(completionKey, cb,
                                                     ctx, ledgerId));
         writeAndFlush(channel, completionKey, request);
+    }
+
+    public void getListOfEntriesOfALedger(final long ledgerId, GetListOfEntriesOfALedgerCallback cb, Object ctx) {
+        final long txnId = getTxnId();
+        final CompletionKey completionKey = new V3CompletionKey(txnId, OperationType.GET_LIST_OF_ENTRIES_OF_A_LEDGER);
+        completionObjects.put(completionKey, new GetListOfEntriesOfALedgerCompletion(completionKey, cb, ctx, ledgerId));
+
+        // Build the request.
+        BKPacketHeader.Builder headerBuilder = BKPacketHeader.newBuilder().setVersion(ProtocolVersion.VERSION_THREE)
+                .setOperation(OperationType.GET_LIST_OF_ENTRIES_OF_A_LEDGER).setTxnId(txnId);
+
+        GetListOfEntriesOfALedgerRequest.Builder getListOfEntriesOfALedgerRequestBuilder =
+                GetListOfEntriesOfALedgerRequest.newBuilder().setLedgerId(ledgerId);
+
+        final Request getListOfEntriesOfALedgerRequest = Request.newBuilder().setHeader(headerBuilder)
+                .setGetListOfEntriesOfALedgerRequest(getListOfEntriesOfALedgerRequestBuilder).build();
+
+        writeAndFlush(channel, completionKey, getListOfEntriesOfALedgerRequest);
     }
 
     /**
@@ -1978,6 +2005,56 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             cb.getBookieInfoComplete(rc,
                                      new BookieInfo(totalDiskSpace,
                                                     freeDiskSpace), ctx);
+        }
+    }
+
+    class GetListOfEntriesOfALedgerCompletion extends CompletionValue {
+        final GetListOfEntriesOfALedgerCallback cb;
+
+        public GetListOfEntriesOfALedgerCompletion(final CompletionKey key,
+                final GetListOfEntriesOfALedgerCallback origCallback, final Object origCtx, final long ledgerId) {
+            super("GetListOfEntriesOfALedger", origCtx, ledgerId, 0L, getListOfEntriesOfALedgerCompletionOpLogger,
+                    getListOfEntriesOfALedgerCompletionTimeoutOpLogger);
+            this.cb = new GetListOfEntriesOfALedgerCallback() {
+                @Override
+                public void getListOfEntriesOfALedgerComplete(int rc, long ledgerId, ByteBuf buffer, Object ctx) {
+                    logOpResult(rc);
+                    origCallback.getListOfEntriesOfALedgerComplete(rc, ledgerId, buffer, ctx);
+                    key.release();
+                }
+            };
+        }
+
+        @Override
+        public void errorOut() {
+            errorOut(BKException.Code.BookieHandleNotAvailableException);
+        }
+
+        @Override
+        public void errorOut(final int rc) {
+            errorOutAndRunCallback(() -> cb.getListOfEntriesOfALedgerComplete(rc, ledgerId, null, ctx));
+        }
+
+        @Override
+        public void handleV3Response(BookkeeperProtocol.Response response) {
+            GetListOfEntriesOfALedgerResponse getListOfEntriesOfALedgerResponse = response
+                    .getGetListOfEntriesOfALedgerResponse();
+            ByteBuf availabilityOfEntriesOfLedgerBuffer = Unpooled.EMPTY_BUFFER;
+            StatusCode status = response.getStatus() == StatusCode.EOK ? getListOfEntriesOfALedgerResponse.getStatus()
+                    : response.getStatus();
+
+            if (getListOfEntriesOfALedgerResponse.hasAvailabilityOfEntriesOfLedger()) {
+                availabilityOfEntriesOfLedgerBuffer = Unpooled.wrappedBuffer(
+                        getListOfEntriesOfALedgerResponse.getAvailabilityOfEntriesOfLedger().asReadOnlyByteBuffer());
+            }
+
+            if (LOG.isDebugEnabled()) {
+                logResponse(status, "ledgerId", ledgerId); // *** have to
+                                                           // revisit ***
+            }
+
+            int rc = convertStatus(status, BKException.Code.ReadException);
+            cb.getListOfEntriesOfALedgerComplete(rc, ledgerId, availabilityOfEntriesOfLedgerBuffer.slice(), ctx);
         }
     }
 

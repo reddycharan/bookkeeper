@@ -1635,4 +1635,8 @@ public class Bookie extends BookieCriticalThread {
             return new LedgerDirsManager(conf, idxDirs, diskChecker, statsLogger);
         }
     }
+
+    public ByteBuf getListOfEntriesOfALedger(long ledgerId) throws IOException, NoLedgerException {
+        return null;
+    }
 }
