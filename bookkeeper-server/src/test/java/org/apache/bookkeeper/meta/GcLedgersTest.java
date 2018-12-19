@@ -40,6 +40,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.PrimitiveIterator.OfLong;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
@@ -677,6 +678,11 @@ public class GcLedgersTest extends LedgerManagerTestCase {
                                                      Watcher<LastAddConfirmedUpdateNotification> watcher)
                 throws IOException {
             return false;
+        }
+
+        @Override
+        public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
+            return null;
         }
     }
 }

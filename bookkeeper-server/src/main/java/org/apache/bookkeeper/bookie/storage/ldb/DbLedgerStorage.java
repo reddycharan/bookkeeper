@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PrimitiveIterator.OfLong;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -334,5 +335,11 @@ public class DbLedgerStorage implements LedgerStorage {
     public List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return ledgerStorageList.stream()
             .map(single -> single.getGarbageCollectionStatus().get(0)).collect(Collectors.toList());
+    }
+
+    @Override
+    public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
+        throw new UnsupportedOperationException(
+                "getListOfEntriesOfLedger method is currently unsupported for DbLedgerStorage");
     }
 }
