@@ -107,6 +107,9 @@ public class BookkeeperInternalCallbacks {
         void startTLSComplete(int rc, Object ctx);
     }
 
+    /**
+     * A callback interface for GetListOfEntriesOfALedger command.
+     */
     public interface GetListOfEntriesOfALedgerCallback {
         void getListOfEntriesOfALedgerComplete(int rc, long ledgerId, ByteBuf buffer, Object ctx);
     }

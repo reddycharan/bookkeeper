@@ -249,5 +249,5 @@ public interface LedgerStorage {
         return Collections.emptyList();
     }
 
-    byte[] getEntriesOfALedger(long ledgerId) throws IOException;
+    byte[] getEntriesOfALedger(long ledgerId) throws Exception;
 }

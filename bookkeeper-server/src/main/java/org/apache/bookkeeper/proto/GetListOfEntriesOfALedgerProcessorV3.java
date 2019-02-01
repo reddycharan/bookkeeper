@@ -20,29 +20,26 @@
  */
 package org.apache.bookkeeper.proto;
 
+import com.google.protobuf.ByteString;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
+import io.netty.util.ReferenceCountUtil;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.bookie.Bookie;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerResponse;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.WriteLacResponse;
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.protobuf.ByteString;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.util.ReferenceCountUtil;
-
+/**
+ * A processor class for v3 entries of a ledger packets.
+ */
 public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(GetListOfEntriesOfALedgerProcessorV3.class);
@@ -58,8 +55,6 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
 
     private GetListOfEntriesOfALedgerResponse getListOfEntriesOfALedgerResponse() {
         long startTimeNanos = MathUtils.nowInNano();
-        GetListOfEntriesOfALedgerRequest getListOfEntriesOfALedgerRequest = request
-                .getGetListOfEntriesOfALedgerRequest();
 
         GetListOfEntriesOfALedgerResponse.Builder getListOfEntriesOfALedgerResponse = GetListOfEntriesOfALedgerResponse
                 .newBuilder();
@@ -67,7 +62,7 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
 
         if (!isVersionCompatible()) {
             getListOfEntriesOfALedgerResponse.setStatus(StatusCode.EBADVERSION);
-            requestProcessor.getGetListOfEntriesOfALedgerStats()
+            requestProcessor.getRequestStats().getGetListOfEntriesOfALedgerStats()
                     .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
             return getListOfEntriesOfALedgerResponse.build();
         }
@@ -85,21 +80,20 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
             }
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
-            LOG.error("No ledger found while performing getListOfEntriesOfALedger from ledger: {}", ledgerId,
-                    e);
+            LOG.error("No ledger found while performing getListOfEntriesOfALedger from ledger: {}", ledgerId, e);
         } catch (IOException e) {
             status = StatusCode.EIO;
             LOG.error("IOException while performing getListOfEntriesOfALedger from ledger: {}", ledgerId);
         } finally {
             ReferenceCountUtil.release(listOfEntriesOfALedger);
         }
-        
+
         if (status == StatusCode.EOK) {
-            requestProcessor.getListOfEntriesOfALedgerStats.registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos),
-                    TimeUnit.NANOSECONDS);
+            requestProcessor.getRequestStats().getListOfEntriesOfALedgerStats
+                    .registerSuccessfulEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
         } else {
-            requestProcessor.getListOfEntriesOfALedgerStats.registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos),
-                    TimeUnit.NANOSECONDS);
+            requestProcessor.getRequestStats().getListOfEntriesOfALedgerStats
+                    .registerFailedEvent(MathUtils.elapsedNanos(startTimeNanos), TimeUnit.NANOSECONDS);
         }
         // Finally set the status and return
         getListOfEntriesOfALedgerResponse.setStatus(status);
@@ -109,12 +103,11 @@ public class GetListOfEntriesOfALedgerProcessorV3 extends PacketProcessorBaseV3 
     @Override
     public void safeRun() {
         GetListOfEntriesOfALedgerResponse listOfEntriesOfALedgerResponse = getListOfEntriesOfALedgerResponse();
-        Response.Builder response = Response.newBuilder()
-                .setHeader(getHeader())
+        Response.Builder response = Response.newBuilder().setHeader(getHeader())
                 .setStatus(listOfEntriesOfALedgerResponse.getStatus())
                 .setGetListOfEntriesOfALedgerResponse(listOfEntriesOfALedgerResponse);
         Response resp = response.build();
         sendResponse(listOfEntriesOfALedgerResponse.getStatus(), resp,
-                requestProcessor.getListOfEntriesOfALedgerRequestStats);
+                requestProcessor.getRequestStats().getListOfEntriesOfALedgerRequestStats);
     }
 }

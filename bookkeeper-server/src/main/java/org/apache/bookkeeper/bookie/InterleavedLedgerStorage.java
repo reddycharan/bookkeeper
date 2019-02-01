@@ -34,17 +34,18 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.STORAGE_SCRUB_P
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
@@ -53,11 +54,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.Cleanup;
+
 import org.apache.bookkeeper.bookie.Bookie.NoLedgerException;
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.bookie.EntryLogger.EntryLogListener;
 import org.apache.bookkeeper.bookie.LedgerCache.PageEntries;
-import org.apache.bookkeeper.bookie.LedgerCache.PageEntriesIterable;
 import org.apache.bookkeeper.bookie.LedgerDirsManager.LedgerDirsListener;
 import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -647,42 +648,53 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     @Override
     public List<GarbageCollectionStatus> getGarbageCollectionStatus() {
         return Collections.singletonList(gcThread.getGarbageCollectionStatus());
+    }
 
     @Override
-    public byte[] getEntriesOfALedger(long ledgerId) throws IOException {
+    public byte[] getEntriesOfALedger(long ledgerId) throws Exception {
         return getEntriesOfALedger(ledgerId, Collections.emptyIterator());
     }
 
     public static final long INVALID_ENTRYID = -1;
 
-    private class SequenceGroup {
+    private static class SequenceGroup {
         private final long firstSequenceStart;
         private int sequenceSize;
         long lastSequenceStart = INVALID_ENTRYID;
         int sequencePeriod;
-        private SequenceGroup(long firstSequenceStart, int sequenceSize){
+        static final int SEQUENCEGROUP_BYTES = 2 * Long.BYTES + 2 * Integer.BYTES;
+
+        private SequenceGroup(long firstSequenceStart, int sequenceSize) {
             this.firstSequenceStart = firstSequenceStart;
             this.sequenceSize = sequenceSize;
         }
+
+        void serializeSequenceGroup(byte[] byteArrayForSerialization) {
+            ByteBuffer buffer = ByteBuffer.wrap(byteArrayForSerialization);
+            buffer.putLong(firstSequenceStart);
+            buffer.putLong(lastSequenceStart);
+            buffer.putLong(sequenceSize);
+            buffer.putLong(sequencePeriod);
+        }
     }
 
-    private class StateOfEntriesOfALedger {
+    static class StateOfEntriesOfALedger {
         ArrayList<SequenceGroup> availabilityOfEntriesOfLedger = new ArrayList<SequenceGroup>();
         MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
         MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
         MutableInt curSequenceSize = new MutableInt(0);
 
-        private void initializeCurSequence(long curSequenceStartEntryIdValue){
+        private void initializeCurSequence(long curSequenceStartEntryIdValue) {
             curSequenceStartEntryId.setValue(curSequenceStartEntryIdValue);
             curSequenceSize.setValue(1);
         }
 
-        private void resetCurSequence(){
+        private void resetCurSequence() {
             curSequenceStartEntryId.setValue(INVALID_ENTRYID);
             curSequenceSize.setValue(0);
         }
 
-        private boolean isCurSequenceInitialized(){
+        private boolean isCurSequenceInitialized() {
             return curSequenceStartEntryId.longValue() != INVALID_ENTRYID;
         }
 
@@ -695,7 +707,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
             return ((curSequenceStartEntryId.longValue() + curSequenceSize.intValue()) == entryId);
         }
 
-        private void incrementCurSequenceSize(){
+        private void incrementCurSequenceSize() {
             curSequenceSize.increment();
         }
 
@@ -748,12 +760,12 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                 initializeCurSequenceGroupWithCurSequence();
             } else if (doesCurSequenceBelongToCurSequenceGroup()) {
                 appendCurSequenceToCurSequenceGroup();
-            }else {
+            } else {
                 createNewSequenceGroupWithCurSequence();
             }
         }
 
-        private void addEntryToAvailabileEntriesOfLedger(long entryId) {
+        void addEntryToAvailabileEntriesOfLedger(long entryId) {
             if (!isCurSequenceInitialized()) {
                 initializeCurSequence(entryId);
             } else if (isEntryExistingInCurSequence(entryId)) {
@@ -766,17 +778,32 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
             }
         }
 
-        public void closeStateOfEntriesOfALedger(){
+        void closeStateOfEntriesOfALedger() {
             if (isCurSequenceInitialized()) {
                 addCurSequenceToSequenceGroup();
                 resetCurSequence();
             }
         }
+
+        byte[] serializeStateOfEntriesOfALedger() {
+            byte[] serializedSequenceGroupByteArray = new byte[SequenceGroup.SEQUENCEGROUP_BYTES];
+            byte[] serializedStateByteArray = new byte[availabilityOfEntriesOfLedger.size()
+                    * SequenceGroup.SEQUENCEGROUP_BYTES];
+            int seqNum = 0;
+            for (SequenceGroup seqGroup : availabilityOfEntriesOfLedger) {
+                Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
+                seqGroup.serializeSequenceGroup(serializedSequenceGroupByteArray);
+                System.arraycopy(serializedSequenceGroupByteArray, 0, serializedStateByteArray,
+                        (seqNum++) * SequenceGroup.SEQUENCEGROUP_BYTES, SequenceGroup.SEQUENCEGROUP_BYTES);
+            }
+            return serializedStateByteArray;
+        }
     }
 
-    protected byte[] getEntriesOfALedger(long ledgerId, Iterator<EntryKey> entriesInMemtable) throws IOException {
+    protected byte[] getEntriesOfALedger(long ledgerId, Iterator<EntryKey> entriesInMemtable) throws Exception {
         Iterator<LedgerCache.PageEntries> pageEntriesIterator = ledgerCache.listEntries(ledgerId).iterator();
-        MutableLong nextEntryInMemtable = new MutableLong(entriesInMemtable.hasNext() ? entriesInMemtable.next().entryId : INVALID_ENTRYID);
+        MutableLong nextEntryInMemtable = new MutableLong(
+                entriesInMemtable.hasNext() ? entriesInMemtable.next().entryId : INVALID_ENTRYID);
         StateOfEntriesOfALedger stateOfEntriesOfALedger = new StateOfEntriesOfALedger();
         while (pageEntriesIterator.hasNext()) {
             PageEntries pageEntry = pageEntriesIterator.next();
@@ -806,6 +833,6 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
             }
         }
         stateOfEntriesOfALedger.closeStateOfEntriesOfALedger();
-        return null;
+        return stateOfEntriesOfALedger.serializeStateOfEntriesOfALedger();
     }
 }

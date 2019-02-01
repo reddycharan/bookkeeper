@@ -845,8 +845,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         BKPacketHeader.Builder headerBuilder = BKPacketHeader.newBuilder().setVersion(ProtocolVersion.VERSION_THREE)
                 .setOperation(OperationType.GET_LIST_OF_ENTRIES_OF_A_LEDGER).setTxnId(txnId);
 
-        GetListOfEntriesOfALedgerRequest.Builder getListOfEntriesOfALedgerRequestBuilder = GetListOfEntriesOfALedgerRequest
-                .newBuilder().setLedgerId(ledgerId);
+        GetListOfEntriesOfALedgerRequest.Builder getListOfEntriesOfALedgerRequestBuilder =
+                GetListOfEntriesOfALedgerRequest.newBuilder().setLedgerId(ledgerId);
 
         final Request getListOfEntriesOfALedgerRequest = Request.newBuilder().setHeader(headerBuilder)
                 .setGetListOfEntriesOfALedgerRequest(getListOfEntriesOfALedgerRequestBuilder).build();
