@@ -651,12 +651,29 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     }
 
     @Override
-    public byte[] getEntriesOfALedger(long ledgerId) throws Exception {
-        return getEntriesOfALedger(ledgerId, Collections.emptyIterator());
+    public byte[] getEntriesOfLedger(long ledgerId) throws Exception {
+        return getEntriesOfLedger(ledgerId, Collections.emptyIterator());
     }
 
     public static final long INVALID_ENTRYID = -1;
 
+    /*
+     *
+     * Nomenclature:
+     *
+     * - Continuous entries are grouped as a ’Sequence’. - Number of continuous
+     * entries in a ‘Sequence’ is called ‘sequenceSize’. - Gap between
+     * Consecutive sequences is called ‘sequencePeriod’. - Consecutive sequences
+     * with same sequenceSize and same sequencePeriod in between consecutive
+     * sequences are grouped as a SequenceGroup. - ‘firstSequenceStart’ is the
+     * first entry in the first sequence of the SequenceGroup. -
+     * ‘lastSequenceStart’ is the first entry in the last sequence of the
+     * SequenceGroup.
+     *
+     * To represent a SequenceGroup, two long values and two int values are
+     * needed, so each SequenceGroup can be represented with (2 * 8 + 2 * 4 = 24
+     * bytes).
+     */
     private static class SequenceGroup {
         private final long firstSequenceStart;
         private int sequenceSize;
@@ -678,8 +695,26 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         }
     }
 
-    static class StateOfEntriesOfALedger {
-        ArrayList<SequenceGroup> availabilityOfEntriesOfLedger = new ArrayList<SequenceGroup>();
+    /*
+     * Ordered collection of SequenceGroups will represent entries of the ledger
+     * residing in a bookie.
+     *
+     * In the byte array representation of AvailabilityOfEntriesOfLedger, for
+     * the sake of future extensibility it would be helpful to have reserved
+     * space for header at the beginning. So the first 64 bytes will be used for
+     * header, with the first four bytes specifying the int version number, next
+     * four bytes specifying the number of sequencegroups for now and the rest
+     * of the bytes in the reserved space will be 0's. The encoded format will
+     * be represented after the first 64 bytes. The ordered collection of
+     * SequenceGroups will be appended sequentially to this byte array, with
+     * each SequenceGroup taking 24 bytes.
+     */
+    static class AvailabilityOfEntriesOfLedger {
+        static final int HEADER_SIZE = 64;
+        static final int V0 = 0;
+        // current version of AvailabilityOfEntriesOfLedger header is V0
+        public static final int CURRENT_HEADER_VERSION = V0;
+        ArrayList<SequenceGroup> listOfSequenceGroups = new ArrayList<SequenceGroup>();
         MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
         MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
         MutableInt curSequenceSize = new MutableInt(0);
@@ -717,7 +752,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                 curSequenceGroupValue.lastSequenceStart = curSequenceGroupValue.firstSequenceStart;
                 curSequenceGroupValue.sequencePeriod = 0;
             }
-            availabilityOfEntriesOfLedger.add(curSequenceGroupValue);
+            listOfSequenceGroups.add(curSequenceGroupValue);
             curSequenceGroup
                     .setValue(new SequenceGroup(curSequenceStartEntryId.longValue(), curSequenceSize.intValue()));
         }
@@ -786,25 +821,32 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         }
 
         byte[] serializeStateOfEntriesOfALedger() {
+            byte[] header = new byte[HEADER_SIZE];
+            ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
             byte[] serializedSequenceGroupByteArray = new byte[SequenceGroup.SEQUENCEGROUP_BYTES];
-            byte[] serializedStateByteArray = new byte[availabilityOfEntriesOfLedger.size()
-                    * SequenceGroup.SEQUENCEGROUP_BYTES];
+            byte[] serializedStateByteArray = new byte[HEADER_SIZE
+                    + (listOfSequenceGroups.size() * SequenceGroup.SEQUENCEGROUP_BYTES)];
+            final int numOfSequenceGroups = listOfSequenceGroups.size();
+            headerByteBuf.putInt(CURRENT_HEADER_VERSION);
+            headerByteBuf.putInt(numOfSequenceGroups);
+            System.arraycopy(header, 0, serializedStateByteArray, 0, HEADER_SIZE);
             int seqNum = 0;
-            for (SequenceGroup seqGroup : availabilityOfEntriesOfLedger) {
+            for (SequenceGroup seqGroup : listOfSequenceGroups) {
                 Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
                 seqGroup.serializeSequenceGroup(serializedSequenceGroupByteArray);
                 System.arraycopy(serializedSequenceGroupByteArray, 0, serializedStateByteArray,
-                        (seqNum++) * SequenceGroup.SEQUENCEGROUP_BYTES, SequenceGroup.SEQUENCEGROUP_BYTES);
+                        HEADER_SIZE + ((seqNum++) * SequenceGroup.SEQUENCEGROUP_BYTES),
+                        SequenceGroup.SEQUENCEGROUP_BYTES);
             }
             return serializedStateByteArray;
         }
     }
 
-    protected byte[] getEntriesOfALedger(long ledgerId, Iterator<EntryKey> entriesInMemtable) throws Exception {
+    protected byte[] getEntriesOfLedger(long ledgerId, Iterator<EntryKey> entriesInMemtable) throws Exception {
         Iterator<LedgerCache.PageEntries> pageEntriesIterator = ledgerCache.listEntries(ledgerId).iterator();
         MutableLong nextEntryInMemtable = new MutableLong(
                 entriesInMemtable.hasNext() ? entriesInMemtable.next().entryId : INVALID_ENTRYID);
-        StateOfEntriesOfALedger stateOfEntriesOfALedger = new StateOfEntriesOfALedger();
+        AvailabilityOfEntriesOfLedger availabilityOfEntriesOfALedger = new AvailabilityOfEntriesOfLedger();
         while (pageEntriesIterator.hasNext()) {
             PageEntries pageEntry = pageEntriesIterator.next();
             LedgerEntryPage lep = pageEntry.getLEP();
@@ -812,7 +854,8 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                 if (nextEntryInMemtable.longValue() != INVALID_ENTRYID) {
                     while ((nextEntryInMemtable.longValue() != INVALID_ENTRYID)
                             && (nextEntryInMemtable.longValue() <= entryId)) {
-                        stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
+                        availabilityOfEntriesOfALedger
+                                .addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
                         if (entriesInMemtable.hasNext()) {
                             nextEntryInMemtable.setValue(entriesInMemtable.next().entryId);
                         } else {
@@ -820,19 +863,19 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
                         }
                     }
                 }
-                stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(entryId);
+                availabilityOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(entryId);
                 return true;
             });
         }
         while (nextEntryInMemtable.longValue() != INVALID_ENTRYID) {
-            stateOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
+            availabilityOfEntriesOfALedger.addEntryToAvailabileEntriesOfLedger(nextEntryInMemtable.longValue());
             if (entriesInMemtable.hasNext()) {
                 nextEntryInMemtable.setValue(entriesInMemtable.next().entryId);
             } else {
                 nextEntryInMemtable.setValue(INVALID_ENTRYID);
             }
         }
-        stateOfEntriesOfALedger.closeStateOfEntriesOfALedger();
-        return stateOfEntriesOfALedger.serializeStateOfEntriesOfALedger();
+        availabilityOfEntriesOfALedger.closeStateOfEntriesOfALedger();
+        return availabilityOfEntriesOfALedger.serializeStateOfEntriesOfALedger();
     }
 }

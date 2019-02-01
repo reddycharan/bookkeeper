@@ -357,8 +357,8 @@ public class SortedLedgerStorage
     }
 
     @Override
-    public byte[] getEntriesOfALedger(long ledgerId) throws Exception {
+    public byte[] getEntriesOfLedger(long ledgerId) throws Exception {
         Iterator<EntryKey> entriesInMemtable = memTable.getEntriesOfALedger(ledgerId);
-        return interleavedLedgerStorage.getEntriesOfALedger(ledgerId, entriesInMemtable);
+        return interleavedLedgerStorage.getEntriesOfLedger(ledgerId, entriesInMemtable);
     }
 }
