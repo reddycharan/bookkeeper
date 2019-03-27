@@ -63,8 +63,8 @@ public class LedgerMetadataBuilder {
     private boolean storeCtime = false;
     private Map<String, byte[]> customMetadata = Collections.emptyMap();
 
-    private static final long BLANK_CREATOR_ID = 0;
-    private long creatorId = BLANK_CREATOR_ID;
+    private static final long BLANK_CTOKEN = 0;
+    private long cToken = BLANK_CTOKEN;
 
     public static LedgerMetadataBuilder create() {
         return new LedgerMetadataBuilder();
@@ -184,8 +184,8 @@ public class LedgerMetadataBuilder {
         return this;
     }
 
-    public LedgerMetadataBuilder withCreatorId(long id) {
-        this.creatorId = id;
+    public LedgerMetadataBuilder withCToken(long cToken) {
+        this.cToken = cToken;
         return this;
     }
 
@@ -197,7 +197,7 @@ public class LedgerMetadataBuilder {
                                       ensembleSize, writeQuorumSize, ackQuorumSize,
                                       state, lastEntryId, length, ensembles,
                                       digestType, password, ctime, storeCtime,
-                                      creatorId,
+                                      cToken,
                                       customMetadata);
     }
 

@@ -69,7 +69,7 @@ class LedgerMetadataImpl implements LedgerMetadata {
 
     private final Map<String, byte[]> customMetadata;
 
-    private long creatorId;
+    private long cToken;
 
     LedgerMetadataImpl(int metadataFormatVersion,
                        int ensembleSize,
@@ -83,7 +83,7 @@ class LedgerMetadataImpl implements LedgerMetadata {
                        Optional<byte[]> password,
                        long ctime,
                        boolean storeCtime,
-                       long creatorId,
+                       long cToken,
                        Map<String, byte[]> customMetadata) {
         checkArgument(ensembles.size() > 0, "There must be at least one ensemble in the ledger");
         if (state == State.CLOSED) {
@@ -130,7 +130,7 @@ class LedgerMetadataImpl implements LedgerMetadata {
         this.ctime = ctime;
         this.storeCtime = storeCtime;
 
-        this.creatorId = creatorId;
+        this.cToken = cToken;
 
         this.customMetadata = ImmutableMap.copyOf(customMetadata);
     }
@@ -275,7 +275,7 @@ class LedgerMetadataImpl implements LedgerMetadata {
     }
 
     @Override
-    public long getCreatorId() {
-        return creatorId;
+    public long getCToken() {
+        return cToken;
     }
 }

@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException;
@@ -251,10 +252,13 @@ public abstract class AbstractZkLedgerManager implements LedgerManager, Watcher 
     public CompletableFuture<Versioned<LedgerMetadata>> createLedgerMetadata(long ledgerId,
                                                                              LedgerMetadata inputMetadata) {
         CompletableFuture<Versioned<LedgerMetadata>> promise = new CompletableFuture<>();
-        final long creatorId = zk.getSessionId();
+        /*
+         * Create a random number and use it as creator token. 
+         */
+        final long cToken = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE);
         final LedgerMetadata metadata;
         if (inputMetadata.getMetadataFormatVersion() > 2) {
-            metadata = LedgerMetadataBuilder.from(inputMetadata).withCreatorId(creatorId).build();
+            metadata = LedgerMetadataBuilder.from(inputMetadata).withCToken(cToken).build();
         } else {
             metadata = inputMetadata;
         }
@@ -265,13 +269,13 @@ public abstract class AbstractZkLedgerManager implements LedgerManager, Watcher 
                 if (rc == Code.OK.intValue()) {
                     promise.complete(new Versioned<>(metadata, new LongVersion(0)));
                 } else if (rc == Code.NODEEXISTS.intValue()) {
-                    LOG.info("Ledger metadata for {} appears to already exist, checking creatorId",
+                    LOG.info("Ledger metadata for {} appears to already exist, checking cToken",
                             ledgerId);
                     if (metadata.getMetadataFormatVersion() > 2) {
                         CompletableFuture<Versioned<LedgerMetadata>> readFuture = readLedgerMetadata(ledgerId);
                         readFuture.handle((readMetadata, exception) -> {
                             if (exception == null) {
-                                if (readMetadata.getValue().getCreatorId() == creatorId) {
+                                if (readMetadata.getValue().getCToken() == cToken) {
                                     FutureUtils.complete(promise, new Versioned<>(metadata, new LongVersion(0)));
                                 } else {
                                     LOG.warn("Failed to create ledger metadata for {} which already exists", ledgerId);
