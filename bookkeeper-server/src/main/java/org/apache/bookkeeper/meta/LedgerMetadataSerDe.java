@@ -78,7 +78,7 @@ public class LedgerMetadataSerDe {
     public static final int METADATA_FORMAT_VERSION_3 = 3;
 
     public static final int MAXIMUM_METADATA_FORMAT_VERSION = METADATA_FORMAT_VERSION_3;
-    public static final int CURRENT_METADATA_FORMAT_VERSION = METADATA_FORMAT_VERSION_2;
+    public static final int CURRENT_METADATA_FORMAT_VERSION = METADATA_FORMAT_VERSION_3;
     private static final int LOWEST_COMPAT_METADATA_FORMAT_VERSION = METADATA_FORMAT_VERSION_1;
 
     // for pulling the version
