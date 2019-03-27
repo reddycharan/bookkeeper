@@ -948,4 +948,15 @@ public class BookKeeperTest extends BookKeeperClusterTestCase {
         lh.close();
         bk.close();
     }
+
+    @Test
+    public void testLedgerDeletionIdempotency() throws Exception {
+        BookKeeper bk = new BookKeeper(baseClientConf);
+        long ledgerId = 789L;
+        LedgerHandle lh = bk.createLedgerAdv(ledgerId, 1, 1, 1, DigestType.CRC32, "".getBytes(), null);
+        lh.close();
+        bk.deleteLedger(ledgerId);
+        bk.deleteLedger(ledgerId);
+        bk.close();
+    }
 }
