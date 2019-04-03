@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.PrimitiveIterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -461,11 +462,11 @@ public class EntryMemTable implements AutoCloseable{
     }
 
     /*
-     * returns the Iterator of EntryKeys of a ledger available in this
-     * EntryMemTable. It would be in the ascending order and this Iterator is
-     * weakly consistent.
+     * returns the primitive long iterator of entries of a ledger available in
+     * this EntryMemTable. It would be in the ascending order and this Iterator
+     * is weakly consistent.
      */
-    Iterator<EntryKey> getEntriesOfALedger(long ledgerId) {
+    PrimitiveIterator.OfLong getEntriesOfALedger(long ledgerId) {
         EntryKey thisLedgerFloorEntry = new EntryKey(ledgerId, 0);
         EntryKey thisLedgerCeilingEntry = new EntryKey(ledgerId, LONG_MAX_VALUE);
         Iterator<EntryKey> thisLedgerEntriesInKVMap;
@@ -498,7 +499,7 @@ public class EntryMemTable implements AutoCloseable{
         } finally {
             this.lock.readLock().unlock();
         }
-        return new Iterator<EntryKey>() {
+        return new PrimitiveIterator.OfLong() {
             private EntryKey curKVMapEntry = null;
             private EntryKey curSnapshotEntry = null;
             private boolean hasToPreFetch = true;
@@ -519,7 +520,7 @@ public class EntryMemTable implements AutoCloseable{
             }
 
             @Override
-            public EntryKey next() {
+            public long nextLong() {
                 if (hasNext()) {
                     EntryKey returnEntryKey = null;
                     if (curKVMapEntry != null && curSnapshotEntry != null) {
@@ -543,7 +544,7 @@ public class EntryMemTable implements AutoCloseable{
                         curSnapshotEntry = null;
                     }
                     hasToPreFetch = true;
-                    return returnEntryKey;
+                    return returnEntryKey.entryId;
                 } else {
                     throw new NoSuchElementException();
                 }

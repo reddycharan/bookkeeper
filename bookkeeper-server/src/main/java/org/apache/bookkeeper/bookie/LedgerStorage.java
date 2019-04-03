@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.PrimitiveIterator;
+
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -250,10 +252,9 @@ public interface LedgerStorage {
     }
 
     /**
-     * Returns the list of entries of the ledger, stored in this LedgerStorage
-     * in an encoded format as described in AvailabilityOfEntriesOfLedger class
-     * description. The returned list provide weakly consistent state of the
-     * ledger. It is guaranteed that entries of the ledger added to this
+     * Returns the primitive long iterator for entries of the ledger, stored in
+     * this LedgerStorage. The returned iterator provide weakly consistent state
+     * of the ledger. It is guaranteed that entries of the ledger added to this
      * LedgerStorage by the time this method is called will be available but
      * modifications made after method invocation may not be available.
      *
@@ -263,5 +264,5 @@ public interface LedgerStorage {
      *         ledgerstorage.
      * @throws Exception
      */
-    byte[] getEntriesOfLedger(long ledgerId) throws Exception;
+    PrimitiveIterator.OfLong getEntriesOfLedger(long ledgerId) throws IOException;
 }

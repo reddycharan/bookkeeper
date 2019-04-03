@@ -29,7 +29,9 @@ import io.netty.buffer.ByteBufAllocator;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.PrimitiveIterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -357,8 +359,62 @@ public class SortedLedgerStorage
     }
 
     @Override
-    public byte[] getEntriesOfLedger(long ledgerId) throws Exception {
-        Iterator<EntryKey> entriesInMemtable = memTable.getEntriesOfALedger(ledgerId);
-        return interleavedLedgerStorage.getEntriesOfLedger(ledgerId, entriesInMemtable);
+    public PrimitiveIterator.OfLong getEntriesOfLedger(long ledgerId) throws IOException {
+        PrimitiveIterator.OfLong entriesInMemtableItr = memTable.getEntriesOfALedger(ledgerId);
+        PrimitiveIterator.OfLong entriesFromILSItr = interleavedLedgerStorage.getEntriesOfLedger(ledgerId);
+
+        return new PrimitiveIterator.OfLong() {
+            private long curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+            private long curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+            private boolean hasToPreFetch = true;
+
+            @Override
+            public boolean hasNext() {
+                if (hasToPreFetch) {
+                    if (curMemTableEntryId == InterleavedLedgerStorage.INVALID_ENTRYID) {
+                        curMemTableEntryId = entriesInMemtableItr.hasNext() ? entriesInMemtableItr.next()
+                                : InterleavedLedgerStorage.INVALID_ENTRYID;
+                    }
+                    if (curILSEntryId == InterleavedLedgerStorage.INVALID_ENTRYID) {
+                        curILSEntryId = entriesFromILSItr.hasNext() ? entriesFromILSItr.next()
+                                : InterleavedLedgerStorage.INVALID_ENTRYID;
+                    }
+                }
+                hasToPreFetch = false;
+                return (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID
+                        || curILSEntryId != InterleavedLedgerStorage.INVALID_ENTRYID);
+            }
+
+            @Override
+            public long nextLong() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+
+                long returnEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                if (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID
+                        && curILSEntryId != InterleavedLedgerStorage.INVALID_ENTRYID) {
+                    if (curMemTableEntryId == curILSEntryId) {
+                        returnEntryId = curMemTableEntryId;
+                        curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                        curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                    } else if (curMemTableEntryId < curILSEntryId) {
+                        returnEntryId = curMemTableEntryId;
+                        curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                    } else {
+                        returnEntryId = curILSEntryId;
+                        curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                    }
+                } else if (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID) {
+                    returnEntryId = curMemTableEntryId;
+                    curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                } else {
+                    returnEntryId = curILSEntryId;
+                    curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
+                }
+                hasToPreFetch = true;
+                return returnEntryId;
+            }
+        };
     }
 }
