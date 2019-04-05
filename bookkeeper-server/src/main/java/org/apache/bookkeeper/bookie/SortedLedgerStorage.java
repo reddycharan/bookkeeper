@@ -20,29 +20,30 @@
  */
 package org.apache.bookkeeper.bookie;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.RateLimiter;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.common.util.Watcher;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.proto.BookieProtocol;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.IteratorUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.RateLimiter;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 /**
  * A {@code SortedLedgerStorage} is an extension of {@link InterleavedLedgerStorage}. It
@@ -359,62 +360,9 @@ public class SortedLedgerStorage
     }
 
     @Override
-    public PrimitiveIterator.OfLong getEntriesOfLedger(long ledgerId) throws IOException {
-        PrimitiveIterator.OfLong entriesInMemtableItr = memTable.getEntriesOfALedger(ledgerId);
-        PrimitiveIterator.OfLong entriesFromILSItr = interleavedLedgerStorage.getEntriesOfLedger(ledgerId);
-
-        return new PrimitiveIterator.OfLong() {
-            private long curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-            private long curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-            private boolean hasToPreFetch = true;
-
-            @Override
-            public boolean hasNext() {
-                if (hasToPreFetch) {
-                    if (curMemTableEntryId == InterleavedLedgerStorage.INVALID_ENTRYID) {
-                        curMemTableEntryId = entriesInMemtableItr.hasNext() ? entriesInMemtableItr.next()
-                                : InterleavedLedgerStorage.INVALID_ENTRYID;
-                    }
-                    if (curILSEntryId == InterleavedLedgerStorage.INVALID_ENTRYID) {
-                        curILSEntryId = entriesFromILSItr.hasNext() ? entriesFromILSItr.next()
-                                : InterleavedLedgerStorage.INVALID_ENTRYID;
-                    }
-                }
-                hasToPreFetch = false;
-                return (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID
-                        || curILSEntryId != InterleavedLedgerStorage.INVALID_ENTRYID);
-            }
-
-            @Override
-            public long nextLong() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException();
-                }
-
-                long returnEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                if (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID
-                        && curILSEntryId != InterleavedLedgerStorage.INVALID_ENTRYID) {
-                    if (curMemTableEntryId == curILSEntryId) {
-                        returnEntryId = curMemTableEntryId;
-                        curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                        curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                    } else if (curMemTableEntryId < curILSEntryId) {
-                        returnEntryId = curMemTableEntryId;
-                        curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                    } else {
-                        returnEntryId = curILSEntryId;
-                        curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                    }
-                } else if (curMemTableEntryId != InterleavedLedgerStorage.INVALID_ENTRYID) {
-                    returnEntryId = curMemTableEntryId;
-                    curMemTableEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                } else {
-                    returnEntryId = curILSEntryId;
-                    curILSEntryId = InterleavedLedgerStorage.INVALID_ENTRYID;
-                }
-                hasToPreFetch = true;
-                return returnEntryId;
-            }
-        };
+    public PrimitiveIterator.OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
+        PrimitiveIterator.OfLong entriesInMemtableItr = memTable.getListOfEntriesOfLedger(ledgerId);
+        PrimitiveIterator.OfLong entriesFromILSItr = interleavedLedgerStorage.getListOfEntriesOfLedger(ledgerId);
+        return IteratorUtility.mergePrimitiveLongIterator(entriesInMemtableItr, entriesFromILSItr);
     }
 }

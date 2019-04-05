@@ -655,7 +655,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     }
 
     @Override
-    public OfLong getEntriesOfLedger(long ledgerId) throws IOException {
+    public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
         Iterator<LedgerCache.PageEntries> pageEntriesIterator = ledgerCache.listEntries(ledgerId).iterator();
         return new OfLong() {
             long[] entriesInCurrentLedgerPage = new long[entriesPerLedgerEntryPage];

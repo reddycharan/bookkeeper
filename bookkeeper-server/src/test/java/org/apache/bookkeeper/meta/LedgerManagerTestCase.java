@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
+import java.util.PrimitiveIterator.OfLong;
 
 import org.apache.bookkeeper.bookie.BookieException;
 import org.apache.bookkeeper.bookie.CheckpointSource;
@@ -284,8 +285,7 @@ public abstract class LedgerManagerTestCase extends BookKeeperClusterTestCase {
         }
 
         @Override
-        public byte[] getEntriesOfLedger(long ledgerId) {
-            // TODO Auto-generated method stub
+        public OfLong getListOfEntriesOfLedger(long ledgerId) {
             return null;
         }
     }

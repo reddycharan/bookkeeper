@@ -36,6 +36,7 @@ import org.apache.bookkeeper.bookie.CheckpointSource.Checkpoint;
 import org.apache.bookkeeper.bookie.stats.EntryMemTableStats;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.IteratorUtility;
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -466,7 +467,7 @@ public class EntryMemTable implements AutoCloseable{
      * this EntryMemTable. It would be in the ascending order and this Iterator
      * is weakly consistent.
      */
-    PrimitiveIterator.OfLong getEntriesOfALedger(long ledgerId) {
+    PrimitiveIterator.OfLong getListOfEntriesOfLedger(long ledgerId) {
         EntryKey thisLedgerFloorEntry = new EntryKey(ledgerId, 0);
         EntryKey thisLedgerCeilingEntry = new EntryKey(ledgerId, LONG_MAX_VALUE);
         Iterator<EntryKey> thisLedgerEntriesInKVMap;
@@ -499,56 +500,9 @@ public class EntryMemTable implements AutoCloseable{
         } finally {
             this.lock.readLock().unlock();
         }
-        return new PrimitiveIterator.OfLong() {
-            private EntryKey curKVMapEntry = null;
-            private EntryKey curSnapshotEntry = null;
-            private boolean hasToPreFetch = true;
-
-            @Override
-            public boolean hasNext() {
-                if (hasToPreFetch) {
-                    if (curKVMapEntry == null) {
-                        curKVMapEntry = thisLedgerEntriesInKVMap.hasNext() ? thisLedgerEntriesInKVMap.next() : null;
-                    }
-                    if (curSnapshotEntry == null) {
-                        curSnapshotEntry = thisLedgerEntriesInSnapshot.hasNext() ? thisLedgerEntriesInSnapshot.next()
-                                : null;
-                    }
-                }
-                hasToPreFetch = false;
-                return (curKVMapEntry != null || curSnapshotEntry != null);
-            }
-
-            @Override
-            public long nextLong() {
-                if (hasNext()) {
-                    EntryKey returnEntryKey = null;
-                    if (curKVMapEntry != null && curSnapshotEntry != null) {
-                        int compareValue = EntryKey.COMPARATOR.compare(curKVMapEntry, curSnapshotEntry);
-                        if (compareValue == 0) {
-                            returnEntryKey = curKVMapEntry;
-                            curKVMapEntry = null;
-                            curSnapshotEntry = null;
-                        } else if (compareValue < 0) {
-                            returnEntryKey = curKVMapEntry;
-                            curKVMapEntry = null;
-                        } else {
-                            returnEntryKey = curSnapshotEntry;
-                            curSnapshotEntry = null;
-                        }
-                    } else if (curKVMapEntry != null) {
-                        returnEntryKey = curKVMapEntry;
-                        curKVMapEntry = null;
-                    } else {
-                        returnEntryKey = curSnapshotEntry;
-                        curSnapshotEntry = null;
-                    }
-                    hasToPreFetch = true;
-                    return returnEntryKey.entryId;
-                } else {
-                    throw new NoSuchElementException();
-                }
-            }
-        };
+        return IteratorUtility.mergeIteratorsForPrimitiveLongIterator(thisLedgerEntriesInKVMap, thisLedgerEntriesInSnapshot,
+                EntryKey.COMPARATOR, (entryKey) -> {
+                    return entryKey.entryId;
+                });
     }
 }

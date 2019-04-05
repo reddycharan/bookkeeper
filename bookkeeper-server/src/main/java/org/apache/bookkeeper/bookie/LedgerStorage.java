@@ -264,5 +264,5 @@ public interface LedgerStorage {
      *         ledgerstorage.
      * @throws Exception
      */
-    PrimitiveIterator.OfLong getEntriesOfLedger(long ledgerId) throws IOException;
+    PrimitiveIterator.OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException;
 }

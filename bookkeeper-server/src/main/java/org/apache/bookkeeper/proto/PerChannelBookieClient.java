@@ -110,8 +110,8 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.ForceLedgerRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ForceLedgerResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoRequest;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.GetBookieInfoResponse;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerRequest;
-import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfALedgerResponse;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfLedgerRequest;
+import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfLedgerResponse;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.OperationType;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ProtocolVersion;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.ReadLacRequest;
@@ -838,20 +838,20 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
     public void getListOfEntriesOfALedger(final long ledgerId, GetListOfEntriesOfALedgerCallback cb, Object ctx) {
         final long txnId = getTxnId();
-        final CompletionKey completionKey = new V3CompletionKey(txnId, OperationType.GET_LIST_OF_ENTRIES_OF_A_LEDGER);
+        final CompletionKey completionKey = new V3CompletionKey(txnId, OperationType.GET_LIST_OF_ENTRIES_OF_LEDGER);
         completionObjects.put(completionKey, new GetListOfEntriesOfALedgerCompletion(completionKey, cb, ctx, ledgerId));
 
         // Build the request.
         BKPacketHeader.Builder headerBuilder = BKPacketHeader.newBuilder().setVersion(ProtocolVersion.VERSION_THREE)
-                .setOperation(OperationType.GET_LIST_OF_ENTRIES_OF_A_LEDGER).setTxnId(txnId);
+                .setOperation(OperationType.GET_LIST_OF_ENTRIES_OF_LEDGER).setTxnId(txnId);
 
-        GetListOfEntriesOfALedgerRequest.Builder getListOfEntriesOfALedgerRequestBuilder =
-                GetListOfEntriesOfALedgerRequest.newBuilder().setLedgerId(ledgerId);
+        GetListOfEntriesOfLedgerRequest.Builder getListOfEntriesOfLedgerRequestBuilder =
+                GetListOfEntriesOfLedgerRequest.newBuilder().setLedgerId(ledgerId);
 
-        final Request getListOfEntriesOfALedgerRequest = Request.newBuilder().setHeader(headerBuilder)
-                .setGetListOfEntriesOfALedgerRequest(getListOfEntriesOfALedgerRequestBuilder).build();
+        final Request getListOfEntriesOfLedgerRequest = Request.newBuilder().setHeader(headerBuilder)
+                .setGetListOfEntriesOfLedgerRequest(getListOfEntriesOfLedgerRequestBuilder).build();
 
-        writeAndFlush(channel, completionKey, getListOfEntriesOfALedgerRequest);
+        writeAndFlush(channel, completionKey, getListOfEntriesOfLedgerRequest);
     }
 
     /**
@@ -2037,15 +2037,15 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
 
         @Override
         public void handleV3Response(BookkeeperProtocol.Response response) {
-            GetListOfEntriesOfALedgerResponse getListOfEntriesOfALedgerResponse = response
-                    .getGetListOfEntriesOfALedgerResponse();
+            GetListOfEntriesOfLedgerResponse getListOfEntriesOfLedgerResponse = response
+                    .getGetListOfEntriesOfLedgerResponse();
             ByteBuf availabilityOfEntriesOfLedgerBuffer = Unpooled.EMPTY_BUFFER;
-            StatusCode status = response.getStatus() == StatusCode.EOK ? getListOfEntriesOfALedgerResponse.getStatus()
+            StatusCode status = response.getStatus() == StatusCode.EOK ? getListOfEntriesOfLedgerResponse.getStatus()
                     : response.getStatus();
 
-            if (getListOfEntriesOfALedgerResponse.hasAvailabilityOfEntriesOfLedger()) {
+            if (getListOfEntriesOfLedgerResponse.hasAvailabilityOfEntriesOfLedger()) {
                 availabilityOfEntriesOfLedgerBuffer = Unpooled.wrappedBuffer(
-                        getListOfEntriesOfALedgerResponse.getAvailabilityOfEntriesOfLedger().asReadOnlyByteBuffer());
+                        getListOfEntriesOfLedgerResponse.getAvailabilityOfEntriesOfLedger().asReadOnlyByteBuffer());
             }
 
             if (LOG.isDebugEnabled()) {

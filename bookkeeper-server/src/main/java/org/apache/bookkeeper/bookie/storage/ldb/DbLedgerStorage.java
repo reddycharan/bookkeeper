@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PrimitiveIterator.OfLong;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -337,8 +338,8 @@ public class DbLedgerStorage implements LedgerStorage {
     }
 
     @Override
-    public byte[] getEntriesOfLedger(long ledgerId) {
-        // TODO Auto-generated method stub
-        return null;
+    public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
+        throw new UnsupportedOperationException(
+                "getListOfEntriesOfLedger method is currently unsupported for DbLedgerStorage");
     }
 }

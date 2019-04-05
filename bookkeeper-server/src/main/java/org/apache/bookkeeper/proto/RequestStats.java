@@ -30,8 +30,8 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.FORCE_LEDGER;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.FORCE_LEDGER_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_BOOKIE_INFO_REQUEST;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_A_LEDGER;
-import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_A_LEDGER_REQUEST;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_LEDGER;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.READ_ENTRY_BLOCKED_WAIT;
@@ -213,15 +213,16 @@ public class RequestStats {
     )
     final OpStatsLogger readEntryBlockedStats;
     @StatsDoc(
-            name = "",
-            help = ""
+            name = GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST,
+            help = "request stats of GetListOfEntriesOfLedger on a bookie"
     )
-    final OpStatsLogger getListOfEntriesOfALedgerRequestStats;
+    final OpStatsLogger getListOfEntriesOfLedgerRequestStats;
     @StatsDoc(
-            name = "",
-            help = ""
+            name = "GET_LIST_OF_ENTRIES_OF_LEDGER",
+            help = "operation stats of GetListOfEntriesOfLedger",
+            parent = GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST
     )
-    final OpStatsLogger getListOfEntriesOfALedgerStats;
+    final OpStatsLogger getListOfEntriesOfLedgerStats;
 
     public RequestStats(StatsLogger statsLogger) {
         this.addEntryStats = statsLogger.getOpStatsLogger(ADD_ENTRY);
@@ -250,9 +251,9 @@ public class RequestStats {
         this.addEntryBlockedStats = statsLogger.getOpStatsLogger(ADD_ENTRY_BLOCKED_WAIT);
         this.readEntryBlockedStats = statsLogger.getOpStatsLogger(READ_ENTRY_BLOCKED_WAIT);
 
-        this.getListOfEntriesOfALedgerStats = statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_A_LEDGER);
-        this.getListOfEntriesOfALedgerRequestStats =
-                statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_A_LEDGER_REQUEST);
+        this.getListOfEntriesOfLedgerStats = statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_LEDGER);
+        this.getListOfEntriesOfLedgerRequestStats =
+                statsLogger.getOpStatsLogger(GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST);
 
         statsLogger.registerGauge(ADD_ENTRY_IN_PROGRESS, new Gauge<Number>() {
             @Override

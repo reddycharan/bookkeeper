@@ -29,6 +29,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
 import java.io.IOException;
+import java.util.PrimitiveIterator.OfLong;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -365,8 +366,7 @@ public class TestSyncThread {
         }
 
         @Override
-        public byte[] getEntriesOfLedger(long ledgerId) {
-            // TODO Auto-generated method stub
+        public OfLong getListOfEntriesOfLedger(long ledgerId) {
             return null;
         }
     }
