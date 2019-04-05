@@ -25,6 +25,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.util.ReferenceCountUtil;
 import java.io.IOException;
+import java.util.PrimitiveIterator.OfLong;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.bookie.Bookie;
@@ -33,6 +34,7 @@ import org.apache.bookkeeper.proto.BookkeeperProtocol.GetListOfEntriesOfLedgerRe
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Request;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.Response;
 import org.apache.bookkeeper.proto.BookkeeperProtocol.StatusCode;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,21 +73,18 @@ public class GetListOfEntriesOfLedgerProcessorV3 extends PacketProcessorBaseV3 i
             LOG.debug("Received new getListOfEntriesOfLedger request: {}", request);
         }
         StatusCode status = StatusCode.EOK;
-        ByteBuf listOfEntriesOfLedger = null;
+        AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = null;
         try {
-            listOfEntriesOfLedger = requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId);
-            if (listOfEntriesOfLedger != null) {
-                getListOfEntriesOfLedgerResponse
-                        .setAvailabilityOfEntriesOfLedger(ByteString.copyFrom(listOfEntriesOfLedger.nioBuffer()));
-            }
+            availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId));
+            getListOfEntriesOfLedgerResponse.setAvailabilityOfEntriesOfLedger(
+                    ByteString.copyFrom(availabilityOfEntriesOfLedger.serializeStateOfEntriesOfALedger()));
+
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
             LOG.error("No ledger found while performing getListOfEntriesOfALedger from ledger: {}", ledgerId, e);
         } catch (IOException e) {
             status = StatusCode.EIO;
             LOG.error("IOException while performing getListOfEntriesOfALedger from ledger: {}", ledgerId);
-        } finally {
-            ReferenceCountUtil.release(listOfEntriesOfLedger);
         }
 
         if (status == StatusCode.EOK) {
