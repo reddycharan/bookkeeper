@@ -3,7 +3,10 @@ package org.apache.bookkeeper.util;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map.Entry;
 import java.util.PrimitiveIterator;
+import java.util.PrimitiveIterator.OfLong;
+import java.util.TreeMap;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
@@ -44,23 +47,99 @@ public class AvailabilityOfEntriesOfLedger {
      * bytes).
      */
     private static class SequenceGroup {
+        static final int SEQUENCEGROUP_BYTES = 2 * Long.BYTES + 2 * Integer.BYTES;
         private final long firstSequenceStart;
-        private int sequenceSize;
+        private final int sequenceSize;
         long lastSequenceStart = INVALID_ENTRYID;
         int sequencePeriod;
-        static final int SEQUENCEGROUP_BYTES = 2 * Long.BYTES + 2 * Integer.BYTES;
+        private boolean isSequenceGroupClosed = false;
+        private long numOfEntriesInSequenceGroup = 0;
 
         private SequenceGroup(long firstSequenceStart, int sequenceSize) {
             this.firstSequenceStart = firstSequenceStart;
             this.sequenceSize = sequenceSize;
         }
 
-        void serializeSequenceGroup(byte[] byteArrayForSerialization) {
+        private SequenceGroup(byte[] serializedSequenceGroup) {
+            ByteBuffer buffer = ByteBuffer.wrap(serializedSequenceGroup);
+            firstSequenceStart = buffer.getLong();
+            lastSequenceStart = buffer.getLong();
+            sequenceSize = buffer.getInt();
+            sequencePeriod = buffer.getInt();
+            setSequenceGroupClosed();
+        }
+
+        private boolean isSequenceGroupClosed() {
+            return isSequenceGroupClosed;
+        }
+
+        private void setSequenceGroupClosed() {
+            this.isSequenceGroupClosed = true;
+            numOfEntriesInSequenceGroup = (((lastSequenceStart - firstSequenceStart) / sequencePeriod) + 1)
+                    * sequenceSize;
+        }
+
+        public long getNumOfEntriesInSequenceGroup() {
+            if (!isSequenceGroupClosed()) {
+                throw new IllegalStateException(
+                        "SequenceGroup is not yet closed, it is illegal to call getNumOfEntriesInSequenceGroup");
+            }
+            return numOfEntriesInSequenceGroup;
+        }
+
+        private long getLastSequenceStart() {
+            return lastSequenceStart;
+        }
+
+        private void setLastSequenceStart(long lastSequenceStart) {
+            this.lastSequenceStart = lastSequenceStart;
+        }
+
+        private int getSequencePeriod() {
+            return sequencePeriod;
+        }
+
+        private void setSequencePeriod(int sequencePeriod) {
+            this.sequencePeriod = sequencePeriod;
+        }
+
+        private long getFirstSequenceStart() {
+            return firstSequenceStart;
+        }
+
+        private void serializeSequenceGroup(byte[] byteArrayForSerialization) {
+            if (!isSequenceGroupClosed()) {
+                throw new IllegalStateException(
+                        "SequenceGroup is not yet closed, it is illegal to call serializeSequenceGroup");
+            }
             ByteBuffer buffer = ByteBuffer.wrap(byteArrayForSerialization);
             buffer.putLong(firstSequenceStart);
             buffer.putLong(lastSequenceStart);
-            buffer.putLong(sequenceSize);
-            buffer.putLong(sequencePeriod);
+            buffer.putInt(sequenceSize);
+            buffer.putInt(sequencePeriod);
+        }
+
+        private boolean isEntryAvailable(long entryId) {
+            if (!isSequenceGroupClosed()) {
+                throw new IllegalStateException(
+                        "SequenceGroup is not yet closed, it is illegal to call isEntryAvailable");
+            }
+
+            if ((entryId >= firstSequenceStart) && (entryId <= (lastSequenceStart + sequenceSize))) {
+                return (((entryId - firstSequenceStart) % sequencePeriod) < sequenceSize);
+            } else {
+                return false;
+            }
+        }
+
+        private long numberOfEntriesInSequenceGroup() {
+            if (!isSequenceGroupClosed()) {
+                throw new IllegalStateException(
+                        "SequenceGroup is not yet closed, it is illegal to call numberOfEntriesInSequenceGroup");
+            }
+
+            long numberOfSequences = (lastSequenceStart - firstSequenceStart) / sequencePeriod;
+            return numberOfSequences * sequenceSize;
         }
     }
 
@@ -68,16 +147,40 @@ public class AvailabilityOfEntriesOfLedger {
     static final int V0 = 0;
     // current version of AvailabilityOfEntriesOfLedger header is V0
     public static final int CURRENT_HEADER_VERSION = V0;
-    ArrayList<SequenceGroup> listOfSequenceGroups = new ArrayList<SequenceGroup>();
-    MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
-    MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
-    MutableInt curSequenceSize = new MutableInt(0);
+    private static final TreeMap<Long, SequenceGroup> sortedSequenceGroups = new TreeMap<Long, SequenceGroup>();
+    private MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
+    private MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
+    private MutableInt curSequenceSize = new MutableInt(0);
+    private boolean availabilityOfEntriesOfLedgerClosed = false;
+    private long totalNumOfAvailableEntries = 0;
 
     public AvailabilityOfEntriesOfLedger(PrimitiveIterator.OfLong entriesOfLedgerItr) {
         while (entriesOfLedgerItr.hasNext()) {
             this.addEntryToAvailabileEntriesOfLedger(entriesOfLedgerItr.nextLong());
         }
         this.closeStateOfEntriesOfALedger();
+    }
+
+    public AvailabilityOfEntriesOfLedger(byte[] serializeStateOfEntriesOfLedger) {
+        byte[] header = new byte[HEADER_SIZE];
+        byte[] serializedSequenceGroupByteArray = new byte[SequenceGroup.SEQUENCEGROUP_BYTES];
+        System.arraycopy(serializeStateOfEntriesOfLedger, 0, header, 0, HEADER_SIZE);
+
+        ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
+        int headerVersion = headerByteBuf.getInt();
+        if (headerVersion >= CURRENT_HEADER_VERSION) {
+            new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
+        }
+        int numOfSequenceGroups = headerByteBuf.getInt();
+        SequenceGroup newSequenceGroup;
+        for (int i = 0; i < numOfSequenceGroups; i++) {
+            Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
+            System.arraycopy(serializeStateOfEntriesOfLedger, HEADER_SIZE + (i * SequenceGroup.SEQUENCEGROUP_BYTES),
+                    serializedSequenceGroupByteArray, 0, SequenceGroup.SEQUENCEGROUP_BYTES);
+            newSequenceGroup = new SequenceGroup(serializedSequenceGroupByteArray);
+            sortedSequenceGroups.put(newSequenceGroup.getFirstSequenceStart(), newSequenceGroup);
+        }
+        setAvailabilityOfEntriesOfLedgerClosed();
     }
 
     private void initializeCurSequence(long curSequenceStartEntryIdValue) {
@@ -109,11 +212,12 @@ public class AvailabilityOfEntriesOfLedger {
 
     private void createNewSequenceGroupWithCurSequence() {
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
-        if (curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) {
-            curSequenceGroupValue.lastSequenceStart = curSequenceGroupValue.firstSequenceStart;
-            curSequenceGroupValue.sequencePeriod = 0;
+        if (curSequenceGroupValue.getLastSequenceStart() == INVALID_ENTRYID) {
+            curSequenceGroupValue.setLastSequenceStart(curSequenceGroupValue.firstSequenceStart);
+            curSequenceGroupValue.setSequencePeriod(0);
         }
-        listOfSequenceGroups.add(curSequenceGroupValue);
+        curSequenceGroupValue.setSequenceGroupClosed();
+        sortedSequenceGroups.put(curSequenceGroupValue.getFirstSequenceStart(), curSequenceGroupValue);
         curSequenceGroup.setValue(new SequenceGroup(curSequenceStartEntryId.longValue(), curSequenceSize.intValue()));
     }
 
@@ -131,8 +235,9 @@ public class AvailabilityOfEntriesOfLedger {
         boolean belongsToThisSequenceGroup = false;
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
         if ((curSequenceGroupValue.sequenceSize == curSequenceSizeValue)
-                && ((curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) || ((curSequenceStartEntryIdValue
-                        - curSequenceGroupValue.lastSequenceStart) == curSequenceGroupValue.sequencePeriod))) {
+                && ((curSequenceGroupValue.getLastSequenceStart() == INVALID_ENTRYID) || ((curSequenceStartEntryIdValue
+                        - curSequenceGroupValue.getLastSequenceStart()) == curSequenceGroupValue
+                                .getSequencePeriod()))) {
             belongsToThisSequenceGroup = true;
         }
         return belongsToThisSequenceGroup;
@@ -140,12 +245,12 @@ public class AvailabilityOfEntriesOfLedger {
 
     private void appendCurSequenceToCurSequenceGroup() {
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
-        if (curSequenceGroupValue.lastSequenceStart == INVALID_ENTRYID) {
-            curSequenceGroupValue.lastSequenceStart = curSequenceStartEntryId.longValue();
-            curSequenceGroupValue.sequencePeriod = ((int) (curSequenceGroupValue.lastSequenceStart
-                    - curSequenceGroupValue.firstSequenceStart));
+        if (curSequenceGroupValue.getLastSequenceStart() == INVALID_ENTRYID) {
+            curSequenceGroupValue.setLastSequenceStart(curSequenceStartEntryId.longValue());
+            curSequenceGroupValue.setSequencePeriod(
+                    ((int) (curSequenceGroupValue.getLastSequenceStart() - curSequenceGroupValue.firstSequenceStart)));
         } else {
-            curSequenceGroupValue.lastSequenceStart = curSequenceStartEntryId.longValue();
+            curSequenceGroupValue.setLastSequenceStart(curSequenceStartEntryId.longValue());
         }
     }
 
@@ -177,25 +282,62 @@ public class AvailabilityOfEntriesOfLedger {
             addCurSequenceToSequenceGroup();
             resetCurSequence();
         }
+        setAvailabilityOfEntriesOfLedgerClosed();
     }
 
-    public byte[] serializeStateOfEntriesOfALedger() {
+    private boolean isAvailabilityOfEntriesOfLedgerClosed() {
+        return availabilityOfEntriesOfLedgerClosed;
+    }
+
+    private void setAvailabilityOfEntriesOfLedgerClosed() {
+        this.availabilityOfEntriesOfLedgerClosed = true;
+        for (Entry<Long, SequenceGroup> seqGroupEntry : sortedSequenceGroups.entrySet()) {
+            totalNumOfAvailableEntries += seqGroupEntry.getValue().getNumOfEntriesInSequenceGroup();
+        }
+    }
+
+    public byte[] serializeStateOfEntriesOfLedger() {
+        if (!isAvailabilityOfEntriesOfLedgerClosed()) {
+            throw new IllegalStateException("AvailabilityOfEntriesOfLedger is not yet closed,"
+                    + "it is illegal to call serializeStateOfEntriesOfLedger");
+        }
         byte[] header = new byte[HEADER_SIZE];
         ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
         byte[] serializedSequenceGroupByteArray = new byte[SequenceGroup.SEQUENCEGROUP_BYTES];
         byte[] serializedStateByteArray = new byte[HEADER_SIZE
-                + (listOfSequenceGroups.size() * SequenceGroup.SEQUENCEGROUP_BYTES)];
-        final int numOfSequenceGroups = listOfSequenceGroups.size();
+                + (sortedSequenceGroups.size() * SequenceGroup.SEQUENCEGROUP_BYTES)];
+        final int numOfSequenceGroups = sortedSequenceGroups.size();
         headerByteBuf.putInt(CURRENT_HEADER_VERSION);
         headerByteBuf.putInt(numOfSequenceGroups);
         System.arraycopy(header, 0, serializedStateByteArray, 0, HEADER_SIZE);
         int seqNum = 0;
-        for (SequenceGroup seqGroup : listOfSequenceGroups) {
+        for (Entry<Long, SequenceGroup> seqGroupEntry : sortedSequenceGroups.entrySet()) {
+            SequenceGroup seqGroup = seqGroupEntry.getValue();
             Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
             seqGroup.serializeSequenceGroup(serializedSequenceGroupByteArray);
             System.arraycopy(serializedSequenceGroupByteArray, 0, serializedStateByteArray,
                     HEADER_SIZE + ((seqNum++) * SequenceGroup.SEQUENCEGROUP_BYTES), SequenceGroup.SEQUENCEGROUP_BYTES);
         }
         return serializedStateByteArray;
+    }
+
+    public boolean isEntryAvailable(long entryId) {
+        if (!isAvailabilityOfEntriesOfLedgerClosed()) {
+            throw new IllegalStateException(
+                    "AvailabilityOfEntriesOfLedger is not yet closed, it is illegal to call isEntryAvailable");
+        }
+        Entry<Long, SequenceGroup> seqGroup = sortedSequenceGroups.floorEntry(entryId);
+        if (seqGroup == null) {
+            return false;
+        }
+        return seqGroup.getValue().isEntryAvailable(entryId);
+    }
+
+    public long getTotalNumOfAvailableEntries() {
+        if (!isAvailabilityOfEntriesOfLedgerClosed()) {
+            throw new IllegalStateException(
+                    "AvailabilityOfEntriesOfLedger is not yet closed, it is illegal to call getTotalNumOfAvailableEntries");
+        }
+        return totalNumOfAvailableEntries;
     }
 }

@@ -77,7 +77,7 @@ public class GetListOfEntriesOfLedgerProcessorV3 extends PacketProcessorBaseV3 i
         try {
             availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId));
             getListOfEntriesOfLedgerResponse.setAvailabilityOfEntriesOfLedger(
-                    ByteString.copyFrom(availabilityOfEntriesOfLedger.serializeStateOfEntriesOfALedger()));
+                    ByteString.copyFrom(availabilityOfEntriesOfLedger.serializeStateOfEntriesOfLedger()));
 
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
