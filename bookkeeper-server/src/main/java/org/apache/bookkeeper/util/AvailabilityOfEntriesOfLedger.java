@@ -149,7 +149,7 @@ public class AvailabilityOfEntriesOfLedger {
     static final int V0 = 0;
     // current version of AvailabilityOfEntriesOfLedger header is V0
     public static final int CURRENT_HEADER_VERSION = V0;
-    private static final TreeMap<Long, SequenceGroup> sortedSequenceGroups = new TreeMap<Long, SequenceGroup>();
+    private final TreeMap<Long, SequenceGroup> sortedSequenceGroups = new TreeMap<Long, SequenceGroup>();
     private MutableObject<SequenceGroup> curSequenceGroup = new MutableObject<SequenceGroup>(null);
     private MutableLong curSequenceStartEntryId = new MutableLong(INVALID_ENTRYID);
     private MutableInt curSequenceSize = new MutableInt(0);
@@ -279,8 +279,10 @@ public class AvailabilityOfEntriesOfLedger {
             resetCurSequence();
         }
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
-        curSequenceGroupValue.setSequenceGroupClosed();
-        sortedSequenceGroups.put(curSequenceGroupValue.getFirstSequenceStart(), curSequenceGroupValue);
+        if (curSequenceGroupValue != null) {
+            curSequenceGroupValue.setSequenceGroupClosed();
+            sortedSequenceGroups.put(curSequenceGroupValue.getFirstSequenceStart(), curSequenceGroupValue);
+        }
         setAvailabilityOfEntriesOfLedgerClosed();
     }
 

@@ -30,10 +30,13 @@ public class AvailabilityOfEntriesOfLedgerTest {
     @Test
     public void testSimple() {
         long[][] arrays = { 
-                { 1, 2 }, 
+                { 1, 2 },
                 { 1, 2, 3, 4, 5, 6, 7, 8 },
-                { 1, 2 }
-        };
+                { 1, 5 },
+                { 3 },
+                { 1, 2, 4, 5, 7, 8 },
+                {},
+                { 1, 2, 3, 5, 6, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 1001 } };
         for (int i = 0; i < arrays.length; i++) {
             PrimitiveIterator.OfLong primitiveIterator = Arrays.stream(arrays[i]).iterator();
             AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
