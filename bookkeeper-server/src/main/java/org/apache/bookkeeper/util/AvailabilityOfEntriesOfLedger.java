@@ -126,20 +126,14 @@ public class AvailabilityOfEntriesOfLedger {
             }
 
             if ((entryId >= firstSequenceStart) && (entryId <= (lastSequenceStart + sequenceSize))) {
-                return (((entryId - firstSequenceStart) % sequencePeriod) < sequenceSize);
+                if (sequencePeriod == 0) {
+                    return ((entryId - firstSequenceStart) < sequenceSize);
+                } else {
+                    return (((entryId - firstSequenceStart) % sequencePeriod) < sequenceSize);
+                }
             } else {
                 return false;
             }
-        }
-
-        private long numberOfEntriesInSequenceGroup() {
-            if (!isSequenceGroupClosed()) {
-                throw new IllegalStateException(
-                        "SequenceGroup is not yet closed, it is illegal to call numberOfEntriesInSequenceGroup");
-            }
-
-            long numberOfSequences = (lastSequenceStart - firstSequenceStart) / sequencePeriod;
-            return numberOfSequences * sequenceSize;
         }
     }
 
