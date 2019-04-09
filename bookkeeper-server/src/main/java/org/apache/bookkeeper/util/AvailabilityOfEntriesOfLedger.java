@@ -45,11 +45,11 @@ public class AvailabilityOfEntriesOfLedger {
      * bytes).
      */
     private static class SequenceGroup {
-        static final int SEQUENCEGROUP_BYTES = 2 * Long.BYTES + 2 * Integer.BYTES;
+        private static final int SEQUENCEGROUP_BYTES = 2 * Long.BYTES + 2 * Integer.BYTES;
         private final long firstSequenceStart;
         private final int sequenceSize;
-        long lastSequenceStart = INVALID_ENTRYID;
-        int sequencePeriod;
+        private long lastSequenceStart = INVALID_ENTRYID;
+        private int sequencePeriod;
         private boolean isSequenceGroupClosed = false;
         private long numOfEntriesInSequenceGroup = 0;
 
@@ -79,7 +79,7 @@ public class AvailabilityOfEntriesOfLedger {
                     : (((lastSequenceStart - firstSequenceStart) / sequencePeriod) + 1) * sequenceSize;
         }
 
-        public long getNumOfEntriesInSequenceGroup() {
+        private long getNumOfEntriesInSequenceGroup() {
             if (!isSequenceGroupClosed()) {
                 throw new IllegalStateException(
                         "SequenceGroup is not yet closed, it is illegal to call getNumOfEntriesInSequenceGroup");
@@ -137,8 +137,8 @@ public class AvailabilityOfEntriesOfLedger {
         }
     }
 
-    static final int HEADER_SIZE = 64;
-    static final int V0 = 0;
+    public static final int HEADER_SIZE = 64;
+    public static final int V0 = 0;
     // current version of AvailabilityOfEntriesOfLedger header is V0
     public static final int CURRENT_HEADER_VERSION = V0;
     private final TreeMap<Long, SequenceGroup> sortedSequenceGroups = new TreeMap<Long, SequenceGroup>();
