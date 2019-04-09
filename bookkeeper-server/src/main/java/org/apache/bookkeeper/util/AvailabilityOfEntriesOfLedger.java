@@ -57,7 +57,9 @@ public class AvailabilityOfEntriesOfLedger {
 
         private SequenceGroup(long firstSequenceStart, int sequenceSize) {
             this.firstSequenceStart = firstSequenceStart;
+            this.lastSequenceStart = firstSequenceStart;
             this.sequenceSize = sequenceSize;
+            this.sequencePeriod = 0;
         }
 
         private SequenceGroup(byte[] serializedSequenceGroup) {
@@ -75,8 +77,8 @@ public class AvailabilityOfEntriesOfLedger {
 
         private void setSequenceGroupClosed() {
             this.isSequenceGroupClosed = true;
-            numOfEntriesInSequenceGroup = (((lastSequenceStart - firstSequenceStart) / sequencePeriod) + 1)
-                    * sequenceSize;
+            numOfEntriesInSequenceGroup = (lastSequenceStart - firstSequenceStart) == 0 ? sequenceSize
+                    : (((lastSequenceStart - firstSequenceStart) / sequencePeriod) + 1) * sequenceSize;
         }
 
         public long getNumOfEntriesInSequenceGroup() {
@@ -212,10 +214,6 @@ public class AvailabilityOfEntriesOfLedger {
 
     private void createNewSequenceGroupWithCurSequence() {
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
-        if (curSequenceGroupValue.getLastSequenceStart() == INVALID_ENTRYID) {
-            curSequenceGroupValue.setLastSequenceStart(curSequenceGroupValue.firstSequenceStart);
-            curSequenceGroupValue.setSequencePeriod(0);
-        }
         curSequenceGroupValue.setSequenceGroupClosed();
         sortedSequenceGroups.put(curSequenceGroupValue.getFirstSequenceStart(), curSequenceGroupValue);
         curSequenceGroup.setValue(new SequenceGroup(curSequenceStartEntryId.longValue(), curSequenceSize.intValue()));
@@ -245,12 +243,10 @@ public class AvailabilityOfEntriesOfLedger {
 
     private void appendCurSequenceToCurSequenceGroup() {
         SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
-        if (curSequenceGroupValue.getLastSequenceStart() == INVALID_ENTRYID) {
-            curSequenceGroupValue.setLastSequenceStart(curSequenceStartEntryId.longValue());
+        curSequenceGroupValue.setLastSequenceStart(curSequenceStartEntryId.longValue());
+        if (curSequenceGroupValue.getSequencePeriod() == 0) {
             curSequenceGroupValue.setSequencePeriod(
                     ((int) (curSequenceGroupValue.getLastSequenceStart() - curSequenceGroupValue.firstSequenceStart)));
-        } else {
-            curSequenceGroupValue.setLastSequenceStart(curSequenceStartEntryId.longValue());
         }
     }
 
@@ -282,6 +278,9 @@ public class AvailabilityOfEntriesOfLedger {
             addCurSequenceToSequenceGroup();
             resetCurSequence();
         }
+        SequenceGroup curSequenceGroupValue = curSequenceGroup.getValue();
+        curSequenceGroupValue.setSequenceGroupClosed();
+        sortedSequenceGroups.put(curSequenceGroupValue.getFirstSequenceStart(), curSequenceGroupValue);
         setAvailabilityOfEntriesOfLedgerClosed();
     }
 

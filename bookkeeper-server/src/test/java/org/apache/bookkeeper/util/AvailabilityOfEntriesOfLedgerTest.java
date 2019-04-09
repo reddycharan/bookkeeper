@@ -21,7 +21,6 @@
 package org.apache.bookkeeper.util;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
 
@@ -30,11 +29,17 @@ import org.junit.Test;
 public class AvailabilityOfEntriesOfLedgerTest {
     @Test
     public void testSimple() {
-        long arr[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
-        PrimitiveIterator.OfLong primitiveIterator = Arrays.stream(arr).iterator();
-        AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
-                primitiveIterator);
-        assertEquals("Expected total number of entries", arr.length,
-                availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
+        long[][] arrays = { 
+                { 1, 2 }, 
+                { 1, 2, 3, 4, 5, 6, 7, 8 },
+                { 1, 2 }
+        };
+        for (int i = 0; i < arrays.length; i++) {
+            PrimitiveIterator.OfLong primitiveIterator = Arrays.stream(arrays[i]).iterator();
+            AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
+                    primitiveIterator);
+            assertEquals("Expected total number of entries", arrays[i].length,
+                    availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
+        }
     }
 }
