@@ -1,11 +1,9 @@
 package org.apache.bookkeeper.util;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map.Entry;
 import java.util.PrimitiveIterator;
-import java.util.PrimitiveIterator.OfLong;
 import java.util.TreeMap;
 
 import org.apache.commons.lang3.mutable.MutableInt;
