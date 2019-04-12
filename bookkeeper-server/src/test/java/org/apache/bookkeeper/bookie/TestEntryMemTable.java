@@ -436,12 +436,14 @@ public class TestEntryMemTable implements CacheCallback, SkipListFlusher, Checkp
         threadToAdd.start();
 
         Thread.sleep(200);
-        OfLong entriesItr = memTable.getListOfEntriesOfLedger((random.nextInt((int) ledgerId) + 1));
+        OfLong entriesItr = memTable.getListOfEntriesOfLedger(ledgerId);
         ArrayList<Long> listOfEntries = new ArrayList<Long>();
         while (entriesItr.hasNext()) {
             listOfEntries.add(entriesItr.next());
             Thread.sleep(5);
         }
+        threadToAdd.join(5000);
+        assertTrue("Entries should be added successfully in the spawned thread", successfullyAdded.get());
 
         for (int i = 0; i < newNumOfEntries; i++) {
             assertEquals("listOfEntries should be sorted", new Long(i + 1), listOfEntries.get(i));
