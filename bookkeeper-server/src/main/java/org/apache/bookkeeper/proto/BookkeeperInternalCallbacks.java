@@ -37,6 +37,7 @@ import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.stats.OpStatsLogger;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.zookeeper.AsyncCallback;
@@ -108,10 +109,11 @@ public class BookkeeperInternalCallbacks {
     }
 
     /**
-     * A callback interface for GetListOfEntriesOfALedger command.
+     * A callback interface for GetListOfEntriesOfLedger command.
      */
-    public interface GetListOfEntriesOfALedgerCallback {
-        void getListOfEntriesOfALedgerComplete(int rc, long ledgerId, ByteBuf buffer, Object ctx);
+    public interface GetListOfEntriesOfLedgerCallback {
+        void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx);
     }
 
     /**

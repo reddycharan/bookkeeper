@@ -29,6 +29,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import com.google.common.util.concurrent.UncheckedExecutionException;
+
+import io.netty.buffer.ByteBuf;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,6 +50,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,7 +75,7 @@ import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfALedgerCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.replication.AuditorElector;
@@ -81,6 +85,7 @@ import org.apache.bookkeeper.replication.ReplicationException.CompatibilityExcep
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
@@ -1664,8 +1669,8 @@ public class BookKeeperAdmin implements AutoCloseable {
                 ackQuorumSize);
     }
 
-    public void getListOfEntriesOfALedger(BookieSocketAddress address, long ledgerId,
-            GetListOfEntriesOfALedgerCallback cb, Object ctx) {
-        bkc.getBookieClient().getListOfEntriesOfALedger(address, ledgerId, cb, ctx);
+    public void getListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId,
+            GetListOfEntriesOfLedgerCallback callback, Object ctx) {
+        bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId, callback, ctx);
     }
 }

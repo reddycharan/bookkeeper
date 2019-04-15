@@ -81,10 +81,10 @@ public class GetListOfEntriesOfLedgerProcessorV3 extends PacketProcessorBaseV3 i
 
         } catch (Bookie.NoLedgerException e) {
             status = StatusCode.ENOLEDGER;
-            LOG.error("No ledger found while performing getListOfEntriesOfALedger from ledger: {}", ledgerId, e);
+            LOG.error("No ledger found while performing getListOfEntriesOfLedger from ledger: {}", ledgerId, e);
         } catch (IOException e) {
             status = StatusCode.EIO;
-            LOG.error("IOException while performing getListOfEntriesOfALedger from ledger: {}", ledgerId);
+            LOG.error("IOException while performing getListOfEntriesOfLedger from ledger: {}", ledgerId);
         }
 
         if (status == StatusCode.EOK) {
