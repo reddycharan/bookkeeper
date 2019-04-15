@@ -2051,8 +2051,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             }
 
             if (LOG.isDebugEnabled()) {
-                logResponse(status, "ledgerId", ledgerId); // *** have to
-                                                           // revisit ***
+                logResponse(status, "ledgerId", ledgerId);
             }
 
             int rc = convertStatus(status, BKException.Code.ReadException);

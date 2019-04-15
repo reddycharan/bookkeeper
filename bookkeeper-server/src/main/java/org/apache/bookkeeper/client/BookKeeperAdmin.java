@@ -1669,7 +1669,7 @@ public class BookKeeperAdmin implements AutoCloseable {
                 ackQuorumSize);
     }
 
-    public void getListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId,
+    public void asyncGetListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId,
             GetListOfEntriesOfLedgerCallback callback, Object ctx) {
         bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId, callback, ctx);
     }

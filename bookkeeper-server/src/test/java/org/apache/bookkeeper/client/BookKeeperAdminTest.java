@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -40,11 +42,17 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
+import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookieServer;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfLedgerCallback;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.test.BookKeeperClusterTestCase;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.BookKeeperConstants;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableLong;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.junit.Assert;
@@ -398,5 +406,43 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
             lh.close();
         }
         bk.close();
+    }
+
+    @Test
+    public void testGetListOfEntriesOfLedger() throws Exception {
+        ClientConfiguration conf = new ClientConfiguration();
+        conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        int numOfBookies = bs.size();
+        BookKeeper bkc = new BookKeeper(conf);
+        LedgerHandle lh = bkc.createLedger(numOfBookies, numOfBookies, digestType, "testPasswd".getBytes());
+        long lId = lh.getId();
+        lh.addEntry("000".getBytes());
+        lh.close();
+        bkc.close();
+        try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
+            MutableInt rcRetValue = new MutableInt();
+            MutableLong callbackLedgerId = new MutableLong();
+            MutableObject<AvailabilityOfEntriesOfLedger> callbackAvailabilityOfEntriesOfLedger = new MutableObject<>();
+            MutableObject<BookieSocketAddress> callbackCtx = new MutableObject<BookieSocketAddress>();
+            for (int i = 0; i < bs.size(); i++) {
+                CountDownLatch latch = new CountDownLatch(1);
+                bkAdmin.asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId,
+                        new GetListOfEntriesOfLedgerCallback() {
+                            @Override
+                            public void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
+                                    AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
+                                rcRetValue.setValue(rc);
+                                callbackLedgerId.setValue(ledgerId);
+                                callbackAvailabilityOfEntriesOfLedger.setValue(availabilityOfEntriesOfLedger);
+                                callbackCtx.setValue((BookieSocketAddress)ctx);
+                                latch.countDown();
+                            }
+                        }, bs.get(i).getLocalAddress());
+                latch.countDown();
+                assertEquals("", BKException.Code.OK, rcRetValue.getValue().intValue());
+                assertEquals("", lId, callbackLedgerId.getValue().longValue());
+                assertEquals("", bs.get(i).getLocalAddress(), callbackCtx.getValue());
+            }
+        }
     }
 }
