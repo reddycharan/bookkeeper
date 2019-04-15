@@ -413,10 +413,13 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
         ClientConfiguration conf = new ClientConfiguration();
         conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
         int numOfBookies = bs.size();
+        int numOfEntries = 5;
         BookKeeper bkc = new BookKeeper(conf);
         LedgerHandle lh = bkc.createLedger(numOfBookies, numOfBookies, digestType, "testPasswd".getBytes());
         long lId = lh.getId();
-        lh.addEntry("000".getBytes());
+        for(int i = 0; i < numOfEntries; i++){
+            lh.addEntry("000".getBytes());
+        }
         lh.close();
         bkc.close();
         try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
@@ -438,10 +441,12 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
                                 latch.countDown();
                             }
                         }, bs.get(i).getLocalAddress());
-                latch.countDown();
+                latch.await();
                 assertEquals("", BKException.Code.OK, rcRetValue.getValue().intValue());
                 assertEquals("", lId, callbackLedgerId.getValue().longValue());
-                assertEquals("", bs.get(i).getLocalAddress(), callbackCtx.getValue());
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = callbackAvailabilityOfEntriesOfLedger.getValue();
+                assertEquals("", numOfEntries, availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
+                //assertEquals("", bs.get(i).getLocalAddress(), callbackCtx.getValue());
             }
         }
     }
