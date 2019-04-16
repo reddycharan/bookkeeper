@@ -10,6 +10,8 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.mutable.MutableObject;
 
+import io.netty.buffer.ByteBuf;
+
 /*
  * Ordered collection of SequenceGroups will represent entries of the ledger
  * residing in a bookie.
@@ -170,6 +172,29 @@ public class AvailabilityOfEntriesOfLedger {
         for (int i = 0; i < numOfSequenceGroups; i++) {
             Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
             System.arraycopy(serializeStateOfEntriesOfLedger, HEADER_SIZE + (i * SequenceGroup.SEQUENCEGROUP_BYTES),
+                    serializedSequenceGroupByteArray, 0, SequenceGroup.SEQUENCEGROUP_BYTES);
+            newSequenceGroup = new SequenceGroup(serializedSequenceGroupByteArray);
+            sortedSequenceGroups.put(newSequenceGroup.getFirstSequenceStart(), newSequenceGroup);
+        }
+        setAvailabilityOfEntriesOfLedgerClosed();
+    }
+
+    public AvailabilityOfEntriesOfLedger(ByteBuf byteBuf) {
+        byte[] header = new byte[HEADER_SIZE];
+        byte[] serializedSequenceGroupByteArray = new byte[SequenceGroup.SEQUENCEGROUP_BYTES];
+        int readerIndex = byteBuf.readerIndex();
+        byteBuf.getBytes(readerIndex, header, 0, HEADER_SIZE);
+
+        ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
+        int headerVersion = headerByteBuf.getInt();
+        if (headerVersion >= CURRENT_HEADER_VERSION) {
+            new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
+        }
+        int numOfSequenceGroups = headerByteBuf.getInt();
+        SequenceGroup newSequenceGroup;
+        for (int i = 0; i < numOfSequenceGroups; i++) {
+            Arrays.fill(serializedSequenceGroupByteArray, (byte) 0);
+            byteBuf.getBytes(readerIndex + HEADER_SIZE + (i * SequenceGroup.SEQUENCEGROUP_BYTES),
                     serializedSequenceGroupByteArray, 0, SequenceGroup.SEQUENCEGROUP_BYTES);
             newSequenceGroup = new SequenceGroup(serializedSequenceGroupByteArray);
             sortedSequenceGroups.put(newSequenceGroup.getFirstSequenceStart(), newSequenceGroup);

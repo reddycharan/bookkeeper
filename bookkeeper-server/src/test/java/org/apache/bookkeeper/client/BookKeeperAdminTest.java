@@ -409,19 +409,60 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
     }
 
     @Test
-    public void testGetListOfEntriesOfLedger() throws Exception {
+    public void testGetListOfEntriesOfClosedLedger() throws Exception {
+        testGetListOfEntriesOfLedger(true);
+    }
+
+    @Test
+    public void testGetListOfEntriesOfNotClosedLedger() throws Exception {
+        testGetListOfEntriesOfLedger(false);
+    }
+
+    @Test
+    public void testGetListOfEntriesOfNonExistingLedger() throws Exception {
+        long nonExistingLedgerId = 56789L;
+        try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
+            MutableInt rcRetValue = new MutableInt();
+            MutableLong callbackLedgerId = new MutableLong();
+            MutableObject<AvailabilityOfEntriesOfLedger> callbackAvailabilityOfEntriesOfLedger = new MutableObject<>();
+            MutableObject<BookieSocketAddress> callbackCtx = new MutableObject<BookieSocketAddress>();
+            for (int i = 0; i < bs.size(); i++) {
+                CountDownLatch latch = new CountDownLatch(1);
+                bkAdmin.asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), nonExistingLedgerId,
+                        new GetListOfEntriesOfLedgerCallback() {
+                            @Override
+                            public void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
+                                    AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
+                                rcRetValue.setValue(rc);
+                                callbackLedgerId.setValue(ledgerId);
+                                callbackAvailabilityOfEntriesOfLedger.setValue(availabilityOfEntriesOfLedger);
+                                callbackCtx.setValue((BookieSocketAddress) ctx);
+                                latch.countDown();
+                            }
+                        }, bs.get(i).getLocalAddress());
+                latch.await();
+                assertEquals("returned RC value", BKException.Code.NoSuchLedgerExistsException,
+                        rcRetValue.getValue().intValue());
+                assertEquals("LedgerId", nonExistingLedgerId, callbackLedgerId.getValue().longValue());
+                assertEquals("AvailabilityOfEntriesOfLedger", null, callbackAvailabilityOfEntriesOfLedger.getValue());
+                assertEquals("Context object", bs.get(i).getLocalAddress(), callbackCtx.getValue());
+            }
+        }
+    }
+
+    public void testGetListOfEntriesOfLedger(boolean isLedgerClosed) throws Exception {
         ClientConfiguration conf = new ClientConfiguration();
         conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
-        int numOfBookies = bs.size();
-        int numOfEntries = 5;
+        int numOfEntries = 6;
         BookKeeper bkc = new BookKeeper(conf);
         LedgerHandle lh = bkc.createLedger(numOfBookies, numOfBookies, digestType, "testPasswd".getBytes());
         long lId = lh.getId();
-        for(int i = 0; i < numOfEntries; i++){
+        for (int i = 0; i < numOfEntries; i++) {
             lh.addEntry("000".getBytes());
         }
-        lh.close();
-        bkc.close();
+        if (isLedgerClosed) {
+            lh.close();
+        }
         try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
             MutableInt rcRetValue = new MutableInt();
             MutableLong callbackLedgerId = new MutableLong();
@@ -437,17 +478,74 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
                                 rcRetValue.setValue(rc);
                                 callbackLedgerId.setValue(ledgerId);
                                 callbackAvailabilityOfEntriesOfLedger.setValue(availabilityOfEntriesOfLedger);
-                                callbackCtx.setValue((BookieSocketAddress)ctx);
+                                callbackCtx.setValue((BookieSocketAddress) ctx);
                                 latch.countDown();
                             }
                         }, bs.get(i).getLocalAddress());
                 latch.await();
-                assertEquals("", BKException.Code.OK, rcRetValue.getValue().intValue());
-                assertEquals("", lId, callbackLedgerId.getValue().longValue());
-                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = callbackAvailabilityOfEntriesOfLedger.getValue();
-                assertEquals("", numOfEntries, availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
-                //assertEquals("", bs.get(i).getLocalAddress(), callbackCtx.getValue());
+                assertEquals("returned RC value", BKException.Code.OK, rcRetValue.getValue().intValue());
+                assertEquals("LedgerId", lId, callbackLedgerId.getValue().longValue());
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = callbackAvailabilityOfEntriesOfLedger
+                        .getValue();
+                assertEquals("Number of entries", numOfEntries,
+                        availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
+                assertEquals("Context object", bs.get(i).getLocalAddress(), callbackCtx.getValue());
             }
         }
+        bkc.close();
+    }
+
+    @Test
+    public void testGetListOfEntriesOfLedgerWithJustOneBookieInWriteQuorum() throws Exception {
+        ClientConfiguration conf = new ClientConfiguration();
+        conf.setMetadataServiceUri(zkUtil.getMetadataServiceUri());
+        int numOfEntries = 6;
+        BookKeeper bkc = new BookKeeper(conf);
+        /*
+         * in this testsuite there are going to be 2 (numOfBookies) and if
+         * writeQuorum is 1 then it will stripe entries to those two bookies.
+         */
+        LedgerHandle lh = bkc.createLedger(2, 1, digestType, "testPasswd".getBytes());
+        long lId = lh.getId();
+        for (int i = 0; i < numOfEntries; i++) {
+            lh.addEntry("000".getBytes());
+        }
+
+        try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
+            MutableInt rcRetValue = new MutableInt();
+            MutableLong callbackLedgerId = new MutableLong();
+            MutableObject<AvailabilityOfEntriesOfLedger> callbackAvailabilityOfEntriesOfLedger = new MutableObject<>();
+            MutableObject<BookieSocketAddress> callbackCtx = new MutableObject<BookieSocketAddress>();
+            for (int i = 0; i < bs.size(); i++) {
+                CountDownLatch latch = new CountDownLatch(1);
+                bkAdmin.asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId,
+                        new GetListOfEntriesOfLedgerCallback() {
+                            @Override
+                            public void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
+                                    AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
+                                rcRetValue.setValue(rc);
+                                callbackLedgerId.setValue(ledgerId);
+                                callbackAvailabilityOfEntriesOfLedger.setValue(availabilityOfEntriesOfLedger);
+                                callbackCtx.setValue((BookieSocketAddress) ctx);
+                                latch.countDown();
+                            }
+                        }, bs.get(i).getLocalAddress());
+                latch.await();
+                assertEquals("returned RC value", BKException.Code.OK, rcRetValue.getValue().intValue());
+                assertEquals("LedgerId", lId, callbackLedgerId.getValue().longValue());
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = callbackAvailabilityOfEntriesOfLedger
+                        .getValue();
+                /*
+                 * since num of bookies in the ensemble is 2 and
+                 * writeQuorum/ackQuorum is 1, it will stripe to these two
+                 * bookies and hence in each bookie there will be only
+                 * numOfEntries/2 entries.
+                 */
+                assertEquals("Number of entries", numOfEntries / 2,
+                        availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
+                assertEquals("Context object", bs.get(i).getLocalAddress(), callbackCtx.getValue());
+            }
+        }
+        bkc.close();
     }
 }

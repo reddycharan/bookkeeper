@@ -2055,8 +2055,12 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             }
 
             int rc = convertStatus(status, BKException.Code.ReadException);
-            cb.getListOfEntriesOfLedgerComplete(rc, ledgerId,
-                    new AvailabilityOfEntriesOfLedger(availabilityOfEntriesOfLedgerBuffer.slice().array()), ctx);
+            AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = null;
+            if (rc == BKException.Code.OK) {
+                availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
+                        availabilityOfEntriesOfLedgerBuffer.slice());
+            }
+            cb.getListOfEntriesOfLedgerComplete(rc, ledgerId, availabilityOfEntriesOfLedger, ctx);
         }
     }
 
