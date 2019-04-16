@@ -211,8 +211,8 @@ public class InterleavedLedgerStorageTest {
                 return arrayList.get(i).longValue() == (i * entriesPerWrite);
             }));
         }
-        
-        long nonExistingLedger = 456789l;
+
+        long nonExistingLedger = 456789L;
         OfLong entriesOfLedger = interleavedStorage.getListOfEntriesOfLedger(nonExistingLedger);
         assertFalse("There shouldn't be any entry", entriesOfLedger.hasNext());
     }
@@ -244,7 +244,7 @@ public class InterleavedLedgerStorageTest {
             }));
         }
     }
-    
+
     @Test
     public void testConsistencyCheckConcurrentGC() throws Exception {
         final long signalDone = -1;

@@ -21,11 +21,8 @@
 package org.apache.bookkeeper.proto;
 
 import com.google.protobuf.ByteString;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.util.ReferenceCountUtil;
 import java.io.IOException;
-import java.util.PrimitiveIterator.OfLong;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.bookie.Bookie;
@@ -75,7 +72,8 @@ public class GetListOfEntriesOfLedgerProcessorV3 extends PacketProcessorBaseV3 i
         StatusCode status = StatusCode.EOK;
         AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = null;
         try {
-            availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId));
+            availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
+                    requestProcessor.bookie.getListOfEntriesOfLedger(ledgerId));
             getListOfEntriesOfLedgerResponse.setAvailabilityOfEntriesOfLedger(
                     ByteString.copyFrom(availabilityOfEntriesOfLedger.serializeStateOfEntriesOfLedger()));
 

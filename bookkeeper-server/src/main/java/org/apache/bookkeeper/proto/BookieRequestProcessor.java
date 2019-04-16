@@ -341,7 +341,7 @@ public class BookieRequestProcessor implements RequestProcessor {
                         break;
                     case GET_LIST_OF_ENTRIES_OF_LEDGER:
                         processGetListOfEntriesOfLedgerProcessorV3(r, c);
-                        break;                        
+                        break;
                     default:
                         LOG.info("Unknown operation type {}", header.getOperation());
                         BookkeeperProtocol.Response.Builder response =

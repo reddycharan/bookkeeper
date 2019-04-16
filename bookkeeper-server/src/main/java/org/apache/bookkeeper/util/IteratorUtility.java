@@ -26,6 +26,9 @@ import java.util.PrimitiveIterator;
 import java.util.PrimitiveIterator.OfLong;
 import java.util.function.ToLongFunction;
 
+/**
+ * Utility class to merge iterators.
+ */
 public class IteratorUtility {
 
     private static final long INVALID_ELEMENT = -1;

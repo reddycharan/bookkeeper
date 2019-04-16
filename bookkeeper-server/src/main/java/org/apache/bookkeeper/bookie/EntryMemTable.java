@@ -22,7 +22,6 @@ package org.apache.bookkeeper.bookie;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Semaphore;
@@ -500,8 +499,8 @@ public class EntryMemTable implements AutoCloseable{
         } finally {
             this.lock.readLock().unlock();
         }
-        return IteratorUtility.mergeIteratorsForPrimitiveLongIterator(thisLedgerEntriesInKVMap, thisLedgerEntriesInSnapshot,
-                EntryKey.COMPARATOR, (entryKey) -> {
+        return IteratorUtility.mergeIteratorsForPrimitiveLongIterator(thisLedgerEntriesInKVMap,
+                thisLedgerEntriesInSnapshot, EntryKey.COMPARATOR, (entryKey) -> {
                     return entryKey.entryId;
                 });
     }

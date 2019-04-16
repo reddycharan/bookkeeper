@@ -25,7 +25,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import io.netty.buffer.ByteBuf;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,6 +40,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import lombok.extern.slf4j.Slf4j;
 
 import org.apache.bookkeeper.bookie.Bookie.NoLedgerException;
 import org.apache.bookkeeper.conf.ServerConfiguration;
@@ -337,7 +338,8 @@ public class TestEntryMemTable implements CacheCallback, SkipListFlusher, Checkp
             ArrayList<Long> listOfEntries = new ArrayList<Long>();
             Consumer<Long> addMethod = listOfEntries::add;
             entriesItr.forEachRemaining(addMethod);
-            assertEquals("Number of Entries should be the same even after taking snapshot", numofEntries, listOfEntries.size());
+            assertEquals("Number of Entries should be the same even after taking snapshot", numofEntries,
+                    listOfEntries.size());
             for (int i = 0; i < numofEntries; i++) {
                 assertEquals("listOfEntries should be sorted", new Long(i + 1), listOfEntries.get(i));
             }
@@ -349,7 +351,7 @@ public class TestEntryMemTable implements CacheCallback, SkipListFlusher, Checkp
             assertFalse("After flushing there shouldn't be entries in memtable", entriesItr.hasNext());
         }
     }
-    
+
     @Test
     public void testGetListOfEntriesOfLedgerFromBothKVMapAndSnapshot() throws IOException {
         int numofEntries = 100;
@@ -387,7 +389,7 @@ public class TestEntryMemTable implements CacheCallback, SkipListFlusher, Checkp
             }
         }
     }
-    
+
     @Test
     public void testGetListOfEntriesOfLedgerWhileAddingConcurrently() throws IOException, InterruptedException {
         final int numofEntries = 100;

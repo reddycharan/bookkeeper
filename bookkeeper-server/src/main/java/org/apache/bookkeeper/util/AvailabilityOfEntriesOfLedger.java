@@ -1,4 +1,23 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.bookkeeper.util;
+
+import io.netty.buffer.ByteBuf;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -10,21 +29,18 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.commons.lang3.mutable.MutableObject;
 
-import io.netty.buffer.ByteBuf;
-
-/*
+/**
  * Ordered collection of SequenceGroups will represent entries of the ledger
  * residing in a bookie.
  *
- * In the byte array representation of AvailabilityOfEntriesOfLedger, for
- * the sake of future extensibility it would be helpful to have reserved
- * space for header at the beginning. So the first 64 bytes will be used for
- * header, with the first four bytes specifying the int version number, next
- * four bytes specifying the number of sequencegroups for now and the rest
- * of the bytes in the reserved space will be 0's. The encoded format will
- * be represented after the first 64 bytes. The ordered collection of
- * SequenceGroups will be appended sequentially to this byte array, with
- * each SequenceGroup taking 24 bytes.
+ * <p>In the byte array representation of AvailabilityOfEntriesOfLedger, for the
+ * sake of future extensibility it would be helpful to have reserved space for
+ * header at the beginning. So the first 64 bytes will be used for header, with
+ * the first four bytes specifying the int version number, next four bytes
+ * specifying the number of sequencegroups for now and the rest of the bytes in
+ * the reserved space will be 0's. The encoded format will be represented after
+ * the first 64 bytes. The ordered collection of SequenceGroups will be appended
+ * sequentially to this byte array, with each SequenceGroup taking 24 bytes.
  */
 public class AvailabilityOfEntriesOfLedger {
     public static final long INVALID_ENTRYID = -1;
@@ -165,7 +181,7 @@ public class AvailabilityOfEntriesOfLedger {
         ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
         int headerVersion = headerByteBuf.getInt();
         if (headerVersion >= CURRENT_HEADER_VERSION) {
-            new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
+            throw new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
         }
         int numOfSequenceGroups = headerByteBuf.getInt();
         SequenceGroup newSequenceGroup;
@@ -188,7 +204,7 @@ public class AvailabilityOfEntriesOfLedger {
         ByteBuffer headerByteBuf = ByteBuffer.wrap(header);
         int headerVersion = headerByteBuf.getInt();
         if (headerVersion >= CURRENT_HEADER_VERSION) {
-            new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
+            throw new IllegalArgumentException("Unsupported Header Version: " + headerVersion);
         }
         int numOfSequenceGroups = headerByteBuf.getInt();
         SequenceGroup newSequenceGroup;
@@ -353,8 +369,8 @@ public class AvailabilityOfEntriesOfLedger {
 
     public long getTotalNumOfAvailableEntries() {
         if (!isAvailabilityOfEntriesOfLedgerClosed()) {
-            throw new IllegalStateException(
-                    "AvailabilityOfEntriesOfLedger is not yet closed, it is illegal to call getTotalNumOfAvailableEntries");
+            throw new IllegalStateException("AvailabilityOfEntriesOfLedger is not yet closed,"
+                    + " it is illegal to call getTotalNumOfAvailableEntries");
         }
         return totalNumOfAvailableEntries;
     }

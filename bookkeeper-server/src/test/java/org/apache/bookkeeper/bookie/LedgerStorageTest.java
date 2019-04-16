@@ -36,7 +36,6 @@ import java.util.stream.IntStream;
 
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.api.DigestType;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.proto.checksum.DigestManager;
@@ -283,7 +282,7 @@ public class LedgerStorageTest extends BookKeeperClusterTestCase {
         fi.readHeader();
         return fi;
     }
-    
+
     @Test
     public void testGetListOfEntriesOfLedger() throws Exception {
         ClientConfiguration conf = new ClientConfiguration();

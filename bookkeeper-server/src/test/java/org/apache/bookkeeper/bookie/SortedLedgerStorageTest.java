@@ -25,6 +25,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.buffer.UnpooledByteBufAllocator;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,27 +46,23 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.buffer.UnpooledByteBufAllocator;
-
+/**
+ * Testing SortedLedgerStorage.
+ */
 @RunWith(Parameterized.class)
 public class SortedLedgerStorageTest {
-    private static final Logger LOG = LoggerFactory.getLogger(SortedLedgerStorageTest.class);
 
     TestStatsProvider statsProvider = new TestStatsProvider();
     ServerConfiguration conf = TestBKConfiguration.newServerConfiguration();
     LedgerDirsManager ledgerDirsManager;
     SortedLedgerStorage sortedLedgerStorage = new SortedLedgerStorage();
-    
+
     final long numWrites = 2000;
     final long moreNumOfWrites = 3000;
     final long entriesPerWrite = 2;
     final long numOfLedgers = 5;
-    
+
     @Parameterized.Parameters
     public static Iterable<Boolean> elplSetting() {
         return Arrays.asList(true, false);
@@ -131,7 +131,7 @@ public class SortedLedgerStorageTest {
                 sortedLedgerStorage.addEntry(entry);
             }
         }
-        
+
         for (long ledgerId = 0; ledgerId < numOfLedgers; ledgerId++) {
             OfLong entriesOfLedger = sortedLedgerStorage.getListOfEntriesOfLedger(ledgerId);
             ArrayList<Long> arrayList = new ArrayList<Long>();
@@ -142,12 +142,12 @@ public class SortedLedgerStorageTest {
                 return arrayList.get(i).longValue() == (i * entriesPerWrite);
             }));
         }
-        
+
         nonExistingLedgerId = 456789L;
         entriesItr = sortedLedgerStorage.getListOfEntriesOfLedger(nonExistingLedgerId);
         assertFalse("There shouldn't be any entry", entriesItr.hasNext());
     }
-    
+
     @Test
     public void testGetListOfEntriesOfLedgerAfterFlush() throws IOException {
         // Insert some ledger & entries in the interleaved storage
