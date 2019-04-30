@@ -112,7 +112,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
     // this indicates that a write has happened since the last flush
     private final AtomicBoolean somethingWritten = new AtomicBoolean(false);
 
-    private int entriesPerLedgerEntryPage;
+    private int pageSize;
 
     // Expose Stats
     @StatsDoc(
@@ -202,7 +202,7 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
         ledgerCache = new LedgerCacheImpl(conf, activeLedgers,
                 null == indexDirsManager ? ledgerDirsManager : indexDirsManager, statsLogger);
         gcThread = new GarbageCollectorThread(conf, ledgerManager, this, statsLogger.scope("gc"));
-        entriesPerLedgerEntryPage = conf.getPageSize() / LedgerEntryPage.getIndexEntrySize();
+        pageSize = conf.getPageSize();
         ledgerDirsManager.addLedgerDirsListener(getLedgerDirsListener());
         // Expose Stats
         getOffsetStats = statsLogger.getOpStatsLogger(STORAGE_GET_OFFSET);
@@ -664,54 +664,6 @@ public class InterleavedLedgerStorage implements CompactableLedgerStorage, Entry
 
     @Override
     public OfLong getListOfEntriesOfLedger(long ledgerId) throws IOException {
-        Iterator<LedgerCache.PageEntries> pageEntriesIteratorNonFinal = null;
-        try {
-            pageEntriesIteratorNonFinal = ledgerCache.listEntries(ledgerId).iterator();
-        } catch (Bookie.NoLedgerException noLedgerException) {
-            pageEntriesIteratorNonFinal = Collections.emptyIterator();
-        }
-        final Iterator<LedgerCache.PageEntries> pageEntriesIterator = pageEntriesIteratorNonFinal;
-        return new OfLong() {
-            long[] entriesInCurrentLedgerPage = new long[entriesPerLedgerEntryPage];
-            final MutableInt indOfArrayOfCurrentLedgerPage = new MutableInt(0);
-            {
-                Arrays.fill(entriesInCurrentLedgerPage, INVALID_ENTRYID);
-            }
-
-            @Override
-            public boolean hasNext() {
-                try {
-                    if ((indOfArrayOfCurrentLedgerPage.intValue() == entriesPerLedgerEntryPage)
-                            || entriesInCurrentLedgerPage[indOfArrayOfCurrentLedgerPage
-                                    .intValue()] == INVALID_ENTRYID) {
-                        if (pageEntriesIterator.hasNext()) {
-                            Arrays.fill(entriesInCurrentLedgerPage, INVALID_ENTRYID);
-                            MutableInt tempIndOfArray = new MutableInt(0);
-                            PageEntries pageEntry = pageEntriesIterator.next();
-                            LedgerEntryPage lep = pageEntry.getLEP();
-                            lep.getEntries((entryId, position) -> {
-                                entriesInCurrentLedgerPage[tempIndOfArray.getAndIncrement()] = entryId;
-                                return true;
-                            });
-                            indOfArrayOfCurrentLedgerPage.setValue(0);
-                        }
-                    }
-                    return ((!(indOfArrayOfCurrentLedgerPage.intValue() == entriesPerLedgerEntryPage))
-                            && (entriesInCurrentLedgerPage[indOfArrayOfCurrentLedgerPage
-                                    .intValue()] != INVALID_ENTRYID));
-                } catch (Exception exc) {
-                    throw new RuntimeException(
-                            "Received exception in InterleavedLedgerStorage getEntriesOfLedger hasNext call", exc);
-                }
-            }
-
-            @Override
-            public long nextLong() {
-                if (!hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                return entriesInCurrentLedgerPage[indOfArrayOfCurrentLedgerPage.getAndIncrement()];
-            }
-        };
+        return ledgerCache.getEntriesIterator(ledgerId);
     }
 }
