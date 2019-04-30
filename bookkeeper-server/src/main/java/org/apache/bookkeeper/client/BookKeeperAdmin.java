@@ -81,6 +81,7 @@ import org.apache.bookkeeper.replication.ReplicationException.CompatibilityExcep
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.IOUtils;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
@@ -1664,8 +1665,15 @@ public class BookKeeperAdmin implements AutoCloseable {
                 ackQuorumSize);
     }
 
-    public void asyncGetListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId,
-            GetListOfEntriesOfLedgerCallback callback, Object ctx) {
-        bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId, callback, ctx);
+    /**
+     * 
+     * @param address
+     * @param ledgerId
+     * @param ctx
+     * @return
+     */
+    public CompletableFuture<AvailabilityOfEntriesOfLedger> asyncGetListOfEntriesOfLedger(BookieSocketAddress address,
+            long ledgerId, Object ctx) {
+        return bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId, ctx);
     }
 }

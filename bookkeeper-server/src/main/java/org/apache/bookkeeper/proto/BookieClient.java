@@ -22,6 +22,7 @@ package org.apache.bookkeeper.proto;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.bookkeeper.client.api.WriteFlag;
 import org.apache.bookkeeper.net.BookieSocketAddress;
@@ -32,6 +33,7 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteLacCallback;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.util.ByteBufList;
 
 /**
@@ -216,8 +218,8 @@ public interface BookieClient {
     void getBookieInfo(BookieSocketAddress address, long requested,
                        GetBookieInfoCallback cb, Object ctx);
 
-    void getListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId, GetListOfEntriesOfLedgerCallback cb,
-            Object ctx);
+    CompletableFuture<AvailabilityOfEntriesOfLedger> getListOfEntriesOfLedger(BookieSocketAddress address,
+            long ledgerId, Object ctx);
 
     /**
      * @return whether bookie client object has been closed

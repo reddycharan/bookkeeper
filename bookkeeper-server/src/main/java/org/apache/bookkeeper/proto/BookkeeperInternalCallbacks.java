@@ -34,7 +34,9 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.api.LastConfirmedAndEntry;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
+import org.apache.bookkeeper.client.impl.LastConfirmedAndEntryImpl;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
@@ -114,6 +116,42 @@ public class BookkeeperInternalCallbacks {
     public interface GetListOfEntriesOfLedgerCallback {
         void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
                 AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx);
+    }
+
+    /**
+     * Handle the Response Code and transform it to a BKException.
+     *
+     * @param <T>
+     * @param rc
+     * @param result
+     * @param future
+     */
+    public static <T> void finish(int rc, T result, CompletableFuture<? super T> future) {
+        if (rc != BKException.Code.OK) {
+            future.completeExceptionally(BKException.create(rc).fillInStackTrace());
+        } else {
+            future.complete(result);
+        }
+    }
+
+    public static class FutureGetListOfEntriesOfLedger extends CompletableFuture<AvailabilityOfEntriesOfLedger>
+            implements GetListOfEntriesOfLedgerCallback {
+        private final long ledgerIdOfTheRequest;
+
+        FutureGetListOfEntriesOfLedger(long ledgerId) {
+            this.ledgerIdOfTheRequest = ledgerId;
+        }
+
+        @Override
+        public void getListOfEntriesOfLedgerComplete(int rc, long ledgerIdOfTheResponse,
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
+            if ((rc == BKException.Code.OK) && (ledgerIdOfTheRequest != ledgerIdOfTheResponse)) {
+                LOG.error("For getListOfEntriesOfLedger expected ledgerId in the response: {} actual ledgerId: {}",
+                        ledgerIdOfTheRequest, ledgerIdOfTheResponse);
+                rc = BKException.Code.ReadException;
+                finish(rc, availabilityOfEntriesOfLedger, this);
+            }
+        }
     }
 
     /**
