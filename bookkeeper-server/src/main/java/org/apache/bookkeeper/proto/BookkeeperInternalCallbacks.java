@@ -34,9 +34,7 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.client.LedgerEntry;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.client.api.LastConfirmedAndEntry;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
-import org.apache.bookkeeper.client.impl.LastConfirmedAndEntryImpl;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
@@ -115,7 +113,7 @@ public class BookkeeperInternalCallbacks {
      */
     public interface GetListOfEntriesOfLedgerCallback {
         void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
-                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx);
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger);
     }
 
     /**
@@ -134,6 +132,9 @@ public class BookkeeperInternalCallbacks {
         }
     }
 
+    /**
+     * Future for GetListOfEntriesOfLedger.
+     */
     public static class FutureGetListOfEntriesOfLedger extends CompletableFuture<AvailabilityOfEntriesOfLedger>
             implements GetListOfEntriesOfLedgerCallback {
         private final long ledgerIdOfTheRequest;
@@ -144,7 +145,7 @@ public class BookkeeperInternalCallbacks {
 
         @Override
         public void getListOfEntriesOfLedgerComplete(int rc, long ledgerIdOfTheResponse,
-                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
+                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger) {
             if ((rc == BKException.Code.OK) && (ledgerIdOfTheRequest != ledgerIdOfTheResponse)) {
                 LOG.error("For getListOfEntriesOfLedger expected ledgerId in the response: {} actual ledgerId: {}",
                         ledgerIdOfTheRequest, ledgerIdOfTheResponse);

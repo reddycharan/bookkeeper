@@ -71,7 +71,6 @@ import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.replication.AuditorElector;
@@ -1668,7 +1667,7 @@ public class BookKeeperAdmin implements AutoCloseable {
     /**
      * Makes async request for getting list of entries of ledger from a bookie
      * and returns Future for the result.
-     * 
+     *
      * @param address
      *            BookieSocketAddress of the bookie
      * @param ledgerId

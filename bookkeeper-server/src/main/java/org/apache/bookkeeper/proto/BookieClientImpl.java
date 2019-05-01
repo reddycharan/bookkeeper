@@ -60,7 +60,6 @@ import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ForceLedgerCallba
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.FutureGetListOfEntriesOfLedger;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetBookieInfoCallback;
-import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GetListOfEntriesOfLedgerCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadEntryCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.ReadLacCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
@@ -322,26 +321,27 @@ public class BookieClientImpl implements BookieClient, PerChannelBookieClientFac
     }
 
     @Override
-    public CompletableFuture<AvailabilityOfEntriesOfLedger> getListOfEntriesOfLedger(BookieSocketAddress address, long ledgerId, Object ctx) {
+    public CompletableFuture<AvailabilityOfEntriesOfLedger> getListOfEntriesOfLedger(BookieSocketAddress address,
+            long ledgerId) {
         FutureGetListOfEntriesOfLedger futureResult = new FutureGetListOfEntriesOfLedger(ledgerId);
         final PerChannelBookieClientPool client = lookupClient(address);
         if (client == null) {
-            futureResult.getListOfEntriesOfLedgerComplete(getRc(BKException.Code.BookieHandleNotAvailableException), ledgerId,
-                    null, ctx);
+            futureResult.getListOfEntriesOfLedgerComplete(getRc(BKException.Code.BookieHandleNotAvailableException),
+                    ledgerId, null);
             return futureResult;
         }
         client.obtain((rc, pcbc) -> {
             if (rc != BKException.Code.OK) {
                 try {
                     executor.executeOrdered(ledgerId, safeRun(() -> {
-                        futureResult.getListOfEntriesOfLedgerComplete(rc, ledgerId, null, ctx);
+                        futureResult.getListOfEntriesOfLedgerComplete(rc, ledgerId, null);
                     }));
                 } catch (RejectedExecutionException re) {
-                    futureResult.getListOfEntriesOfLedgerComplete(getRc(BKException.Code.InterruptedException), ledgerId, null,
-                            ctx);
+                    futureResult.getListOfEntriesOfLedgerComplete(getRc(BKException.Code.InterruptedException),
+                            ledgerId, null);
                 }
             } else {
-                pcbc.getListOfEntriesOfLedger(ledgerId, futureResult, ctx);
+                pcbc.getListOfEntriesOfLedger(ledgerId, futureResult);
             }
         }, ledgerId);
         return futureResult;

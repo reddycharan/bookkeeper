@@ -101,7 +101,7 @@ public class IteratorUtility {
     /**
      * Merges two sorted iterators and returns merged iterator sorted using
      * comparator. It uses 'function' to convert T type to long, to return long
-     * iterator. 
+     * iterator.
      * It expects
      *  - input iterators to be sorted
      *  - input iterators to be non-repetitive for merged iterator to be non-repetitive

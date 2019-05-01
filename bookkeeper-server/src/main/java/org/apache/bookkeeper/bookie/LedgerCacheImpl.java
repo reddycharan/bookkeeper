@@ -234,6 +234,5 @@ public class LedgerCacheImpl implements LedgerCache {
                 return entriesInCurrentLEPIterator.nextLong();
             }
         };
-    
     }
 }
