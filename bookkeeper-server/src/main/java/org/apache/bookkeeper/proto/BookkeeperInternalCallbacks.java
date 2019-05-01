@@ -149,8 +149,8 @@ public class BookkeeperInternalCallbacks {
                 LOG.error("For getListOfEntriesOfLedger expected ledgerId in the response: {} actual ledgerId: {}",
                         ledgerIdOfTheRequest, ledgerIdOfTheResponse);
                 rc = BKException.Code.ReadException;
-                finish(rc, availabilityOfEntriesOfLedger, this);
             }
+            finish(rc, availabilityOfEntriesOfLedger, this);
         }
     }
 

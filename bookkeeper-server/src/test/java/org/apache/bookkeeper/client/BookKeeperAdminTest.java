@@ -426,7 +426,7 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
         try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
             for (int i = 0; i < bs.size(); i++) {
                 CompletableFuture<AvailabilityOfEntriesOfLedger> futureResult = bkAdmin
-                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), nonExistingLedgerId, null);
+                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), nonExistingLedgerId);
                 try {
                     futureResult.get();
                     fail("asyncGetListOfEntriesOfLedger is supposed to be failed with NoSuchLedgerExistsException");
@@ -455,39 +455,11 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
         try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
             for (int i = 0; i < bs.size(); i++) {
                 CompletableFuture<AvailabilityOfEntriesOfLedger> futureResult = bkAdmin
-                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId, null);
+                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId);
                 AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = futureResult.get();
                 assertEquals("Number of entries", numOfEntries,
                         availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
             }
-            /*
-            MutableInt rcRetValue = new MutableInt();
-            MutableLong callbackLedgerId = new MutableLong();
-            MutableObject<AvailabilityOfEntriesOfLedger> callbackAvailabilityOfEntriesOfLedger = new MutableObject<>();
-            MutableObject<BookieSocketAddress> callbackCtx = new MutableObject<BookieSocketAddress>();
-            for (int i = 0; i < bs.size(); i++) {
-                CountDownLatch latch = new CountDownLatch(1);
-                bkAdmin.asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId,
-                        new GetListOfEntriesOfLedgerCallback() {
-                            @Override
-                            public void getListOfEntriesOfLedgerComplete(int rc, long ledgerId,
-                                    AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger, Object ctx) {
-                                rcRetValue.setValue(rc);
-                                callbackLedgerId.setValue(ledgerId);
-                                callbackAvailabilityOfEntriesOfLedger.setValue(availabilityOfEntriesOfLedger);
-                                callbackCtx.setValue((BookieSocketAddress) ctx);
-                                latch.countDown();
-                            }
-                        }, bs.get(i).getLocalAddress());
-                latch.await();
-                assertEquals("returned RC value", BKException.Code.OK, rcRetValue.getValue().intValue());
-                assertEquals("LedgerId", lId, callbackLedgerId.getValue().longValue());
-                AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = callbackAvailabilityOfEntriesOfLedger
-                        .getValue();
-                assertEquals("Number of entries", numOfEntries,
-                        availabilityOfEntriesOfLedger.getTotalNumOfAvailableEntries());
-                assertEquals("Context object", bs.get(i).getLocalAddress(), callbackCtx.getValue());
-            }*/
         }
         bkc.close();
     }
@@ -511,7 +483,7 @@ public class BookKeeperAdminTest extends BookKeeperClusterTestCase {
         try (BookKeeperAdmin bkAdmin = new BookKeeperAdmin(zkUtil.getZooKeeperConnectString())) {
             for (int i = 0; i < bs.size(); i++) {
                 CompletableFuture<AvailabilityOfEntriesOfLedger> futureResult = bkAdmin
-                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId, null);
+                        .asyncGetListOfEntriesOfLedger(bs.get(i).getLocalAddress(), lId);
                 AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = futureResult.get();
                 /*
                  * since num of bookies in the ensemble is 2 and

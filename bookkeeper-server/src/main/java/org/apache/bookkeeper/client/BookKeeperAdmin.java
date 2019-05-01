@@ -1666,14 +1666,17 @@ public class BookKeeperAdmin implements AutoCloseable {
     }
 
     /**
+     * Makes async request for getting list of entries of ledger from a bookie
+     * and returns Future for the result.
      * 
      * @param address
+     *            BookieSocketAddress of the bookie
      * @param ledgerId
-     * @param ctx
-     * @return
+     *            ledgerId
+     * @return returns Future
      */
     public CompletableFuture<AvailabilityOfEntriesOfLedger> asyncGetListOfEntriesOfLedger(BookieSocketAddress address,
-            long ledgerId, Object ctx) {
-        return bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId, ctx);
+            long ledgerId) {
+        return bkc.getBookieClient().getListOfEntriesOfLedger(address, ledgerId);
     }
 }

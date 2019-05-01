@@ -261,7 +261,7 @@ public class MockBookieClient implements BookieClient {
 
     @Override
     public CompletableFuture<AvailabilityOfEntriesOfLedger> getListOfEntriesOfLedger(BookieSocketAddress address,
-            long ledgerId, Object ctx) {
+            long ledgerId) {
         FutureGetListOfEntriesOfLedger futureResult = new FutureGetListOfEntriesOfLedger(ledgerId);
         executor.executeOrdered(address, safeRun(() -> {
             futureResult

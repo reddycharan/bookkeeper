@@ -218,8 +218,18 @@ public interface BookieClient {
     void getBookieInfo(BookieSocketAddress address, long requested,
                        GetBookieInfoCallback cb, Object ctx);
 
+    /**
+     * Makes async request for getting list of entries of ledger from a bookie
+     * and returns Future for the result.
+     * 
+     * @param address
+     *            BookieSocketAddress of the bookie
+     * @param ledgerId
+     *            ledgerId
+     * @return returns Future
+     */
     CompletableFuture<AvailabilityOfEntriesOfLedger> getListOfEntriesOfLedger(BookieSocketAddress address,
-            long ledgerId, Object ctx);
+            long ledgerId);
 
     /**
      * @return whether bookie client object has been closed
