@@ -97,6 +97,7 @@ public interface BookKeeperClientStats {
 
     // placementpolicy stats
     String NUM_WRITABLE_BOOKIES_IN_DEFAULT_RACK = "NUM_WRITABLE_BOOKIES_IN_DEFAULT_RACK";
+    String NUM_WRITABLE_BOOKIES_IN_DEFAULT_FAULTDOMAIN = "NUM_WRITABLE_BOOKIES_IN_DEFAULT_FAULTDOMAIN";
 
     OpStatsLogger getCreateOpLogger();
     OpStatsLogger getOpenOpLogger();

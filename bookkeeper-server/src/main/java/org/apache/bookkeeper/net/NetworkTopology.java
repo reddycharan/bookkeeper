@@ -27,6 +27,7 @@ public interface NetworkTopology {
 
     String DEFAULT_REGION = "/default-region";
     String DEFAULT_RACK = "/default-rack";
+    String DEFAULT_ZONE_UD = "/defaultzone/defaultud";
     String DEFAULT_REGION_AND_RACK = DEFAULT_REGION + DEFAULT_RACK;
 
     /**
