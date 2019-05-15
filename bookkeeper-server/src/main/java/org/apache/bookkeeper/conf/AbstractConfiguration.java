@@ -165,6 +165,12 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     // ignore usage of local node in the internal logic of placement policy
     public static final String IGNORE_LOCAL_NODE_IN_PLACEMENT_POLICY = "ignoreLocalNodeInPlacementPolicy";
 
+    // minimum number of zones per write quorum in ZoneAwarePlacementPolicy
+    public static final String MIN_NUM_ZONES_PER_WRITE_QUORUM = "minNumZonesPerWriteQuorum";
+
+    // desired number of zones per write quorum in ZoneAwarePlacementPolicy
+    public static final String DESIRED_NUM_ZONES_PER_WRITE_QUORUM = "desiredNumZonesPerWriteQuorum";
+
     // Allocator configuration
     protected static final String ALLOCATOR_POOLING_POLICY = "allocatorPoolingPolicy";
     protected static final String ALLOCATOR_POOLING_CONCURRENCY = "allocatorPoolingConcurrency";
@@ -833,6 +839,38 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      */
     public int getMinNumRacksPerWriteQuorum() {
         return getInteger(MIN_NUM_RACKS_PER_WRITE_QUORUM, 2);
+    }
+
+    /**
+     * Set the minimum number of zones per write quorum in
+     * ZoneAwarePlacementPolicy.
+     */
+    public void setMinNumZonesPerWriteQuorum(int minNumZonesPerWriteQuorum) {
+        setProperty(MIN_NUM_ZONES_PER_WRITE_QUORUM, minNumZonesPerWriteQuorum);
+    }
+
+    /**
+     * Get the minimum number of zones per write quorum in
+     * ZoneAwarePlacementPolicy.
+     */
+    public int getMinNumZonesPerWriteQuorum() {
+        return getInteger(MIN_NUM_ZONES_PER_WRITE_QUORUM, 2);
+    }
+
+    /**
+     * Set the desired number of zones per write quorum in
+     * ZoneAwarePlacementPolicy.
+     */
+    public void setDesiredNumZonesPerWriteQuorum(int desiredNumZonesPerWriteQuorum) {
+        setProperty(DESIRED_NUM_ZONES_PER_WRITE_QUORUM, desiredNumZonesPerWriteQuorum);
+    }
+
+    /**
+     * Get the desired number of zones per write quorum in
+     * ZoneAwarePlacementPolicy.
+     */
+    public int getDesiredNumZonesPerWriteQuorum() {
+        return getInteger(DESIRED_NUM_ZONES_PER_WRITE_QUORUM, 3);
     }
 
     /**

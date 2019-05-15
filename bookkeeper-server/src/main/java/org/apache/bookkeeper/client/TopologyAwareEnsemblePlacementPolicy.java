@@ -746,6 +746,31 @@ abstract class TopologyAwareEnsemblePlacementPolicy implements
         }
     }
 
+    @Override
+    public void updateBookieInfo(Map<BookieSocketAddress, BookieInfo> bookieInfoMap) {
+        if (!isWeighted) {
+            LOG.info("bookieFreeDiskInfo callback called even without weighted placement policy being used.");
+            return;
+        }
+        rwLock.writeLock().lock();
+        try {
+            List<BookieNode> allBookies = new ArrayList<BookieNode>(knownBookies.values());
+            // create a new map to reflect the new mapping
+            Map<BookieNode, WeightedObject> map = new HashMap<BookieNode, WeightedObject>();
+            for (BookieNode bookie : allBookies) {
+                if (bookieInfoMap.containsKey(bookie.getAddr())) {
+                    map.put(bookie, bookieInfoMap.get(bookie.getAddr()));
+                } else {
+                    map.put(bookie, new BookieInfo());
+                }
+            }
+            this.bookieInfoMap = map;
+            this.weightedSelection.updateMap(this.bookieInfoMap);
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
     protected BookieNode createBookieNode(BookieSocketAddress addr) {
         return new BookieNode(addr, resolveNetworkLocation(addr));
     }
