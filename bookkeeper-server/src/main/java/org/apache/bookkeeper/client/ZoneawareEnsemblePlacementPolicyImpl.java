@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
@@ -49,12 +51,14 @@ import org.apache.bookkeeper.net.DNSToSwitchMapping;
 import org.apache.bookkeeper.net.NetworkTopology;
 import org.apache.bookkeeper.net.NetworkTopologyImpl;
 import org.apache.bookkeeper.net.Node;
+import org.apache.bookkeeper.net.NodeBase;
 import org.apache.bookkeeper.net.ScriptBasedMapping;
 import org.apache.bookkeeper.net.StabilizeNetworkTopology;
 import org.apache.bookkeeper.stats.Counter;
 import org.apache.bookkeeper.stats.Gauge;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.annotations.StatsDoc;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,16 +69,19 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     static final Logger LOG = LoggerFactory.getLogger(ZoneawareEnsemblePlacementPolicyImpl.class);
     public static final String REPP_DNS_RESOLVER_CLASS = "reppDnsResolverClass";
-    private String defaultFaultDomain = NetworkTopology.DEFAULT_ZONE_UD;
+    public static final String UNKNOWN_ZONE = "UnknownZone";
+    private String defaultFaultDomain = NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN;
     protected StatsLogger statsLogger = null;
     // Use a loading cache so slow bookies are expired. Use entryId as values.
     protected Cache<BookieSocketAddress, Long> slowBookies;
     protected BookieNode localNode = null;
+    protected String myZone = null;
     protected boolean reorderReadsRandom = false;
     protected int stabilizePeriodSeconds = 0;
     protected int reorderThresholdPendingRequests = 0;
     protected int maxWeightMultiple;
     protected HashedWheelTimer timer;
+    protected final ConcurrentMap<BookieSocketAddress, NodePlacementInZone> address2NodePlacement;
 
     @StatsDoc(
             name = FAILED_TO_RESOLVE_NETWORK_LOCATION_COUNTER,
@@ -87,10 +94,78 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     )
     protected Gauge<Integer> numWritableBookiesInDefaultFaultDomain;
 
+    /**
+     * Zone and UpgradeDomain pair of a node.
+     */
+    public static class NodePlacementInZone {
+        private final String zone;
+        private final String upgradeDomain;
+        private final String repString;
+
+        public NodePlacementInZone(String zone, String upgradeDomain) {
+            this.zone = zone;
+            this.upgradeDomain = upgradeDomain;
+            repString = zone + NodeBase.PATH_SEPARATOR_STR + upgradeDomain;
+        }
+
+        public String getZone() {
+            return zone;
+        }
+
+        public String getUpgradeDomain() {
+            return upgradeDomain;
+        }
+
+        @Override
+        public int hashCode() {
+            return repString.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return ((obj instanceof NodePlacementInZone) && repString.equals(((NodePlacementInZone) obj).repString));
+        }
+    }
+
+    public static final NodePlacementInZone UNKNOWN_NODEPLACEMENT = new NodePlacementInZone(
+            NetworkTopology.DEFAULT_ZONE.replace(NodeBase.PATH_SEPARATOR_STR, ""),
+            NetworkTopology.DEFAULT_UPGRADEDOMAIN.replace(NodeBase.PATH_SEPARATOR_STR, ""));
+
+    ZoneawareEnsemblePlacementPolicyImpl() {
+        super();
+        address2NodePlacement = new ConcurrentHashMap<BookieSocketAddress, NodePlacementInZone>();
+    }
+
+    protected NodePlacementInZone getNodePlacementInZone(BookieSocketAddress addr) {
+        NodePlacementInZone nodePlacement = address2NodePlacement.get(addr);
+        if (null == nodePlacement) {
+            String networkLocation = resolveNetworkLocation(addr);
+            if (NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN.equals(networkLocation)) {
+                nodePlacement = UNKNOWN_NODEPLACEMENT;
+            } else {
+                String[] parts = StringUtils.split(NodeBase.normalize(networkLocation), NodeBase.PATH_SEPARATOR);
+                if (parts.length <= 1) {
+                    nodePlacement = UNKNOWN_NODEPLACEMENT;
+                } else {
+                    nodePlacement = new NodePlacementInZone(parts[0], parts[1]);
+                }
+            }
+            address2NodePlacement.putIfAbsent(addr, nodePlacement);
+        }
+        return nodePlacement;
+    }
+
+    protected NodePlacementInZone getLocalNodePlacementInZone(BookieNode node) {
+        if (null == node || null == node.getAddr()) {
+            return UNKNOWN_NODEPLACEMENT;
+        }
+        return getNodePlacementInZone(node.getAddr());
+    }
+
     @Override
     public EnsemblePlacementPolicy initialize(ClientConfiguration conf,
-            Optional<DNSToSwitchMapping> optionalDnsResolver, HashedWheelTimer timer,
-            FeatureProvider featureProvider, StatsLogger statsLogger) {
+            Optional<DNSToSwitchMapping> optionalDnsResolver, HashedWheelTimer timer, FeatureProvider featureProvider,
+            StatsLogger statsLogger) {
         this.statsLogger = statsLogger;
         this.timer = timer;
         this.bookiesJoinedCounter = statsLogger.getOpStatsLogger(BOOKIES_JOINED);
@@ -145,6 +220,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         }
         try {
             localNode = createBookieNode(new BookieSocketAddress(InetAddress.getLocalHost().getHostAddress(), 0));
+            myZone = getLocalNodePlacementInZone(localNode).getZone();
         } catch (UnknownHostException e) {
             LOG.error("Failed to get local host address : ", e);
             throw new RuntimeException(e);
@@ -233,24 +309,19 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     @Override
     public void registerSlowBookie(BookieSocketAddress bookieSocketAddress, long entryId) {
-     // TODO Auto-generated method stub
+        // TODO Auto-generated method stub
     }
 
     @Override
-    public DistributionSchedule.WriteSet reorderReadSequence(
-            List<BookieSocketAddress> ensemble,
-            BookiesHealthInfo bookiesHealthInfo,
-            DistributionSchedule.WriteSet writeSet) {
+    public DistributionSchedule.WriteSet reorderReadSequence(List<BookieSocketAddress> ensemble,
+            BookiesHealthInfo bookiesHealthInfo, DistributionSchedule.WriteSet writeSet) {
         return writeSet;
     }
 
     @Override
-    public DistributionSchedule.WriteSet reorderReadLACSequence(
-            List<BookieSocketAddress> ensemble,
-            BookiesHealthInfo bookiesHealthInfo,
-            DistributionSchedule.WriteSet writeSet) {
-        DistributionSchedule.WriteSet retList = reorderReadSequence(
-                ensemble, bookiesHealthInfo, writeSet);
+    public DistributionSchedule.WriteSet reorderReadLACSequence(List<BookieSocketAddress> ensemble,
+            BookiesHealthInfo bookiesHealthInfo, DistributionSchedule.WriteSet writeSet) {
+        DistributionSchedule.WriteSet retList = reorderReadSequence(ensemble, bookiesHealthInfo, writeSet);
         retList.addMissingIndices(ensemble.size());
         return retList;
     }
