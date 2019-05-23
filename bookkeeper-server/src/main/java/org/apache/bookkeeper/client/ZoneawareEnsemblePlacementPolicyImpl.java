@@ -346,13 +346,9 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         return excludedZonesString.toString();
     }
 
-    Set<BookieSocketAddress> getBookiesToConsiderAfterExcludingZones(int ensembleSize, int writeQuorumSize,
-            List<BookieSocketAddress> currentEnsemble, BookieSocketAddress bookieToReplace,
-            Set<BookieSocketAddress> excludeBookies, Set<String> excludeZones) {
-        Set<BookieSocketAddress> bookiesToConsiderAfterExcludingUDs = new HashSet<BookieSocketAddress>();
-        int bookieToReplaceIndex = currentEnsemble.indexOf(bookieToReplace);
-        Set<Node> leaves = topology.getLeaves(getExcludedZonesString(excludeZones));
+    Set<BookieSocketAddress> getBookiesToConsider(String excludedZonesString, Set<BookieSocketAddress> excludeBookies) {
         Set<BookieSocketAddress> bookiesToConsider = new HashSet<BookieSocketAddress>();
+        Set<Node> leaves = topology.getLeaves(excludedZonesString);
         for (Node leaf : leaves) {
             BookieSocketAddress bookieAddr = ((BookieNode) leaf).getAddr();
             if (excludeBookies.contains(bookieAddr)) {
@@ -360,58 +356,64 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             }
             bookiesToConsider.add(bookieAddr);
         }
-        if (!bookiesToConsider.isEmpty()) {
-            Set<String> zonesToConsider = getZonesOfBookies(bookiesToConsider);
-            HashMap<String, Set<String>> excludingUDsOfZonesToConsider = new HashMap<String, Set<String>>();
+        return bookiesToConsider;
+    }
+
+    Set<BookieSocketAddress> getBookiesToConsiderAfterExcludingZones(int ensembleSize, int writeQuorumSize,
+            List<BookieSocketAddress> currentEnsemble, BookieSocketAddress bookieToReplace,
+            Set<BookieSocketAddress> excludeBookies, Set<String> excludeZones) {
+        Set<BookieSocketAddress> bookiesToConsiderAfterExcludingZonesAndUDs = new HashSet<BookieSocketAddress>();
+        HashMap<String, Set<String>> excludingUDsOfZonesToConsider = new HashMap<String, Set<String>>();
+        int bookieToReplaceIndex = currentEnsemble.indexOf(bookieToReplace);
+        Set<BookieSocketAddress> bookiesToConsiderAfterExcludingZones = getBookiesToConsider(
+                getExcludedZonesString(excludeZones), excludeBookies);
+
+        if (!bookiesToConsiderAfterExcludingZones.isEmpty()) {
+            Set<String> zonesToConsider = getZonesOfBookies(bookiesToConsiderAfterExcludingZones);
             for (String zoneToConsider : zonesToConsider) {
                 Set<String> upgradeDomainsOfAZoneInNeighboringNodes = getUpgradeDomainsOfAZoneInNeighboringNodes(
                         currentEnsemble, bookieToReplaceIndex, writeQuorumSize, zoneToConsider);
                 excludingUDsOfZonesToConsider.put(zoneToConsider, upgradeDomainsOfAZoneInNeighboringNodes);
             }
-            
-            for(BookieSocketAddress bookieToConsider : bookiesToConsider){
-                NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieToConsider);
-                if (excludingUDsOfZonesToConsider.get(nodePlacement.getZone())
-                        .contains(nodePlacement.getUpgradeDomain())) {
-                    continue;
-                }
-                bookiesToConsiderAfterExcludingUDs.add(bookieToConsider);
-            }
-            
-            if (bookiesToConsiderAfterExcludingUDs.isEmpty()) {
+
+            updateBookiesToConsiderAfterExcludingZonesAndUDs(bookiesToConsiderAfterExcludingZonesAndUDs,
+                    bookiesToConsiderAfterExcludingZones, excludingUDsOfZonesToConsider);
+
+            if (bookiesToConsiderAfterExcludingZonesAndUDs.isEmpty()) {
                 excludingUDsOfZonesToConsider.clear();
                 for (String zoneToConsider : zonesToConsider) {
                     Set<String> udsToExcludeToMaintainMinUDsInWriteQuorums = getUDsToExcludeToMaintainMinUDsInWriteQuorums(
                             currentEnsemble, bookieToReplaceIndex, writeQuorumSize, zoneToConsider);
                     excludingUDsOfZonesToConsider.put(zoneToConsider, udsToExcludeToMaintainMinUDsInWriteQuorums);
                 }
-                
-                for(BookieSocketAddress bookieToConsider : bookiesToConsider){
-                    NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieToConsider);
-                    if (excludingUDsOfZonesToConsider.get(nodePlacement.getZone())
-                            .contains(nodePlacement.getUpgradeDomain())) {
-                        continue;
-                    }
-                    bookiesToConsiderAfterExcludingUDs.add(bookieToConsider);
-                }
+
+                updateBookiesToConsiderAfterExcludingZonesAndUDs(bookiesToConsiderAfterExcludingZonesAndUDs,
+                        bookiesToConsiderAfterExcludingZones, excludingUDsOfZonesToConsider);
             }
         }
-        return bookiesToConsiderAfterExcludingUDs;
+        return bookiesToConsiderAfterExcludingZonesAndUDs;
+    }
+
+    void updateBookiesToConsiderAfterExcludingZonesAndUDs(Set<BookieSocketAddress> bookiesToConsiderAfterExcludingUDs,
+            Set<BookieSocketAddress> bookiesToConsider, HashMap<String, Set<String>> excludingUDsOfZonesToConsider) {
+        for (BookieSocketAddress bookieToConsider : bookiesToConsider) {
+            NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieToConsider);
+            if (excludingUDsOfZonesToConsider.get(nodePlacement.getZone()).contains(nodePlacement.getUpgradeDomain())) {
+                continue;
+            }
+            bookiesToConsiderAfterExcludingUDs.add(bookieToConsider);
+        }
     }
 
     Set<String> getZonesOfNeighboringNodesInEnsemble(List<BookieSocketAddress> currentEnsemble, int indexOfNode,
             int numOfNeighboringNodes) {
         Set<String> zonesOfNeighboringNodes = new HashSet<String>();
         int ensembleSize = currentEnsemble.size();
-        for (int i = 1; i <= numOfNeighboringNodes; i++) {
-            int index = (indexOfNode + i) % ensembleSize;
-            BookieSocketAddress addrofNode = currentEnsemble.get(index);
-            String zoneOfNode = getNodePlacementInZone(addrofNode).getZone();
-            zonesOfNeighboringNodes.add(zoneOfNode);
-        }
-
-        for (int i = 1; i <= numOfNeighboringNodes; i++) {
-            int index = ((indexOfNode - i) + ensembleSize) % ensembleSize;
+        for (int i = (-1 * numOfNeighboringNodes); i <= numOfNeighboringNodes; i++) {
+            if (i == 0) {
+                continue;
+            }
+            int index = (indexOfNode + i + ensembleSize) % ensembleSize;
             BookieSocketAddress addrofNode = currentEnsemble.get(index);
             String zoneOfNode = getNodePlacementInZone(addrofNode).getZone();
             zonesOfNeighboringNodes.add(zoneOfNode);
@@ -435,8 +437,15 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                 NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieAddr);
                 zonesInWriteQuorum.add(nodePlacement.getZone());
             }
-            if (zonesInWriteQuorum.size() == 1) {
+            if (zonesInWriteQuorum.size() == (minNumZonesPerWriteQuorum - 1)) {
                 zonesToExclude.addAll(zonesInWriteQuorum);
+            } else if (zonesInWriteQuorum.size() < (minNumZonesPerWriteQuorum - 1)) {
+                LOG.error(
+                        "For Ensemble: {} WriteQuorum of size: {} starting at: {} doesn't"
+                                + " maintain minNumZonesPerWriteQuorum: {}",
+                        currentEnsemble, writeQuorumSize, ((i + indexOfNode + ensSize) % ensSize),
+                        minNumZonesPerWriteQuorum);
+                throw new IllegalStateException("WriteQuorum doesn't maintain minNumZonesPerWriteQuorum");
             }
         }
         return zonesToExclude;
