@@ -39,13 +39,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
+import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementResult;
+import org.apache.bookkeeper.client.WeightedRandomSelection.WeightedObject;
 import org.apache.bookkeeper.common.util.ReflectionUtils;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.Configurable;
@@ -76,6 +79,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     public static final String REPP_DNS_RESOLVER_CLASS = "reppDnsResolverClass";
     public static final String UNKNOWN_ZONE = "UnknownZone";
     private String defaultFaultDomain = NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN;
+    private final Random rand;
     protected StatsLogger statsLogger = null;
     // Use a loading cache so slow bookies are expired. Use entryId as values.
     protected Cache<BookieSocketAddress, Long> slowBookies;
@@ -141,6 +145,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     ZoneawareEnsemblePlacementPolicyImpl() {
         super();
         address2NodePlacement = new ConcurrentHashMap<BookieSocketAddress, NodePlacementInZone>();
+        rand = new Random(System.currentTimeMillis());
     }
 
     protected NodePlacementInZone getNodePlacementInZone(BookieSocketAddress addr) {
@@ -319,7 +324,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         try {
             Set<String> zonesToExclude = getZonesOfNeighboringNodesInEnsemble(currentEnsemble, bookieToReplaceIndex,
                     (desiredNumZonesPerWriteQuorumForThisEnsemble - 1));
-            Set<BookieSocketAddress> bookiesToConsiderAfterExcludingUDs = getBookiesToConsiderAfterExcludingZones(
+            Set<BookieNode> bookiesToConsiderAfterExcludingUDs = getBookiesToConsiderAfterExcludingZones(
                     ensembleSize, writeQuorumSize, currentEnsemble, bookieToReplace, excludeBookies, zonesToExclude);
 
             if (bookiesToConsiderAfterExcludingUDs.isEmpty()) {
@@ -334,10 +339,8 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                         bookieToReplace, currentEnsemble, excludeBookies);
                 throw new BKNotEnoughBookiesException();
             }
-            
-            weightedSelection.getNextRandom(bookiesToConsiderAfterExcludingUDs);
-            
-            BookieSocketAddress candidateAddr = candidate.getAddr();
+
+            BookieSocketAddress candidateAddr = selectCandidateNode(bookiesToConsiderAfterExcludingUDs).getAddr();
             List<BookieSocketAddress> newEnsemble = new ArrayList<BookieSocketAddress>(currentEnsemble);
             if (currentEnsemble.isEmpty()) {
                 /*
@@ -350,11 +353,27 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             }
             return PlacementResult.of(candidateAddr,
                     isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
-            
-            return null;
         } finally {
             rwLock.readLock().unlock();
         }
+    }
+
+    BookieNode selectCandidateNode(Set<BookieNode> bookiesToConsiderAfterExcludingUDs) {
+        BookieNode candidate = null;
+        if (!this.isWeighted) {
+            int randSelIndex = rand.nextInt(bookiesToConsiderAfterExcludingUDs.size());
+            int ind = 0;
+            for (BookieNode bookieNode : bookiesToConsiderAfterExcludingUDs) {
+                if (ind == randSelIndex) {
+                    candidate = bookieNode;
+                    break;
+                }
+                ind++;
+            }
+        } else {
+            candidate = weightedSelection.getNextRandom(bookiesToConsiderAfterExcludingUDs);
+        }
+        return candidate;
     }
 
     String getExcludedZonesString(Set<String> excludeZones) {
@@ -370,26 +389,26 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         return excludedZonesString.toString();
     }
 
-    Set<BookieSocketAddress> getBookiesToConsider(String excludedZonesString, Set<BookieSocketAddress> excludeBookies) {
-        Set<BookieSocketAddress> bookiesToConsider = new HashSet<BookieSocketAddress>();
+    Set<BookieNode> getBookiesToConsider(String excludedZonesString, Set<BookieSocketAddress> excludeBookies) {
+        Set<BookieNode> bookiesToConsider = new HashSet<BookieNode>();
         Set<Node> leaves = topology.getLeaves(excludedZonesString);
         for (Node leaf : leaves) {
-            BookieSocketAddress bookieAddr = ((BookieNode) leaf).getAddr();
-            if (excludeBookies.contains(bookieAddr)) {
+            BookieNode bookieNode = ((BookieNode) leaf);
+            if (excludeBookies.contains(bookieNode.getAddr())) {
                 continue;
             }
-            bookiesToConsider.add(bookieAddr);
+            bookiesToConsider.add(bookieNode);
         }
         return bookiesToConsider;
     }
 
-    Set<BookieSocketAddress> getBookiesToConsiderAfterExcludingZones(int ensembleSize, int writeQuorumSize,
+    Set<BookieNode> getBookiesToConsiderAfterExcludingZones(int ensembleSize, int writeQuorumSize,
             List<BookieSocketAddress> currentEnsemble, BookieSocketAddress bookieToReplace,
             Set<BookieSocketAddress> excludeBookies, Set<String> excludeZones) {
-        Set<BookieSocketAddress> bookiesToConsiderAfterExcludingZonesAndUDs = new HashSet<BookieSocketAddress>();
+        Set<BookieNode> bookiesToConsiderAfterExcludingZonesAndUDs = new HashSet<BookieNode>();
         HashMap<String, Set<String>> excludingUDsOfZonesToConsider = new HashMap<String, Set<String>>();
         int bookieToReplaceIndex = currentEnsemble.indexOf(bookieToReplace);
-        Set<BookieSocketAddress> bookiesToConsiderAfterExcludingZones = getBookiesToConsider(
+        Set<BookieNode> bookiesToConsiderAfterExcludingZones = getBookiesToConsider(
                 getExcludedZonesString(excludeZones), excludeBookies);
 
         if (!bookiesToConsiderAfterExcludingZones.isEmpty()) {
@@ -418,10 +437,10 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         return bookiesToConsiderAfterExcludingZonesAndUDs;
     }
 
-    void updateBookiesToConsiderAfterExcludingZonesAndUDs(Set<BookieSocketAddress> bookiesToConsiderAfterExcludingUDs,
-            Set<BookieSocketAddress> bookiesToConsider, HashMap<String, Set<String>> excludingUDsOfZonesToConsider) {
-        for (BookieSocketAddress bookieToConsider : bookiesToConsider) {
-            NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieToConsider);
+    void updateBookiesToConsiderAfterExcludingZonesAndUDs(Set<BookieNode> bookiesToConsiderAfterExcludingUDs,
+            Set<BookieNode> bookiesToConsider, HashMap<String, Set<String>> excludingUDsOfZonesToConsider) {
+        for (BookieNode bookieToConsider : bookiesToConsider) {
+            NodePlacementInZone nodePlacement = getLocalNodePlacementInZone(bookieToConsider);
             if (excludingUDsOfZonesToConsider.get(nodePlacement.getZone()).contains(nodePlacement.getUpgradeDomain())) {
                 continue;
             }
@@ -475,10 +494,10 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         return zonesToExclude;
     }
 
-    Set<String> getZonesOfBookies(Collection<BookieSocketAddress> bookieAddresses) {
+    Set<String> getZonesOfBookies(Collection<BookieNode> bookieNodes) {
         Set<String> zonesOfBookies = new HashSet<String>();
-        for (BookieSocketAddress bookieAddress : bookieAddresses) {
-            NodePlacementInZone nodePlacement = getNodePlacementInZone(bookieAddress);
+        for (BookieNode bookieNode : bookieNodes) {
+            NodePlacementInZone nodePlacement = getLocalNodePlacementInZone(bookieNode);
             zonesOfBookies.add(nodePlacement.getZone());
         }
         return zonesOfBookies;
