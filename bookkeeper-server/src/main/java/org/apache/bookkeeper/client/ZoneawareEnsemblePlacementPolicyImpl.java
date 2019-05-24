@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.bookkeeper.client.BKException.BKNotEnoughBookiesException;
+import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementResult;
 import org.apache.bookkeeper.common.util.ReflectionUtils;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.Configurable;
@@ -328,9 +329,28 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                         writeQuorumSize, currentEnsemble, bookieToReplace, excludeBookies, zonesToExclude);
             }
             if (bookiesToConsiderAfterExcludingUDs.isEmpty()) {
-                LOG.error("Not enough {} bookies are available to form an ensemble : {}.", ensembleSize, bookieList);
+                LOG.error(
+                        "Not enough bookies are available to replaceBookie : {} in ensemble : {} with excludeBookies {}.",
+                        bookieToReplace, currentEnsemble, excludeBookies);
                 throw new BKNotEnoughBookiesException();
             }
+            
+            weightedSelection.getNextRandom(bookiesToConsiderAfterExcludingUDs);
+            
+            BookieSocketAddress candidateAddr = candidate.getAddr();
+            List<BookieSocketAddress> newEnsemble = new ArrayList<BookieSocketAddress>(currentEnsemble);
+            if (currentEnsemble.isEmpty()) {
+                /*
+                 * in testing code there are test cases which would pass empty
+                 * currentEnsemble
+                 */
+                newEnsemble.add(candidateAddr);
+            } else {
+                newEnsemble.set(currentEnsemble.indexOf(bookieToReplace), candidateAddr);
+            }
+            return PlacementResult.of(candidateAddr,
+                    isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
+            
             return null;
         } finally {
             rwLock.readLock().unlock();
@@ -524,5 +544,11 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         DistributionSchedule.WriteSet retList = reorderReadSequence(ensemble, bookiesHealthInfo, writeSet);
         retList.addMissingIndices(ensemble.size());
         return retList;
+    }
+
+    @Override
+    public boolean isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList, int writeQuorumSize,
+            int ackQuorumSize) {
+        return true;
     }
 }
