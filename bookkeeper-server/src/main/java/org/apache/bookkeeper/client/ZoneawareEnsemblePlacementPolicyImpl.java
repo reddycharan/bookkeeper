@@ -199,8 +199,8 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         this.isWeighted = conf.getDiskWeightBasedPlacementEnabled();
         if (this.isWeighted) {
             this.maxWeightMultiple = conf.getBookieMaxWeightMultipleForWeightBasedPlacement();
-            this.weightedSelection = new WeightedRandomSelectionImpl<BookieNode>(this.maxWeightMultiple);
-            LOG.info("Weight based placement with max multiple of " + this.maxWeightMultiple);
+            this.weightedSelection = new DynamicWeightedRandomSelectionImpl<BookieNode>(this.maxWeightMultiple);
+            LOG.info("Weight based placement with max multiple of {}", this.maxWeightMultiple);
         } else {
             LOG.info("Not weighted");
         }
@@ -326,6 +326,10 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                         writeQuorumSize);
                 bookiesToConsiderAfterExcludingUDs = getBookiesToConsiderAfterExcludingZones(ensembleSize,
                         writeQuorumSize, currentEnsemble, bookieToReplace, excludeBookies, zonesToExclude);
+            }
+            if (bookiesToConsiderAfterExcludingUDs.isEmpty()) {
+                LOG.error("Not enough {} bookies are available to form an ensemble : {}.", ensembleSize, bookieList);
+                throw new BKNotEnoughBookiesException();
             }
             return null;
         } finally {
