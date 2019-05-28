@@ -17,6 +17,9 @@
  */
 package org.apache.bookkeeper.client;
 
+import com.google.common.math.Quantiles;
+import com.google.common.math.Quantiles.ScaleAndIndex;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,10 +33,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.math.Quantiles;
-import com.google.common.math.Quantiles.ScaleAndIndex;
-
-public class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSelection<T> {
+class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSelection<T> {
     static final Logger LOG = LoggerFactory.getLogger(DynamicWeightedRandomSelectionImpl.class);
 
     int maxProbabilityMultiplier;
@@ -90,7 +90,7 @@ public class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSele
                 if (weight <= 0) {
                     weight = minWeight;
                 }
-                return new Long(1L);
+                return Long.valueOf(1L);
             };
             ArrayList<Long> weightList = selectedNodes.stream().map(weightFunc)
                     .collect(Collectors.toCollection(ArrayList::new));
@@ -109,7 +109,11 @@ public class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSele
                 } else if (weight >= maxWeight) {
                     weight = maxWeight;
                 }
-                long randValue = Math.abs(rand.nextLong()) % (totalWeight + weight);
+                long tmpRandLong = rand.nextLong();
+                if (tmpRandLong == Long.MIN_VALUE) {
+                    tmpRandLong++;
+                }
+                long randValue = Math.abs(tmpRandLong) % (totalWeight + weight);
                 if (randValue >= totalWeight) {
                     nextRandomNode = node;
                 }
