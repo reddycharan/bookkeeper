@@ -303,7 +303,8 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             throws BKNotEnoughBookiesException {
         int desiredNumZonesPerWriteQuorumForThisEnsemble = (writeQuorumSize < desiredNumZonesPerWriteQuorum)
                 ? writeQuorumSize : desiredNumZonesPerWriteQuorum;
-        List<BookieSocketAddress> newEnsemble = new ArrayList<BookieSocketAddress>(ensembleSize);
+        List<BookieSocketAddress> newEnsemble = new ArrayList<BookieSocketAddress>(
+                Collections.nCopies(ensembleSize, null));
         rwLock.readLock().lock();
         try {
             for (int index = 0; index < ensembleSize; index++) {
