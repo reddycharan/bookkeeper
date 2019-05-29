@@ -392,6 +392,9 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     }
 
     private String getExcludedZonesString(Set<String> excludeZones) {
+        if (excludeZones.isEmpty()) {
+            return "";
+        }
         StringBuilder excludedZonesString = new StringBuilder("~");
         boolean firstZone = true;
         for (String excludeZone : excludeZones) {
