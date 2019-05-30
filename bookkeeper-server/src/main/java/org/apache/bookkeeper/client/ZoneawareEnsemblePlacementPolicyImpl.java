@@ -109,7 +109,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         public NodePlacementInZone(String zone, String upgradeDomain) {
             this.zone = zone;
             this.upgradeDomain = upgradeDomain;
-            repString = zone + NodeBase.PATH_SEPARATOR_STR + upgradeDomain;
+            repString = zone + upgradeDomain;
         }
 
         public String getZone() {
@@ -132,8 +132,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     }
 
     public static final NodePlacementInZone UNKNOWN_NODEPLACEMENT = new NodePlacementInZone(
-            NetworkTopology.DEFAULT_ZONE.replace(NodeBase.PATH_SEPARATOR_STR, ""),
-            NetworkTopology.DEFAULT_UPGRADEDOMAIN.replace(NodeBase.PATH_SEPARATOR_STR, ""));
+            NetworkTopology.DEFAULT_ZONE, NetworkTopology.DEFAULT_UPGRADEDOMAIN);
 
     ZoneawareEnsemblePlacementPolicyImpl() {
         super();
@@ -149,10 +148,11 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                 nodePlacement = UNKNOWN_NODEPLACEMENT;
             } else {
                 String[] parts = StringUtils.split(NodeBase.normalize(networkLocation), NodeBase.PATH_SEPARATOR);
-                if (parts.length <= 1) {
+                if (parts.length != 2) {
                     nodePlacement = UNKNOWN_NODEPLACEMENT;
                 } else {
-                    nodePlacement = new NodePlacementInZone(parts[0], parts[1]);
+                    nodePlacement = new NodePlacementInZone(NodeBase.PATH_SEPARATOR_STR + parts[0],
+                            NodeBase.PATH_SEPARATOR_STR + parts[1]);
                 }
             }
             address2NodePlacement.putIfAbsent(addr, nodePlacement);
@@ -205,6 +205,14 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         }
         this.minNumZonesPerWriteQuorum = conf.getMinNumZonesPerWriteQuorum();
         this.desiredNumZonesPerWriteQuorum = conf.getDesiredNumZonesPerWriteQuorum();
+        if (minNumZonesPerWriteQuorum > desiredNumZonesPerWriteQuorum) {
+            LOG.error(
+                    "It is misconfigured, for ZoneawareEnsemblePlacementPolicy, minNumZonesPerWriteQuorum: {} cann't be"
+                            + " greater than desiredNumZonesPerWriteQuorum: {}",
+                    minNumZonesPerWriteQuorum, desiredNumZonesPerWriteQuorum);
+            throw new IllegalArgumentException("minNumZonesPerWriteQuorum: " + minNumZonesPerWriteQuorum
+                    + " cann't be greater than desiredNumZonesPerWriteQuorum: " + desiredNumZonesPerWriteQuorum);
+        }
         DNSToSwitchMapping actualDNSResolver;
         if (optionalDnsResolver.isPresent()) {
             actualDNSResolver = optionalDnsResolver.get();
@@ -307,9 +315,10 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                 Collections.nCopies(ensembleSize, null));
         rwLock.readLock().lock();
         try {
+            Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
             for (int index = 0; index < ensembleSize; index++) {
                 setBookieInTheEnsemble(ensembleSize, writeQuorumSize, newEnsemble, newEnsemble, index,
-                        desiredNumZonesPerWriteQuorumForThisEnsemble, excludeBookies);
+                        desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
             }
             return PlacementResult.of(newEnsemble,
                     isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
@@ -329,8 +338,9 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         List<BookieSocketAddress> newEnsemble = new ArrayList<BookieSocketAddress>(currentEnsemble);
         rwLock.readLock().lock();
         try {
+            Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
             BookieSocketAddress candidateAddr = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, currentEnsemble,
-                    newEnsemble, bookieToReplaceIndex, desiredNumZonesPerWriteQuorumForThisEnsemble, excludeBookies);
+                    newEnsemble, bookieToReplaceIndex, desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
             return PlacementResult.of(candidateAddr,
                     isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
         } finally {
@@ -371,6 +381,32 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             newEnsemble.set(bookieToReplaceIndex, candidateAddr);
         }
         return candidateAddr;
+    }
+
+    /*
+     * this method should be called in readlock scope of 'rwLock'
+     */
+    protected Set<BookieSocketAddress> addDefaultFaultDomainBookies(Set<BookieSocketAddress> excludeBookies) {
+        Set<BookieSocketAddress> comprehensiveExclusionBookiesSet;
+        Set<BookieSocketAddress> bookiesInDefaultFaultDomain = null;
+        Set<Node> defaultFaultDomainLeaves = topology.getLeaves(getDefaultFaultDomain());
+        for (Node node : defaultFaultDomainLeaves) {
+            if (node instanceof BookieNode) {
+                if (bookiesInDefaultFaultDomain == null) {
+                    bookiesInDefaultFaultDomain = new HashSet<BookieSocketAddress>(excludeBookies);
+                }
+                bookiesInDefaultFaultDomain.add(((BookieNode) node).getAddr());
+            } else {
+                LOG.error("found non-BookieNode: {} as leaf of defaultFaultDomain: {}", node, getDefaultFaultDomain());
+            }
+        }
+        if ((bookiesInDefaultFaultDomain == null) || bookiesInDefaultFaultDomain.isEmpty()) {
+            comprehensiveExclusionBookiesSet = excludeBookies;
+        } else {
+            comprehensiveExclusionBookiesSet = new HashSet<BookieSocketAddress>(excludeBookies);
+            comprehensiveExclusionBookiesSet.addAll(bookiesInDefaultFaultDomain);
+        }
+        return comprehensiveExclusionBookiesSet;
     }
 
     private BookieNode selectCandidateNode(Set<BookieNode> bookiesToConsiderAfterExcludingUDs) {
