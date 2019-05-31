@@ -317,8 +317,9 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         try {
             Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
             for (int index = 0; index < ensembleSize; index++) {
-                BookieSocketAddress selectedBookie = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, newEnsemble, newEnsemble, index,
-                        desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
+                BookieSocketAddress selectedBookie = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, newEnsemble,
+                        newEnsemble, index, desiredNumZonesPerWriteQuorumForThisEnsemble,
+                        comprehensiveExclusionBookiesSet);
                 comprehensiveExclusionBookiesSet.add(selectedBookie);
             }
             return PlacementResult.of(newEnsemble,
@@ -342,7 +343,8 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
             comprehensiveExclusionBookiesSet.addAll(currentEnsemble);
             BookieSocketAddress candidateAddr = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, currentEnsemble,
-                    newEnsemble, bookieToReplaceIndex, desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
+                    newEnsemble, bookieToReplaceIndex, desiredNumZonesPerWriteQuorumForThisEnsemble,
+                    comprehensiveExclusionBookiesSet);
             return PlacementResult.of(candidateAddr,
                     isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
         } finally {
@@ -357,7 +359,8 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         BookieSocketAddress bookieToReplace = currentEnsemble.get(bookieToReplaceIndex);
         Set<String> zonesToExclude = null;
         Set<BookieNode> bookiesToConsiderAfterExcludingUDs = null;
-        int minNumZonesPerWriteQuorumForThisEnsemble = (minNumZonesPerWriteQuorum > desiredNumZonesPerWriteQuorumForThisEnsemble)
+        int minNumZonesPerWriteQuorumForThisEnsemble =
+                    (minNumZonesPerWriteQuorum > desiredNumZonesPerWriteQuorumForThisEnsemble)
                 ? desiredNumZonesPerWriteQuorumForThisEnsemble : minNumZonesPerWriteQuorum;
         for (int numberOfNeighborsToConsider = (desiredNumZonesPerWriteQuorumForThisEnsemble
                 - 1); numberOfNeighborsToConsider >= (minNumZonesPerWriteQuorumForThisEnsemble

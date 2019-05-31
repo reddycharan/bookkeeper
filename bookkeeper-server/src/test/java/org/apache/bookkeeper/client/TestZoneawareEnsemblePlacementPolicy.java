@@ -22,6 +22,9 @@ import static org.apache.bookkeeper.client.RoundRobinDistributionSchedule.writeS
 import static org.apache.bookkeeper.feature.SettableFeatureProvider.DISABLE_ALL;
 import static org.junit.Assert.assertNotEquals;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.netty.util.HashedWheelTimer;
+
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +35,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import junit.framework.TestCase;
 
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementResult;
 import org.apache.bookkeeper.client.ZoneawareEnsemblePlacementPolicyImpl.NodePlacementInZone;
@@ -44,11 +49,6 @@ import org.apache.bookkeeper.util.StaticDNSResolver;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import io.netty.util.HashedWheelTimer;
-import junit.framework.TestCase;
 
 /**
  * Test the zoneaware ensemble placement policy.
@@ -273,7 +273,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                     Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
         }
     }
-    
+
     @Test
     public void testMinZonesPerWriteQuorum() throws Exception {
         zepp.uninitalize();
@@ -286,7 +286,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         BookieSocketAddress addr8 = new BookieSocketAddress("127.0.0.9", 3181);
         BookieSocketAddress addr9 = new BookieSocketAddress("127.0.0.10", 3181);
         BookieSocketAddress addr10 = new BookieSocketAddress("127.0.0.11", 3181);
-        
+
         // update dns mapping
         StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
         StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone2/ud1");
@@ -383,7 +383,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         rwAddrs.add(addr6);
         rwAddrs.add(addr9);
         rwAddrs.add(addr10);
-        
+
         roAddrs.add(addr7);
         roAddrs.add(addr8);
 
@@ -407,8 +407,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         assertTrue("Bookie from default faultDomain shouldn't be part of ensemble",
                 Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
     }
-    
-    
+
     @Test
     public void testUniqueUds() throws Exception {
         zepp.uninitalize();
@@ -478,8 +477,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
             bookiesNodePlacementList.add(zepp.getNodePlacementInZone(bookieAddr));
         }
         for (int i = 0; i < 5; i++) {
-            assertNotEquals("Alternate bookies should be from different zones", bookiesNodePlacementList.get(i).getZone(),
-                    bookiesNodePlacementList.get(i + 1).getZone());
+            assertNotEquals("Alternate bookies should be from different zones",
+                    bookiesNodePlacementList.get(i).getZone(), bookiesNodePlacementList.get(i + 1).getZone());
         }
     }
 
@@ -532,7 +531,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         rwAddrs.add(addr12);
         rwAddrs.add(addr13);
         rwAddrs.add(addr14);
-        
+
         int minNumZonesPerWriteQuorum = 3;
         ClientConfiguration newConf = (ClientConfiguration) this.conf.clone();
         newConf.setDesiredNumZonesPerWriteQuorum(5);
@@ -642,7 +641,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         excludedBookies.add(addr8);
         replacedBookie = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies).getResult();
         assertEquals("replaced bookie", addr6, replacedBookie);
-        
+
         excludedBookies.add(addr6);
         try {
             replacedBookie = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies).getResult();
@@ -651,7 +650,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
             // expected NotEnoughBookiesException
         }
     }
-    
+
     @Test
     public void testReplaceBookieMinUDs() throws Exception {
         zepp.uninitalize();
