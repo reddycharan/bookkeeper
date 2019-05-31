@@ -355,11 +355,21 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             int desiredNumZonesPerWriteQuorumForThisEnsemble, Set<BookieSocketAddress> excludeBookies)
             throws BKNotEnoughBookiesException {
         BookieSocketAddress bookieToReplace = currentEnsemble.get(bookieToReplaceIndex);
-        Set<String> zonesToExclude = getZonesOfNeighboringNodesInEnsemble(currentEnsemble, bookieToReplaceIndex,
-                (desiredNumZonesPerWriteQuorumForThisEnsemble - 1));
-        Set<BookieNode> bookiesToConsiderAfterExcludingUDs = getBookiesToConsiderAfterExcludingZones(ensembleSize,
-                writeQuorumSize, currentEnsemble, bookieToReplaceIndex, excludeBookies, zonesToExclude);
-
+        Set<String> zonesToExclude = null;
+        Set<BookieNode> bookiesToConsiderAfterExcludingUDs = null;
+        int minNumZonesPerWriteQuorumForThisEnsemble = (minNumZonesPerWriteQuorum > desiredNumZonesPerWriteQuorumForThisEnsemble)
+                ? desiredNumZonesPerWriteQuorumForThisEnsemble : minNumZonesPerWriteQuorum;
+        for (int numberOfNeighborsToConsider = (desiredNumZonesPerWriteQuorumForThisEnsemble
+                - 1); numberOfNeighborsToConsider >= (minNumZonesPerWriteQuorumForThisEnsemble
+                        - 1); numberOfNeighborsToConsider--) {
+            zonesToExclude = getZonesOfNeighboringNodesInEnsemble(currentEnsemble, bookieToReplaceIndex,
+                    (numberOfNeighborsToConsider));
+            bookiesToConsiderAfterExcludingUDs = getBookiesToConsiderAfterExcludingZones(ensembleSize, writeQuorumSize,
+                    currentEnsemble, bookieToReplaceIndex, excludeBookies, zonesToExclude);
+            if (!bookiesToConsiderAfterExcludingUDs.isEmpty()) {
+                break;
+            }
+        }
         if (bookiesToConsiderAfterExcludingUDs.isEmpty()) {
             zonesToExclude = getZonesToExcludeToMaintainMinZones(currentEnsemble, bookieToReplaceIndex,
                     writeQuorumSize);
@@ -373,15 +383,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         }
 
         BookieSocketAddress candidateAddr = selectCandidateNode(bookiesToConsiderAfterExcludingUDs).getAddr();
-        if (currentEnsemble.isEmpty()) {
-            /*
-             * in testing code there are test cases which would pass empty
-             * currentEnsemble
-             */
-            newEnsemble.add(candidateAddr);
-        } else {
-            newEnsemble.set(bookieToReplaceIndex, candidateAddr);
-        }
+        newEnsemble.set(bookieToReplaceIndex, candidateAddr);
         return candidateAddr;
     }
 
