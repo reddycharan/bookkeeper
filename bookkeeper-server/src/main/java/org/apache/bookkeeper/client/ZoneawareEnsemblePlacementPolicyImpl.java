@@ -317,8 +317,9 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         try {
             Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
             for (int index = 0; index < ensembleSize; index++) {
-                setBookieInTheEnsemble(ensembleSize, writeQuorumSize, newEnsemble, newEnsemble, index,
+                BookieSocketAddress selectedBookie = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, newEnsemble, newEnsemble, index,
                         desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
+                comprehensiveExclusionBookiesSet.add(selectedBookie);
             }
             return PlacementResult.of(newEnsemble,
                     isEnsembleAdheringToPlacementPolicy(newEnsemble, writeQuorumSize, ackQuorumSize));
@@ -339,6 +340,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         rwLock.readLock().lock();
         try {
             Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = addDefaultFaultDomainBookies(excludeBookies);
+            comprehensiveExclusionBookiesSet.addAll(currentEnsemble);
             BookieSocketAddress candidateAddr = setBookieInTheEnsemble(ensembleSize, writeQuorumSize, currentEnsemble,
                     newEnsemble, bookieToReplaceIndex, desiredNumZonesPerWriteQuorumForThisEnsemble, comprehensiveExclusionBookiesSet);
             return PlacementResult.of(candidateAddr,
@@ -387,24 +389,14 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
      * this method should be called in readlock scope of 'rwLock'
      */
     protected Set<BookieSocketAddress> addDefaultFaultDomainBookies(Set<BookieSocketAddress> excludeBookies) {
-        Set<BookieSocketAddress> comprehensiveExclusionBookiesSet;
-        Set<BookieSocketAddress> bookiesInDefaultFaultDomain = null;
+        Set<BookieSocketAddress> comprehensiveExclusionBookiesSet = new HashSet<BookieSocketAddress>(excludeBookies);
         Set<Node> defaultFaultDomainLeaves = topology.getLeaves(getDefaultFaultDomain());
         for (Node node : defaultFaultDomainLeaves) {
             if (node instanceof BookieNode) {
-                if (bookiesInDefaultFaultDomain == null) {
-                    bookiesInDefaultFaultDomain = new HashSet<BookieSocketAddress>(excludeBookies);
-                }
-                bookiesInDefaultFaultDomain.add(((BookieNode) node).getAddr());
+                comprehensiveExclusionBookiesSet.add(((BookieNode) node).getAddr());
             } else {
                 LOG.error("found non-BookieNode: {} as leaf of defaultFaultDomain: {}", node, getDefaultFaultDomain());
             }
-        }
-        if ((bookiesInDefaultFaultDomain == null) || bookiesInDefaultFaultDomain.isEmpty()) {
-            comprehensiveExclusionBookiesSet = excludeBookies;
-        } else {
-            comprehensiveExclusionBookiesSet = new HashSet<BookieSocketAddress>(excludeBookies);
-            comprehensiveExclusionBookiesSet.addAll(bookiesInDefaultFaultDomain);
         }
         return comprehensiveExclusionBookiesSet;
     }
