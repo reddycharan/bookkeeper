@@ -33,6 +33,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * DynamicWeightedRandomSelectionImpl class implements both getNextRandom
+ * overloaded methods. Where getNextRandom() method considers all bookies it
+ * knows of as candidates, but getNextRandom(Collection selectedNodes) method
+ * considers only 'selectedNodes' as candidates.
+ */
 class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSelection<T> {
     static final Logger LOG = LoggerFactory.getLogger(DynamicWeightedRandomSelectionImpl.class);
 
@@ -92,21 +98,7 @@ class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSelection<T
                 }
             }
 
-            /*
-             * calculate medianWeight.
-             */
-            Function<? super T, ? extends Long> weightFunc = (node) -> {
-                long weight = 0;
-                if ((weightMap.containsKey(node))) {
-                    weight = weightMap.get(node).getWeight();
-                }
-                return Long.valueOf(weight);
-            };
-            ArrayList<Long> weightList = selectedNodes.stream().map(weightFunc)
-                    .collect(Collectors.toCollection(ArrayList::new));
-            ScaleAndIndex median = Quantiles.median();
-            long medianWeight = (long) median.compute(weightList);
-
+            long medianWeight;
             /*
              * if actTotalWeight is 0, then assign 1 to minWeight and
              * medianWeight.
@@ -114,7 +106,23 @@ class DynamicWeightedRandomSelectionImpl<T> implements WeightedRandomSelection<T
             if (actTotalWeight == 0) {
                 minWeight = 1L;
                 medianWeight = 1L;
+            } else {
+                /*
+                 * calculate medianWeight.
+                 */
+                Function<? super T, ? extends Long> weightFunc = (node) -> {
+                    long weight = 0;
+                    if ((weightMap.containsKey(node))) {
+                        weight = weightMap.get(node).getWeight();
+                    }
+                    return Long.valueOf(weight);
+                };
+                ArrayList<Long> weightList = selectedNodes.stream().map(weightFunc)
+                        .collect(Collectors.toCollection(ArrayList::new));
+                ScaleAndIndex median = Quantiles.median();
+                medianWeight = (long) median.compute(weightList);
             }
+
             /*
              * initialize maxWeight value based on maxProbabilityMultiplier.
              */

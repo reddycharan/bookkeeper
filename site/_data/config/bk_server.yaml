@@ -655,6 +655,10 @@ groups:
     description: |
       desired number of zones per write quorum in ZoneawareEnsemblePlacementPolicy. ZoneawareEnsemblePlacementPolicy will try to get bookies from 'desiredNumZonesPerWriteQuorum' zones for a writeQuorum.
     default: 3
+  - param: enforceStrictZoneawarePlacement
+    description: |
+      in ZoneawareEnsemblePlacementPolicy if strict placement is enabled then minZones/desiredZones in writeQuorum would be maintained otherwise it will pick nodes randomly.
+    default: true
 
 - name: AutoRecovery auditor settings
   params:

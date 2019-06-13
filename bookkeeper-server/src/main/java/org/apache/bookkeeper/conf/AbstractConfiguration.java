@@ -171,6 +171,11 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
     // desired number of zones per write quorum in ZoneAwarePlacementPolicy
     public static final String DESIRED_NUM_ZONES_PER_WRITE_QUORUM = "desiredNumZonesPerWriteQuorum";
 
+    // in ZoneawareEnsemblePlacementPolicy if strict placement is enabled then
+    // minZones/desiredZones in writeQuorum would be maintained otherwise it
+    // will pick nodes randomly.
+    public static final String ENFORCE_STRICT_ZONEAWARE_PLACEMENT = "enforceStrictZoneawarePlacement";
+
     // Allocator configuration
     protected static final String ALLOCATOR_POOLING_POLICY = "allocatorPoolingPolicy";
     protected static final String ALLOCATOR_POOLING_CONCURRENCY = "allocatorPoolingConcurrency";
@@ -871,6 +876,28 @@ public abstract class AbstractConfiguration<T extends AbstractConfiguration>
      */
     public int getDesiredNumZonesPerWriteQuorum() {
         return getInteger(DESIRED_NUM_ZONES_PER_WRITE_QUORUM, 3);
+    }
+
+    /**
+     * Set the flag to enforce strict zoneaware placement.
+     *
+     * <p>in ZoneawareEnsemblePlacementPolicy if strict placement is enabled then
+     * minZones/desiredZones in writeQuorum would be maintained otherwise it
+     * will pick nodes randomly.
+     */
+    public void setEnforceStrictZoneawarePlacement(boolean enforceStrictZoneawarePlacement) {
+        setProperty(ENFORCE_STRICT_ZONEAWARE_PLACEMENT, enforceStrictZoneawarePlacement);
+    }
+
+    /**
+     * Get the flag to enforce strict zoneaware placement.
+     *
+     * <p>in ZoneawareEnsemblePlacementPolicy if strict placement is enabled then
+     * minZones/desiredZones in writeQuorum would be maintained otherwise it
+     * will pick nodes randomly.
+     */
+    public boolean getEnforceStrictZoneawarePlacement() {
+        return getBoolean(ENFORCE_STRICT_ZONEAWARE_PLACEMENT, true);
     }
 
     /**

@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 abstract class TopologyAwareEnsemblePlacementPolicy implements
         ITopologyAwareEnsemblePlacementPolicy<BookieNode> {
     static final Logger LOG = LoggerFactory.getLogger(TopologyAwareEnsemblePlacementPolicy.class);
-
+    public static final String REPP_DNS_RESOLVER_CLASS = "reppDnsResolverClass";
     protected final Map<BookieSocketAddress, BookieNode> knownBookies = new HashMap<BookieSocketAddress, BookieNode>();
     protected final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     protected Map<BookieNode, WeightedObject> bookieInfoMap = new HashMap<BookieNode, WeightedObject>();

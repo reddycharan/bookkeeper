@@ -40,7 +40,7 @@ import junit.framework.TestCase;
 
 import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementResult;
-import org.apache.bookkeeper.client.ZoneawareEnsemblePlacementPolicyImpl.NodePlacementInZone;
+import org.apache.bookkeeper.client.ZoneawareEnsemblePlacementPolicyImpl.ZoneAwareNodeLocation;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNSToSwitchMapping;
@@ -135,11 +135,17 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         zepp.uninitalize();
         updateMyUpgradeDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
 
+        // Update cluster
+        BookieSocketAddress addr5 = new BookieSocketAddress("127.0.0.6", 3181);
+        BookieSocketAddress addr6 = new BookieSocketAddress("127.0.0.7", 3181);
+
         // update dns mapping
         StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
         StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone2/ud1");
         StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/zone3/ud1");
         StaticDNSResolver.addNodeToRack(addr4.getHostName(), "/zone4/ud1");
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/zone5/ud1");
+        StaticDNSResolver.addNodeToRack(addr6.getHostName(), "/zone6/ud1");
 
         ClientConfiguration newConf = (ClientConfiguration) this.conf.clone();
         newConf.setDesiredNumZonesPerWriteQuorum(1);
@@ -156,16 +162,20 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         zepp.onClusterChanged(rwAddrs, roAddrs);
         try {
-            zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
+            // only 3 rw bookies are available
+            zepp.newEnsemble(6, 3, 2, null, new HashSet<>());
             fail("newEnsemble is expected to fail because enough writable nodes are not available");
         } catch (BKException.BKNotEnoughBookiesException bke) {
             // expected to get BKNotEnoughBookiesException
         }
 
         roAddrs.add(addr4);
+        roAddrs.add(addr5);
+        roAddrs.add(addr6);
         zepp.onClusterChanged(rwAddrs, roAddrs);
         try {
-            zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
+            // only 3 rw bookies are available
+            zepp.newEnsemble(6, 3, 2, null, new HashSet<>());
             fail("newEnsemble is expected to fail because enough writable nodes are not available");
         } catch (BKException.BKNotEnoughBookiesException bke) {
             // expected to get BKNotEnoughBookiesException
@@ -175,10 +185,10 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         roAddrs.add(addr1);
         roAddrs.add(addr2);
         roAddrs.add(addr3);
-        roAddrs.add(addr4);
         zepp.onClusterChanged(rwAddrs, roAddrs);
         try {
-            zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
+            // no rw bookie is available
+            zepp.newEnsemble(6, 3, 2, null, new HashSet<>());
             fail("newEnsemble is expected to fail because enough writable nodes are not available");
         } catch (BKException.BKNotEnoughBookiesException bke) {
             // expected to get BKNotEnoughBookiesException
@@ -190,11 +200,17 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         zepp.uninitalize();
         updateMyUpgradeDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
 
+        // Update cluster
+        BookieSocketAddress addr5 = new BookieSocketAddress("127.0.0.6", 3181);
+        BookieSocketAddress addr6 = new BookieSocketAddress("127.0.0.7", 3181);
+
         // update dns mapping
         StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
         StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone2/ud1");
         StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/zone3/ud1");
         StaticDNSResolver.addNodeToRack(addr4.getHostName(), "/zone4/ud1");
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/zone5/ud1");
+        StaticDNSResolver.addNodeToRack(addr6.getHostName(), "/zone6/ud1");
 
         ClientConfiguration newConf = (ClientConfiguration) this.conf.clone();
         newConf.setDesiredNumZonesPerWriteQuorum(4);
@@ -209,14 +225,22 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         rwAddrs.add(addr2);
         rwAddrs.add(addr3);
         rwAddrs.add(addr4);
+        rwAddrs.add(addr5);
+        rwAddrs.add(addr6);
 
         zepp.onClusterChanged(rwAddrs, roAddrs);
-        PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(4, 3, 2, null,
+        /*
+         * there are enough bookies so newEnsemble should succeed.
+         */
+        PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(6, 3, 2, null,
                 new HashSet<>());
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
                 newEnsemblePlacementResult.getResult());
-        assertTrue("New ensemble should contain all 4 rw bookies", newEnsembleSet.containsAll(rwAddrs));
+        assertTrue("New ensemble should contain all 6 rw bookies", newEnsembleSet.containsAll(rwAddrs));
 
+        /*
+         * there are enough bookies so newEnsemble should succeed.
+         */
         newEnsemblePlacementResult = zepp.newEnsemble(3, 3, 2, null, new HashSet<>());
         newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain 3 rw bookies",
@@ -261,6 +285,10 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         zepp.onClusterChanged(rwAddrs, roAddrs);
         for (int i = 0; i < 3; i++) {
+            /*
+             * make sure bookies from DEFAULT_ZONE_AND_UPGRADEDOMAIN are not
+             * part of the new ensemble created.
+             */
             PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(4, 4, 2, null,
                     new HashSet<>());
             Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
@@ -325,20 +353,42 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         zepp.onClusterChanged(rwAddrs, roAddrs);
         PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult;
-        try {
-            zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
-            fail("newEnsemble is expected to fail because of unable to create ensemble");
-        } catch (BKException.BKNotEnoughBookiesException bkne) {
-            // expected NotEnoughBookiesException
-        }
 
-        newEnsemblePlacementResult = zepp.newEnsemble(6, 3, 2, null, new HashSet<>());
+        newEnsemblePlacementResult = zepp.newEnsemble(4, 4, 2, null, new HashSet<>());
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
                 newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain all 6 rw bookies in non-default fault domains",
-                rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 6));
+                rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 4));
         assertTrue("Bookie from default faultDomain shouldn't be part of ensemble",
                 Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
+
+        try {
+            /*
+             * If ensembleSize is not multiple of writeQuorumSize, then it is
+             * expected to fail with IllegalArgumentException.
+             */
+            zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
+            fail("newEnsemble is expected to fail with IllegalArgumentException");
+        } catch (IllegalArgumentException illExc) {
+            // expected IllegalArgumentException
+        }
+        zepp.uninitalize();
+        newConf = (ClientConfiguration) this.conf.clone();
+        newConf.setDesiredNumZonesPerWriteQuorum(4);
+        newConf.setMinNumZonesPerWriteQuorum(3);
+        newConf.setEnforceStrictZoneawarePlacement(false);
+        zepp = new ZoneawareEnsemblePlacementPolicy();
+        zepp.initialize(newConf, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+        zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+        zepp.onClusterChanged(rwAddrs, roAddrs);
+
+        /*
+         * If enforceStrictZoneawarePlacement is not enabled, then there are no
+         * limitations on eligible values of ensembleSize and writeQuorumSize.
+         */
+        newEnsemblePlacementResult = zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
+        newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
+        assertTrue("New ensemble should contain 4 different bookies", newEnsembleSet.size() == 4);
     }
 
     @Test
@@ -368,7 +418,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         ClientConfiguration newConf = (ClientConfiguration) this.conf.clone();
         newConf.setDesiredNumZonesPerWriteQuorum(4);
-        newConf.setMinNumZonesPerWriteQuorum(3);
+        newConf.setMinNumZonesPerWriteQuorum(2);
         zepp = new ZoneawareEnsemblePlacementPolicy();
         zepp.initialize(newConf, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
         zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
@@ -394,19 +444,40 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         zepp.onClusterChanged(rwAddrs, roAddrs);
         PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult;
         try {
+            /*
+             * since rw bookies are not spread across UDs in zones, newEnsemble
+             * of writeQuorum 6 is expected to fail.
+             */
             zepp.newEnsemble(6, 6, 2, null, new HashSet<>());
             fail("newEnsemble is expected to fail because writeQuorum cannt be created with insufficient UDs");
         } catch (BKException.BKNotEnoughBookiesException bkne) {
             // expected NotEnoughBookiesException
         }
 
-        newEnsemblePlacementResult = zepp.newEnsemble(6, 3, 2, null, new HashSet<>());
-        Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
-                newEnsemblePlacementResult.getResult());
+        int ensSize = 6;
+        int writeQuorum = 3;
+        /*
+         * though bookies are not spread across UDs in zones, newEnsemble would
+         * succeed because writeQuorum is just 3.
+         */
+        newEnsemblePlacementResult = zepp.newEnsemble(ensSize, writeQuorum, 2, null, new HashSet<>());
+        List<BookieSocketAddress> newEnsemble = newEnsemblePlacementResult.getResult();
+        Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemble);
         assertTrue("New ensemble should contain all 6 rw bookies in non-default fault domains",
                 rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 6));
         assertTrue("Bookie from default faultDomain shouldn't be part of ensemble",
                 Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
+
+        Set<String> zonesOfBookiesInAWriteQuorum = new HashSet<String>();
+        for (int i = 0; i < 6; i++) {
+            zonesOfBookiesInAWriteQuorum.clear();
+            for (int j = 0; j < writeQuorum; j++) {
+                zonesOfBookiesInAWriteQuorum
+                        .add(zepp.getZoneAwareNodeLocation(newEnsemble.get((i + j) % ensSize)).getZone());
+            }
+            assertEquals("Since bookies are not spread across multiple UDs in a zone, write quorum should"
+                    + " contain bookies from all 3 zones", 3, zonesOfBookiesInAWriteQuorum.size());
+        }
     }
 
     @Test
@@ -461,6 +532,10 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         rwAddrs.add(addr12);
 
         zepp.onClusterChanged(rwAddrs, roAddrs);
+        /*
+         * Since there are enough bookies in different UDs in 2 zones
+         * (MinNumZonesPerWriteQuorum), new ensemble should succeed.
+         */
         PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(6, 6, 2, null,
                 new HashSet<>());
         List<BookieSocketAddress> newEnsembleList = newEnsemblePlacementResult.getResult();
@@ -468,18 +543,26 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         assertTrue("New ensemble should contain 6 rw bookies in non-default fault domains",
                 rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 6));
         Set<String> bookiesNetworkLocations = new HashSet<String>();
+
         for (BookieSocketAddress bookieAddr : newEnsembleSet) {
             bookiesNetworkLocations.add(zepp.resolveNetworkLocation(bookieAddr));
         }
+        /*
+         * Since there are enough bookies in different UDs, bookies from same
+         * zone should be from different UDs.
+         */
         assertTrue("Bookies should be from different UpgradeDomains if they belong to same zone",
                 (bookiesNetworkLocations.size() == 6));
-        List<NodePlacementInZone> bookiesNodePlacementList = new ArrayList<NodePlacementInZone>();
+        List<ZoneAwareNodeLocation> bookiesNodeLocationList = new ArrayList<ZoneAwareNodeLocation>();
         for (BookieSocketAddress bookieAddr : newEnsembleList) {
-            bookiesNodePlacementList.add(zepp.getNodePlacementInZone(bookieAddr));
+            bookiesNodeLocationList.add(zepp.getZoneAwareNodeLocation(bookieAddr));
         }
         for (int i = 0; i < 5; i++) {
+            /*
+             * in newEnsemble order, bookies should be from alternating zones.
+             */
             assertNotEquals("Alternate bookies should be from different zones",
-                    bookiesNodePlacementList.get(i).getZone(), bookiesNodePlacementList.get(i + 1).getZone());
+                    bookiesNodeLocationList.get(i).getZone(), bookiesNodeLocationList.get(i + 1).getZone());
         }
     }
 
@@ -547,25 +630,29 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         List<BookieSocketAddress> newEnsembleList = zepp.newEnsemble(6, 6, 4, null, excludedBookies).getResult();
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsembleList);
         Set<String> bookiesNetworkLocationsSet = new HashSet<String>();
-        List<NodePlacementInZone> bookiesNodePlacementList = new ArrayList<NodePlacementInZone>();
+        List<ZoneAwareNodeLocation> bookiesNodeLocationList = new ArrayList<ZoneAwareNodeLocation>();
         for (BookieSocketAddress bookieAddr : newEnsembleSet) {
             bookiesNetworkLocationsSet.add(zepp.resolveNetworkLocation(bookieAddr));
         }
         for (BookieSocketAddress bookieAddr : newEnsembleList) {
-            bookiesNodePlacementList.add(zepp.getNodePlacementInZone(bookieAddr));
+            bookiesNodeLocationList.add(zepp.getZoneAwareNodeLocation(bookieAddr));
         }
+        /*
+         * since there are enough bookies from minNumZonesPerWriteQuorum (3),
+         * bookies should be from 3 different zones and 2 different UDs.
+         */
         assertTrue("Bookies should be from different UpgradeDomains if they belong to same zone",
                 (bookiesNetworkLocationsSet.size() == 6));
         Set<String> zonesOfFirstNodes = new HashSet<String>();
         for (int i = 0; i < minNumZonesPerWriteQuorum; i++) {
-            zonesOfFirstNodes.add(bookiesNodePlacementList.get(i).getZone());
+            zonesOfFirstNodes.add(bookiesNodeLocationList.get(i).getZone());
         }
         assertEquals("Num of zones", minNumZonesPerWriteQuorum, zonesOfFirstNodes.size());
         for (int i = 0; i < minNumZonesPerWriteQuorum; i++) {
-            assertEquals("Zone", bookiesNodePlacementList.get(i).getZone(),
-                    bookiesNodePlacementList.get(i + minNumZonesPerWriteQuorum).getZone());
-            assertNotEquals("UpgradeDomain", bookiesNodePlacementList.get(i).getUpgradeDomain(),
-                    bookiesNodePlacementList.get(i + minNumZonesPerWriteQuorum).getUpgradeDomain());
+            assertEquals("Zone", bookiesNodeLocationList.get(i).getZone(),
+                    bookiesNodeLocationList.get(i + minNumZonesPerWriteQuorum).getZone());
+            assertNotEquals("UpgradeDomain", bookiesNodeLocationList.get(i).getUpgradeDomain(),
+                    bookiesNodeLocationList.get(i + minNumZonesPerWriteQuorum).getUpgradeDomain());
         }
     }
 
@@ -635,16 +722,28 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr3);
         ensemble.add(addr7);
         ensemble.add(addr11);
+        /*
+         * since addr5 (/zone2/ud1) is already part of ensemble of size 6, write
+         * quorum of size 6, to replace bookie addr7 (/zone2/ud2), new bookie
+         * should be from /zone2/ud2.
+         */
         BookieSocketAddress replacedBookie = zepp.replaceBookie(6, 6, 2, null, ensemble, addr7, excludedBookies)
                 .getResult();
         assertEquals("replaced bookie", addr8, replacedBookie);
 
         excludedBookies.add(addr8);
+        /*
+         * here addr8 is excluded, and writeQuorumSize is 3. So to replace
+         * bookie addr7, addr6 (belonging to same zone) is the candidate.
+         */
         replacedBookie = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies).getResult();
         assertEquals("replaced bookie", addr6, replacedBookie);
 
         excludedBookies.add(addr6);
         try {
+            /*
+             * here addr6 is also excluded, so replaceBookie should fail.
+             */
             replacedBookie = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies).getResult();
             fail("Expected BKNotEnoughBookiesException for replaceBookie with added excludedBookies");
         } catch (BKException.BKNotEnoughBookiesException bkne) {
@@ -709,6 +808,11 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr4);
         ensemble.add(addr5);
         ensemble.add(addr6);
+        /*
+         * though all the remaining non-default bookies are in /zone3/ud2, for
+         * replacing addr4 replaceBookie should be able to find some other
+         * bookie in /zone3/ud2.
+         */
         BookieSocketAddress replacedBookie = zepp.replaceBookie(6, 6, 2, null, ensemble, addr4, excludedBookies)
                 .getResult();
         assertEquals("replaced bookie", "/zone3/ud2", zepp.resolveNetworkLocation(replacedBookie));
@@ -767,7 +871,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ackedBookies.add(addr2);
         assertFalse("since ackQuorumSize is 3, it should return false",
                 zepp.areAckedBookiesAdheringToPlacementPolicy(ackedBookies, 10, 3));
-        assertTrue("since ackQuorumSize is 2 and bookies are from different zones," + " it should return true",
+        assertTrue("since ackQuorumSize is 2 and bookies are from minNumZonesPerWriteQuorum it should return true",
                 zepp.areAckedBookiesAdheringToPlacementPolicy(ackedBookies, 10, 2));
 
         zepp.uninitalize();
@@ -818,11 +922,17 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         addrs.add(addr5);
 
         int multiple = 10;
-        conf.setDiskWeightBasedPlacementEnabled(true);
-        conf.setBookieMaxWeightMultipleForWeightBasedPlacement(-1); // no max
-                                                                    // cap on
-                                                                    // weight
-        zepp.initialize(conf, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+
+        ClientConfiguration newConf = new ClientConfiguration(conf);
+        newConf.addConfiguration(conf);
+        newConf.setDiskWeightBasedPlacementEnabled(true);
+        /*
+         * since BookieMaxWeightMultipleForWeightBasedPlacement is set to -1,
+         * there is no max cap on weight.
+         */
+        newConf.setBookieMaxWeightMultipleForWeightBasedPlacement(-1);
+        newConf.setMinNumZonesPerWriteQuorum(0);
+        zepp.initialize(newConf, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
         zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
 
         zepp.onClusterChanged(addrs, new HashSet<BookieSocketAddress>());
@@ -848,6 +958,10 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
             selectionCounts.put(newEnsemble.get(0), selectionCounts.get(newEnsemble.get(0)) + 1);
         }
         double observedMultiple = ((double) selectionCounts.get(addr4) / (double) selectionCounts.get(addr3));
+        /*
+         * since there is no cap on maxWeight, observedMultiple should be
+         * roughly equal to multiple
+         */
         assertTrue("Weights not being honored " + observedMultiple, Math.abs(observedMultiple - multiple) < 1);
 
         selectionCounts.clear();
@@ -860,13 +974,20 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         EnsemblePlacementPolicy.PlacementResult<BookieSocketAddress> replacedBookieResponse;
         BookieSocketAddress replacedBookie;
         for (int i = 0; i < numTries; i++) {
-            // new ensemble response
+            // replace bookie response
             replacedBookieResponse = zepp.replaceBookie(1, 1, 1, null, newEnsemble, addr2, excludedBookies);
             replacedBookie = replacedBookieResponse.getResult();
+            /*
+             * only addr3 and addr4 are eligible for replacedBookie.
+             */
             assertTrue("replaced : " + replacedBookie, addr3.equals(replacedBookie) || addr4.equals(replacedBookie));
             selectionCounts.put(replacedBookie, selectionCounts.get(replacedBookie) + 1);
         }
         observedMultiple = ((double) selectionCounts.get(addr4) / (double) selectionCounts.get(addr3));
+        /*
+         * since there is no cap on maxWeight, observedMultiple should be
+         * roughly equal to multiple
+         */
         assertTrue("Weights not being honored " + observedMultiple, Math.abs(observedMultiple - multiple) < 1);
     }
 
@@ -901,7 +1022,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         // we will never use addr4 even it is in the stabilized network topology
         for (int i = 0; i < 5; i++) {
-            EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse = zepp.newEnsemble(3, 2,
+            EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse = zepp.newEnsemble(3, 3,
                     2, null, new HashSet<BookieSocketAddress>());
             List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
             assertFalse(ensemble.contains(addr4));
@@ -909,9 +1030,140 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
 
         // we could still use addr4 for urgent allocation if it is just bookie
         // flapping
-        EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse = zepp.newEnsemble(4, 2, 2,
+        EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse = zepp.newEnsemble(4, 4, 2,
                 null, new HashSet<BookieSocketAddress>());
         List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
         assertTrue(ensemble.contains(addr4));
+    }
+
+    @Test
+    public void testCreateNewEnsembleRandomly() throws Exception {
+        zepp.uninitalize();
+        updateMyUpgradeDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        // Update cluster
+        BookieSocketAddress addr5 = new BookieSocketAddress("127.0.0.6", 3181);
+
+        // update dns mapping
+        StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr4.getHostName(), NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/zone1/ud1");
+
+        zepp = new ZoneawareEnsemblePlacementPolicy();
+        ClientConfiguration confLocal = new ClientConfiguration();
+        confLocal.addConfiguration(conf);
+        confLocal.setEnforceStrictZoneawarePlacement(false);
+        confLocal.setMinNumZonesPerWriteQuorum(3);
+        confLocal.setDesiredNumZonesPerWriteQuorum(4);
+        zepp.initialize(confLocal, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+        zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        Set<BookieSocketAddress> rwAddrs = new HashSet<BookieSocketAddress>();
+        Set<BookieSocketAddress> roAddrs = new HashSet<BookieSocketAddress>();
+        Set<BookieSocketAddress> excludeBookies = new HashSet<BookieSocketAddress>();
+        rwAddrs.add(addr1);
+        rwAddrs.add(addr2);
+        rwAddrs.add(addr3);
+        rwAddrs.add(addr4);
+        rwAddrs.add(addr5);
+        excludeBookies.add(addr5);
+        zepp.onClusterChanged(rwAddrs, roAddrs);
+        /*
+         * if enforceStrictZoneawarePlacement is not enabled, then there is no
+         * restrictions on ensSize and writeQSize and also bookie belonging to
+         * DEFAULT_ZONE_AND_UPGRADEDOMAIN can be a candidate.
+         */
+        PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(4, 3, 2, null,
+                excludeBookies);
+        Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
+                newEnsemblePlacementResult.getResult());
+        assertEquals("New ensemble should contain 4 rw bookies", 4, newEnsembleSet.size());
+        assertFalse("excludeBookie should not be included in the ensemble", newEnsembleSet.contains(addr5));
+
+        rwAddrs.remove(addr4);
+        roAddrs.add(addr4);
+        zepp.onClusterChanged(rwAddrs, roAddrs);
+        try {
+            /*
+             * since there is no bookie available, newEnsemble should fail.
+             */
+            zepp.newEnsemble(4, 3, 2, null, excludeBookies);
+            fail("Creation of new ensemble randomly should fail because of not sufficient bookies");
+        } catch (BKException.BKNotEnoughBookiesException bkne) {
+            // expected NotEnoughBookiesException
+        }
+    }
+
+    @Test
+    public void testReplaceBookieRandomly() throws Exception {
+        zepp.uninitalize();
+        updateMyUpgradeDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        // Update cluster
+        BookieSocketAddress addr5 = new BookieSocketAddress("127.0.0.6", 3181);
+        BookieSocketAddress addr6 = new BookieSocketAddress("127.0.0.7", 3181);
+        BookieSocketAddress addr7 = new BookieSocketAddress("127.0.0.8", 3181);
+
+        // update dns mapping
+        StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr4.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr6.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr7.getHostName(), NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        zepp = new ZoneawareEnsemblePlacementPolicy();
+        ClientConfiguration confLocal = new ClientConfiguration();
+        confLocal.addConfiguration(conf);
+        confLocal.setEnforceStrictZoneawarePlacement(false);
+        confLocal.setMinNumZonesPerWriteQuorum(3);
+        confLocal.setDesiredNumZonesPerWriteQuorum(4);
+        zepp.initialize(confLocal, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+        zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        Set<BookieSocketAddress> rwAddrs = new HashSet<BookieSocketAddress>();
+        Set<BookieSocketAddress> roAddrs = new HashSet<BookieSocketAddress>();
+        Set<BookieSocketAddress> excludeBookies = new HashSet<BookieSocketAddress>();
+        rwAddrs.add(addr1);
+        rwAddrs.add(addr2);
+        rwAddrs.add(addr3);
+        rwAddrs.add(addr4);
+        rwAddrs.add(addr5);
+        rwAddrs.add(addr7);
+
+        roAddrs.add(addr6);
+        excludeBookies.add(addr5);
+        zepp.onClusterChanged(rwAddrs, roAddrs);
+        List<BookieSocketAddress> ensembleList = new ArrayList<BookieSocketAddress>();
+        ensembleList.add(addr1);
+        ensembleList.add(addr2);
+        ensembleList.add(addr3);
+        ensembleList.add(addr4);
+
+        PlacementResult<BookieSocketAddress> replaceResponse = zepp.replaceBookie(4, 3, 2, null, ensembleList, addr3,
+                excludeBookies);
+        BookieSocketAddress replaceBookie = replaceResponse.getResult();
+        /*
+         * if enforceStrictZoneawarePlacement is not enabled, then there is no
+         * restrictions on ensSize and writeQSize and also bookie belonging to
+         * DEFAULT_ZONE_AND_UPGRADEDOMAIN can be a candidate.
+         */
+        assertEquals("ReplaceBookie candidate", addr7, replaceBookie);
+
+        rwAddrs.remove(addr7);
+        excludeBookies.add(addr7);
+        zepp.onClusterChanged(rwAddrs, roAddrs);
+        try {
+            /*
+             * since there is no bookie available, replaceBookie should fail.
+             */
+            zepp.replaceBookie(4, 3, 2, null, ensembleList, addr3, excludeBookies);
+            fail("ReplaceBookie should fail because of unavailable bookies");
+        } catch (BKException.BKNotEnoughBookiesException bkne) {
+            // expected NotEnoughBookiesException
+        }
     }
 }
