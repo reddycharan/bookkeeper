@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -134,7 +135,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         }
     }
 
-    public static final ZoneAwareNodeLocation UNRESOLVED_NODELOCATION = new ZoneAwareNodeLocation(
+    protected ZoneAwareNodeLocation unresolvedNodelocation = new ZoneAwareNodeLocation(
             NetworkTopology.DEFAULT_ZONE, NetworkTopology.DEFAULT_UPGRADEDOMAIN);
 
     ZoneawareEnsemblePlacementPolicyImpl() {
@@ -147,12 +148,12 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         ZoneAwareNodeLocation nodeLocation = address2NodePlacement.get(addr);
         if (null == nodeLocation) {
             String networkLocation = resolveNetworkLocation(addr);
-            if (NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN.equals(networkLocation)) {
-                nodeLocation = UNRESOLVED_NODELOCATION;
+            if (getDefaultFaultDomain().equals(networkLocation)) {
+                nodeLocation = unresolvedNodelocation;
             } else {
                 String[] parts = StringUtils.split(NodeBase.normalize(networkLocation), NodeBase.PATH_SEPARATOR);
                 if (parts.length != 2) {
-                    nodeLocation = UNRESOLVED_NODELOCATION;
+                    nodeLocation = unresolvedNodelocation;
                 } else {
                     nodeLocation = new ZoneAwareNodeLocation(NodeBase.PATH_SEPARATOR_STR + parts[0],
                             NodeBase.PATH_SEPARATOR_STR + parts[1]);
@@ -165,7 +166,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     protected ZoneAwareNodeLocation getZoneAwareNodeLocation(BookieNode node) {
         if (null == node || null == node.getAddr()) {
-            return UNRESOLVED_NODELOCATION;
+            return unresolvedNodelocation;
         }
         return getZoneAwareNodeLocation(node.getAddr());
     }
@@ -260,6 +261,15 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     public ZoneawareEnsemblePlacementPolicyImpl withDefaultFaultDomain(String defaultFaultDomain) {
         checkNotNull(defaultFaultDomain, "Default rack cannot be null");
+
+        String[] parts = StringUtils.split(NodeBase.normalize(defaultFaultDomain), NodeBase.PATH_SEPARATOR);
+        if (parts.length != 2) {
+            LOG.error("provided defaultFaultDomain: {} is not valid", defaultFaultDomain);
+            throw new IllegalArgumentException("invalid defaultFaultDomain");
+        } else {
+            unresolvedNodelocation = new ZoneAwareNodeLocation(NodeBase.PATH_SEPARATOR_STR + parts[0],
+                    NodeBase.PATH_SEPARATOR_STR + parts[1]);
+        }
 
         this.defaultFaultDomain = defaultFaultDomain;
         return this;
@@ -832,8 +842,80 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     }
 
     @Override
-    public boolean isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList, int writeQuorumSize,
-            int ackQuorumSize) {
+    public PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList,
+            int writeQuorumSize, int ackQuorumSize) {
+        PlacementPolicyAdherence placementPolicyAdherence = PlacementPolicyAdherence.MEETS_STRICT;
+        rwLock.readLock().lock();
+        try {
+            HashMap<String, Set<String>> nodesLocationInWriteSet = new HashMap<String, Set<String>>();
+            HashMap<String, Integer> numOfNodesInZones = new HashMap<String, Integer>();
+            BookieSocketAddress bookieNode;
+            if ((ensembleList.size() % writeQuorumSize != 0) || (writeQuorumSize <= minNumZonesPerWriteQuorum)) {
+                placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                return placementPolicyAdherence;
+            }
+            int desiredNumZonesPerWriteQuorumForThisEnsemble = Math.min(writeQuorumSize, desiredNumZonesPerWriteQuorum);
+            for (int i = 0; i < ensembleList.size(); i++) {
+                nodesLocationInWriteSet.clear();
+                numOfNodesInZones.clear();
+                for (int j = 0; j < writeQuorumSize; j++) {
+                    int indexOfNode = (i + j) % ensembleList.size();
+                    bookieNode = ensembleList.get(indexOfNode);
+                    ZoneAwareNodeLocation nodeLocation = getZoneAwareNodeLocation(bookieNode);
+                    if (nodeLocation.equals(unresolvedNodelocation)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                        return placementPolicyAdherence;
+                    }
+                    String zone = nodeLocation.getZone();
+                    String upgradeDomain = nodeLocation.getUpgradeDomain();
+                    Set<String> udsOfThisZoneInThisWriteSet = nodesLocationInWriteSet.get(zone);
+                    if (udsOfThisZoneInThisWriteSet == null) {
+                        udsOfThisZoneInThisWriteSet = new HashSet<String>();
+                        udsOfThisZoneInThisWriteSet.add(upgradeDomain);
+                        nodesLocationInWriteSet.put(zone, udsOfThisZoneInThisWriteSet);
+                        numOfNodesInZones.put(zone, 1);
+                    } else {
+                        udsOfThisZoneInThisWriteSet.add(upgradeDomain);
+                        Integer numOfNodesInAZone = numOfNodesInZones.get(zone);
+                        numOfNodesInZones.put(zone, (numOfNodesInAZone + 1));
+                    }
+                }
+                if (numOfNodesInZones.entrySet().size() < minNumZonesPerWriteQuorum) {
+                    placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                    return placementPolicyAdherence;
+                } else if (numOfNodesInZones.entrySet().size() >= desiredNumZonesPerWriteQuorumForThisEnsemble) {
+                    if (!validateMinUDsAreMaintained(numOfNodesInZones, nodesLocationInWriteSet)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                        return placementPolicyAdherence;
+                    }
+                } else {
+                    if (!validateMinUDsAreMaintained(numOfNodesInZones, nodesLocationInWriteSet)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                        return placementPolicyAdherence;
+                    }
+                    if (placementPolicyAdherence == PlacementPolicyAdherence.MEETS_STRICT) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_SOFT;
+                    }
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
+        }
+        return placementPolicyAdherence;
+    }
+
+    private boolean validateMinUDsAreMaintained(HashMap<String, Integer> numOfNodesInZones,
+            HashMap<String, Set<String>> nodesLocationInWriteSet) {
+        for (Entry<String, Integer> numOfNodesInZone : numOfNodesInZones.entrySet()) {
+            String zone = numOfNodesInZone.getKey();
+            Integer numOfNodesInThisZone = numOfNodesInZone.getValue();
+            if (numOfNodesInThisZone > 1) {
+                Set<String> udsOfThisZone = nodesLocationInWriteSet.get(zone);
+                if (udsOfThisZone.size() < 2) {
+                    return false;
+                }
+            }
+        }
         return true;
     }
 

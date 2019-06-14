@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import junit.framework.TestCase;
 
 import org.apache.bookkeeper.client.BookieInfoReader.BookieInfo;
+import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementPolicyAdherence;
 import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementResult;
 import org.apache.bookkeeper.client.ZoneawareEnsemblePlacementPolicyImpl.ZoneAwareNodeLocation;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -237,6 +238,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(
                 newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain all 6 rw bookies", newEnsembleSet.containsAll(rwAddrs));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
 
         /*
          * there are enough bookies so newEnsemble should succeed.
@@ -245,6 +248,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain 3 rw bookies",
                 (newEnsembleSet.size() == 3) && (rwAddrs.containsAll(newEnsembleSet)));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
     }
 
     @Test
@@ -300,6 +305,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
             newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
             assertTrue("Bookie from default faultDomain shouldn't be part of ensemble",
                     Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
+            assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                    newEnsemblePlacementResult.isAdheringToPolicy());
         }
     }
 
@@ -361,6 +368,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                 rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 4));
         assertTrue("Bookie from default faultDomain shouldn't be part of ensemble",
                 Collections.disjoint(newEnsembleSet, bookiesInDefaultFaultDomain));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
 
         try {
             /*
@@ -389,6 +398,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         newEnsemblePlacementResult = zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
         newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain 4 different bookies", newEnsembleSet.size() == 4);
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                newEnsemblePlacementResult.isAdheringToPolicy());
     }
 
     @Test
@@ -461,6 +472,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * succeed because writeQuorum is just 3.
          */
         newEnsemblePlacementResult = zepp.newEnsemble(ensSize, writeQuorum, 2, null, new HashSet<>());
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
         List<BookieSocketAddress> newEnsemble = newEnsemblePlacementResult.getResult();
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemble);
         assertTrue("New ensemble should contain all 6 rw bookies in non-default fault domains",
@@ -542,6 +555,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsembleList);
         assertTrue("New ensemble should contain 6 rw bookies in non-default fault domains",
                 rwAddrs.containsAll(newEnsembleSet) && (newEnsembleSet.size() == 6));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
         Set<String> bookiesNetworkLocations = new HashSet<String>();
 
         for (BookieSocketAddress bookieAddr : newEnsembleSet) {
@@ -627,7 +642,11 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         zepp.onClusterChanged(rwAddrs, roAddrs);
         Set<BookieSocketAddress> excludedBookies = new HashSet<BookieSocketAddress>();
 
-        List<BookieSocketAddress> newEnsembleList = zepp.newEnsemble(6, 6, 4, null, excludedBookies).getResult();
+        PlacementResult<List<BookieSocketAddress>> newEnsemblePlacementResult = zepp.newEnsemble(6, 6, 4, null,
+                excludedBookies);
+        List<BookieSocketAddress> newEnsembleList = newEnsemblePlacementResult.getResult();
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                newEnsemblePlacementResult.isAdheringToPolicy());
         Set<BookieSocketAddress> newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsembleList);
         Set<String> bookiesNetworkLocationsSet = new HashSet<String>();
         List<ZoneAwareNodeLocation> bookiesNodeLocationList = new ArrayList<ZoneAwareNodeLocation>();
@@ -727,16 +746,20 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * quorum of size 6, to replace bookie addr7 (/zone2/ud2), new bookie
          * should be from /zone2/ud2.
          */
-        BookieSocketAddress replacedBookie = zepp.replaceBookie(6, 6, 2, null, ensemble, addr7, excludedBookies)
-                .getResult();
+        PlacementResult<BookieSocketAddress> replacePlacementResult = zepp.replaceBookie(6, 6, 2, null, ensemble, addr7,
+                excludedBookies);
+        BookieSocketAddress replacedBookie = replacePlacementResult.getResult();
         assertEquals("replaced bookie", addr8, replacedBookie);
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                replacePlacementResult.isAdheringToPolicy());
 
         excludedBookies.add(addr8);
         /*
          * here addr8 is excluded, and writeQuorumSize is 3. So to replace
          * bookie addr7, addr6 (belonging to same zone) is the candidate.
          */
-        replacedBookie = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies).getResult();
+        replacePlacementResult = zepp.replaceBookie(6, 3, 2, null, ensemble, addr7, excludedBookies);
+        replacedBookie = replacePlacementResult.getResult();
         assertEquals("replaced bookie", addr6, replacedBookie);
 
         excludedBookies.add(addr6);
@@ -813,9 +836,12 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * replacing addr4 replaceBookie should be able to find some other
          * bookie in /zone3/ud2.
          */
-        BookieSocketAddress replacedBookie = zepp.replaceBookie(6, 6, 2, null, ensemble, addr4, excludedBookies)
-                .getResult();
+        PlacementResult<BookieSocketAddress> replaceResponse = zepp.replaceBookie(6, 6, 2, null, ensemble, addr4,
+                excludedBookies);
+        BookieSocketAddress replacedBookie = replaceResponse.getResult();
         assertEquals("replaced bookie", "/zone3/ud2", zepp.resolveNetworkLocation(replacedBookie));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                replaceResponse.isAdheringToPolicy());
     }
 
     @Test
@@ -1026,6 +1052,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                     2, null, new HashSet<BookieSocketAddress>());
             List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
             assertFalse(ensemble.contains(addr4));
+            assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                    ensembleResponse.isAdheringToPolicy());
         }
 
         // we could still use addr4 for urgent allocation if it is just bookie
@@ -1034,6 +1062,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                 null, new HashSet<BookieSocketAddress>());
         List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
         assertTrue(ensemble.contains(addr4));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                ensembleResponse.isAdheringToPolicy());
     }
 
     @Test
@@ -1081,6 +1111,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                 newEnsemblePlacementResult.getResult());
         assertEquals("New ensemble should contain 4 rw bookies", 4, newEnsembleSet.size());
         assertFalse("excludeBookie should not be included in the ensemble", newEnsembleSet.contains(addr5));
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                newEnsemblePlacementResult.isAdheringToPolicy());
 
         rwAddrs.remove(addr4);
         roAddrs.add(addr4);
@@ -1152,6 +1184,8 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * DEFAULT_ZONE_AND_UPGRADEDOMAIN can be a candidate.
          */
         assertEquals("ReplaceBookie candidate", addr7, replaceBookie);
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                replaceResponse.isAdheringToPolicy());
 
         rwAddrs.remove(addr7);
         excludeBookies.add(addr7);
@@ -1165,5 +1199,141 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         } catch (BKException.BKNotEnoughBookiesException bkne) {
             // expected NotEnoughBookiesException
         }
+    }
+
+    @Test
+    public void testIsEnsembleAdheringToPlacementPolicy() throws Exception {
+        zepp.uninitalize();
+        updateMyUpgradeDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        // Update cluster
+        BookieSocketAddress addr5 = new BookieSocketAddress("127.0.0.6", 3181);
+        BookieSocketAddress addr6 = new BookieSocketAddress("127.0.0.7", 3181);
+        BookieSocketAddress addr7 = new BookieSocketAddress("127.0.0.8", 3181);
+        BookieSocketAddress addr8 = new BookieSocketAddress("127.0.0.9", 3181);
+        BookieSocketAddress addr9 = new BookieSocketAddress("127.0.0.10", 3181);
+        BookieSocketAddress addr10 = new BookieSocketAddress("127.0.0.11", 3181);
+
+        // update dns mapping
+        StaticDNSResolver.addNodeToRack(addr1.getHostName(), "/zone1/ud1");
+        StaticDNSResolver.addNodeToRack(addr2.getHostName(), "/zone1/ud2");
+        StaticDNSResolver.addNodeToRack(addr3.getHostName(), "/zone1/ud2");
+        StaticDNSResolver.addNodeToRack(addr4.getHostName(), "/zone2/ud1");
+        StaticDNSResolver.addNodeToRack(addr5.getHostName(), "/zone2/ud2");
+        StaticDNSResolver.addNodeToRack(addr6.getHostName(), "/zone2/ud2");
+        StaticDNSResolver.addNodeToRack(addr7.getHostName(), "/zone3/ud1");
+        StaticDNSResolver.addNodeToRack(addr8.getHostName(), "/zone3/ud2");
+        StaticDNSResolver.addNodeToRack(addr9.getHostName(), "/zone3/ud2");
+        StaticDNSResolver.addNodeToRack(addr10.getHostName(), NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        zepp = new ZoneawareEnsemblePlacementPolicy();
+        ClientConfiguration confLocal = new ClientConfiguration();
+        confLocal.addConfiguration(conf);
+        confLocal.setEnforceStrictZoneawarePlacement(true);
+        confLocal.setMinNumZonesPerWriteQuorum(2);
+        confLocal.setDesiredNumZonesPerWriteQuorum(3);
+        zepp.initialize(confLocal, Optional.<DNSToSwitchMapping> empty(), timer, DISABLE_ALL, NullStatsLogger.INSTANCE);
+        zepp.withDefaultFaultDomain(NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN);
+
+        List<BookieSocketAddress> ensemble = new ArrayList<BookieSocketAddress>();
+        ensemble.add(addr1);
+        ensemble.add(addr2);
+        ensemble.add(addr3);
+        // all bookies in same rack
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr2);
+        ensemble.add(addr4);
+        // bookies spread across minZones
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr7);
+        // bookies spread across desirednumofzones
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        // writeQuorum should be greater than minZones
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 2, 2));
+
+        ensemble.clear();
+        ensemble.add(addr2);
+        ensemble.add(addr3);
+        ensemble.add(addr4);
+        // bookies from zone1 (addr2 and addr3) are in same UD
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr7);
+        ensemble.add(addr10);
+        // bookie from default faultdomain will cause PlacementPolicyAdherence
+        // to fail
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 4, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr7);
+        ensemble.add(addr8);
+        ensemble.add(addr9);
+        // bookies are spread across desired zones and bookie from same zone are
+        // spread across 2 UDs
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_STRICT,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 5, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr7);
+        ensemble.add(addr2);
+        ensemble.add(addr8);
+        ensemble.add(addr9);
+        /*
+         * writeset of addr2, addr8 and addr9 fails, because addr8 and addr9
+         * belong to z3u2
+         */
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr9);
+        ensemble.add(addr2);
+        ensemble.add(addr8);
+        ensemble.add(addr7);
+        /*
+         * writeset of addr9, addr2 and addr8 fails, because addr8 and addr9
+         * belong to z3u2
+         */
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
+
+        ensemble.clear();
+        ensemble.add(addr1);
+        ensemble.add(addr4);
+        ensemble.add(addr9);
+        ensemble.add(addr2);
+        ensemble.add(addr7);
+        ensemble.add(addr8);
+        /*
+         * writeset of addr2, addr7 and addr8 just meets soft.
+         */
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_SOFT,
+                zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
     }
 }

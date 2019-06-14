@@ -404,7 +404,7 @@ public class RackawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                 for (BookieNode bn : bns) {
                     addrs.add(bn.getAddr());
                 }
-                return PlacementResult.of(addrs, false);
+                return PlacementResult.of(addrs, PlacementPolicyAdherence.MEETS_FAIL);
             }
 
             for (int i = 0; i < ensembleSize; i++) {
@@ -1007,8 +1007,8 @@ public class RackawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     // this method should be called in readlock scope of 'rwlock'
     @Override
-    public boolean isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList, int writeQuorumSize,
-            int ackQuorumSize) {
+    public PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList,
+            int writeQuorumSize, int ackQuorumSize) {
         int ensembleSize = ensembleList.size();
         int minNumRacksPerWriteQuorumForThisEnsemble = Math.min(writeQuorumSize, minNumRacksPerWriteQuorum);
         HashSet<String> racksInQuorum = new HashSet<String>();
@@ -1030,10 +1030,10 @@ public class RackawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             }
             if ((racksInQuorum.size() < minNumRacksPerWriteQuorumForThisEnsemble)
                     || (enforceMinNumRacksPerWriteQuorum && racksInQuorum.contains(getDefaultRack()))) {
-                return false;
+                return PlacementPolicyAdherence.MEETS_FAIL;
             }
         }
-        return true;
+        return PlacementPolicyAdherence.MEETS_STRICT;
     }
 
     @Override

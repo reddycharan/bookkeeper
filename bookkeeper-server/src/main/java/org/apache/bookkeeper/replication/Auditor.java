@@ -30,6 +30,7 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_DELAYED_BOO
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_FRAGMENTS_PER_LEDGER;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_CHECKED;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
@@ -60,6 +61,7 @@ import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BKException.Code;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.BookKeeperAdmin;
+import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementPolicyAdherence;
 import org.apache.bookkeeper.client.LedgerChecker;
 import org.apache.bookkeeper.client.LedgerFragment;
 import org.apache.bookkeeper.client.LedgerHandle;
@@ -119,6 +121,8 @@ public class Auditor implements AutoCloseable {
     private volatile int lostBookieRecoveryDelayBeforeChange;
     private final AtomicInteger ledgersNotAdheringToPlacementPolicyGuageValue;
     private final AtomicInteger numOfLedgersFoundInPlacementPolicyCheck;
+    private final AtomicInteger ledgersSoftlyAdheringToPlacementPolicyGuageValue;
+    private final AtomicInteger numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck;
 
     private final StatsLogger statsLogger;
     @StatsDoc(
@@ -181,6 +185,11 @@ public class Auditor implements AutoCloseable {
             help = "Gauge for number of ledgers not adhering to placement policy found in placement policy check"
     )
     private final Gauge<Integer> numLedgersNotAdheringToPlacementPolicy;
+    @StatsDoc(
+            name = NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY,
+            help = "Gauge for number of ledgers softly adhering to placement policy found in placement policy check"
+    )
+    private final Gauge<Integer> numLedgersSoftlyAdheringToPlacementPolicy;
 
     static BookKeeper createBookKeeperClient(ServerConfiguration conf) throws InterruptedException, IOException {
         return createBookKeeperClient(conf, NullStatsLogger.INSTANCE);
@@ -233,6 +242,8 @@ public class Auditor implements AutoCloseable {
         this.statsLogger = statsLogger;
         this.numOfLedgersFoundInPlacementPolicyCheck = new AtomicInteger(0);
         this.ledgersNotAdheringToPlacementPolicyGuageValue = new AtomicInteger(0);
+        this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck = new AtomicInteger(0);
+        this.ledgersSoftlyAdheringToPlacementPolicyGuageValue = new AtomicInteger(0);
 
         numUnderReplicatedLedger = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS);
         uRLPublishTimeForLostBookies = this.statsLogger
@@ -261,6 +272,19 @@ public class Auditor implements AutoCloseable {
         };
         this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY,
                 numLedgersNotAdheringToPlacementPolicy);
+        numLedgersSoftlyAdheringToPlacementPolicy = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return ledgersSoftlyAdheringToPlacementPolicyGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY,
+                numLedgersSoftlyAdheringToPlacementPolicy);
 
         this.bkc = bkc;
         this.ownBkc = ownBkc;
@@ -627,15 +651,27 @@ public class Auditor implements AutoCloseable {
                         Stopwatch stopwatch = Stopwatch.createStarted();
                         LOG.info("Starting PlacementPolicyCheck");
                         placementPolicyCheck();
+                        long placementPolicyCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
+
                         int numOfLedgersFoundInPlacementPolicyCheckValue = numOfLedgersFoundInPlacementPolicyCheck
                                 .get();
-                        long placementPolicyCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
                         LOG.info(
                                 "Completed placementPolicyCheck in {} milliSeconds."
                                 + " numOfLedgersNotAdheringToPlacementPolicy {}",
                                 placementPolicyCheckDuration, numOfLedgersFoundInPlacementPolicyCheckValue);
                         ledgersNotAdheringToPlacementPolicyGuageValue
                                 .set(numOfLedgersFoundInPlacementPolicyCheckValue);
+
+                        int numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue =
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.get();
+                        LOG.info(
+                                "Completed placementPolicyCheck in {} milliSeconds."
+                                        + " numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                placementPolicyCheckDuration,
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                        ledgersSoftlyAdheringToPlacementPolicyGuageValue
+                                .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+
                         placementPolicyCheckTime.registerSuccessfulEvent(placementPolicyCheckDuration,
                                 TimeUnit.MILLISECONDS);
                     } catch (BKAuditException e) {
@@ -650,10 +686,25 @@ public class Auditor implements AutoCloseable {
                             ledgersNotAdheringToPlacementPolicyGuageValue
                                     .set(numOfLedgersFoundInPlacementPolicyCheckValue);
                         }
+
+                        int numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue =
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.get();
+                        if (numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * placementPolicyCheck, it found few ledgers softly
+                             * adhering to placement policy. So reporting it.
+                             */
+                            ledgersSoftlyAdheringToPlacementPolicyGuageValue
+                                    .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                        }
+
                         LOG.error(
                                 "BKAuditException running periodic placementPolicy check."
-                                        + "numOfLedgersNotAdheringToPlacementPolicy {}",
-                                numOfLedgersFoundInPlacementPolicyCheckValue, e);
+                                        + "numOfLedgersNotAdheringToPlacementPolicy {}, "
+                                        + "numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                numOfLedgersFoundInPlacementPolicyCheckValue,
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue, e);
                     }
                 }
             }, initialDelay, interval, TimeUnit.SECONDS);
@@ -930,6 +981,7 @@ public class Auditor implements AutoCloseable {
     void placementPolicyCheck() throws BKAuditException {
         final CountDownLatch placementPolicyCheckLatch = new CountDownLatch(1);
         this.numOfLedgersFoundInPlacementPolicyCheck.set(0);
+        this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.set(0);
         Processor<Long> ledgerProcessor = new Processor<Long>() {
             @Override
             public void process(Long ledgerId, AsyncCallback.VoidCallback iterCallback) {
@@ -940,13 +992,15 @@ public class Auditor implements AutoCloseable {
                         int ackQuorumSize = metadata.getAckQuorumSize();
                         if (metadata.isClosed()) {
                             boolean foundSegmentNotAdheringToPlacementPolicy = false;
+                            boolean foundSegmentSoftlyAdheringToPlacementPolicy = false;
                             for (Map.Entry<Long, ? extends List<BookieSocketAddress>> ensemble : metadata
                                     .getAllEnsembles().entrySet()) {
                                 long startEntryIdOfSegment = ensemble.getKey();
                                 List<BookieSocketAddress> ensembleOfSegment = ensemble.getValue();
-                                boolean segmentAdheringToPlacementPolicy = admin.isEnsembleAdheringToPlacementPolicy(
-                                        ensembleOfSegment, writeQuorumSize, ackQuorumSize);
-                                if (!segmentAdheringToPlacementPolicy) {
+                                PlacementPolicyAdherence segmentAdheringToPlacementPolicy = admin
+                                        .isEnsembleAdheringToPlacementPolicy(ensembleOfSegment, writeQuorumSize,
+                                                ackQuorumSize);
+                                if (segmentAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_FAIL) {
                                     foundSegmentNotAdheringToPlacementPolicy = true;
                                     LOG.warn(
                                             "For ledger: {}, Segment starting at entry: {}, with ensemble: {} having "
@@ -955,9 +1009,20 @@ public class Auditor implements AutoCloseable {
                                             ledgerId, startEntryIdOfSegment, ensembleOfSegment, writeQuorumSize,
                                             ackQuorumSize);
                                 }
+                                if (segmentAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_SOFT) {
+                                    foundSegmentSoftlyAdheringToPlacementPolicy = true;
+                                    LOG.warn(
+                                            "For ledger: {}, Segment starting at entry: {}, with ensemble: {} having "
+                                                    + "writeQuorumSize: {} and ackQuorumSize: {} is softly adhering to "
+                                                    + "EnsemblePlacementPolicy",
+                                            ledgerId, startEntryIdOfSegment, ensembleOfSegment, writeQuorumSize,
+                                            ackQuorumSize);
+                                }
                             }
                             if (foundSegmentNotAdheringToPlacementPolicy) {
                                 numOfLedgersFoundInPlacementPolicyCheck.incrementAndGet();
+                            } else if (foundSegmentSoftlyAdheringToPlacementPolicy) {
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.incrementAndGet();
                             }
                         } else {
                             if (LOG.isDebugEnabled()) {
