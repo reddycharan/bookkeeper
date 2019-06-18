@@ -77,7 +77,16 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     static final Logger LOG = LoggerFactory.getLogger(ZoneawareEnsemblePlacementPolicyImpl.class);
 
     public static final String UNKNOWN_ZONE = "UnknownZone";
+    /*
+     * this defaultFaultDomain is used as placeholder network location for
+     * bookies for which network location can't be resolved. In
+     * ZoneawareEnsemblePlacementPolicyImpl zone is the fault domain and upgrade
+     * domain is logical concept to enable parallel patching by bringing down
+     * all the bookies in the upgrade domain.
+     */
     private String defaultFaultDomain = NetworkTopology.DEFAULT_ZONE_AND_UPGRADEDOMAIN;
+    protected ZoneAwareNodeLocation unresolvedNodeLocation = new ZoneAwareNodeLocation(
+            NetworkTopology.DEFAULT_ZONE, NetworkTopology.DEFAULT_UPGRADEDOMAIN);
     private final Random rand;
     protected StatsLogger statsLogger = null;
     // Use a loading cache so slow bookies are expired. Use entryId as values.
@@ -135,8 +144,6 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         }
     }
 
-    protected ZoneAwareNodeLocation unresolvedNodelocation = new ZoneAwareNodeLocation(
-            NetworkTopology.DEFAULT_ZONE, NetworkTopology.DEFAULT_UPGRADEDOMAIN);
 
     ZoneawareEnsemblePlacementPolicyImpl() {
         super();
@@ -149,11 +156,11 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         if (null == nodeLocation) {
             String networkLocation = resolveNetworkLocation(addr);
             if (getDefaultFaultDomain().equals(networkLocation)) {
-                nodeLocation = unresolvedNodelocation;
+                nodeLocation = unresolvedNodeLocation;
             } else {
                 String[] parts = StringUtils.split(NodeBase.normalize(networkLocation), NodeBase.PATH_SEPARATOR);
                 if (parts.length != 2) {
-                    nodeLocation = unresolvedNodelocation;
+                    nodeLocation = unresolvedNodeLocation;
                 } else {
                     nodeLocation = new ZoneAwareNodeLocation(NodeBase.PATH_SEPARATOR_STR + parts[0],
                             NodeBase.PATH_SEPARATOR_STR + parts[1]);
@@ -166,7 +173,7 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
 
     protected ZoneAwareNodeLocation getZoneAwareNodeLocation(BookieNode node) {
         if (null == node || null == node.getAddr()) {
-            return unresolvedNodelocation;
+            return unresolvedNodeLocation;
         }
         return getZoneAwareNodeLocation(node.getAddr());
     }
@@ -260,14 +267,14 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
     }
 
     public ZoneawareEnsemblePlacementPolicyImpl withDefaultFaultDomain(String defaultFaultDomain) {
-        checkNotNull(defaultFaultDomain, "Default rack cannot be null");
+        checkNotNull(defaultFaultDomain, "Default fault domain cannot be null");
 
         String[] parts = StringUtils.split(NodeBase.normalize(defaultFaultDomain), NodeBase.PATH_SEPARATOR);
         if (parts.length != 2) {
             LOG.error("provided defaultFaultDomain: {} is not valid", defaultFaultDomain);
             throw new IllegalArgumentException("invalid defaultFaultDomain");
         } else {
-            unresolvedNodelocation = new ZoneAwareNodeLocation(NodeBase.PATH_SEPARATOR_STR + parts[0],
+            unresolvedNodeLocation = new ZoneAwareNodeLocation(NodeBase.PATH_SEPARATOR_STR + parts[0],
                     NodeBase.PATH_SEPARATOR_STR + parts[1]);
         }
 
@@ -841,56 +848,95 @@ public class ZoneawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
         return retList;
     }
 
+    /*
+     * In ZoneAwareEnsemblePlacementPolicy if bookies in the writeset are from
+     * 'desiredNumOfZones' then it is considered as MEETS_STRICT if they are
+     * from 'minNumOfZones' then it is considered as MEETS_SOFT otherwise
+     * considered as FAIL. Also in a writeset if there are multiple bookies from
+     * the same zone then they are expected to be from different upgrade
+     * domains.
+     */
     @Override
     public PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList,
             int writeQuorumSize, int ackQuorumSize) {
         PlacementPolicyAdherence placementPolicyAdherence = PlacementPolicyAdherence.MEETS_STRICT;
         rwLock.readLock().lock();
         try {
-            HashMap<String, Set<String>> nodesLocationInWriteSet = new HashMap<String, Set<String>>();
-            HashMap<String, Integer> numOfNodesInZones = new HashMap<String, Integer>();
+            HashMap<String, Set<String>> bookiesLocationInWriteSet = new HashMap<String, Set<String>>();
+            HashMap<String, Integer> numOfBookiesInZones = new HashMap<String, Integer>();
             BookieSocketAddress bookieNode;
-            if ((ensembleList.size() % writeQuorumSize != 0) || (writeQuorumSize <= minNumZonesPerWriteQuorum)) {
-                placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+            if (ensembleList.size() % writeQuorumSize != 0) {
+                placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug(
+                            "For ensemble: {}, ensembleSize: {} is not a multiple of writeQuorumSize: {}",
+                            ensembleList, ensembleList.size(), writeQuorumSize);
+                }
+                return placementPolicyAdherence;
+            }
+            if (writeQuorumSize <= minNumZonesPerWriteQuorum) {
+                placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug(
+                            "For ensemble: {}, writeQuorumSize: {} is less than or equal to"
+                            + " minNumZonesPerWriteQuorum: {}",
+                            ensembleList, writeQuorumSize, minNumZonesPerWriteQuorum);
+                }
                 return placementPolicyAdherence;
             }
             int desiredNumZonesPerWriteQuorumForThisEnsemble = Math.min(writeQuorumSize, desiredNumZonesPerWriteQuorum);
             for (int i = 0; i < ensembleList.size(); i++) {
-                nodesLocationInWriteSet.clear();
-                numOfNodesInZones.clear();
+                bookiesLocationInWriteSet.clear();
+                numOfBookiesInZones.clear();
                 for (int j = 0; j < writeQuorumSize; j++) {
                     int indexOfNode = (i + j) % ensembleList.size();
                     bookieNode = ensembleList.get(indexOfNode);
                     ZoneAwareNodeLocation nodeLocation = getZoneAwareNodeLocation(bookieNode);
-                    if (nodeLocation.equals(unresolvedNodelocation)) {
-                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                    if (nodeLocation.equals(unresolvedNodeLocation)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("ensemble: {}, contains bookie: {} for which network location is unresolvable",
+                                    ensembleList, bookieNode);
+                        }
                         return placementPolicyAdherence;
                     }
                     String zone = nodeLocation.getZone();
                     String upgradeDomain = nodeLocation.getUpgradeDomain();
-                    Set<String> udsOfThisZoneInThisWriteSet = nodesLocationInWriteSet.get(zone);
+                    Set<String> udsOfThisZoneInThisWriteSet = bookiesLocationInWriteSet.get(zone);
                     if (udsOfThisZoneInThisWriteSet == null) {
                         udsOfThisZoneInThisWriteSet = new HashSet<String>();
                         udsOfThisZoneInThisWriteSet.add(upgradeDomain);
-                        nodesLocationInWriteSet.put(zone, udsOfThisZoneInThisWriteSet);
-                        numOfNodesInZones.put(zone, 1);
+                        bookiesLocationInWriteSet.put(zone, udsOfThisZoneInThisWriteSet);
+                        numOfBookiesInZones.put(zone, 1);
                     } else {
                         udsOfThisZoneInThisWriteSet.add(upgradeDomain);
-                        Integer numOfNodesInAZone = numOfNodesInZones.get(zone);
-                        numOfNodesInZones.put(zone, (numOfNodesInAZone + 1));
+                        Integer numOfNodesInAZone = numOfBookiesInZones.get(zone);
+                        numOfBookiesInZones.put(zone, (numOfNodesInAZone + 1));
                     }
                 }
-                if (numOfNodesInZones.entrySet().size() < minNumZonesPerWriteQuorum) {
-                    placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                if (numOfBookiesInZones.entrySet().size() < minNumZonesPerWriteQuorum) {
+                    placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("in ensemble: {}, writeset starting at: {} doesn't contain bookies from"
+                                + " minNumZonesPerWriteQuorum: {}", ensembleList, i, minNumZonesPerWriteQuorum);
+                    }
                     return placementPolicyAdherence;
-                } else if (numOfNodesInZones.entrySet().size() >= desiredNumZonesPerWriteQuorumForThisEnsemble) {
-                    if (!validateMinUDsAreMaintained(numOfNodesInZones, nodesLocationInWriteSet)) {
-                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                } else if (numOfBookiesInZones.entrySet().size() >= desiredNumZonesPerWriteQuorumForThisEnsemble) {
+                    if (!validateMinUDsAreMaintained(numOfBookiesInZones, bookiesLocationInWriteSet)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("in ensemble: {}, writeset starting at: {} doesn't maintain min of 2 UDs"
+                                    + " when there are multiple bookies from the same zone.", ensembleList, i);
+                        }
                         return placementPolicyAdherence;
                     }
                 } else {
-                    if (!validateMinUDsAreMaintained(numOfNodesInZones, nodesLocationInWriteSet)) {
-                        placementPolicyAdherence = PlacementPolicyAdherence.MEETS_FAIL;
+                    if (!validateMinUDsAreMaintained(numOfBookiesInZones, bookiesLocationInWriteSet)) {
+                        placementPolicyAdherence = PlacementPolicyAdherence.FAIL;
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug("in ensemble: {}, writeset starting at: {} doesn't maintain min of 2 UDs"
+                                    + " when there are multiple bookies from the same zone.", ensembleList, i);
+                        }
                         return placementPolicyAdherence;
                     }
                     if (placementPolicyAdherence == PlacementPolicyAdherence.MEETS_STRICT) {

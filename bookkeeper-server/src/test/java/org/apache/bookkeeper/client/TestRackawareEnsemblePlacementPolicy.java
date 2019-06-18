@@ -693,13 +693,13 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
             PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = ensembleResponse.isAdheringToPolicy();
             assertEquals(0, getNumCoveredWriteQuorums(ensemble, 2, conf.getMinNumRacksPerWriteQuorum()));
-            assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy);
+            assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy);
             EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse2;
             ensembleResponse2 = repp.newEnsemble(4, 2, 2, null, new HashSet<>());
             List<BookieSocketAddress> ensemble2 = ensembleResponse2.getResult();
             PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy2 = ensembleResponse2.isAdheringToPolicy();
             assertEquals(0, getNumCoveredWriteQuorums(ensemble2, 2, conf.getMinNumRacksPerWriteQuorum()));
-            assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy);
+            assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy);
         } catch (BKNotEnoughBookiesException bnebe) {
             fail("Should not get not enough bookies exception even there is only one rack.");
         }
@@ -1412,7 +1412,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = ensembleResponse.isAdheringToPolicy();
             int numCovered = getNumCoveredWriteQuorums(ensemble, writeQuorumSize, conf.getMinNumRacksPerWriteQuorum());
             assertTrue(numCovered >= 1 && numCovered < 3);
-            assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy);
+            assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy);
             ensembleSize = 4;
             EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> ensembleResponse2 =
                 repp.newEnsemble(ensembleSize, writeQuorumSize,
@@ -1421,7 +1421,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy2 = ensembleResponse2.isAdheringToPolicy();
             numCovered = getNumCoveredWriteQuorums(ensemble2, writeQuorumSize, conf.getMinNumRacksPerWriteQuorum());
             assertTrue(numCovered >= 1 && numCovered < 3);
-            assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy2);
+            assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy2);
         } catch (BKNotEnoughBookiesException bnebe) {
             fail("Should not get not enough bookies exception even there is only one rack.");
         }
@@ -1968,7 +1968,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
             PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = ensembleResponse.isAdheringToPolicy();
             assertFalse(ensemble.contains(addr4));
-            assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy);
+            assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy);
         }
 
         // we could still use addr4 for urgent allocation if it is just bookie flapping
@@ -1976,7 +1976,7 @@ public class TestRackawareEnsemblePlacementPolicy extends TestCase {
             repp.newEnsemble(4, 2, 2, null, new HashSet<BookieSocketAddress>());
         List<BookieSocketAddress> ensemble = ensembleResponse.getResult();
         PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = ensembleResponse.isAdheringToPolicy();
-        assertEquals(PlacementPolicyAdherence.MEETS_FAIL, isEnsembleAdheringToPlacementPolicy);
+        assertEquals(PlacementPolicyAdherence.FAIL, isEnsembleAdheringToPlacementPolicy);
         assertTrue(ensemble.contains(addr4));
     }
 

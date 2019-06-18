@@ -404,7 +404,7 @@ public class RackawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
                 for (BookieNode bn : bns) {
                     addrs.add(bn.getAddr());
                 }
-                return PlacementResult.of(addrs, PlacementPolicyAdherence.MEETS_FAIL);
+                return PlacementResult.of(addrs, PlacementPolicyAdherence.FAIL);
             }
 
             for (int i = 0; i < ensembleSize; i++) {
@@ -1030,7 +1030,7 @@ public class RackawareEnsemblePlacementPolicyImpl extends TopologyAwareEnsembleP
             }
             if ((racksInQuorum.size() < minNumRacksPerWriteQuorumForThisEnsemble)
                     || (enforceMinNumRacksPerWriteQuorum && racksInQuorum.contains(getDefaultRack()))) {
-                return PlacementPolicyAdherence.MEETS_FAIL;
+                return PlacementPolicyAdherence.FAIL;
             }
         }
         return PlacementPolicyAdherence.MEETS_STRICT;

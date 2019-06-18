@@ -69,7 +69,7 @@ public class DefaultEnsemblePlacementPolicy implements EnsemblePlacementPolicy {
             throws BKNotEnoughBookiesException {
         ArrayList<BookieSocketAddress> newBookies = new ArrayList<BookieSocketAddress>(ensembleSize);
         if (ensembleSize <= 0) {
-            return PlacementResult.of(newBookies, PlacementPolicyAdherence.MEETS_FAIL);
+            return PlacementResult.of(newBookies, PlacementPolicyAdherence.FAIL);
         }
         List<BookieSocketAddress> allBookies;
         rwLock.readLock().lock();

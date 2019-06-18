@@ -394,13 +394,17 @@ public interface EnsemblePlacementPolicy {
     }
 
     /**
-     * returns AdherenceLevel if the Ensemble is strictly/softly/inconsistently
-     * adhering to placement policy, like in the case of
+     * returns AdherenceLevel if the Ensemble is strictly/softly/fails adhering
+     * to placement policy, like in the case of
      * RackawareEnsemblePlacementPolicy, bookies in the writeset are from
      * 'minNumRacksPerWriteQuorum' number of racks. And in the case of
      * RegionawareEnsemblePlacementPolicy, check for
      * minimumRegionsForDurability, reppRegionsToWrite, rack distribution within
-     * a region and other parameters of RegionAwareEnsemblePlacementPolicy.
+     * a region and other parameters of RegionAwareEnsemblePlacementPolicy. In
+     * ZoneAwareEnsemblePlacementPolicy if bookies in the writeset are from
+     * 'desiredNumOfZones' then it is considered as MEETS_STRICT if they are
+     * from 'minNumOfZones' then it is considered as MEETS_SOFT otherwise
+     * considered as FAIL.
      *
      * @param ensembleList
      *            list of BookieSocketAddress of bookies in the ensemble
@@ -412,7 +416,7 @@ public interface EnsemblePlacementPolicy {
      */
     default PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList,
             int writeQuorumSize, int ackQuorumSize) {
-        return PlacementPolicyAdherence.MEETS_FAIL;
+        return PlacementPolicyAdherence.FAIL;
     }
 
     /**
@@ -435,10 +439,15 @@ public interface EnsemblePlacementPolicy {
     }
 
     /**
-     * enum for PlacementPolicyAdherence.
+     * enum for PlacementPolicyAdherence. Currently we are supporting tri-value
+     * enum for PlacementPolicyAdherence. If placement policy is met strictly
+     * then it is MEETS_STRICT, if it doesn't adhere to placement policy then it
+     * is FAIL. But there are certain placement policies, like
+     * ZoneAwareEnsemblePlacementPolicy which has definition of soft adherence
+     * level to support zone down scenarios.
      */
     enum PlacementPolicyAdherence {
-        MEETS_FAIL(1), MEETS_SOFT(3), MEETS_STRICT(5);
+        FAIL(1), MEETS_SOFT(3), MEETS_STRICT(5);
         private int numVal;
 
         private PlacementPolicyAdherence(int numVal) {

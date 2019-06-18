@@ -228,14 +228,14 @@ class BookieWatcherImpl implements BookieWatcher {
         long startTime = MathUtils.nowInNano();
         EnsemblePlacementPolicy.PlacementResult<List<BookieSocketAddress>> newEnsembleResponse;
         List<BookieSocketAddress> socketAddresses;
-        PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = PlacementPolicyAdherence.MEETS_FAIL;
+        PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = PlacementPolicyAdherence.FAIL;
         try {
             Set<BookieSocketAddress> quarantinedBookiesSet = quarantinedBookies.asMap().keySet();
             newEnsembleResponse = placementPolicy.newEnsemble(ensembleSize, writeQuorumSize, ackQuorumSize,
                     customMetadata, new HashSet<BookieSocketAddress>(quarantinedBookiesSet));
             socketAddresses = newEnsembleResponse.getResult();
             isEnsembleAdheringToPlacementPolicy = newEnsembleResponse.isAdheringToPolicy();
-            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_FAIL) {
+            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.FAIL) {
                 ensembleNotAdheringToPlacementPolicy.inc();
                 log.warn("New ensemble: {} is not adhering to Placement Policy. quarantinedBookies: {}",
                         socketAddresses, quarantinedBookiesSet);
@@ -250,7 +250,7 @@ class BookieWatcherImpl implements BookieWatcher {
                     ensembleSize, writeQuorumSize, ackQuorumSize, customMetadata, new HashSet<>());
             socketAddresses = newEnsembleResponse.getResult();
             isEnsembleAdheringToPlacementPolicy = newEnsembleResponse.isAdheringToPolicy();
-            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_FAIL) {
+            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.FAIL) {
                 ensembleNotAdheringToPlacementPolicy.inc();
                 log.warn("New ensemble: {} is not adhering to Placement Policy", socketAddresses);
             }
@@ -269,7 +269,7 @@ class BookieWatcherImpl implements BookieWatcher {
         BookieSocketAddress addr = existingBookies.get(bookieIdx);
         EnsemblePlacementPolicy.PlacementResult<BookieSocketAddress> replaceBookieResponse;
         BookieSocketAddress socketAddress;
-        PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = PlacementPolicyAdherence.MEETS_FAIL;
+        PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy = PlacementPolicyAdherence.FAIL;
         try {
             // we exclude the quarantined bookies also first
             Set<BookieSocketAddress> excludedBookiesAndQuarantinedBookies = new HashSet<BookieSocketAddress>(
@@ -281,7 +281,7 @@ class BookieWatcherImpl implements BookieWatcher {
                     existingBookies, addr, excludedBookiesAndQuarantinedBookies);
             socketAddress = replaceBookieResponse.getResult();
             isEnsembleAdheringToPlacementPolicy = replaceBookieResponse.isAdheringToPolicy();
-            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_FAIL) {
+            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.FAIL) {
                 ensembleNotAdheringToPlacementPolicy.inc();
                 log.warn(
                         "replaceBookie for bookie: {} in ensemble: {} is not adhering to placement policy and"
@@ -297,7 +297,7 @@ class BookieWatcherImpl implements BookieWatcher {
                     customMetadata, existingBookies, addr, excludeBookies);
             socketAddress = replaceBookieResponse.getResult();
             isEnsembleAdheringToPlacementPolicy = replaceBookieResponse.isAdheringToPolicy();
-            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.MEETS_FAIL) {
+            if (isEnsembleAdheringToPlacementPolicy == PlacementPolicyAdherence.FAIL) {
                 ensembleNotAdheringToPlacementPolicy.inc();
                 log.warn(
                         "replaceBookie for bookie: {} in ensemble: {} is not adhering to placement policy and"

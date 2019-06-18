@@ -116,7 +116,7 @@ public class LocalBookieEnsemblePlacementPolicy implements EnsemblePlacementPoli
             throw new IllegalArgumentException("Local ensemble policy can only return 1 bookie");
         }
 
-        return PlacementResult.of(Lists.newArrayList(bookieAddress), PlacementPolicyAdherence.MEETS_FAIL);
+        return PlacementResult.of(Lists.newArrayList(bookieAddress), PlacementPolicyAdherence.MEETS_STRICT);
     }
 
     @Override
@@ -127,6 +127,6 @@ public class LocalBookieEnsemblePlacementPolicy implements EnsemblePlacementPoli
     @Override
     public PlacementPolicyAdherence isEnsembleAdheringToPlacementPolicy(List<BookieSocketAddress> ensembleList,
             int writeQuorumSize, int ackQuorumSize) {
-        return PlacementPolicyAdherence.MEETS_FAIL;
+        return PlacementPolicyAdherence.MEETS_STRICT;
     }
 }

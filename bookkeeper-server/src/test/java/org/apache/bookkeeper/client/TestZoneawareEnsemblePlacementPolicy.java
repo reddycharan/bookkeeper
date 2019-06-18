@@ -398,7 +398,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         newEnsemblePlacementResult = zepp.newEnsemble(4, 3, 2, null, new HashSet<>());
         newEnsembleSet = new HashSet<BookieSocketAddress>(newEnsemblePlacementResult.getResult());
         assertTrue("New ensemble should contain 4 different bookies", newEnsembleSet.size() == 4);
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 newEnsemblePlacementResult.isAdheringToPolicy());
     }
 
@@ -1111,7 +1111,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
                 newEnsemblePlacementResult.getResult());
         assertEquals("New ensemble should contain 4 rw bookies", 4, newEnsembleSet.size());
         assertFalse("excludeBookie should not be included in the ensemble", newEnsembleSet.contains(addr5));
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 newEnsemblePlacementResult.isAdheringToPolicy());
 
         rwAddrs.remove(addr4);
@@ -1184,7 +1184,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * DEFAULT_ZONE_AND_UPGRADEDOMAIN can be a candidate.
          */
         assertEquals("ReplaceBookie candidate", addr7, replaceBookie);
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 replaceResponse.isAdheringToPolicy());
 
         rwAddrs.remove(addr7);
@@ -1240,7 +1240,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr2);
         ensemble.add(addr3);
         // all bookies in same rack
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
 
         ensemble.clear();
@@ -1263,7 +1263,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr1);
         ensemble.add(addr4);
         // writeQuorum should be greater than minZones
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 2, 2));
 
         ensemble.clear();
@@ -1271,7 +1271,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr3);
         ensemble.add(addr4);
         // bookies from zone1 (addr2 and addr3) are in same UD
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
 
         ensemble.clear();
@@ -1281,7 +1281,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
         ensemble.add(addr10);
         // bookie from default faultdomain will cause PlacementPolicyAdherence
         // to fail
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 4, 2));
 
         ensemble.clear();
@@ -1306,7 +1306,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * writeset of addr2, addr8 and addr9 fails, because addr8 and addr9
          * belong to z3u2
          */
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
 
         ensemble.clear();
@@ -1320,7 +1320,7 @@ public class TestZoneawareEnsemblePlacementPolicy extends TestCase {
          * writeset of addr9, addr2 and addr8 fails, because addr8 and addr9
          * belong to z3u2
          */
-        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.MEETS_FAIL,
+        assertEquals("PlacementPolicyAdherence", PlacementPolicyAdherence.FAIL,
                 zepp.isEnsembleAdheringToPlacementPolicy(ensemble, 3, 2));
 
         ensemble.clear();
