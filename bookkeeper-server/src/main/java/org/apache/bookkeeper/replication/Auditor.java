@@ -31,8 +31,10 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_FRAGMENTS_P
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_CHECKED;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
+import static org.apache.bookkeeper.replication.ReplicationStats.REPLICAS_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -43,11 +45,17 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -55,6 +63,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.bookkeeper.client.BKException;
@@ -65,16 +74,21 @@ import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementPolicyAdher
 import org.apache.bookkeeper.client.LedgerChecker;
 import org.apache.bookkeeper.client.LedgerFragment;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.RoundRobinDistributionSchedule;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.AbstractZkLedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerManager;
+import org.apache.bookkeeper.meta.LedgerManager.LedgerRange;
+import org.apache.bookkeeper.meta.LedgerManager.LedgerRangeIterator;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
+import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
+import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.MultiCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
 import org.apache.bookkeeper.replication.ReplicationException.BKAuditException;
 import org.apache.bookkeeper.replication.ReplicationException.CompatibilityException;
@@ -85,8 +99,11 @@ import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.annotations.StatsDoc;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
+import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.zookeeper.AsyncCallback;
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,6 +141,10 @@ public class Auditor implements AutoCloseable {
     private final AtomicInteger ledgersSoftlyAdheringToPlacementPolicyGuageValue;
     private final AtomicInteger numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck;
     private final AtomicInteger numOfClosedLedgersAuditedInPlacementPolicyCheck;
+    private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriodGuageValue;
+    private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriod;
+    private final long underreplicatedLedgerRecoveryGracePeriod;
+    private final int zkOpTimeoutMs;
 
     private final StatsLogger statsLogger;
     @StatsDoc(
@@ -151,6 +172,11 @@ public class Auditor implements AutoCloseable {
             help = "the latency distribution of placementPolicy check"
         )
     private final OpStatsLogger placementPolicyCheckTime;
+    @StatsDoc(
+            name = REPLICAS_CHECK_TIME,
+            help = "the latency distribution of replicas check"
+        )
+    private final OpStatsLogger replicasCheckTime;
     @StatsDoc(
         name = AUDIT_BOOKIES_TIME,
         help = "the latency distribution of auditing all the bookies"
@@ -191,6 +217,11 @@ public class Auditor implements AutoCloseable {
             help = "Gauge for number of ledgers softly adhering to placement policy found in placement policy check"
     )
     private final Gauge<Integer> numLedgersSoftlyAdheringToPlacementPolicy;
+    @StatsDoc(
+            name = NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD,
+            help = "Gauge for number of underreplicated ledgers elapsed recovery grace period"
+    )
+    private final Gauge<Integer> numUnderreplicatedLedgersElapsedRecoveryGracePeriod;
 
     static BookKeeper createBookKeeperClient(ServerConfiguration conf) throws InterruptedException, IOException {
         return createBookKeeperClient(conf, NullStatsLogger.INSTANCE);
@@ -239,6 +270,8 @@ public class Auditor implements AutoCloseable {
                    StatsLogger statsLogger)
         throws UnavailableException {
         this.conf = conf;
+        this.underreplicatedLedgerRecoveryGracePeriod = conf.getUnderreplicatedLedgerRecoveryGracePeriod();
+        this.zkOpTimeoutMs = conf.getZkTimeout() * 2;
         this.bookieIdentifier = bookieIdentifier;
         this.statsLogger = statsLogger;
         this.numOfLedgersFoundNotAdheringInPlacementPolicyCheck = new AtomicInteger(0);
@@ -246,6 +279,8 @@ public class Auditor implements AutoCloseable {
         this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck = new AtomicInteger(0);
         this.ledgersSoftlyAdheringToPlacementPolicyGuageValue = new AtomicInteger(0);
         this.numOfClosedLedgersAuditedInPlacementPolicyCheck = new AtomicInteger(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriod = new AtomicInteger(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriodGuageValue = new AtomicInteger(0);
 
         numUnderReplicatedLedger = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS);
         uRLPublishTimeForLostBookies = this.statsLogger
@@ -254,6 +289,7 @@ public class Auditor implements AutoCloseable {
                 .getOpStatsLogger(ReplicationStats.BOOKIE_TO_LEDGERS_MAP_CREATION_TIME);
         checkAllLedgersTime = this.statsLogger.getOpStatsLogger(ReplicationStats.CHECK_ALL_LEDGERS_TIME);
         placementPolicyCheckTime = this.statsLogger.getOpStatsLogger(ReplicationStats.PLACEMENT_POLICY_CHECK_TIME);
+        replicasCheckTime = this.statsLogger.getOpStatsLogger(ReplicationStats.REPLICAS_CHECK_TIME);
         auditBookiesTime = this.statsLogger.getOpStatsLogger(ReplicationStats.AUDIT_BOOKIES_TIME);
         numLedgersChecked = this.statsLogger.getCounter(ReplicationStats.NUM_LEDGERS_CHECKED);
         numFragmentsPerLedger = statsLogger.getOpStatsLogger(ReplicationStats.NUM_FRAGMENTS_PER_LEDGER);
@@ -287,6 +323,20 @@ public class Auditor implements AutoCloseable {
         };
         this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY,
                 numLedgersSoftlyAdheringToPlacementPolicy);
+
+        numUnderreplicatedLedgersElapsedRecoveryGracePeriod = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return numOfURLedgersElapsedRecoveryGracePeriodGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD,
+                numUnderreplicatedLedgersElapsedRecoveryGracePeriod);
 
         this.bkc = bkc;
         this.ownBkc = ownBkc;
@@ -531,6 +581,7 @@ public class Auditor implements AutoCloseable {
             scheduleBookieCheckTask();
             scheduleCheckAllLedgersTask();
             schedulePlacementPolicyCheckTask();
+            scheduleReplicasCheckTask();
         }
     }
 
@@ -660,18 +711,24 @@ public class Auditor implements AutoCloseable {
                                 numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.get();
                         int numOfClosedLedgersAuditedInPlacementPolicyCheckValue =
                                 numOfClosedLedgersAuditedInPlacementPolicyCheck.get();
+                        int numOfURLedgersElapsedRecoveryGracePeriodValue =
+                                numOfURLedgersElapsedRecoveryGracePeriod.get();
                         LOG.info(
                                 "Completed placementPolicyCheck in {} milliSeconds."
                                         + " numOfClosedLedgersAuditedInPlacementPolicyCheck {}"
                                         + " numOfLedgersNotAdheringToPlacementPolicy {}"
-                                        + " numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                        + " numOfLedgersSoftlyAdheringToPlacementPolicy {}"
+                                        + " numOfURLedgersElapsedRecoveryGracePeriod {}",
                                 placementPolicyCheckDuration, numOfClosedLedgersAuditedInPlacementPolicyCheckValue,
                                 numOfLedgersFoundNotAdheringInPlacementPolicyCheckValue,
-                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue,
+                                numOfURLedgersElapsedRecoveryGracePeriodValue);
                         ledgersNotAdheringToPlacementPolicyGuageValue
                                 .set(numOfLedgersFoundNotAdheringInPlacementPolicyCheckValue);
                         ledgersSoftlyAdheringToPlacementPolicyGuageValue
                                 .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                        numOfURLedgersElapsedRecoveryGracePeriodGuageValue
+                                .set(numOfURLedgersElapsedRecoveryGracePeriodValue);
                         placementPolicyCheckTime.registerSuccessfulEvent(placementPolicyCheckDuration,
                                 TimeUnit.MILLISECONDS);
                     } catch (BKAuditException e) {
@@ -699,17 +756,82 @@ public class Auditor implements AutoCloseable {
                                     .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
                         }
 
+                        int numOfURLedgersElapsedRecoveryGracePeriodValue =
+                                numOfURLedgersElapsedRecoveryGracePeriod.get();
+                        if (numOfURLedgersElapsedRecoveryGracePeriodValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * placementPolicyCheck, it found few urledgers have
+                             * elapsed recovery graceperiod. So reporting it.
+                             */
+                            numOfURLedgersElapsedRecoveryGracePeriodGuageValue
+                                    .set(numOfURLedgersElapsedRecoveryGracePeriodValue);
+                        }
+
                         LOG.error(
                                 "BKAuditException running periodic placementPolicy check."
                                         + "numOfLedgersNotAdheringToPlacementPolicy {}, "
-                                        + "numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                        + "numOfLedgersSoftlyAdheringToPlacementPolicy {},"
+                                        + "numOfURLedgersElapsedRecoveryGracePeriod {}",
                                 numOfLedgersFoundInPlacementPolicyCheckValue,
-                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue, e);
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue,
+                                numOfURLedgersElapsedRecoveryGracePeriodValue, e);
                     }
                 }
             }, initialDelay, interval, TimeUnit.SECONDS);
         } else {
             LOG.info("Periodic placementPolicy check disabled");
+        }
+    }
+
+    private void scheduleReplicasCheckTask() {
+        long interval = conf.getAuditorPeriodicReplicasCheckInterval();
+
+        if (interval > 0) {
+            LOG.info("Auditor periodic replicas check enabled" + " 'auditorReplicasCheckInterval' {} seconds",
+                    interval);
+            long replicasCheckLastExecutedCTime;
+            long durationSinceLastExecutionInSecs;
+            long initialDelay;
+            try {
+                replicasCheckLastExecutedCTime = ledgerUnderreplicationManager.getReplicasCheckCTime();
+            } catch (UnavailableException ue) {
+                LOG.error("Got UnavailableException while trying to get replicasCheckCTime", ue);
+                replicasCheckLastExecutedCTime = -1;
+            }
+            if (replicasCheckLastExecutedCTime == -1) {
+                durationSinceLastExecutionInSecs = -1;
+                initialDelay = 0;
+            } else {
+                durationSinceLastExecutionInSecs = (System.currentTimeMillis() - replicasCheckLastExecutedCTime) / 1000;
+                if (durationSinceLastExecutionInSecs < 0) {
+                    // this can happen if there is no strict time ordering
+                    durationSinceLastExecutionInSecs = 0;
+                }
+                initialDelay = durationSinceLastExecutionInSecs > interval ? 0
+                        : (interval - durationSinceLastExecutionInSecs);
+            }
+            LOG.info(
+                    "replicasCheck scheduling info. replicasCheckLastExecutedCTime: {} "
+                            + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
+                    replicasCheckLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
+
+            executor.scheduleAtFixedRate(new Runnable() {
+                public void run() {
+                    try {
+                        Stopwatch stopwatch = Stopwatch.createStarted();
+                        LOG.info("Starting ReplicasCheck");
+                        replicasCheck();
+                        long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
+                        LOG.info("Completed ReplicasCheck in {} milliSeconds.", replicasCheckDuration);
+                        replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
+                    } catch (BKAuditException e) {
+                        LOG.error("BKAuditException running periodic replicas check.", e);
+                    }
+                }
+            }, initialDelay, interval, TimeUnit.SECONDS);
+        } else {
+            LOG.info("Periodic replicas check disabled");
         }
     }
 
@@ -983,6 +1105,26 @@ public class Auditor implements AutoCloseable {
         this.numOfLedgersFoundNotAdheringInPlacementPolicyCheck.set(0);
         this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.set(0);
         this.numOfClosedLedgersAuditedInPlacementPolicyCheck.set(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriod.set(0);
+        if (this.underreplicatedLedgerRecoveryGracePeriod > 0) {
+            Iterator<UnderreplicatedLedger> underreplicatedLedgersInfo = ledgerUnderreplicationManager
+                    .listLedgersToRereplicate(null);
+            List<Long> urLedgersElapsedRecoveryGracePeriod = new ArrayList<Long>();
+            while (underreplicatedLedgersInfo.hasNext()) {
+                UnderreplicatedLedger underreplicatedLedger = underreplicatedLedgersInfo.next();
+                long underreplicatedLedgerMarkTimeInMilSecs = underreplicatedLedger.getCtime();
+                if (underreplicatedLedgerMarkTimeInMilSecs != UnderreplicatedLedger.UNASSIGNED_CTIME) {
+                    long elapsedTimeInSecs =
+                            (System.currentTimeMillis() - underreplicatedLedgerMarkTimeInMilSecs) / 1000;
+                    if (elapsedTimeInSecs > this.underreplicatedLedgerRecoveryGracePeriod) {
+                        urLedgersElapsedRecoveryGracePeriod.add(underreplicatedLedger.getLedgerId());
+                        numOfURLedgersElapsedRecoveryGracePeriod.incrementAndGet();
+                    }
+                }
+            }
+            LOG.error("Following Underreplicated ledgers have elapsed recovery graceperiod: {}",
+                    urLedgersElapsedRecoveryGracePeriod);
+        }
         Processor<Long> ledgerProcessor = new Processor<Long>() {
             @Override
             public void process(Long ledgerId, AsyncCallback.VoidCallback iterCallback) {
@@ -1069,6 +1211,366 @@ public class Auditor implements AutoCloseable {
             ledgerUnderreplicationManager.setPlacementPolicyCheckCTime(System.currentTimeMillis());
         } catch (UnavailableException ue) {
             LOG.error("Got exception while trying to set PlacementPolicyCheckCTime", ue);
+        }
+    }
+
+    private static class MissingEntriesInfo {
+        private final long ledgerId;
+        private final Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo;
+        private final BookieSocketAddress bookieMissingEntries;
+        private final List<Long> unavailableEntriesList;
+
+        private MissingEntriesInfo(long ledgerId, Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo,
+                BookieSocketAddress bookieMissingEntries, List<Long> unavailableEntriesList) {
+            this.ledgerId = ledgerId;
+            this.segmentInfo = segmentInfo;
+            this.bookieMissingEntries = bookieMissingEntries;
+            this.unavailableEntriesList = unavailableEntriesList;
+        }
+
+        public long getLedgerId() {
+            return ledgerId;
+        }
+
+        public Entry<Long, ? extends List<BookieSocketAddress>> getSegmentInfo() {
+            return segmentInfo;
+        }
+
+        public BookieSocketAddress getBookieMissingEntries() {
+            return bookieMissingEntries;
+        }
+
+        public List<Long> getUnavailableEntriesList() {
+            return unavailableEntriesList;
+        }
+    }
+
+    private class ReadLedgerMetadataCallbackForReplicasCheck
+            implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
+        final long ledgerInRange;
+        final MultiCallback mcbForThisLedgerRange;
+        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
+        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+
+        ReadLedgerMetadataCallbackForReplicasCheck(long ledgerInRange, MultiCallback mcbForThisLedgerRange,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+            this.ledgerInRange = ledgerInRange;
+            this.mcbForThisLedgerRange = mcbForThisLedgerRange;
+            this.ledgersWithMissingEntries = ledgersWithMissingEntries;
+            this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
+        }
+
+        @Override
+        public void accept(Versioned<LedgerMetadata> metadataVer, Throwable exception) {
+            if (exception != null) {
+                if (BKException
+                        .getExceptionCode(exception) == BKException.Code.NoSuchLedgerExistsOnMetadataServerException) {
+                    LOG.debug("Ignoring replicas check of already deleted ledger {}", ledgerInRange);
+                    mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                    return;
+                } else {
+                    LOG.warn("Unable to read the ledger: {} information", ledgerInRange, exception);
+                    mcbForThisLedgerRange.processResult(BKException.getExceptionCode(exception), null, null);
+                    return;
+                }
+            }
+
+            LedgerMetadata metadata = metadataVer.getValue();
+            if (!metadata.isClosed()) {
+                LOG.debug("Ledger: {} is not yet closed, so skipping the replicas check analysis for now",
+                        ledgerInRange);
+                mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                return;
+            }
+
+            if (metadata.getLastEntryId() == -1) {
+                LOG.debug("Ledger: {} is closed but it doesn't has any entries, so skipping the replicas check",
+                        ledgerInRange);
+                mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                return;
+            }
+
+            int writeQuorumSize = metadata.getWriteQuorumSize();
+            int ackQuorumSize = metadata.getAckQuorumSize();
+            int ensembleSize = metadata.getEnsembleSize();
+            RoundRobinDistributionSchedule distributionSchedule = new RoundRobinDistributionSchedule(writeQuorumSize,
+                    ackQuorumSize, ensembleSize);
+            List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
+                    metadata.getAllEnsembles().entrySet());
+            /*
+             * since there are multiple segments, MultiCallback should be
+             * created for (ensembleSize * segments.size()) calls.
+             */
+            MultiCallback mcbForThisLedger = new MultiCallback(ensembleSize * segments.size(), mcbForThisLedgerRange,
+                    null, BKException.Code.OK, BKException.Code.ReadException);
+            for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
+                final Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry = segments.get(segmentNum);
+                final List<BookieSocketAddress> ensembleOfSegment = segmentEntry.getValue();
+                final long startEntryIdOfSegment = segmentEntry.getKey();
+                final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1)) ? metadata.getLastEntryId()
+                        : segments.get(segmentNum + 1).getKey() - 1;
+                for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
+                    final BookieSocketAddress bookieInEnsemble = ensembleOfSegment.get(bookieIndex);
+                    final BitSet entriesStripedToThisBookie = distributionSchedule
+                            .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment, lastEntryIdOfSegment);
+                    if (entriesStripedToThisBookie.cardinality() == 0) {
+                        /*
+                         * if no entry is expected to contain in this bookie,
+                         * then there is no point in making
+                         * getListOfEntriesOfLedger call for this bookie. So
+                         * instead callback with success result.
+                         */
+                        mcbForThisLedger.processResult(BKException.Code.OK, null, null);
+                        continue;
+                    }
+                    admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
+                            .whenComplete(new GetListOfEntriesOfLedgerCallbackForReplicasCheck(ledgerInRange,
+                                    startEntryIdOfSegment, lastEntryIdOfSegment, bookieInEnsemble, segmentEntry,
+                                    entriesStripedToThisBookie, ledgersWithMissingEntries,
+                                    ledgersWithUnavailableBookies, mcbForThisLedger));
+                }
+            }
+        }
+    }
+
+    private static class GetListOfEntriesOfLedgerCallbackForReplicasCheck
+            implements BiConsumer<AvailabilityOfEntriesOfLedger, Throwable> {
+        private long ledgerInRange;
+        private long startEntryIdOfSegment;
+        private long lastEntryIdOfSegment;
+        private BookieSocketAddress bookieInEnsemble;
+        private Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry;
+        private BitSet entriesStripedToThisBookie;
+        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
+        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+        private MultiCallback mcbForThisLedger;
+
+        private GetListOfEntriesOfLedgerCallbackForReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
+                long lastEntryIdOfSegment, BookieSocketAddress bookieInEnsemble,
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry, BitSet entriesStripedToThisBookie,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies,
+                MultiCallback mcbForThisLedger) {
+            this.ledgerInRange = ledgerInRange;
+            this.startEntryIdOfSegment = startEntryIdOfSegment;
+            this.lastEntryIdOfSegment = lastEntryIdOfSegment;
+            this.bookieInEnsemble = bookieInEnsemble;
+            this.segmentEntry = segmentEntry;
+            this.entriesStripedToThisBookie = entriesStripedToThisBookie;
+            this.ledgersWithMissingEntries = ledgersWithMissingEntries;
+            this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
+            this.mcbForThisLedger = mcbForThisLedger;
+        }
+
+        @Override
+        public void accept(AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger,
+                Throwable listOfEntriesException) {
+
+            if (listOfEntriesException != null) {
+                LOG.warn("Unable to GetListOfEntriesOfLedger for ledger: {} from: {}", ledgerInRange, bookieInEnsemble,
+                        listOfEntriesException);
+                List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                        .get(ledgerInRange);
+                if (unavailableBookiesInfoOfThisLedger == null) {
+                    ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
+                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                            .get(ledgerInRange);
+                }
+                unavailableBookiesInfoOfThisLedger
+                        .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
+                /*
+                 * here though GetListOfEntriesOfLedger has failed with
+                 * exception, mcbForThisLedger should be called back with OK
+                 * response, because we dont consider this as fatal error in
+                 * replicasCheck and dont want replicasCheck to exit just
+                 * because of this issue. So instead maintain the state of
+                 * ledgersWithUnavailableBookies, so that replicascheck will
+                 * report these ledgers/bookies appropriately.
+                 */
+                mcbForThisLedger.processResult(BKException.Code.OK, null, null);
+                return;
+            }
+
+            final List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
+                    .getUnavailableEntries(startEntryIdOfSegment, lastEntryIdOfSegment, entriesStripedToThisBookie);
+            if ((unavailableEntriesList != null) && (!unavailableEntriesList.isEmpty())) {
+                List<MissingEntriesInfo> missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
+                if (missingEntriesInfoOfThisLedger == null) {
+                    ledgersWithMissingEntries.putIfAbsent(ledgerInRange,
+                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                    missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
+                }
+                missingEntriesInfoOfThisLedger.add(
+                        new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
+            }
+            /*
+             * here though unavailableEntriesList is not empty, mcbForThisLedger
+             * should be called back with OK response, because we dont consider
+             * this as fatal error in replicasCheck and dont want replicasCheck
+             * to exit just because of this issue. So instead maintain the state
+             * of missingEntriesInfoOfThisLedger, so that replicascheck will
+             * report these ledgers/bookies/missingentries appropriately.
+             */
+            mcbForThisLedger.processResult(BKException.Code.OK, null, null);
+        }
+    }
+
+    private static class ReplicasCheckFinalCallback implements AsyncCallback.VoidCallback {
+        final AtomicInteger resultCode;
+        final CountDownLatch replicasCheckLatch;
+
+        private ReplicasCheckFinalCallback(AtomicInteger resultCode, CountDownLatch replicasCheckLatch) {
+            this.resultCode = resultCode;
+            this.replicasCheckLatch = replicasCheckLatch;
+        }
+
+        @Override
+        public void processResult(int rc, String s, Object obj) {
+            resultCode.set(rc);
+            replicasCheckLatch.countDown();
+        }
+    }
+
+    void replicasCheck() throws BKAuditException {
+        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries =
+                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
+        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies =
+                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
+        LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges(zkOpTimeoutMs);
+        while (true) {
+            LedgerRange ledgerRange = null;
+            try {
+                if (ledgerRangeIterator.hasNext()) {
+                    ledgerRange = ledgerRangeIterator.next();
+                } else {
+                    break;
+                }
+            } catch (IOException ioe) {
+                LOG.error("Got IOException while iterating LedgerRangeIterator", ioe);
+                throw new BKAuditException("Got IOException while iterating LedgerRangeIterator", ioe);
+            }
+            ledgersWithMissingEntries.clear();
+            ledgersWithUnavailableBookies.clear();
+            Set<Long> ledgersInRange = ledgerRange.getLedgers();
+            int numOfLedgersInRange = ledgersInRange.size();
+            // Reading the result after processing all the ledgers
+            final AtomicInteger resultCode = new AtomicInteger();
+            final CountDownLatch replicasCheckLatch = new CountDownLatch(1);
+
+            ReplicasCheckFinalCallback finalCB = new ReplicasCheckFinalCallback(resultCode, replicasCheckLatch);
+            MultiCallback mcbForThisLedgerRange = new MultiCallback(numOfLedgersInRange, finalCB, null,
+                    BKException.Code.OK, BKException.Code.ReadException);
+            LOG.debug("Number of ledgers in the current LedgerRange : {}", numOfLedgersInRange);
+            for (Long ledgerInRange : ledgersInRange) {
+                if (checkUnderReplicationForReplicasCheck(ledgerInRange, mcbForThisLedgerRange)) {
+                    /*
+                     * if ledger is marked underreplicated, then ignore this
+                     * ledger for replicascheck.
+                     */
+                    continue;
+                }
+                ledgerManager.readLedgerMetadata(ledgerInRange)
+                        .whenComplete(new ReadLedgerMetadataCallbackForReplicasCheck(ledgerInRange,
+                                mcbForThisLedgerRange, ledgersWithMissingEntries, ledgersWithUnavailableBookies));
+            }
+            try {
+                /*
+                 * if mcbForThisLedgerRange is not calledback within 90 secs
+                 * then better give up doing replicascheck, since there could be
+                 * an issue and blocking the single threaded auditor executor
+                 * thread is not expected.
+                 */
+                if (!replicasCheckLatch.await(90, TimeUnit.SECONDS)) {
+                    LOG.error("For LedgerRange with num of ledgers : {} it didn't complete replicascheck"
+                            + " in 60 secs, so giving up", numOfLedgersInRange);
+                    throw new BKAuditException("Got InterruptedException while doing replicascheck");
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.error("Got InterruptedException while doing replicascheck", ie);
+                throw new BKAuditException("Got InterruptedException while doing replicascheck", ie);
+            }
+            reportLedgersWithMissingEntries(ledgersWithMissingEntries);
+            reportLedgersWithUnavailableBookies(ledgersWithUnavailableBookies);
+            int resultCodeIntValue = resultCode.get();
+            if (resultCodeIntValue != BKException.Code.OK) {
+                throw new BKAuditException("Exception while doing replicas check",
+                        BKException.create(resultCodeIntValue));
+            }
+        }
+        try {
+            ledgerUnderreplicationManager.setReplicasCheckCTime(System.currentTimeMillis());
+        } catch (UnavailableException ue) {
+            LOG.error("Got exception while trying to set ReplicasCheckCTime", ue);
+        }
+    }
+
+    private void reportLedgersWithMissingEntries(
+            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries) {
+        StringBuilder errMessage = new StringBuilder();
+        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithMissingEntriesInfo : ledgersWithMissingEntries
+                .entrySet()) {
+            errMessage.setLength(0);
+            long ledgerWithMissingEntries = ledgerWithMissingEntriesInfo.getKey();
+            List<MissingEntriesInfo> missingEntriesInfoList = ledgerWithMissingEntriesInfo.getValue();
+            errMessage.append("Ledger : " + ledgerWithMissingEntries + " has following missing entries : ");
+            for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
+                MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
+                errMessage.append(
+                        "In segment starting at " + segmentInfo.getKey() + " with ensemble " + segmentInfo.getValue()
+                                + ", following entries " + missingEntriesInfo.getUnavailableEntriesList()
+                                + " are missing in bookie: " + missingEntriesInfo.getBookieMissingEntries());
+                if (listInd < (missingEntriesInfoList.size() - 1)) {
+                    errMessage.append(", ");
+                }
+            }
+            LOG.error(errMessage.toString());
+        }
+    }
+
+    private void reportLedgersWithUnavailableBookies(
+            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+        StringBuilder errMessage = new StringBuilder();
+        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithUnavailableBookiesInfo : ledgersWithUnavailableBookies
+                .entrySet()) {
+            errMessage.setLength(0);
+            long ledgerWithUnavailableBookies = ledgerWithUnavailableBookiesInfo.getKey();
+            List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue();
+            errMessage.append("Ledger : " + ledgerWithUnavailableBookies + " has following unavailable bookies : ");
+            for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
+                MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingBookieInfo.getSegmentInfo();
+                errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
+                        + segmentInfo.getValue() + ", following bookie has not responded "
+                        + missingBookieInfo.getBookieMissingEntries());
+                if (listInd < (missingBookiesInfoList.size() - 1)) {
+                    errMessage.append(", ");
+                }
+            }
+            LOG.error(errMessage.toString());
+        }
+    }
+
+    boolean checkUnderReplicationForReplicasCheck(long ledgerInRange, VoidCallback mcbForThisLedgerRange) {
+        try {
+            if (ledgerUnderreplicationManager.getLedgerUnreplicationInfo(ledgerInRange) == null) {
+                return false;
+            }
+            /*
+             * this ledger is marked underreplicated, so ignore it for
+             * replicasCheck.
+             */
+            LOG.debug("Ledger: {} is marked underrreplicated, ignore this ledger for replicasCheck",
+                    ledgerInRange);
+            mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+            return true;
+        } catch (UnavailableException une) {
+            LOG.error("Got exception while trying to check if ledger: {} is underreplicated", ledgerInRange, une);
+            mcbForThisLedgerRange.processResult(BKException.getExceptionCode(une), null, null);
+            return true;
         }
     }
 
