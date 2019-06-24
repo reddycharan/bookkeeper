@@ -58,6 +58,7 @@ import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.MetadataClientDriver;
 import org.apache.bookkeeper.meta.MetadataDrivers;
+import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.meta.ZkLedgerUnderreplicationManager;
 import org.apache.bookkeeper.meta.zk.ZKMetadataDriverBase;
 import org.apache.bookkeeper.net.BookieSocketAddress;
@@ -809,7 +810,8 @@ public class AuditorLedgerCheckerTest extends BookKeeperClusterTestCase {
             throws Exception {
         for (int i = 0; i < secondsToWait; i++) {
             try {
-                UnderreplicatedLedgerFormat data = urLedgerMgr.getLedgerUnreplicationInfo(ledgerId);
+                UnderreplicatedLedger data = urLedgerMgr.getLedgerUnreplicationInfo(ledgerId);
+                assertNotNull("UnderreplicatedLedger info is not expected to be null", data);
                 boolean all = true;
                 for (String r : replicas) {
                     all = all && data.getReplicaList().contains(r);

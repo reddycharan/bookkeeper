@@ -253,14 +253,38 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         return getUrLedgerZnode(urLedgerPath, ledgerId);
     }
 
-    @VisibleForTesting
-    public UnderreplicatedLedgerFormat getLedgerUnreplicationInfo(long ledgerId)
-            throws KeeperException, TextFormat.ParseException, InterruptedException {
-        String znode = getUrLedgerZnode(ledgerId);
-        UnderreplicatedLedgerFormat.Builder builder = UnderreplicatedLedgerFormat.newBuilder();
-        byte[] data = zkc.getData(znode, false, null);
-        TextFormat.merge(new String(data, UTF_8), builder);
-        return builder.build();
+    @Override
+    public UnderreplicatedLedger getLedgerUnreplicationInfo(long ledgerId)
+            throws ReplicationException.UnavailableException {
+        try {
+            String znode = getUrLedgerZnode(ledgerId);
+            UnderreplicatedLedgerFormat.Builder builder = UnderreplicatedLedgerFormat.newBuilder();
+            byte[] data = null;
+            try {
+                data = zkc.getData(znode, false, null);
+            } catch (KeeperException.NoNodeException nne) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Ledger: {} is not marked underreplicated", ledgerId);
+                }
+                return null;
+            }
+            TextFormat.merge(new String(data, UTF_8), builder);
+            UnderreplicatedLedgerFormat underreplicatedLedgerFormat = builder.build();
+            UnderreplicatedLedger underreplicatedLedger = new UnderreplicatedLedger(ledgerId);
+            List<String> replicaList = underreplicatedLedgerFormat.getReplicaList();
+            long ctime = (underreplicatedLedgerFormat.hasCtime() ? underreplicatedLedgerFormat.getCtime()
+                    : UnderreplicatedLedger.UNASSIGNED_CTIME);
+            underreplicatedLedger.setCtime(ctime);
+            underreplicatedLedger.setReplicaList(replicaList);
+            return underreplicatedLedger;
+        } catch (KeeperException ke) {
+            throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new ReplicationException.UnavailableException("Interrupted while connecting zookeeper", ie);
+        } catch (TextFormat.ParseException pe) {
+            throw new ReplicationException.UnavailableException("Error parsing proto message", pe);
+        }
     }
 
     @Override
@@ -433,28 +457,18 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                     String parent = queue.remove();
                     try {
                         for (String c : zkc.getChildren(parent, false)) {
-                            try {
-                                String child = parent + "/" + c;
-                                if (c.startsWith("urL")) {
-                                    long ledgerId = getLedgerId(child);
-                                    UnderreplicatedLedgerFormat underreplicatedLedgerFormat =
-                                            getLedgerUnreplicationInfo(ledgerId);
-                                    List<String> replicaList = underreplicatedLedgerFormat.getReplicaList();
-                                    long ctime = (underreplicatedLedgerFormat.hasCtime()
-                                            ? underreplicatedLedgerFormat.getCtime()
-                                            : UnderreplicatedLedger.UNASSIGNED_CTIME);
+                            String child = parent + "/" + c;
+                            if (c.startsWith("urL")) {
+                                long ledgerId = getLedgerId(child);
+                                UnderreplicatedLedger underreplicatedLedger = getLedgerUnreplicationInfo(ledgerId);
+                                if (underreplicatedLedger != null) {
+                                    List<String> replicaList = underreplicatedLedger.getReplicaList();
                                     if ((predicate == null) || predicate.test(replicaList)) {
-                                        UnderreplicatedLedger underreplicatedLedger = new UnderreplicatedLedger(
-                                                ledgerId);
-                                        underreplicatedLedger.setCtime(ctime);
-                                        underreplicatedLedger.setReplicaList(replicaList);
                                         curBatch.add(underreplicatedLedger);
                                     }
-                                } else {
-                                    queue.add(child);
                                 }
-                            } catch (KeeperException.NoNodeException nne) {
-                                // ignore
+                            } else {
+                                queue.add(child);
                             }
                         }
                     } catch (InterruptedException ie) {

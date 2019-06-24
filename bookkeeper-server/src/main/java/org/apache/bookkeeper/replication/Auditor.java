@@ -32,6 +32,7 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_CHE
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD;
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
 
@@ -44,6 +45,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,12 +69,14 @@ import org.apache.bookkeeper.client.LedgerFragment;
 import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
+import org.apache.bookkeeper.common.util.MathUtils;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.AbstractZkLedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerManager;
 import org.apache.bookkeeper.meta.LedgerManagerFactory;
 import org.apache.bookkeeper.meta.LedgerUnderreplicationManager;
+import org.apache.bookkeeper.meta.UnderreplicatedLedger;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.Processor;
@@ -124,6 +128,9 @@ public class Auditor implements AutoCloseable {
     private final AtomicInteger ledgersSoftlyAdheringToPlacementPolicyGuageValue;
     private final AtomicInteger numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck;
     private final AtomicInteger numOfClosedLedgersAuditedInPlacementPolicyCheck;
+    private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriodGuageValue;
+    private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriod;
+    private final long underreplicatedLedgerRecoveryGracePeriod;
 
     private final StatsLogger statsLogger;
     @StatsDoc(
@@ -191,6 +198,11 @@ public class Auditor implements AutoCloseable {
             help = "Gauge for number of ledgers softly adhering to placement policy found in placement policy check"
     )
     private final Gauge<Integer> numLedgersSoftlyAdheringToPlacementPolicy;
+    @StatsDoc(
+            name = NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD,
+            help = "Gauge for number of underreplicated ledgers elapsed recovery grace period"
+    )
+    private final Gauge<Integer> numUnderreplicatedLedgersElapsedRecoveryGracePeriod;
 
     static BookKeeper createBookKeeperClient(ServerConfiguration conf) throws InterruptedException, IOException {
         return createBookKeeperClient(conf, NullStatsLogger.INSTANCE);
@@ -239,6 +251,7 @@ public class Auditor implements AutoCloseable {
                    StatsLogger statsLogger)
         throws UnavailableException {
         this.conf = conf;
+        this.underreplicatedLedgerRecoveryGracePeriod = conf.getUnderreplicatedLedgerRecoveryGracePeriod();
         this.bookieIdentifier = bookieIdentifier;
         this.statsLogger = statsLogger;
         this.numOfLedgersFoundNotAdheringInPlacementPolicyCheck = new AtomicInteger(0);
@@ -246,6 +259,8 @@ public class Auditor implements AutoCloseable {
         this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck = new AtomicInteger(0);
         this.ledgersSoftlyAdheringToPlacementPolicyGuageValue = new AtomicInteger(0);
         this.numOfClosedLedgersAuditedInPlacementPolicyCheck = new AtomicInteger(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriod = new AtomicInteger(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriodGuageValue = new AtomicInteger(0);
 
         numUnderReplicatedLedger = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS);
         uRLPublishTimeForLostBookies = this.statsLogger
@@ -287,6 +302,20 @@ public class Auditor implements AutoCloseable {
         };
         this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY,
                 numLedgersSoftlyAdheringToPlacementPolicy);
+
+        numUnderreplicatedLedgersElapsedRecoveryGracePeriod = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return numOfURLedgersElapsedRecoveryGracePeriodGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD,
+                numUnderreplicatedLedgersElapsedRecoveryGracePeriod);
 
         this.bkc = bkc;
         this.ownBkc = ownBkc;
@@ -660,18 +689,24 @@ public class Auditor implements AutoCloseable {
                                 numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.get();
                         int numOfClosedLedgersAuditedInPlacementPolicyCheckValue =
                                 numOfClosedLedgersAuditedInPlacementPolicyCheck.get();
+                        int numOfURLedgersElapsedRecoveryGracePeriodValue =
+                                numOfURLedgersElapsedRecoveryGracePeriod.get();
                         LOG.info(
                                 "Completed placementPolicyCheck in {} milliSeconds."
                                         + " numOfClosedLedgersAuditedInPlacementPolicyCheck {}"
                                         + " numOfLedgersNotAdheringToPlacementPolicy {}"
-                                        + " numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                        + " numOfLedgersSoftlyAdheringToPlacementPolicy {}"
+                                        + " numOfURLedgersElapsedRecoveryGracePeriod {}",
                                 placementPolicyCheckDuration, numOfClosedLedgersAuditedInPlacementPolicyCheckValue,
                                 numOfLedgersFoundNotAdheringInPlacementPolicyCheckValue,
-                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue,
+                                numOfURLedgersElapsedRecoveryGracePeriodValue);
                         ledgersNotAdheringToPlacementPolicyGuageValue
                                 .set(numOfLedgersFoundNotAdheringInPlacementPolicyCheckValue);
                         ledgersSoftlyAdheringToPlacementPolicyGuageValue
                                 .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
+                        numOfURLedgersElapsedRecoveryGracePeriodGuageValue
+                                .set(numOfURLedgersElapsedRecoveryGracePeriodValue);
                         placementPolicyCheckTime.registerSuccessfulEvent(placementPolicyCheckDuration,
                                 TimeUnit.MILLISECONDS);
                     } catch (BKAuditException e) {
@@ -699,12 +734,26 @@ public class Auditor implements AutoCloseable {
                                     .set(numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue);
                         }
 
+                        int numOfURLedgersElapsedRecoveryGracePeriodValue =
+                                numOfURLedgersElapsedRecoveryGracePeriod.get();
+                        if (numOfURLedgersElapsedRecoveryGracePeriodValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * placementPolicyCheck, it found few urledgers have
+                             * elapsed recovery graceperiod. So reporting it.
+                             */
+                            numOfURLedgersElapsedRecoveryGracePeriodGuageValue
+                                    .set(numOfURLedgersElapsedRecoveryGracePeriodValue);
+                        }
+
                         LOG.error(
                                 "BKAuditException running periodic placementPolicy check."
                                         + "numOfLedgersNotAdheringToPlacementPolicy {}, "
-                                        + "numOfLedgersSoftlyAdheringToPlacementPolicy {}",
+                                        + "numOfLedgersSoftlyAdheringToPlacementPolicy {},"
+                                        + "numOfURLedgersElapsedRecoveryGracePeriod {}",
                                 numOfLedgersFoundInPlacementPolicyCheckValue,
-                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue, e);
+                                numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheckValue,
+                                numOfURLedgersElapsedRecoveryGracePeriodValue, e);
                     }
                 }
             }, initialDelay, interval, TimeUnit.SECONDS);
@@ -983,6 +1032,26 @@ public class Auditor implements AutoCloseable {
         this.numOfLedgersFoundNotAdheringInPlacementPolicyCheck.set(0);
         this.numOfLedgersFoundSoftlyAdheringInPlacementPolicyCheck.set(0);
         this.numOfClosedLedgersAuditedInPlacementPolicyCheck.set(0);
+        this.numOfURLedgersElapsedRecoveryGracePeriod.set(0);
+        if (this.underreplicatedLedgerRecoveryGracePeriod > 0) {
+            Iterator<UnderreplicatedLedger> underreplicatedLedgersInfo = ledgerUnderreplicationManager
+                    .listLedgersToRereplicate(null);
+            List<Long> urLedgersElapsedRecoveryGracePeriod = new ArrayList<Long>();
+            while (underreplicatedLedgersInfo.hasNext()) {
+                UnderreplicatedLedger underreplicatedLedger = underreplicatedLedgersInfo.next();
+                long underreplicatedLedgerMarkTimeInMilSecs = underreplicatedLedger.getCtime();
+                if (underreplicatedLedgerMarkTimeInMilSecs != UnderreplicatedLedger.UNASSIGNED_CTIME) {
+                    long elapsedTimeInSecs = MathUtils.elapsedMSec(underreplicatedLedgerMarkTimeInMilSecs * 1000 * 1000)
+                            / 1000;
+                    if (elapsedTimeInSecs > this.underreplicatedLedgerRecoveryGracePeriod) {
+                        urLedgersElapsedRecoveryGracePeriod.add(underreplicatedLedger.getLedgerId());
+                        numOfURLedgersElapsedRecoveryGracePeriod.incrementAndGet();
+                    }
+                }
+            }
+            LOG.error("Following Underreplicated ledgers have elapsed recovery graceperiod: {}",
+                    urLedgersElapsedRecoveryGracePeriod);
+        }
         Processor<Long> ledgerProcessor = new Processor<Long>() {
             @Override
             public void process(Long ledgerId, AsyncCallback.VoidCallback iterCallback) {

@@ -18,6 +18,8 @@
 package org.apache.bookkeeper.meta;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.TextFormat.ParseException;
+
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.function.Predicate;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.GenericCallback;
 import org.apache.bookkeeper.replication.ReplicationException;
+import org.apache.zookeeper.KeeperException;
 
 /**
  * Interface for marking ledgers which need to be rereplicated.
@@ -59,6 +62,14 @@ public interface LedgerUnderreplicationManager extends AutoCloseable {
      */
     void markLedgerReplicated(long ledgerId)
             throws ReplicationException.UnavailableException;
+
+    /**
+     * 
+     * @param ledgerId
+     * @return
+     * @throws ReplicationException.UnavailableException
+     */
+    UnderreplicatedLedger getLedgerUnreplicationInfo(long ledgerId) throws ReplicationException.UnavailableException;
 
     /**
      * Get a list of all the underreplicated ledgers which have been
