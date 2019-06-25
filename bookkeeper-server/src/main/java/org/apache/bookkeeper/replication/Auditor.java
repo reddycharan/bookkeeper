@@ -34,6 +34,7 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOF
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD;
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
+import static org.apache.bookkeeper.replication.ReplicationStats.REPLICAS_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -46,9 +47,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -90,6 +93,7 @@ import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.annotations.StatsDoc;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.jute.Index;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -158,6 +162,11 @@ public class Auditor implements AutoCloseable {
             help = "the latency distribution of placementPolicy check"
         )
     private final OpStatsLogger placementPolicyCheckTime;
+    @StatsDoc(
+            name = REPLICAS_CHECK_TIME,
+            help = "the latency distribution of replicas check"
+        )
+    private final OpStatsLogger replicasCheckTime;
     @StatsDoc(
         name = AUDIT_BOOKIES_TIME,
         help = "the latency distribution of auditing all the bookies"
@@ -269,6 +278,7 @@ public class Auditor implements AutoCloseable {
                 .getOpStatsLogger(ReplicationStats.BOOKIE_TO_LEDGERS_MAP_CREATION_TIME);
         checkAllLedgersTime = this.statsLogger.getOpStatsLogger(ReplicationStats.CHECK_ALL_LEDGERS_TIME);
         placementPolicyCheckTime = this.statsLogger.getOpStatsLogger(ReplicationStats.PLACEMENT_POLICY_CHECK_TIME);
+        replicasCheckTime = this.statsLogger.getOpStatsLogger(ReplicationStats.REPLICAS_CHECK_TIME);
         auditBookiesTime = this.statsLogger.getOpStatsLogger(ReplicationStats.AUDIT_BOOKIES_TIME);
         numLedgersChecked = this.statsLogger.getCounter(ReplicationStats.NUM_LEDGERS_CHECKED);
         numFragmentsPerLedger = statsLogger.getOpStatsLogger(ReplicationStats.NUM_FRAGMENTS_PER_LEDGER);
@@ -560,6 +570,7 @@ public class Auditor implements AutoCloseable {
             scheduleBookieCheckTask();
             scheduleCheckAllLedgersTask();
             schedulePlacementPolicyCheckTask();
+            scheduleReplicasCheckTask();
         }
     }
 
@@ -759,6 +770,57 @@ public class Auditor implements AutoCloseable {
             }, initialDelay, interval, TimeUnit.SECONDS);
         } else {
             LOG.info("Periodic placementPolicy check disabled");
+        }
+    }
+
+    private void scheduleReplicasCheckTask() {
+        long interval = conf.getReplicasCheckInterval();
+
+        if (interval > 0) {
+            LOG.info("Auditor periodic replicas check enabled" + " 'auditorReplicasCheckInterval' {} seconds",
+                    interval);
+            long replicasCheckLastExecutedCTime;
+            long durationSinceLastExecutionInSecs;
+            long initialDelay;
+            try {
+                replicasCheckLastExecutedCTime = ledgerUnderreplicationManager.getReplicasCheckCTime();
+            } catch (UnavailableException ue) {
+                LOG.error("Got UnavailableException while trying to get replicasCheckCTime", ue);
+                replicasCheckLastExecutedCTime = -1;
+            }
+            if (replicasCheckLastExecutedCTime == -1) {
+                durationSinceLastExecutionInSecs = -1;
+                initialDelay = 0;
+            } else {
+                durationSinceLastExecutionInSecs = (System.currentTimeMillis() - replicasCheckLastExecutedCTime) / 1000;
+                if (durationSinceLastExecutionInSecs < 0) {
+                    // this can happen if there is no strict time ordering
+                    durationSinceLastExecutionInSecs = 0;
+                }
+                initialDelay = durationSinceLastExecutionInSecs > interval ? 0
+                        : (interval - durationSinceLastExecutionInSecs);
+            }
+            LOG.info(
+                    "replicasCheck scheduling info. replicasCheckLastExecutedCTime: {} "
+                            + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
+                    replicasCheckLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
+
+            executor.scheduleAtFixedRate(new Runnable() {
+                public void run() {
+                    try {
+                        Stopwatch stopwatch = Stopwatch.createStarted();
+                        LOG.info("Starting ReplicasCheck");
+                        replicasCheck();
+                        long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
+                        LOG.info("");
+                        replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
+                    } catch (BKAuditException e) {
+                        LOG.error("", e);
+                    }
+                }
+            }, initialDelay, interval, TimeUnit.SECONDS);
+        } else {
+            LOG.info("Periodic replicas check disabled");
         }
     }
 
@@ -1138,6 +1200,97 @@ public class Auditor implements AutoCloseable {
             ledgerUnderreplicationManager.setPlacementPolicyCheckCTime(System.currentTimeMillis());
         } catch (UnavailableException ue) {
             LOG.error("Got exception while trying to set PlacementPolicyCheckCTime", ue);
+        }
+    }
+
+    void replicasCheck() throws BKAuditException {
+        final CountDownLatch replicasCheckLatch = new CountDownLatch(1);
+
+        Processor<Long> ledgerProcessor = new Processor<Long>() {
+            @Override
+            public void process(Long ledgerId, AsyncCallback.VoidCallback iterCallback) {
+                ledgerManager.readLedgerMetadata(ledgerId).whenComplete((metadataVer, exception) -> {
+                    if (exception == null) {
+                        LedgerMetadata metadata = metadataVer.getValue();
+                        int writeQuorumSize = metadata.getWriteQuorumSize();
+                        int ackQuorumSize = metadata.getAckQuorumSize();
+                        if (metadata.isClosed()) {
+                            try {
+                                UnderreplicatedLedger urLedgerInfo = ledgerUnderreplicationManager
+                                        .getLedgerUnreplicationInfo(ledgerId);
+                                if (urLedgerInfo != null) {
+                                    /*
+                                     * this ledger is marked underreplicated, so
+                                     * ignore it for replicasCheck.
+                                     */
+                                    LOG.debug("Ledger: {} is marked underrreplicated, ignore this ledger"
+                                            + " for replicasCheck", ledgerId);
+                                    return;
+                                }
+                                List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
+                                        metadata.getAllEnsembles().entrySet());
+                                for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
+                                    long startEntryIdOfSegment = segments.get(segmentNum).getKey();
+                                    List<BookieSocketAddress> ensembleOfSegment = segments.get(segmentNum).getValue();
+                                    long lastEntryIdOfSegment;
+                                    if (segmentNum == (segments.size() - 1)) {
+                                        lastEntryIdOfSegment = metadata.getLastEntryId();
+                                    } else {
+                                        lastEntryIdOfSegment = segments.get(segmentNum + 1).getKey() - 1;
+                                    }
+                                    for (BookieSocketAddress bookieInEnsemble : ensembleOfSegment) {
+                                        admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerId).whenComplete(
+                                                (availabilityOfEntriesOfLedger, listOfEntriesException) -> {
+
+                                                });
+                                    }
+                                }
+                            } catch (UnavailableException e) {
+                                LOG.error("Got exception while trying to check if ledger: {} is underreplicated",
+                                        ledgerId, e);
+                                iterCallback.processResult(BKException.getExceptionCode(exception), null, null);
+                            }
+                        } else {
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Ledger: {} is not yet closed, so skipping the replicas"
+                                        + "check analysis for now", ledgerId);
+                            }
+                        }
+                        iterCallback.processResult(BKException.Code.OK, null, null);
+                    } else if (BKException.getExceptionCode(
+                            exception) == BKException.Code.NoSuchLedgerExistsOnMetadataServerException) {
+                        LOG.debug("Ignoring replicas check of already deleted ledger {}", ledgerId);
+                        iterCallback.processResult(BKException.Code.OK, null, null);
+                    } else {
+                        LOG.warn("Unable to read the ledger: {} information", ledgerId);
+                        iterCallback.processResult(BKException.getExceptionCode(exception), null, null);
+                    }
+                });
+            }
+        };
+        // Reading the result after processing all the ledgers
+        final List<Integer> resultCode = new ArrayList<Integer>(1);
+        ledgerManager.asyncProcessLedgers(ledgerProcessor, new AsyncCallback.VoidCallback() {
+
+            @Override
+            public void processResult(int rc, String s, Object obj) {
+                resultCode.add(rc);
+                replicasCheckLatch.countDown();
+            }
+        }, null, BKException.Code.OK, BKException.Code.ReadException);
+        try {
+            replicasCheckLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BKAuditException("Exception while doing replicascheck", e);
+        }
+        if (!resultCode.contains(BKException.Code.OK)) {
+            throw new BKAuditException("Exception while doing replicascheck", BKException.create(resultCode.get(0)));
+        }
+        try {
+            ledgerUnderreplicationManager.setReplicasCheckCTime(System.currentTimeMillis());
+        } catch (UnavailableException ue) {
+            LOG.error("Got exception while trying to set ReplicasCheckCTime", ue);
         }
     }
 

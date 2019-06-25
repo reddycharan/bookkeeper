@@ -189,6 +189,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     protected static final String RW_REREPLICATE_BACKOFF_MS = "rwRereplicateBackoffMs";
     protected static final String UNDERREPLICATED_LEDGER_RECOVERY_GRACE_PERIOD =
             "underreplicatedLedgerRecoveryGracePeriod";
+    protected static final String AUDITOR_REPLICAS_CHECK_INTERVAL = "auditorReplicasCheckInterval";
 
     // Worker Thread parameters.
     protected static final String NUM_ADD_WORKER_THREADS = "numAddWorkerThreads";
@@ -2239,7 +2240,31 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     public long getUnderreplicatedLedgerRecoveryGracePeriod() {
         return getLong(UNDERREPLICATED_LEDGER_RECOVERY_GRACE_PERIOD, 0);
     }
-    
+
+    /**
+     * Sets the regularity/interval at which the auditor will run a replicas
+     * check of all ledgers, which are closed. This should not be run very often
+     * since it validates availability of replicas of all ledgers by querying
+     * bookies. Setting this to 0 will completely disable the periodic replicas
+     * check.
+     *
+     * @param interval
+     *            The interval in seconds. e.g. 86400 = 1 day, 604800 = 1 week
+     */
+    public void setReplicasCheckInterval(long interval) {
+        setProperty(AUDITOR_REPLICAS_CHECK_INTERVAL, interval);
+    }
+
+    /**
+     * Get the regularity at which the auditor does replicas check of all
+     * ledgers, which are closed.
+     *
+     * @return The interval in seconds. By default it is disabled.
+     */
+    public long getReplicasCheckInterval() {
+        return getLong(AUDITOR_REPLICAS_CHECK_INTERVAL, 0);
+    }
+
     /**
      * Set what percentage of a ledger (fragment)'s entries will be verified.
      * 0 - only the first and last entry of each ledger fragment would be verified

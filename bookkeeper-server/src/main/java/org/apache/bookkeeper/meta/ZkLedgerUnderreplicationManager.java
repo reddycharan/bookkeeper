@@ -51,6 +51,7 @@ import org.apache.bookkeeper.proto.DataFormats.CheckAllLedgersFormat;
 import org.apache.bookkeeper.proto.DataFormats.LedgerRereplicationLayoutFormat;
 import org.apache.bookkeeper.proto.DataFormats.LockDataFormat;
 import org.apache.bookkeeper.proto.DataFormats.PlacementPolicyCheckFormat;
+import org.apache.bookkeeper.proto.DataFormats.ReplicasCheckFormat;
 import org.apache.bookkeeper.proto.DataFormats.UnderreplicatedLedgerFormat;
 import org.apache.bookkeeper.replication.ReplicationEnableCb;
 import org.apache.bookkeeper.replication.ReplicationException;
@@ -120,6 +121,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
     private final String lostBookieRecoveryDelayZnode;
     private final String checkAllLedgersCtimeZnode;
     private final String placementPolicyCheckCtimeZnode;
+    private final String replicasCheckCtimeZnode;
     private final ZooKeeper zkc;
     private final SubTreeCache subTreeCache;
 
@@ -134,6 +136,7 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
         lostBookieRecoveryDelayZnode = basePath + '/' + BookKeeperConstants.LOSTBOOKIERECOVERYDELAY_NODE;
         checkAllLedgersCtimeZnode = basePath + '/' + BookKeeperConstants.CHECK_ALL_LEDGERS_CTIME;
         placementPolicyCheckCtimeZnode = basePath + '/' + BookKeeperConstants.PLACEMENT_POLICY_CHECK_CTIME;
+        replicasCheckCtimeZnode = basePath + '/' + BookKeeperConstants.REPLICAS_CHECK_CTIME;
         idExtractionPattern = Pattern.compile("urL(\\d+)$");
         this.zkc = zkc;
         this.subTreeCache = new SubTreeCache(new SubTreeCache.TreeProvider() {
@@ -987,6 +990,51 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                     ? placementPolicyCheckFormat.getPlacementPolicyCheckCTime() : -1;
         } catch (KeeperException.NoNodeException ne) {
             LOG.warn("placementPolicyCheckCtimeZnode is not yet available");
+            return -1;
+        } catch (KeeperException ke) {
+            throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new ReplicationException.UnavailableException("Interrupted while contacting zookeeper", ie);
+        } catch (InvalidProtocolBufferException ipbe) {
+            throw new ReplicationException.UnavailableException("Error while parsing ZK protobuf binary data", ipbe);
+        }
+    }
+
+    @Override
+    public void setReplicasCheckCTime(long replicasCheckCTime) throws UnavailableException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("setReplicasCheckCTime");
+        }
+        try {
+            List<ACL> zkAcls = ZkUtils.getACLs(conf);
+            ReplicasCheckFormat.Builder builder = ReplicasCheckFormat.newBuilder();
+            builder.setReplicasCheckCTime(replicasCheckCTime);
+            byte[] replicasCheckFormatByteArray = builder.build().toByteArray();
+            if (zkc.exists(replicasCheckCtimeZnode, false) != null) {
+                zkc.setData(replicasCheckCtimeZnode, replicasCheckFormatByteArray, -1);
+            } else {
+                zkc.create(replicasCheckCtimeZnode, replicasCheckFormatByteArray, zkAcls, CreateMode.PERSISTENT);
+            }
+        } catch (KeeperException ke) {
+            throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new ReplicationException.UnavailableException("Interrupted while contacting zookeeper", ie);
+        }
+    }
+
+    @Override
+    public long getReplicasCheckCTime() throws UnavailableException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getReplicasCheckCTime");
+        }
+        try {
+            byte[] data = zkc.getData(replicasCheckCtimeZnode, false, null);
+            ReplicasCheckFormat replicasCheckFormat = ReplicasCheckFormat.parseFrom(data);
+            return replicasCheckFormat.hasReplicasCheckCTime() ? replicasCheckFormat.getReplicasCheckCTime() : -1;
+        } catch (KeeperException.NoNodeException ne) {
+            LOG.warn("replicasCheckCtimeZnode is not yet available");
             return -1;
         } catch (KeeperException ke) {
             throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
