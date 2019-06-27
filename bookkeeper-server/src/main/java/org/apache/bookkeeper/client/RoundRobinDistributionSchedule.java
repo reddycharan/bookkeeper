@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
+import jline.internal.Log;
 
 import java.util.Arrays;
 import java.util.BitSet;
@@ -37,7 +38,7 @@ import org.apache.bookkeeper.net.BookieSocketAddress;
  * on.
  *
  */
-class RoundRobinDistributionSchedule implements DistributionSchedule {
+public class RoundRobinDistributionSchedule implements DistributionSchedule {
     private final int writeQuorumSize;
     private final int ackQuorumSize;
     private final int ensembleSize;
@@ -408,5 +409,25 @@ class RoundRobinDistributionSchedule implements DistributionSchedule {
         } finally {
             w.recycle();
         }
+    }
+
+    @Override
+    public BitSet getEntriesStripedToTheBookie(int bookieIndex, long startEntryId, long lastEntryId) {
+        if ((startEntryId < 0) || (lastEntryId < 0) || (bookieIndex < 0) || (bookieIndex >= ensembleSize)
+                || (lastEntryId < startEntryId)) {
+            Log.error(
+                    "Illegal arguments for getEntriesStripedToTheBookie, bookieIndex : {},"
+                            + " ensembleSize : {}, startEntryId : {}, lastEntryId : {}",
+                    bookieIndex, ensembleSize, startEntryId, lastEntryId);
+            throw new IllegalArgumentException("Illegal arguments for getEntriesStripedToTheBookie");
+        }
+        BitSet entriesStripedToTheBookie = new BitSet((int) (lastEntryId - startEntryId + 1));
+        for (long entryId = startEntryId; entryId <= lastEntryId; entryId++) {
+            int modVal = (int) (entryId % ensembleSize);
+            if (modVal < writeQuorumSize) {
+                entriesStripedToTheBookie.set((int) (entryId - startEntryId));
+            }
+        }
+        return entriesStripedToTheBookie;
     }
 }

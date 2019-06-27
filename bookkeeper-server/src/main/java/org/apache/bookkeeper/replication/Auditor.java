@@ -45,6 +45,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -70,6 +71,7 @@ import org.apache.bookkeeper.client.EnsemblePlacementPolicy.PlacementPolicyAdher
 import org.apache.bookkeeper.client.LedgerChecker;
 import org.apache.bookkeeper.client.LedgerFragment;
 import org.apache.bookkeeper.client.LedgerHandle;
+import org.apache.bookkeeper.client.RoundRobinDistributionSchedule;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
 import org.apache.bookkeeper.common.util.MathUtils;
@@ -1212,9 +1214,12 @@ public class Auditor implements AutoCloseable {
                 ledgerManager.readLedgerMetadata(ledgerId).whenComplete((metadataVer, exception) -> {
                     if (exception == null) {
                         LedgerMetadata metadata = metadataVer.getValue();
-                        int writeQuorumSize = metadata.getWriteQuorumSize();
-                        int ackQuorumSize = metadata.getAckQuorumSize();
                         if (metadata.isClosed()) {
+                            int writeQuorumSize = metadata.getWriteQuorumSize();
+                            int ackQuorumSize = metadata.getAckQuorumSize();
+                            int ensembleSize = metadata.getEnsembleSize();
+                            RoundRobinDistributionSchedule distributionSchedule = new RoundRobinDistributionSchedule(
+                                    writeQuorumSize, ackQuorumSize, ensembleSize);
                             try {
                                 UnderreplicatedLedger urLedgerInfo = ledgerUnderreplicationManager
                                         .getLedgerUnreplicationInfo(ledgerId);
@@ -1230,18 +1235,27 @@ public class Auditor implements AutoCloseable {
                                 List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
                                         metadata.getAllEnsembles().entrySet());
                                 for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
-                                    long startEntryIdOfSegment = segments.get(segmentNum).getKey();
                                     List<BookieSocketAddress> ensembleOfSegment = segments.get(segmentNum).getValue();
-                                    long lastEntryIdOfSegment;
-                                    if (segmentNum == (segments.size() - 1)) {
-                                        lastEntryIdOfSegment = metadata.getLastEntryId();
-                                    } else {
-                                        lastEntryIdOfSegment = segments.get(segmentNum + 1).getKey() - 1;
-                                    }
-                                    for (BookieSocketAddress bookieInEnsemble : ensembleOfSegment) {
+                                    final long startEntryIdOfSegment = segments.get(segmentNum).getKey();
+                                    final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1))
+                                            ? metadata.getLastEntryId() : segments.get(segmentNum + 1).getKey() - 1;
+                                    for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
+                                        BookieSocketAddress bookieInEnsemble = ensembleOfSegment.get(bookieIndex);
+                                        BitSet entriesStripedToThisBookie = distributionSchedule
+                                                .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment,
+                                                        lastEntryIdOfSegment);
                                         admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerId).whenComplete(
                                                 (availabilityOfEntriesOfLedger, listOfEntriesException) -> {
-
+                                                    if (listOfEntriesException == null) {
+                                                        List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
+                                                                .getUnavailableEntries(startEntryIdOfSegment,
+                                                                        lastEntryIdOfSegment,
+                                                                        entriesStripedToThisBookie);
+                                                        if ((unavailableEntriesList != null)
+                                                                && (!unavailableEntriesList.isEmpty())) {
+                                                            
+                                                        }
+                                                    }
                                                 });
                                     }
                                 }
