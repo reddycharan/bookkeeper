@@ -1338,6 +1338,7 @@ public class Auditor implements AutoCloseable {
             this.lastEntryIdOfSegment = lastEntryIdOfSegment;
             this.bookieInEnsemble = bookieInEnsemble;
             this.segmentEntry = segmentEntry;
+            this.entriesStripedToThisBookie = entriesStripedToThisBookie;
             this.ledgersWithMissingEntries = ledgersWithMissingEntries;
             this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
             this.mcbForThisSegment = mcbForThisSegment;
@@ -1353,8 +1354,10 @@ public class Auditor implements AutoCloseable {
                 List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
                         .get(ledgerInRange);
                 if (unavailableBookiesInfoOfThisLedger == null) {
-                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
+                    ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
                             Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                            .get(ledgerInRange);
                 }
                 unavailableBookiesInfoOfThisLedger
                         .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
@@ -1367,8 +1370,9 @@ public class Auditor implements AutoCloseable {
             if ((unavailableEntriesList != null) && (!unavailableEntriesList.isEmpty())) {
                 List<MissingEntriesInfo> missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
                 if (missingEntriesInfoOfThisLedger == null) {
-                    missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.putIfAbsent(ledgerInRange,
+                    ledgersWithMissingEntries.putIfAbsent(ledgerInRange,
                             Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                    missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
                 }
                 missingEntriesInfoOfThisLedger.add(
                         new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));

@@ -390,7 +390,7 @@ public class AvailabilityOfEntriesOfLedger {
                 }
                 continue;
             }
-            if ((curSeqGroup == null) || (curSeqGroup.getLastEntryInSequenceGroup() > entryId)) {
+            if ((curSeqGroup == null) || (entryId > curSeqGroup.getLastEntryInSequenceGroup())) {
                 Entry<Long, SequenceGroup> curSeqGroupEntry = sortedSequenceGroups.floorEntry(entryId);
                 if (curSeqGroupEntry == null) {
                     if (availabilityOfEntries.get(bitSetIndex)) {
@@ -400,7 +400,7 @@ public class AvailabilityOfEntriesOfLedger {
                     continue;
                 } else {
                     curSeqGroup = curSeqGroupEntry.getValue();
-                    if (curSeqGroup.getLastEntryInSequenceGroup() > entryId) {
+                    if (entryId > curSeqGroup.getLastEntryInSequenceGroup()) {
                         if (availabilityOfEntries.get(bitSetIndex)) {
                             unavailableEntries.add(entryId);
                         }

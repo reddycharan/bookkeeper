@@ -423,9 +423,16 @@ public class RoundRobinDistributionSchedule implements DistributionSchedule {
         }
         BitSet entriesStripedToTheBookie = new BitSet((int) (lastEntryId - startEntryId + 1));
         for (long entryId = startEntryId; entryId <= lastEntryId; entryId++) {
-            int modVal = (int) (entryId % ensembleSize);
-            if (modVal < writeQuorumSize) {
-                entriesStripedToTheBookie.set((int) (entryId - startEntryId));
+            int modValOfFirstReplica = (int) (entryId % ensembleSize);
+            int modValOfLastReplica = (int) ((entryId + writeQuorumSize - 1) % ensembleSize);
+            if (modValOfLastReplica >= modValOfFirstReplica) {
+                if ((bookieIndex >= modValOfFirstReplica) && (bookieIndex <= modValOfLastReplica)) {
+                    entriesStripedToTheBookie.set((int) (entryId - startEntryId));
+                }
+            } else {
+                if ((bookieIndex >= modValOfFirstReplica) || (bookieIndex <= modValOfLastReplica)) {
+                    entriesStripedToTheBookie.set((int) (entryId - startEntryId));
+                }
             }
         }
         return entriesStripedToTheBookie;
