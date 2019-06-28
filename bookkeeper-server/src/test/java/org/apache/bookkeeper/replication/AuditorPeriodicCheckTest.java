@@ -550,6 +550,99 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         auditor.close();
     }
 
+    @Test
+    public void testInitialDelayOfReplicasCheck() throws Exception {
+        for (AuditorElector e : auditorElectors.values()) {
+            e.shutdown();
+        }
+
+        final int numLedgers = 10;
+        List<Long> ids = new LinkedList<Long>();
+        for (int i = 0; i < numLedgers; i++) {
+            LedgerHandle lh = bkc.createLedger(3, 3, DigestType.CRC32, "passwd".getBytes());
+            ids.add(lh.getId());
+            for (int j = 0; j < 2; j++) {
+                lh.addEntry("testdata".getBytes());
+            }
+            lh.close();
+        }
+
+        LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
+        LedgerUnderreplicationManager urm = mFactory.newLedgerUnderreplicationManager();
+
+        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        validateInitialDelayOfReplicasCheck(urm, -1, 1000, servConf, bkc);
+        validateInitialDelayOfReplicasCheck(urm, 999, 1000, servConf, bkc);
+        validateInitialDelayOfReplicasCheck(urm, 1001, 1000, servConf, bkc);
+    }
+    
+    void validateInitialDelayOfReplicasCheck(LedgerUnderreplicationManager urm, long timeSinceLastExecutedInSecs,
+            long auditorPeriodicReplicasCheckInterval, ServerConfiguration servConf, BookKeeper bkc)
+            throws UnavailableException, UnknownHostException, InterruptedException {
+        TestStatsProvider statsProvider = new TestStatsProvider();
+        TestStatsLogger statsLogger = statsProvider.getStatsLogger(AUDITOR_SCOPE);
+        TestOpStatsLogger replicasCheckStatsLogger = (TestOpStatsLogger) statsLogger
+                .getOpStatsLogger(ReplicationStats.REPLICAS_CHECK_TIME);
+        servConf.setAuditorPeriodicReplicasCheckInterval(auditorPeriodicReplicasCheckInterval);
+        servConf.setAuditorPeriodicCheckInterval(0);
+        servConf.setAuditorPeriodicBookieCheckInterval(0);
+        final TestAuditor auditor = new TestAuditor(Bookie.getBookieAddress(servConf).toString(), servConf, bkc, false,
+                statsLogger);
+        CountDownLatch latch = auditor.getLatch();
+        assertEquals("REPLICAS_CHECK_TIME SuccessCount", 0, replicasCheckStatsLogger.getSuccessCount());
+        long curTimeBeforeStart = System.currentTimeMillis();
+        long replicasCheckCTime = -1;
+        long initialDelayInMsecs = -1;
+        long nextExpectedReplicasCheckExecutionTime = -1;
+        long bufferTimeInMsecs = 20000L;
+        if (timeSinceLastExecutedInSecs == -1) {
+            /*
+             * if we are setting replicasCheckCTime to -1, it means that
+             * replicasCheck hasn't run before. So initialDelay for
+             * replicasCheck should be 0.
+             */
+            replicasCheckCTime = -1;
+            initialDelayInMsecs = 0;
+        } else {
+            replicasCheckCTime = curTimeBeforeStart - timeSinceLastExecutedInSecs * 1000L;
+            initialDelayInMsecs = timeSinceLastExecutedInSecs > auditorPeriodicReplicasCheckInterval ? 0
+                    : (auditorPeriodicReplicasCheckInterval - timeSinceLastExecutedInSecs) * 1000L;
+        }
+        /*
+         * next replicasCheck should happen atleast after
+         * nextExpectedReplicasCheckExecutionTime.
+         */
+        nextExpectedReplicasCheckExecutionTime = curTimeBeforeStart + initialDelayInMsecs;
+
+        urm.setReplicasCheckCTime(replicasCheckCTime);
+        auditor.start();
+        /*
+         * since auditorPeriodicReplicasCheckInterval are higher values (in the
+         * order of 100s of seconds), its ok bufferTimeInMsecs to be ` 20 secs.
+         */
+        assertTrue("replicasCheck should have executed with initialDelay " + initialDelayInMsecs,
+                latch.await(initialDelayInMsecs + bufferTimeInMsecs, TimeUnit.MILLISECONDS));
+        for (int i = 0; i < 20; i++) {
+            Thread.sleep(100);
+            if (replicasCheckStatsLogger.getSuccessCount() >= 1) {
+                break;
+            }
+        }
+        assertEquals("REPLICAS_CHECK_TIME SuccessCount", 1, replicasCheckStatsLogger.getSuccessCount());
+        long currentReplicasCheckCTime = urm.getReplicasCheckCTime();
+        assertTrue(
+                "currentReplicasCheckCTime: " + currentReplicasCheckCTime
+                        + " should be greater than nextExpectedReplicasCheckExecutionTime: "
+                        + nextExpectedReplicasCheckExecutionTime,
+                currentReplicasCheckCTime > nextExpectedReplicasCheckExecutionTime);
+        assertTrue(
+                "currentReplicasCheckCTime: " + currentReplicasCheckCTime
+                        + " should be lesser than nextExpectedReplicasCheckExecutionTime+bufferTimeInMsecs: "
+                        + (nextExpectedReplicasCheckExecutionTime + bufferTimeInMsecs),
+                currentReplicasCheckCTime < (nextExpectedReplicasCheckExecutionTime + bufferTimeInMsecs));
+        auditor.close();
+    }
+
     static class TestAuditor extends Auditor {
 
         final AtomicReference<CountDownLatch> latchRef = new AtomicReference<CountDownLatch>(new CountDownLatch(1));
@@ -571,6 +664,11 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
 
         void placementPolicyCheck() throws BKAuditException {
             super.placementPolicyCheck();
+            latchRef.get().countDown();
+        }
+        
+        void replicasCheck() throws BKAuditException {
+            super.replicasCheck();
             latchRef.get().countDown();
         }
 

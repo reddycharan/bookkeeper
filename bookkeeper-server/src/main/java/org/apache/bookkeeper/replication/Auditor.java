@@ -63,6 +63,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.bookkeeper.client.BKException;
@@ -99,9 +100,12 @@ import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.OpStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.apache.bookkeeper.stats.annotations.StatsDoc;
+import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
+import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.jute.Index;
 import org.apache.zookeeper.AsyncCallback;
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -783,7 +787,7 @@ public class Auditor implements AutoCloseable {
     }
 
     private void scheduleReplicasCheckTask() {
-        long interval = conf.getReplicasCheckInterval();
+        long interval = conf.getAuditorPeriodicReplicasCheckInterval();
 
         if (interval > 0) {
             LOG.info("Auditor periodic replicas check enabled" + " 'auditorReplicasCheckInterval' {} seconds",
@@ -1243,141 +1247,200 @@ public class Auditor implements AutoCloseable {
         }
     }
 
+    private class LedgerMetadataConsumerInReplicasCheck implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
+        final long ledgerInRange;
+        final MultiCallback mcbForThisLedgerRange;
+        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
+        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+
+        LedgerMetadataConsumerInReplicasCheck(long ledgerInRange, MultiCallback mcbForThisLedgerRange,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+            this.ledgerInRange = ledgerInRange;
+            this.mcbForThisLedgerRange = mcbForThisLedgerRange;
+            this.ledgersWithMissingEntries = ledgersWithMissingEntries;
+            this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
+        }
+
+        @Override
+        public void accept(Versioned<LedgerMetadata> metadataVer, Throwable exception) {
+            if (exception != null) {
+                if (BKException
+                        .getExceptionCode(exception) == BKException.Code.NoSuchLedgerExistsOnMetadataServerException) {
+                    LOG.debug("Ignoring replicas check of already deleted ledger {}", ledgerInRange);
+                    mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                    return;
+                } else {
+                    LOG.warn("Unable to read the ledger: {} information", ledgerInRange, exception);
+                    mcbForThisLedgerRange.processResult(BKException.getExceptionCode(exception), null, null);
+                    return;
+                }
+            }
+
+            LedgerMetadata metadata = metadataVer.getValue();
+            if (!metadata.isClosed()) {
+                LOG.debug("Ledger: {} is not yet closed, so skipping the replicas check analysis for now",
+                        ledgerInRange);
+                mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                return;
+            }
+
+            int writeQuorumSize = metadata.getWriteQuorumSize();
+            int ackQuorumSize = metadata.getAckQuorumSize();
+            int ensembleSize = metadata.getEnsembleSize();
+            RoundRobinDistributionSchedule distributionSchedule = new RoundRobinDistributionSchedule(writeQuorumSize,
+                    ackQuorumSize, ensembleSize);
+            List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
+                    metadata.getAllEnsembles().entrySet());
+
+            for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
+                final Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry = segments.get(segmentNum);
+                final List<BookieSocketAddress> ensembleOfSegment = segmentEntry.getValue();
+                final long startEntryIdOfSegment = segmentEntry.getKey();
+                final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1)) ? metadata.getLastEntryId()
+                        : segments.get(segmentNum + 1).getKey() - 1;
+                MultiCallback mcbForThisSegment = new MultiCallback(ensembleSize, mcbForThisLedgerRange, null,
+                        BKException.Code.OK, BKException.Code.ReadException);
+                for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
+                    final BookieSocketAddress bookieInEnsemble = ensembleOfSegment.get(bookieIndex);
+                    final BitSet entriesStripedToThisBookie = distributionSchedule
+                            .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment, lastEntryIdOfSegment);
+                    admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
+                            .whenComplete(new ListOfEntriesOfLedgerConsumerInReplicasCheck(ledgerInRange,
+                                    startEntryIdOfSegment, lastEntryIdOfSegment, bookieInEnsemble, segmentEntry,
+                                    entriesStripedToThisBookie, ledgersWithMissingEntries,
+                                    ledgersWithUnavailableBookies, mcbForThisSegment));
+                }
+            }
+        }
+    }
+
+    private class ListOfEntriesOfLedgerConsumerInReplicasCheck
+            implements BiConsumer<AvailabilityOfEntriesOfLedger, Throwable> {
+        private long ledgerInRange;
+        private long startEntryIdOfSegment;
+        private long lastEntryIdOfSegment;
+        private BookieSocketAddress bookieInEnsemble;
+        private Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry;
+        private BitSet entriesStripedToThisBookie;
+        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
+        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+        private MultiCallback mcbForThisSegment;
+
+        private ListOfEntriesOfLedgerConsumerInReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
+                long lastEntryIdOfSegment, BookieSocketAddress bookieInEnsemble,
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry, BitSet entriesStripedToThisBookie,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies,
+                MultiCallback mcbForThisSegment) {
+            this.ledgerInRange = ledgerInRange;
+            this.startEntryIdOfSegment = startEntryIdOfSegment;
+            this.lastEntryIdOfSegment = lastEntryIdOfSegment;
+            this.bookieInEnsemble = bookieInEnsemble;
+            this.segmentEntry = segmentEntry;
+            this.ledgersWithMissingEntries = ledgersWithMissingEntries;
+            this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
+            this.mcbForThisSegment = mcbForThisSegment;
+        }
+
+        @Override
+        public void accept(AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger,
+                Throwable listOfEntriesException) {
+
+            if (listOfEntriesException != null) {
+                LOG.warn("Unable to GetListOfEntriesOfLedger for ledger: {} from: {}", ledgerInRange, bookieInEnsemble,
+                        listOfEntriesException);
+                List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                        .get(ledgerInRange);
+                if (unavailableBookiesInfoOfThisLedger == null) {
+                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
+                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                }
+                unavailableBookiesInfoOfThisLedger
+                        .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
+                mcbForThisSegment.processResult(BKException.getExceptionCode(listOfEntriesException), null, null);
+                return;
+            }
+
+            final List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
+                    .getUnavailableEntries(startEntryIdOfSegment, lastEntryIdOfSegment, entriesStripedToThisBookie);
+            if ((unavailableEntriesList != null) && (!unavailableEntriesList.isEmpty())) {
+                List<MissingEntriesInfo> missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
+                if (missingEntriesInfoOfThisLedger == null) {
+                    missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.putIfAbsent(ledgerInRange,
+                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                }
+                missingEntriesInfoOfThisLedger.add(
+                        new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
+            }
+            mcbForThisSegment.processResult(BKException.Code.OK, null, null);
+        }
+    }
+
+    private class ReplicasCheckFinalCallback implements AsyncCallback.VoidCallback {
+        final AtomicInteger resultCode;
+        final CountDownLatch replicasCheckLatch;
+
+        private ReplicasCheckFinalCallback(AtomicInteger resultCode, CountDownLatch replicasCheckLatch) {
+            this.resultCode = resultCode;
+            this.replicasCheckLatch = replicasCheckLatch;
+        }
+
+        @Override
+        public void processResult(int rc, String s, Object obj) {
+            resultCode.set(rc);
+            replicasCheckLatch.countDown();
+        }
+    }
+
     void replicasCheck() throws BKAuditException {
-        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries = new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
-        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies = new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
+        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries =
+                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
+        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies =
+                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
         LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges(zkOpTimeoutMs);
-        while (ledgerRangeIterator.hasNext()) {
-            LedgerRange ledgerRange = ledgerRangeIterator.next();
+        while (true) {
+            LedgerRange ledgerRange = null;
+            try {
+                if (ledgerRangeIterator.hasNext()) {
+                    ledgerRange = ledgerRangeIterator.next();
+                } else {
+                    break;
+                }
+            } catch (IOException ioe) {
+                LOG.error("Got IOException while iterating LedgerRangeIterator", ioe);
+                throw new BKAuditException("Got IOException while iterating LedgerRangeIterator", ioe);
+            }
             ledgersWithMissingEntries.clear();
+            ledgersWithUnavailableBookies.clear();
             Set<Long> ledgersInRange = ledgerRange.getLedgers();
             int numOfLedgersInRange = ledgersInRange.size();
             // Reading the result after processing all the ledgers
-            final List<Integer> resultCode = new ArrayList<Integer>(1);
+            final AtomicInteger resultCode = new AtomicInteger();
             final CountDownLatch replicasCheckLatch = new CountDownLatch(1);
 
-            AsyncCallback.VoidCallback finalCB = new AsyncCallback.VoidCallback() {
-                @Override
-                public void processResult(int rc, String s, Object obj) {
-                    resultCode.add(rc);
-                    replicasCheckLatch.countDown();
-                }
-            };
+            ReplicasCheckFinalCallback finalCB = new ReplicasCheckFinalCallback(resultCode, replicasCheckLatch);
             MultiCallback mcbForThisLedgerRange = new MultiCallback(numOfLedgersInRange, finalCB, null,
                     BKException.Code.OK, BKException.Code.ReadException);
-
+            LOG.debug("Number of ledgers in the current LedgerRange : {}", numOfLedgersInRange);
             for (Long ledgerInRange : ledgersInRange) {
-
-                ledgerManager.readLedgerMetadata(ledgerInRange).whenComplete((metadataVer, exception) -> {
-                    if (exception == null) {
-                        LedgerMetadata metadata = metadataVer.getValue();
-                        if (metadata.isClosed()) {
-                            int writeQuorumSize = metadata.getWriteQuorumSize();
-                            int ackQuorumSize = metadata.getAckQuorumSize();
-                            int ensembleSize = metadata.getEnsembleSize();
-                            RoundRobinDistributionSchedule distributionSchedule = new RoundRobinDistributionSchedule(
-                                    writeQuorumSize, ackQuorumSize, ensembleSize);
-                            try {
-                                UnderreplicatedLedger urLedgerInfo = ledgerUnderreplicationManager
-                                        .getLedgerUnreplicationInfo(ledgerInRange);
-                                if (urLedgerInfo != null) {
-                                    /*
-                                     * this ledger is marked underreplicated, so
-                                     * ignore it for replicasCheck.
-                                     */
-                                    LOG.debug("Ledger: {} is marked underrreplicated, ignore this ledger"
-                                            + " for replicasCheck", ledgerInRange);
-                                    return;
-                                }
-                                List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
-                                        metadata.getAllEnsembles().entrySet());
-                                for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
-                                    final Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry = segments
-                                            .get(segmentNum);
-                                    final List<BookieSocketAddress> ensembleOfSegment = segmentEntry.getValue();
-                                    final long startEntryIdOfSegment = segmentEntry.getKey();
-                                    final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1))
-                                            ? metadata.getLastEntryId() : segments.get(segmentNum + 1).getKey() - 1;
-                                    MultiCallback mcbForThisSegment = new MultiCallback(ensembleSize,
-                                            mcbForThisLedgerRange, null, BKException.Code.OK,
-                                            BKException.Code.ReadException);
-                                    for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
-                                        final BookieSocketAddress bookieInEnsemble = ensembleOfSegment.get(bookieIndex);
-                                        final BitSet entriesStripedToThisBookie = distributionSchedule
-                                                .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment,
-                                                        lastEntryIdOfSegment);
-                                        admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
-                                                .whenComplete(
-                                                        (availabilityOfEntriesOfLedger, listOfEntriesException) -> {
-                                                            if (listOfEntriesException == null) {
-                                                                final List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
-                                                                        .getUnavailableEntries(startEntryIdOfSegment,
-                                                                                lastEntryIdOfSegment,
-                                                                                entriesStripedToThisBookie);
-                                                                if ((unavailableEntriesList != null)
-                                                                        && (!unavailableEntriesList.isEmpty())) {
-                                                                    List<MissingEntriesInfo> missingEntriesInfoOfThisLedger = ledgersWithMissingEntries
-                                                                            .get(ledgerInRange);
-                                                                    if (missingEntriesInfoOfThisLedger == null) {
-                                                                        missingEntriesInfoOfThisLedger = ledgersWithMissingEntries
-                                                                                .putIfAbsent(ledgerInRange,
-                                                                                        Collections.synchronizedList(
-                                                                                                new ArrayList<MissingEntriesInfo>()));
-                                                                    }
-                                                                    missingEntriesInfoOfThisLedger
-                                                                            .add(new MissingEntriesInfo(ledgerInRange,
-                                                                                    segmentEntry, bookieInEnsemble,
-                                                                                    unavailableEntriesList));
-                                                                }
-                                                                mcbForThisSegment.processResult(BKException.Code.OK,
-                                                                        null, null);
-                                                            } else {
-                                                                LOG.warn(
-                                                                        "Unable to GetListOfEntriesOfLedger for ledger: {} from: {}",
-                                                                        ledgerInRange, bookieInEnsemble,
-                                                                        listOfEntriesException);
-                                                                List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
-                                                                        .get(ledgerInRange);
-                                                                if (unavailableBookiesInfoOfThisLedger == null) {
-                                                                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
-                                                                            .putIfAbsent(ledgerInRange,
-                                                                                    Collections.synchronizedList(
-                                                                                            new ArrayList<MissingEntriesInfo>()));
-                                                                }
-                                                                unavailableBookiesInfoOfThisLedger
-                                                                        .add(new MissingEntriesInfo(ledgerInRange,
-                                                                                segmentEntry, bookieInEnsemble,
-                                                                                null));
-                                                                mcbForThisSegment.processResult(
-                                                                        BKException.getExceptionCode(exception), null,
-                                                                        null);
-                                                            }
-                                                        });
-                                    }
-                                }
-                            } catch (UnavailableException e) {
-                                LOG.error("Got exception while trying to check if ledger: {} is underreplicated",
-                                        ledgerInRange, e);
-                                mcbForThisLedgerRange.processResult(BKException.getExceptionCode(exception), null,
-                                        null);
-                            }
-                        } else {
-                            if (LOG.isDebugEnabled()) {
-                                LOG.debug("Ledger: {} is not yet closed, so skipping the replicas"
-                                        + "check analysis for now", ledgerInRange);
-                            }
-                        }
-                        mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
-                    } else if (BKException.getExceptionCode(
-                            exception) == BKException.Code.NoSuchLedgerExistsOnMetadataServerException) {
-                        LOG.debug("Ignoring replicas check of already deleted ledger {}", ledgerInRange);
-                        mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
-                    } else {
-                        LOG.warn("Unable to read the ledger: {} information", ledgerInRange, exception);
-                        mcbForThisLedgerRange.processResult(BKException.getExceptionCode(exception), null, null);
-                    }
-                });
-
+                if (checkUnderReplicationForReplicasCheck(ledgerInRange, mcbForThisLedgerRange)) {
+                    continue;
+                }
+                ledgerManager.readLedgerMetadata(ledgerInRange)
+                        .whenComplete(new LedgerMetadataConsumerInReplicasCheck(ledgerInRange, mcbForThisLedgerRange,
+                                ledgersWithMissingEntries, ledgersWithUnavailableBookies));
+            }
+            try {
+                if (!replicasCheckLatch.await(60, TimeUnit.SECONDS)) {
+                    LOG.error("For LedgerRange with num of ledgers : {} it didn't complete replicascheck"
+                            + " in 60 secs, so giving up", numOfLedgersInRange);
+                    throw new BKAuditException("Got InterruptedException while doing replicascheck");
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.error("Got InterruptedException while doing replicascheck", ie);
+                throw new BKAuditException("Got InterruptedException while doing replicascheck", ie);
             }
         }
 
@@ -1385,6 +1448,26 @@ public class Auditor implements AutoCloseable {
             ledgerUnderreplicationManager.setReplicasCheckCTime(System.currentTimeMillis());
         } catch (UnavailableException ue) {
             LOG.error("Got exception while trying to set ReplicasCheckCTime", ue);
+        }
+    }
+
+    boolean checkUnderReplicationForReplicasCheck(long ledgerInRange, VoidCallback mcbForThisLedgerRange) {
+        try {
+            if (ledgerUnderreplicationManager.getLedgerUnreplicationInfo(ledgerInRange) == null) {
+                return false;
+            }
+            /*
+             * this ledger is marked underreplicated, so ignore it for
+             * replicasCheck.
+             */
+            LOG.debug("Ledger: {} is marked underrreplicated, ignore this ledger for replicasCheck",
+                    ledgerInRange);
+            mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+            return true;
+        } catch (UnavailableException une) {
+            LOG.error("Got exception while trying to check if ledger: {} is underreplicated", ledgerInRange, une);
+            mcbForThisLedgerRange.processResult(BKException.getExceptionCode(une), null, null);
+            return true;
         }
     }
 

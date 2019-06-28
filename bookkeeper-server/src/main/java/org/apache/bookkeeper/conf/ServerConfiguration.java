@@ -2251,7 +2251,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      * @param interval
      *            The interval in seconds. e.g. 86400 = 1 day, 604800 = 1 week
      */
-    public void setReplicasCheckInterval(long interval) {
+    public void setAuditorPeriodicReplicasCheckInterval(long interval) {
         setProperty(AUDITOR_REPLICAS_CHECK_INTERVAL, interval);
     }
 
@@ -2261,7 +2261,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      *
      * @return The interval in seconds. By default it is disabled.
      */
-    public long getReplicasCheckInterval() {
+    public long getAuditorPeriodicReplicasCheckInterval() {
         return getLong(AUDITOR_REPLICAS_CHECK_INTERVAL, 0);
     }
 
