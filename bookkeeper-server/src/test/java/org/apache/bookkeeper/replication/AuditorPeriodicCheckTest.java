@@ -556,16 +556,24 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
             e.shutdown();
         }
 
-        final int numLedgers = 10;
-        List<Long> ids = new LinkedList<Long>();
-        for (int i = 0; i < numLedgers; i++) {
-            LedgerHandle lh = bkc.createLedger(3, 3, DigestType.CRC32, "passwd".getBytes());
-            ids.add(lh.getId());
-            for (int j = 0; j < 2; j++) {
-                lh.addEntry("testdata".getBytes());
-            }
-            lh.close();
+        LedgerHandle lh = bkc.createLedger(3, 2, DigestType.CRC32, "passwd".getBytes());
+        for (int j = 0; j < 5; j++) {
+            lh.addEntry("testdata".getBytes());
         }
+        lh.close();
+
+        lh = bkc.createLedger(3, 2, DigestType.CRC32, "passwd".getBytes());
+        lh.close();
+
+        lh = bkc.createLedger(3, 3, DigestType.CRC32, "passwd".getBytes());
+        for (int j = 0; j < 4; j++) {
+            lh.addEntry("testdata".getBytes());
+        }
+        lh.close();
+
+        lh = bkc.createLedger(3, 2, DigestType.CRC32, "passwd".getBytes());
+        lh.addEntry("testdata".getBytes());
+        lh.close();
 
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
         LedgerUnderreplicationManager urm = mFactory.newLedgerUnderreplicationManager();

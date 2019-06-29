@@ -825,10 +825,10 @@ public class Auditor implements AutoCloseable {
                         LOG.info("Starting ReplicasCheck");
                         replicasCheck();
                         long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
-                        LOG.info("");
+                        LOG.info("Completed ReplicasCheck in {} milliSeconds.", replicasCheckDuration);
                         replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
                     } catch (BKAuditException e) {
-                        LOG.error("", e);
+                        LOG.error("BKAuditException running periodic replicas check.", e);
                     }
                 }
             }, initialDelay, interval, TimeUnit.SECONDS);
@@ -1285,6 +1285,13 @@ public class Auditor implements AutoCloseable {
                 return;
             }
 
+            if (metadata.getLastEntryId() == -1) {
+                LOG.debug("Ledger: {} is closed but it doesn't has any entries, so skipping the replicas check",
+                        ledgerInRange);
+                mcbForThisLedgerRange.processResult(BKException.Code.OK, null, null);
+                return;
+            }
+
             int writeQuorumSize = metadata.getWriteQuorumSize();
             int ackQuorumSize = metadata.getAckQuorumSize();
             int ensembleSize = metadata.getEnsembleSize();
@@ -1292,24 +1299,27 @@ public class Auditor implements AutoCloseable {
                     ackQuorumSize, ensembleSize);
             List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
                     metadata.getAllEnsembles().entrySet());
-
+            MultiCallback mcbForThisLedger = new MultiCallback(ensembleSize * segments.size(), mcbForThisLedgerRange,
+                    null, BKException.Code.OK, BKException.Code.ReadException);
             for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
                 final Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry = segments.get(segmentNum);
                 final List<BookieSocketAddress> ensembleOfSegment = segmentEntry.getValue();
                 final long startEntryIdOfSegment = segmentEntry.getKey();
                 final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1)) ? metadata.getLastEntryId()
                         : segments.get(segmentNum + 1).getKey() - 1;
-                MultiCallback mcbForThisSegment = new MultiCallback(ensembleSize, mcbForThisLedgerRange, null,
-                        BKException.Code.OK, BKException.Code.ReadException);
                 for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
                     final BookieSocketAddress bookieInEnsemble = ensembleOfSegment.get(bookieIndex);
                     final BitSet entriesStripedToThisBookie = distributionSchedule
                             .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment, lastEntryIdOfSegment);
+                    if (entriesStripedToThisBookie.cardinality() == 0) {
+                        mcbForThisLedger.processResult(BKException.Code.OK, null, null);
+                        continue;
+                    }
                     admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
                             .whenComplete(new ListOfEntriesOfLedgerConsumerInReplicasCheck(ledgerInRange,
                                     startEntryIdOfSegment, lastEntryIdOfSegment, bookieInEnsemble, segmentEntry,
                                     entriesStripedToThisBookie, ledgersWithMissingEntries,
-                                    ledgersWithUnavailableBookies, mcbForThisSegment));
+                                    ledgersWithUnavailableBookies, mcbForThisLedger));
                 }
             }
         }
@@ -1325,14 +1335,14 @@ public class Auditor implements AutoCloseable {
         private BitSet entriesStripedToThisBookie;
         private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
         private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
-        private MultiCallback mcbForThisSegment;
+        private MultiCallback mcbForThisLedger;
 
         private ListOfEntriesOfLedgerConsumerInReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
                 long lastEntryIdOfSegment, BookieSocketAddress bookieInEnsemble,
                 Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry, BitSet entriesStripedToThisBookie,
                 ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
                 ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies,
-                MultiCallback mcbForThisSegment) {
+                MultiCallback mcbForThisLedger) {
             this.ledgerInRange = ledgerInRange;
             this.startEntryIdOfSegment = startEntryIdOfSegment;
             this.lastEntryIdOfSegment = lastEntryIdOfSegment;
@@ -1341,7 +1351,7 @@ public class Auditor implements AutoCloseable {
             this.entriesStripedToThisBookie = entriesStripedToThisBookie;
             this.ledgersWithMissingEntries = ledgersWithMissingEntries;
             this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
-            this.mcbForThisSegment = mcbForThisSegment;
+            this.mcbForThisLedger = mcbForThisLedger;
         }
 
         @Override
@@ -1361,7 +1371,7 @@ public class Auditor implements AutoCloseable {
                 }
                 unavailableBookiesInfoOfThisLedger
                         .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
-                mcbForThisSegment.processResult(BKException.getExceptionCode(listOfEntriesException), null, null);
+                mcbForThisLedger.processResult(BKException.getExceptionCode(listOfEntriesException), null, null);
                 return;
             }
 
@@ -1377,7 +1387,7 @@ public class Auditor implements AutoCloseable {
                 missingEntriesInfoOfThisLedger.add(
                         new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
             }
-            mcbForThisSegment.processResult(BKException.Code.OK, null, null);
+            mcbForThisLedger.processResult(BKException.Code.OK, null, null);
         }
     }
 

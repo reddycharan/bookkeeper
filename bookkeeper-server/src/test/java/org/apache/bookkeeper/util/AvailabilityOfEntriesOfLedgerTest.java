@@ -242,19 +242,23 @@ public class AvailabilityOfEntriesOfLedgerTest {
             AvailabilityOfEntriesOfLedger availabilityOfEntriesOfLedger = new AvailabilityOfEntriesOfLedger(
                     primitiveIterator);
 
-            BitSet expectedToContainEntriesBitSet = new BitSet(
-                    (int) (expectedToContainEntriesTempArray[expectedToContainEntriesTempArray.length - 1]
-                            - expectedToContainEntriesTempArray[0] + 1));
+            long startEntryId;
+            long lastEntryId;
+            if (expectedToContainEntriesTempArray[0] == 0) {
+                startEntryId = expectedToContainEntriesTempArray[0];
+                lastEntryId = expectedToContainEntriesTempArray[expectedToContainEntriesTempArray.length - 1];
+            } else {
+                startEntryId = expectedToContainEntriesTempArray[0] - 1;
+                lastEntryId = expectedToContainEntriesTempArray[expectedToContainEntriesTempArray.length - 1] + 1;
+            }
+            BitSet expectedToContainEntriesBitSet = new BitSet((int) (lastEntryId - startEntryId + 1));
             for (int ind = 0; ind < expectedToContainEntriesTempArray.length; ind++) {
                 int entryId = (int) expectedToContainEntriesTempArray[ind];
-                expectedToContainEntriesBitSet.set(entryId - (int) expectedToContainEntriesTempArray[0]);
+                expectedToContainEntriesBitSet.set(entryId - (int) startEntryId);
             }
 
-            List<Long> actualUnavailableEntries = availabilityOfEntriesOfLedger.getUnavailableEntries(
-                    expectedToContainEntriesTempArray[0],
-                    expectedToContainEntriesTempArray[expectedToContainEntriesTempArray.length - 1],
-                    expectedToContainEntriesBitSet);
-
+            List<Long> actualUnavailableEntries = availabilityOfEntriesOfLedger.getUnavailableEntries(startEntryId,
+                    lastEntryId, expectedToContainEntriesBitSet);
             assertEquals("Unavailable Entries", unavailableEntriesTempList, actualUnavailableEntries);
         }
     }

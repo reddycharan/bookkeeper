@@ -381,10 +381,10 @@ public class AvailabilityOfEntriesOfLedger {
         }
         List<Long> unavailableEntries = new ArrayList<Long>();
         SequenceGroup curSeqGroup = null;
-        boolean foundNoSeqGroup = false;
+        boolean noSeqGroupRemaining = false;
         int bitSetIndex = 0;
         for (long entryId = startEntryId; entryId <= lastEntryId; entryId++, bitSetIndex++) {
-            if (foundNoSeqGroup) {
+            if (noSeqGroupRemaining) {
                 if (availabilityOfEntries.get(bitSetIndex)) {
                     unavailableEntries.add(entryId);
                 }
@@ -396,7 +396,9 @@ public class AvailabilityOfEntriesOfLedger {
                     if (availabilityOfEntries.get(bitSetIndex)) {
                         unavailableEntries.add(entryId);
                     }
-                    foundNoSeqGroup = true;
+                    if (sortedSequenceGroups.ceilingEntry(entryId) == null) {
+                        noSeqGroupRemaining = true;
+                    }
                     continue;
                 } else {
                     curSeqGroup = curSeqGroupEntry.getValue();
@@ -404,7 +406,7 @@ public class AvailabilityOfEntriesOfLedger {
                         if (availabilityOfEntries.get(bitSetIndex)) {
                             unavailableEntries.add(entryId);
                         }
-                        foundNoSeqGroup = true;
+                        noSeqGroupRemaining = true;
                         continue;
                     }
                 }
