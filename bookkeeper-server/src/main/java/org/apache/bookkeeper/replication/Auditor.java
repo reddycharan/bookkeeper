@@ -1247,13 +1247,13 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class LedgerMetadataConsumerInReplicasCheck implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
+    private class ReadLedgerMetadataCallbackForReplicasCheck implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
         final long ledgerInRange;
         final MultiCallback mcbForThisLedgerRange;
         final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
         final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
 
-        LedgerMetadataConsumerInReplicasCheck(long ledgerInRange, MultiCallback mcbForThisLedgerRange,
+        ReadLedgerMetadataCallbackForReplicasCheck(long ledgerInRange, MultiCallback mcbForThisLedgerRange,
                 ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
                 ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
             this.ledgerInRange = ledgerInRange;
@@ -1316,7 +1316,7 @@ public class Auditor implements AutoCloseable {
                         continue;
                     }
                     admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
-                            .whenComplete(new ListOfEntriesOfLedgerConsumerInReplicasCheck(ledgerInRange,
+                            .whenComplete(new GetListOfEntriesOfLedgerCallbackForReplicasCheck(ledgerInRange,
                                     startEntryIdOfSegment, lastEntryIdOfSegment, bookieInEnsemble, segmentEntry,
                                     entriesStripedToThisBookie, ledgersWithMissingEntries,
                                     ledgersWithUnavailableBookies, mcbForThisLedger));
@@ -1325,7 +1325,7 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class ListOfEntriesOfLedgerConsumerInReplicasCheck
+    private class GetListOfEntriesOfLedgerCallbackForReplicasCheck
             implements BiConsumer<AvailabilityOfEntriesOfLedger, Throwable> {
         private long ledgerInRange;
         private long startEntryIdOfSegment;
@@ -1337,7 +1337,7 @@ public class Auditor implements AutoCloseable {
         private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
         private MultiCallback mcbForThisLedger;
 
-        private ListOfEntriesOfLedgerConsumerInReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
+        private GetListOfEntriesOfLedgerCallbackForReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
                 long lastEntryIdOfSegment, BookieSocketAddress bookieInEnsemble,
                 Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry, BitSet entriesStripedToThisBookie,
                 ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
@@ -1371,7 +1371,7 @@ public class Auditor implements AutoCloseable {
                 }
                 unavailableBookiesInfoOfThisLedger
                         .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
-                mcbForThisLedger.processResult(BKException.getExceptionCode(listOfEntriesException), null, null);
+                mcbForThisLedger.processResult(BKException.Code.OK, null, null);
                 return;
             }
 
@@ -1442,7 +1442,7 @@ public class Auditor implements AutoCloseable {
                     continue;
                 }
                 ledgerManager.readLedgerMetadata(ledgerInRange)
-                        .whenComplete(new LedgerMetadataConsumerInReplicasCheck(ledgerInRange, mcbForThisLedgerRange,
+                        .whenComplete(new ReadLedgerMetadataCallbackForReplicasCheck(ledgerInRange, mcbForThisLedgerRange,
                                 ledgersWithMissingEntries, ledgersWithUnavailableBookies));
             }
             try {
@@ -1456,8 +1456,12 @@ public class Auditor implements AutoCloseable {
                 LOG.error("Got InterruptedException while doing replicascheck", ie);
                 throw new BKAuditException("Got InterruptedException while doing replicascheck", ie);
             }
+            int resultCodeIntValue = resultCode.get();
+            if (resultCodeIntValue != BKException.Code.OK) {
+                throw new BKAuditException("Exception while doing replicas check",
+                        BKException.create(resultCodeIntValue));
+            }
         }
-
         try {
             ledgerUnderreplicationManager.setReplicasCheckCTime(System.currentTimeMillis());
         } catch (UnavailableException ue) {
