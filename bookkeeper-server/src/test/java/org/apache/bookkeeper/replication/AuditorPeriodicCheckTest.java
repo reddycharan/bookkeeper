@@ -562,17 +562,20 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         }
         lh.close();
 
-        lh = bkc.createLedger(3, 2, DigestType.CRC32, "passwd".getBytes());
+        long ledgerId = 100000L;
+        lh = bkc.createLedgerAdv(ledgerId, 3, 2, 2, DigestType.CRC32, "passwd".getBytes(), null);
         lh.close();
 
-        lh = bkc.createLedger(3, 3, DigestType.CRC32, "passwd".getBytes());
+        ledgerId = 100001234L;
+        lh = bkc.createLedgerAdv(ledgerId, 3, 3, 2, DigestType.CRC32, "passwd".getBytes(), null);
         for (int j = 0; j < 4; j++) {
-            lh.addEntry("testdata".getBytes());
+            lh.addEntry(j, "testdata".getBytes());
         }
         lh.close();
 
-        lh = bkc.createLedger(3, 2, DigestType.CRC32, "passwd".getBytes());
-        lh.addEntry("testdata".getBytes());
+        ledgerId = 991234L;
+        lh = bkc.createLedgerAdv(ledgerId, 3, 2, 2, DigestType.CRC32, "passwd".getBytes(), null);
+        lh.addEntry(0, "testdata".getBytes());
         lh.close();
 
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
@@ -583,7 +586,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         validateInitialDelayOfReplicasCheck(urm, 999, 1000, servConf, bkc);
         validateInitialDelayOfReplicasCheck(urm, 1001, 1000, servConf, bkc);
     }
-    
+
     void validateInitialDelayOfReplicasCheck(LedgerUnderreplicationManager urm, long timeSinceLastExecutedInSecs,
             long auditorPeriodicReplicasCheckInterval, ServerConfiguration servConf, BookKeeper bkc)
             throws UnavailableException, UnknownHostException, InterruptedException {
@@ -674,7 +677,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
             super.placementPolicyCheck();
             latchRef.get().countDown();
         }
-        
+
         void replicasCheck() throws BKAuditException {
             super.replicasCheck();
             latchRef.get().countDown();

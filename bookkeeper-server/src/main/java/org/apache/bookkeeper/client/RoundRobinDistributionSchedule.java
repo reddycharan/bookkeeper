@@ -23,11 +23,11 @@ import com.google.common.collect.ImmutableMap;
 
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
-import jline.internal.Log;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Map;
+import jline.internal.Log;
 
 import org.apache.bookkeeper.net.BookieSocketAddress;
 

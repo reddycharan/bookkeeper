@@ -20,7 +20,6 @@ package org.apache.bookkeeper.meta;
 
 import static com.google.common.base.Charsets.UTF_8;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.TextFormat;

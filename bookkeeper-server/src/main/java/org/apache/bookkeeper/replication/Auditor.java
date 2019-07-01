@@ -31,8 +31,8 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_FRAGMENTS_P
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_CHECKED;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY;
-import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS;
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.REPLICAS_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
@@ -52,8 +52,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -77,7 +77,6 @@ import org.apache.bookkeeper.client.LedgerHandle;
 import org.apache.bookkeeper.client.RoundRobinDistributionSchedule;
 import org.apache.bookkeeper.client.api.LedgerMetadata;
 import org.apache.bookkeeper.common.concurrent.FutureUtils;
-import org.apache.bookkeeper.common.util.MathUtils;
 import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.bookkeeper.conf.ServerConfiguration;
 import org.apache.bookkeeper.meta.AbstractZkLedgerManagerFactory;
@@ -103,7 +102,6 @@ import org.apache.bookkeeper.stats.annotations.StatsDoc;
 import org.apache.bookkeeper.util.AvailabilityOfEntriesOfLedger;
 import org.apache.bookkeeper.versioning.Versioned;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.jute.Index;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.AsyncCallback.VoidCallback;
 import org.apache.zookeeper.KeeperException;
@@ -1216,7 +1214,7 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class MissingEntriesInfo {
+    private static class MissingEntriesInfo {
         private final long ledgerId;
         private final Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo;
         private final BookieSocketAddress bookieMissingEntries;
@@ -1247,7 +1245,8 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class ReadLedgerMetadataCallbackForReplicasCheck implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
+    private class ReadLedgerMetadataCallbackForReplicasCheck
+            implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
         final long ledgerInRange;
         final MultiCallback mcbForThisLedgerRange;
         final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
@@ -1335,7 +1334,7 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class GetListOfEntriesOfLedgerCallbackForReplicasCheck
+    private static class GetListOfEntriesOfLedgerCallbackForReplicasCheck
             implements BiConsumer<AvailabilityOfEntriesOfLedger, Throwable> {
         private long ledgerInRange;
         private long startEntryIdOfSegment;
@@ -1418,7 +1417,7 @@ public class Auditor implements AutoCloseable {
         }
     }
 
-    private class ReplicasCheckFinalCallback implements AsyncCallback.VoidCallback {
+    private static class ReplicasCheckFinalCallback implements AsyncCallback.VoidCallback {
         final AtomicInteger resultCode;
         final CountDownLatch replicasCheckLatch;
 
@@ -1473,8 +1472,8 @@ public class Auditor implements AutoCloseable {
                     continue;
                 }
                 ledgerManager.readLedgerMetadata(ledgerInRange)
-                        .whenComplete(new ReadLedgerMetadataCallbackForReplicasCheck(ledgerInRange, mcbForThisLedgerRange,
-                                ledgersWithMissingEntries, ledgersWithUnavailableBookies));
+                        .whenComplete(new ReadLedgerMetadataCallbackForReplicasCheck(ledgerInRange,
+                                mcbForThisLedgerRange, ledgersWithMissingEntries, ledgersWithUnavailableBookies));
             }
             try {
                 /*
@@ -1520,9 +1519,10 @@ public class Auditor implements AutoCloseable {
             for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
                 MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
                 Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
-                errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
-                        + segmentInfo.getValue() + ", following entries " + missingEntriesInfo.unavailableEntriesList
-                        + " are missing in bookie: " + missingEntriesInfo.bookieMissingEntries);
+                errMessage.append(
+                        "In segment starting at " + segmentInfo.getKey() + " with ensemble " + segmentInfo.getValue()
+                                + ", following entries " + missingEntriesInfo.getUnavailableEntriesList()
+                                + " are missing in bookie: " + missingEntriesInfo.getBookieMissingEntries());
                 if (listInd < (missingEntriesInfoList.size() - 1)) {
                     errMessage.append(", ");
                 }
@@ -1543,9 +1543,9 @@ public class Auditor implements AutoCloseable {
             for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
                 MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
                 Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingBookieInfo.getSegmentInfo();
-                errMessage.append(
-                        "In segment starting at " + segmentInfo.getKey() + " with ensemble " + segmentInfo.getValue()
-                                + ", following bookie has not responded " + missingBookieInfo.bookieMissingEntries);
+                errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
+                        + segmentInfo.getValue() + ", following bookie has not responded "
+                        + missingBookieInfo.getBookieMissingEntries());
                 if (listInd < (missingBookiesInfoList.size() - 1)) {
                     errMessage.append(", ");
                 }

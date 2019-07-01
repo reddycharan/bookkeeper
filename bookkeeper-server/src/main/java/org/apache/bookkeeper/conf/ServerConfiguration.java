@@ -2222,7 +2222,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      * will be reported by placementPolicyCheck in Auditor. Setting this to 0
      * will disable this check.
      *
-     * @param interval
+     * @param gracePeriod
      *            The interval in seconds. e.g. 3600 = 1 hour
      */
     public void setUnderreplicatedLedgerRecoveryGracePeriod(long gracePeriod) {

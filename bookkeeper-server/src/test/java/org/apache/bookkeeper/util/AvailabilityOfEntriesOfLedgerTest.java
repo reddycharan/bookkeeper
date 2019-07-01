@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 
-import org.apache.zookeeper.test.LoadFromLogNoServerTest;
 import org.junit.Test;
 
 /**
