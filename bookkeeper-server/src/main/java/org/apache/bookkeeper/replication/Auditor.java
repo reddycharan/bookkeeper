@@ -1299,6 +1299,10 @@ public class Auditor implements AutoCloseable {
                     ackQuorumSize, ensembleSize);
             List<Entry<Long, ? extends List<BookieSocketAddress>>> segments = new LinkedList<>(
                     metadata.getAllEnsembles().entrySet());
+            /*
+             * since there are multiple segments, MultiCallback should be
+             * created for (ensembleSize * segments.size()) calls.
+             */
             MultiCallback mcbForThisLedger = new MultiCallback(ensembleSize * segments.size(), mcbForThisLedgerRange,
                     null, BKException.Code.OK, BKException.Code.ReadException);
             for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
@@ -1312,6 +1316,12 @@ public class Auditor implements AutoCloseable {
                     final BitSet entriesStripedToThisBookie = distributionSchedule
                             .getEntriesStripedToTheBookie(bookieIndex, startEntryIdOfSegment, lastEntryIdOfSegment);
                     if (entriesStripedToThisBookie.cardinality() == 0) {
+                        /*
+                         * if no entry is expected to contain in this bookie,
+                         * then there is no point in making
+                         * getListOfEntriesOfLedger call for this bookie. So
+                         * instead callback with success result.
+                         */
                         mcbForThisLedger.processResult(BKException.Code.OK, null, null);
                         continue;
                     }
@@ -1371,6 +1381,15 @@ public class Auditor implements AutoCloseable {
                 }
                 unavailableBookiesInfoOfThisLedger
                         .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
+                /*
+                 * here though GetListOfEntriesOfLedger has failed with
+                 * exception, mcbForThisLedger should be called back with OK
+                 * response, because we dont consider this as fatal error in
+                 * replicasCheck and dont want replicasCheck to exit just
+                 * because of this issue. So instead maintain the state of
+                 * ledgersWithUnavailableBookies, so that replicascheck will
+                 * report these ledgers/bookies appropriately.
+                 */
                 mcbForThisLedger.processResult(BKException.Code.OK, null, null);
                 return;
             }
@@ -1387,6 +1406,14 @@ public class Auditor implements AutoCloseable {
                 missingEntriesInfoOfThisLedger.add(
                         new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
             }
+            /*
+             * here though unavailableEntriesList is not empty, mcbForThisLedger
+             * should be called back with OK response, because we dont consider
+             * this as fatal error in replicasCheck and dont want replicasCheck
+             * to exit just because of this issue. So instead maintain the state
+             * of missingEntriesInfoOfThisLedger, so that replicascheck will
+             * report these ledgers/bookies/missingentries appropriately.
+             */
             mcbForThisLedger.processResult(BKException.Code.OK, null, null);
         }
     }
@@ -1439,6 +1466,10 @@ public class Auditor implements AutoCloseable {
             LOG.debug("Number of ledgers in the current LedgerRange : {}", numOfLedgersInRange);
             for (Long ledgerInRange : ledgersInRange) {
                 if (checkUnderReplicationForReplicasCheck(ledgerInRange, mcbForThisLedgerRange)) {
+                    /*
+                     * if ledger is marked underreplicated, then ignore this
+                     * ledger for replicascheck.
+                     */
                     continue;
                 }
                 ledgerManager.readLedgerMetadata(ledgerInRange)
@@ -1446,7 +1477,13 @@ public class Auditor implements AutoCloseable {
                                 ledgersWithMissingEntries, ledgersWithUnavailableBookies));
             }
             try {
-                if (!replicasCheckLatch.await(60, TimeUnit.SECONDS)) {
+                /*
+                 * if mcbForThisLedgerRange is not calledback within 90 secs
+                 * then better give up doing replicascheck, since there could be
+                 * an issue and blocking the single threaded auditor executor
+                 * thread is not expected.
+                 */
+                if (!replicasCheckLatch.await(90, TimeUnit.SECONDS)) {
                     LOG.error("For LedgerRange with num of ledgers : {} it didn't complete replicascheck"
                             + " in 60 secs, so giving up", numOfLedgersInRange);
                     throw new BKAuditException("Got InterruptedException while doing replicascheck");
@@ -1456,44 +1493,8 @@ public class Auditor implements AutoCloseable {
                 LOG.error("Got InterruptedException while doing replicascheck", ie);
                 throw new BKAuditException("Got InterruptedException while doing replicascheck", ie);
             }
-            StringBuilder errMessage = new StringBuilder();
-            for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithMissingEntriesInfo : ledgersWithMissingEntries
-                    .entrySet()) {
-                errMessage.setLength(0);
-                long ledgerWithMissingEntries = ledgerWithMissingEntriesInfo.getKey();
-                List<MissingEntriesInfo> missingEntriesInfoList = ledgerWithMissingEntriesInfo.getValue();
-                errMessage.append("Ledger : " + ledgerWithMissingEntries + " has following missing entries : ");
-                for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
-                    MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
-                    Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
-                    errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
-                            + segmentInfo.getValue() + ", following entries "
-                            + missingEntriesInfo.unavailableEntriesList + " are missing in bookie: "
-                            + missingEntriesInfo.bookieMissingEntries);
-                    if (listInd < (missingEntriesInfoList.size() - 1)) {
-                        errMessage.append(", ");
-                    }
-                }
-                LOG.error(errMessage.toString());
-            }
-            for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithUnavailableBookiesInfo : ledgersWithUnavailableBookies
-                    .entrySet()) {
-                errMessage.setLength(0);
-                long ledgerWithUnavailableBookies = ledgerWithUnavailableBookiesInfo.getKey();
-                List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue();
-                errMessage.append("Ledger : " + ledgerWithUnavailableBookies + " has following unavailable bookies : ");
-                for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
-                    MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
-                    Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingBookieInfo.getSegmentInfo();
-                    errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
-                            + segmentInfo.getValue() + ", following bookie has not responded "
-                            + missingBookieInfo.bookieMissingEntries);
-                    if (listInd < (missingBookiesInfoList.size() - 1)) {
-                        errMessage.append(", ");
-                    }
-                }
-                LOG.error(errMessage.toString());
-            }
+            reportLedgersWithMissingEntries(ledgersWithMissingEntries);
+            reportLedgersWithUnavailableBookies(ledgersWithUnavailableBookies);
             int resultCodeIntValue = resultCode.get();
             if (resultCodeIntValue != BKException.Code.OK) {
                 throw new BKAuditException("Exception while doing replicas check",
@@ -1504,6 +1505,52 @@ public class Auditor implements AutoCloseable {
             ledgerUnderreplicationManager.setReplicasCheckCTime(System.currentTimeMillis());
         } catch (UnavailableException ue) {
             LOG.error("Got exception while trying to set ReplicasCheckCTime", ue);
+        }
+    }
+
+    private void reportLedgersWithMissingEntries(
+            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries) {
+        StringBuilder errMessage = new StringBuilder();
+        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithMissingEntriesInfo : ledgersWithMissingEntries
+                .entrySet()) {
+            errMessage.setLength(0);
+            long ledgerWithMissingEntries = ledgerWithMissingEntriesInfo.getKey();
+            List<MissingEntriesInfo> missingEntriesInfoList = ledgerWithMissingEntriesInfo.getValue();
+            errMessage.append("Ledger : " + ledgerWithMissingEntries + " has following missing entries : ");
+            for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
+                MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
+                errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
+                        + segmentInfo.getValue() + ", following entries " + missingEntriesInfo.unavailableEntriesList
+                        + " are missing in bookie: " + missingEntriesInfo.bookieMissingEntries);
+                if (listInd < (missingEntriesInfoList.size() - 1)) {
+                    errMessage.append(", ");
+                }
+            }
+            LOG.error(errMessage.toString());
+        }
+    }
+
+    private void reportLedgersWithUnavailableBookies(
+            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+        StringBuilder errMessage = new StringBuilder();
+        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithUnavailableBookiesInfo : ledgersWithUnavailableBookies
+                .entrySet()) {
+            errMessage.setLength(0);
+            long ledgerWithUnavailableBookies = ledgerWithUnavailableBookiesInfo.getKey();
+            List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue();
+            errMessage.append("Ledger : " + ledgerWithUnavailableBookies + " has following unavailable bookies : ");
+            for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
+                MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
+                Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingBookieInfo.getSegmentInfo();
+                errMessage.append(
+                        "In segment starting at " + segmentInfo.getKey() + " with ensemble " + segmentInfo.getValue()
+                                + ", following bookie has not responded " + missingBookieInfo.bookieMissingEntries);
+                if (listInd < (missingBookiesInfoList.size() - 1)) {
+                    errMessage.append(", ");
+                }
+            }
+            LOG.error(errMessage.toString());
         }
     }
 
