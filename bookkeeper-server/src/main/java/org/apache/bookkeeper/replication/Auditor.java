@@ -1456,6 +1456,44 @@ public class Auditor implements AutoCloseable {
                 LOG.error("Got InterruptedException while doing replicascheck", ie);
                 throw new BKAuditException("Got InterruptedException while doing replicascheck", ie);
             }
+            StringBuilder errMessage = new StringBuilder();
+            for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithMissingEntriesInfo : ledgersWithMissingEntries
+                    .entrySet()) {
+                errMessage.setLength(0);
+                long ledgerWithMissingEntries = ledgerWithMissingEntriesInfo.getKey();
+                List<MissingEntriesInfo> missingEntriesInfoList = ledgerWithMissingEntriesInfo.getValue();
+                errMessage.append("Ledger : " + ledgerWithMissingEntries + " has following missing entries : ");
+                for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
+                    MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
+                    Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
+                    errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
+                            + segmentInfo.getValue() + ", following entries "
+                            + missingEntriesInfo.unavailableEntriesList + " are missing in bookie: "
+                            + missingEntriesInfo.bookieMissingEntries);
+                    if (listInd < (missingEntriesInfoList.size() - 1)) {
+                        errMessage.append(", ");
+                    }
+                }
+                LOG.error(errMessage.toString());
+            }
+            for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithUnavailableBookiesInfo : ledgersWithUnavailableBookies
+                    .entrySet()) {
+                errMessage.setLength(0);
+                long ledgerWithUnavailableBookies = ledgerWithUnavailableBookiesInfo.getKey();
+                List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue();
+                errMessage.append("Ledger : " + ledgerWithUnavailableBookies + " has following unavailable bookies : ");
+                for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
+                    MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
+                    Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingBookieInfo.getSegmentInfo();
+                    errMessage.append("In segment starting at " + segmentInfo.getKey() + " with ensemble "
+                            + segmentInfo.getValue() + ", following bookie has not responded "
+                            + missingBookieInfo.bookieMissingEntries);
+                    if (listInd < (missingBookiesInfoList.size() - 1)) {
+                        errMessage.append(", ");
+                    }
+                }
+                LOG.error(errMessage.toString());
+            }
             int resultCodeIntValue = resultCode.get();
             if (resultCodeIntValue != BKException.Code.OK) {
                 throw new BKAuditException("Exception while doing replicas check",
