@@ -1116,8 +1116,8 @@ public class Auditor implements AutoCloseable {
                 UnderreplicatedLedger underreplicatedLedger = underreplicatedLedgersInfo.next();
                 long underreplicatedLedgerMarkTimeInMilSecs = underreplicatedLedger.getCtime();
                 if (underreplicatedLedgerMarkTimeInMilSecs != UnderreplicatedLedger.UNASSIGNED_CTIME) {
-                    long elapsedTimeInSecs = MathUtils.elapsedMSec(underreplicatedLedgerMarkTimeInMilSecs * 1000 * 1000)
-                            / 1000;
+                    long elapsedTimeInSecs =
+                            (System.currentTimeMillis() - underreplicatedLedgerMarkTimeInMilSecs) / 1000;
                     if (elapsedTimeInSecs > this.underreplicatedLedgerRecoveryGracePeriod) {
                         urLedgersElapsedRecoveryGracePeriod.add(underreplicatedLedger.getLedgerId());
                         numOfURLedgersElapsedRecoveryGracePeriod.incrementAndGet();
