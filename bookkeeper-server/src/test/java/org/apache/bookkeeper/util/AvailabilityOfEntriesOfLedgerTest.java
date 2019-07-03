@@ -261,4 +261,27 @@ public class AvailabilityOfEntriesOfLedgerTest {
             assertEquals("Unavailable Entries", unavailableEntriesTempList, actualUnavailableEntries);
         }
     }
+
+    @Test
+    public void testEmptyAvailabilityOfEntriesOfLedger() {
+        AvailabilityOfEntriesOfLedger emptyOne = AvailabilityOfEntriesOfLedger.EMPTY_AVAILABILITYOFENTRIESOFLEDGER;
+        assertEquals("expected totalNumOfAvailableEntries", 0, emptyOne.getTotalNumOfAvailableEntries());
+        assertFalse("empty one is not supposed to contain any entry", emptyOne.isEntryAvailable(100L));
+        long startEntryId = 100;
+        long lastEntryId = 105;
+        BitSet bitSetOfAvailability = new BitSet((int) (lastEntryId - startEntryId + 1));
+        for (int i = 0; i < bitSetOfAvailability.length(); i++) {
+            if ((i % 2) == 0) {
+                bitSetOfAvailability.set(i);
+            }
+        }
+        List<Long> unavailableEntries = emptyOne.getUnavailableEntries(startEntryId, lastEntryId, bitSetOfAvailability);
+        assertEquals("Num of unavailable entries", bitSetOfAvailability.cardinality(), unavailableEntries.size());
+        for (int i = 0; i < bitSetOfAvailability.length(); i++) {
+            long entryId = startEntryId + i;
+            if (bitSetOfAvailability.get(i)) {
+                assertTrue("Unavailable entry", unavailableEntries.contains(Long.valueOf(entryId)));
+            }
+        }
+    }
 }

@@ -1368,29 +1368,39 @@ public class Auditor implements AutoCloseable {
                 Throwable listOfEntriesException) {
 
             if (listOfEntriesException != null) {
-                LOG.warn("Unable to GetListOfEntriesOfLedger for ledger: {} from: {}", ledgerInRange, bookieInEnsemble,
-                        listOfEntriesException);
-                List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
-                        .get(ledgerInRange);
-                if (unavailableBookiesInfoOfThisLedger == null) {
-                    ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
-                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
-                    unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                if (BKException
+                        .getExceptionCode(listOfEntriesException) == BKException.Code.NoSuchLedgerExistsException) {
+                    LOG.debug("Got NoSuchLedgerExistsException for ledger: {} from bookie: {}", ledgerInRange,
+                            bookieInEnsemble);
+                    /*
+                     * in the case of NoSuchLedgerExistsException, it should be
+                     * considered as empty AvailabilityOfEntriesOfLedger.
+                     */
+                    availabilityOfEntriesOfLedger = AvailabilityOfEntriesOfLedger.EMPTY_AVAILABILITYOFENTRIESOFLEDGER;
+                } else {
+                    LOG.warn("Unable to GetListOfEntriesOfLedger for ledger: {} from: {}", ledgerInRange,
+                            bookieInEnsemble, listOfEntriesException);
+                    List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
                             .get(ledgerInRange);
+                    if (unavailableBookiesInfoOfThisLedger == null) {
+                        ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
+                                Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                        unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies.get(ledgerInRange);
+                    }
+                    unavailableBookiesInfoOfThisLedger
+                    .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
+                    /*
+                     * here though GetListOfEntriesOfLedger has failed with
+                     * exception, mcbForThisLedger should be called back with OK
+                     * response, because we dont consider this as fatal error in
+                     * replicasCheck and dont want replicasCheck to exit just
+                     * because of this issue. So instead maintain the state of
+                     * ledgersWithUnavailableBookies, so that replicascheck will
+                     * report these ledgers/bookies appropriately.
+                     */
+                    mcbForThisLedger.processResult(BKException.Code.OK, null, null);
+                    return;
                 }
-                unavailableBookiesInfoOfThisLedger
-                        .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
-                /*
-                 * here though GetListOfEntriesOfLedger has failed with
-                 * exception, mcbForThisLedger should be called back with OK
-                 * response, because we dont consider this as fatal error in
-                 * replicasCheck and dont want replicasCheck to exit just
-                 * because of this issue. So instead maintain the state of
-                 * ledgersWithUnavailableBookies, so that replicascheck will
-                 * report these ledgers/bookies appropriately.
-                 */
-                mcbForThisLedger.processResult(BKException.Code.OK, null, null);
-                return;
             }
 
             final List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
