@@ -18,7 +18,6 @@
 package org.apache.bookkeeper.util;
 
 import io.netty.buffer.ByteBuf;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +46,11 @@ import org.apache.commons.lang3.mutable.MutableObject;
  */
 public class AvailabilityOfEntriesOfLedger {
     public static final long INVALID_ENTRYID = -1;
+    public static final AvailabilityOfEntriesOfLedger EMPTY_AVAILABILITYOFENTRIESOFLEDGER;
+    static {
+        long tmpArray[] = {};
+        EMPTY_AVAILABILITYOFENTRIESOFLEDGER = new AvailabilityOfEntriesOfLedger(Arrays.stream(tmpArray).iterator());
+    }
 
     /*
      *
