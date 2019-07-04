@@ -29,6 +29,9 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_BOOKIE_AUDI
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_DELAYED_BOOKIE_AUDITS_DELAYES_CANCELLED;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_FRAGMENTS_PER_LEDGER;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_CHECKED;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_HAVING_LESS_THAN_AQ_REPLICAS_OF_AN_ENTRY;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_HAVING_LESS_THAN_WQ_REPLICAS_OF_AN_ENTRY;
+import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_HAVING_NO_REPLICA_OF_AN_ENTRY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_NOT_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_LEDGERS_SOFTLY_ADHERING_TO_PLACEMENT_POLICY;
 import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD;
@@ -39,7 +42,9 @@ import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIM
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -143,6 +148,12 @@ public class Auditor implements AutoCloseable {
     private final AtomicInteger numOfClosedLedgersAuditedInPlacementPolicyCheck;
     private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriodGuageValue;
     private final AtomicInteger numOfURLedgersElapsedRecoveryGracePeriod;
+    private final AtomicInteger numLedgersHavingNoReplicaOfAnEntryGuageValue;
+    private final AtomicInteger numLedgersFoundHavingNoReplicaOfAnEntry;
+    private final AtomicInteger numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue;
+    private final AtomicInteger numLedgersFoundHavingLessThanAQReplicasOfAnEntry;
+    private final AtomicInteger numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue;
+    private final AtomicInteger numLedgersFoundHavingLessThanWQReplicasOfAnEntry;
     private final long underreplicatedLedgerRecoveryGracePeriod;
     private final int zkOpTimeoutMs;
 
@@ -222,6 +233,23 @@ public class Auditor implements AutoCloseable {
             help = "Gauge for number of underreplicated ledgers elapsed recovery grace period"
     )
     private final Gauge<Integer> numUnderreplicatedLedgersElapsedRecoveryGracePeriod;
+    @StatsDoc(
+            name = NUM_LEDGERS_HAVING_NO_REPLICA_OF_AN_ENTRY,
+            help = "Gauge for number of ledgers having an entry with all the replicas missing"
+    )
+    private final Gauge<Integer> numLedgersHavingNoReplicaOfAnEntry;
+    @StatsDoc(
+            name = NUM_LEDGERS_HAVING_LESS_THAN_AQ_REPLICAS_OF_AN_ENTRY,
+            help = "Gauge for number of ledgers having an entry with less than AQ number of replicas"
+                    + ", this doesn't include ledgers counted towards numLedgersHavingNoReplicaOfAnEntry"
+    )
+    private final Gauge<Integer> numLedgersHavingLessThanAQReplicasOfAnEntry;
+    @StatsDoc(
+            name = NUM_LEDGERS_HAVING_LESS_THAN_WQ_REPLICAS_OF_AN_ENTRY,
+            help = "Gauge for number of ledgers having an entry with less than WQ number of replicas"
+                    + ", this doesn't include ledgers counted towards numLedgersHavingLessThanAQReplicasOfAnEntry"
+    )
+    private final Gauge<Integer> numLedgersHavingLessThanWQReplicasOfAnEntry;
 
     static BookKeeper createBookKeeperClient(ServerConfiguration conf) throws InterruptedException, IOException {
         return createBookKeeperClient(conf, NullStatsLogger.INSTANCE);
@@ -281,6 +309,12 @@ public class Auditor implements AutoCloseable {
         this.numOfClosedLedgersAuditedInPlacementPolicyCheck = new AtomicInteger(0);
         this.numOfURLedgersElapsedRecoveryGracePeriod = new AtomicInteger(0);
         this.numOfURLedgersElapsedRecoveryGracePeriodGuageValue = new AtomicInteger(0);
+        this.numLedgersHavingNoReplicaOfAnEntryGuageValue = new AtomicInteger(0);
+        this.numLedgersFoundHavingNoReplicaOfAnEntry = new AtomicInteger(0);
+        this.numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue = new AtomicInteger(0);
+        this.numLedgersFoundHavingLessThanAQReplicasOfAnEntry = new AtomicInteger(0);
+        this.numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue = new AtomicInteger(0);
+        this.numLedgersFoundHavingLessThanWQReplicasOfAnEntry = new AtomicInteger(0);
 
         numUnderReplicatedLedger = this.statsLogger.getOpStatsLogger(ReplicationStats.NUM_UNDER_REPLICATED_LEDGERS);
         uRLPublishTimeForLostBookies = this.statsLogger
@@ -337,6 +371,46 @@ public class Auditor implements AutoCloseable {
         };
         this.statsLogger.registerGauge(ReplicationStats.NUM_UNDERREPLICATED_LEDGERS_ELAPSED_RECOVERY_GRACE_PERIOD,
                 numUnderreplicatedLedgersElapsedRecoveryGracePeriod);
+
+        numLedgersHavingNoReplicaOfAnEntry = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return numLedgersHavingNoReplicaOfAnEntryGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_HAVING_NO_REPLICA_OF_AN_ENTRY,
+                numLedgersHavingNoReplicaOfAnEntry);
+        numLedgersHavingLessThanAQReplicasOfAnEntry = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_HAVING_LESS_THAN_AQ_REPLICAS_OF_AN_ENTRY,
+                numLedgersHavingLessThanAQReplicasOfAnEntry);
+        numLedgersHavingLessThanWQReplicasOfAnEntry = new Gauge<Integer>() {
+            @Override
+            public Integer getDefaultValue() {
+                return 0;
+            }
+
+            @Override
+            public Integer getSample() {
+                return numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue.get();
+            }
+        };
+        this.statsLogger.registerGauge(ReplicationStats.NUM_LEDGERS_HAVING_LESS_THAN_WQ_REPLICAS_OF_AN_ENTRY,
+                numLedgersHavingLessThanWQReplicasOfAnEntry);
 
         this.bkc = bkc;
         this.ownBkc = ownBkc;
@@ -823,10 +897,62 @@ public class Auditor implements AutoCloseable {
                         LOG.info("Starting ReplicasCheck");
                         replicasCheck();
                         long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
-                        LOG.info("Completed ReplicasCheck in {} milliSeconds.", replicasCheckDuration);
+                        int numLedgersFoundHavingNoReplicaOfAnEntryValue =
+                                numLedgersFoundHavingNoReplicaOfAnEntry.get();
+                        int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
+                                numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
+                        int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
+                                numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
+                        LOG.info(
+                                "Completed ReplicasCheck in {} milliSeconds numLedgersFoundHavingNoReplicaOfAnEntry {}"
+                                        + " numLedgersFoundHavingLessThanAQReplicasOfAnEntry {}"
+                                        + " numLedgersFoundHavingLessThanWQReplicasOfAnEntry {}.",
+                                replicasCheckDuration, numLedgersFoundHavingNoReplicaOfAnEntryValue,
+                                numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue,
+                                numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
+                        numLedgersHavingNoReplicaOfAnEntryGuageValue.set(numLedgersFoundHavingNoReplicaOfAnEntryValue);
+                        numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue
+                                .set(numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue);
+                        numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue
+                                .set(numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
                         replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
                     } catch (BKAuditException e) {
                         LOG.error("BKAuditException running periodic replicas check.", e);
+                        int numLedgersFoundHavingNoReplicaOfAnEntryValue = numLedgersFoundHavingNoReplicaOfAnEntry
+                                .get();
+                        if (numLedgersFoundHavingNoReplicaOfAnEntryValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * replicasCheck, it found few ledgers having no
+                             * replica of an entry. So reporting it.
+                             */
+                            numLedgersHavingNoReplicaOfAnEntryGuageValue
+                                    .set(numLedgersFoundHavingNoReplicaOfAnEntryValue);
+                        }
+                        int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
+                                numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
+                        if (numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * replicasCheck, it found few ledgers having an
+                             * entry less than AQ num of Replicas. So reporting
+                             * it.
+                             */
+                            numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue
+                                    .set(numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue);
+                        }
+                        int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
+                                numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
+                        if (numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue > 0) {
+                            /*
+                             * Though there is BKAuditException while doing
+                             * replicasCheck, it found few ledgers having an
+                             * entry less than WQ num of Replicas. So reporting
+                             * it.
+                             */
+                            numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue
+                                    .set(numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
+                        }
                     }
                 }
             }, initialDelay, interval, TimeUnit.SECONDS);
@@ -1245,16 +1371,53 @@ public class Auditor implements AutoCloseable {
         }
     }
 
+    private static class MissingEntriesInfoOfLedger {
+        private final long ledgerId;
+        private final int ensembleSize;
+        private final int writeQuorumSize;
+        private final int ackQuorumSize;
+        private final List<MissingEntriesInfo> missingEntriesInfoList;
+
+        private MissingEntriesInfoOfLedger(long ledgerId, int ensembleSize, int writeQuorumSize, int ackQuorumSize,
+                List<MissingEntriesInfo> missingEntriesInfoList) {
+            this.ledgerId = ledgerId;
+            this.ensembleSize = ensembleSize;
+            this.writeQuorumSize = writeQuorumSize;
+            this.ackQuorumSize = ackQuorumSize;
+            this.missingEntriesInfoList = missingEntriesInfoList;
+        }
+
+        public long getLedgerId() {
+            return ledgerId;
+        }
+
+        public int getEnsembleSize() {
+            return ensembleSize;
+        }
+
+        public int getWriteQuorumSize() {
+            return writeQuorumSize;
+        }
+
+        public int getAckQuorumSize() {
+            return ackQuorumSize;
+        }
+
+        public List<MissingEntriesInfo> getMissingEntriesInfoList() {
+            return missingEntriesInfoList;
+        }
+    }
+
     private class ReadLedgerMetadataCallbackForReplicasCheck
             implements BiConsumer<Versioned<LedgerMetadata>, Throwable> {
         final long ledgerInRange;
         final MultiCallback mcbForThisLedgerRange;
-        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
-        final ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+        final ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries;
+        final ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies;
 
         ReadLedgerMetadataCallbackForReplicasCheck(long ledgerInRange, MultiCallback mcbForThisLedgerRange,
-                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
-                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+                ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies) {
             this.ledgerInRange = ledgerInRange;
             this.mcbForThisLedgerRange = mcbForThisLedgerRange;
             this.ledgersWithMissingEntries = ledgersWithMissingEntries;
@@ -1326,9 +1489,9 @@ public class Auditor implements AutoCloseable {
                     }
                     admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
                             .whenComplete(new GetListOfEntriesOfLedgerCallbackForReplicasCheck(ledgerInRange,
-                                    startEntryIdOfSegment, lastEntryIdOfSegment, bookieInEnsemble, segmentEntry,
-                                    entriesStripedToThisBookie, ledgersWithMissingEntries,
-                                    ledgersWithUnavailableBookies, mcbForThisLedger));
+                                    ensembleSize, writeQuorumSize, ackQuorumSize, startEntryIdOfSegment,
+                                    lastEntryIdOfSegment, bookieInEnsemble, segmentEntry, entriesStripedToThisBookie,
+                                    ledgersWithMissingEntries, ledgersWithUnavailableBookies, mcbForThisLedger));
                 }
             }
         }
@@ -1337,22 +1500,29 @@ public class Auditor implements AutoCloseable {
     private static class GetListOfEntriesOfLedgerCallbackForReplicasCheck
             implements BiConsumer<AvailabilityOfEntriesOfLedger, Throwable> {
         private long ledgerInRange;
+        private int ensembleSize;
+        private int writeQuorumSize;
+        private int ackQuorumSize;
         private long startEntryIdOfSegment;
         private long lastEntryIdOfSegment;
         private BookieSocketAddress bookieInEnsemble;
         private Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry;
         private BitSet entriesStripedToThisBookie;
-        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries;
-        private ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies;
+        private ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries;
+        private ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies;
         private MultiCallback mcbForThisLedger;
 
-        private GetListOfEntriesOfLedgerCallbackForReplicasCheck(long ledgerInRange, long startEntryIdOfSegment,
-                long lastEntryIdOfSegment, BookieSocketAddress bookieInEnsemble,
-                Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry, BitSet entriesStripedToThisBookie,
-                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries,
-                ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies,
+        private GetListOfEntriesOfLedgerCallbackForReplicasCheck(long ledgerInRange, int ensembleSize,
+                int writeQuorumSize, int ackQuorumSize, long startEntryIdOfSegment, long lastEntryIdOfSegment,
+                BookieSocketAddress bookieInEnsemble, Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry,
+                BitSet entriesStripedToThisBookie,
+                ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries,
+                ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies,
                 MultiCallback mcbForThisLedger) {
             this.ledgerInRange = ledgerInRange;
+            this.ensembleSize = ensembleSize;
+            this.writeQuorumSize = writeQuorumSize;
+            this.ackQuorumSize = ackQuorumSize;
             this.startEntryIdOfSegment = startEntryIdOfSegment;
             this.lastEntryIdOfSegment = lastEntryIdOfSegment;
             this.bookieInEnsemble = bookieInEnsemble;
@@ -1380,14 +1550,16 @@ public class Auditor implements AutoCloseable {
                 } else {
                     LOG.warn("Unable to GetListOfEntriesOfLedger for ledger: {} from: {}", ledgerInRange,
                             bookieInEnsemble, listOfEntriesException);
-                    List<MissingEntriesInfo> unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
+                    MissingEntriesInfoOfLedger unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies
                             .get(ledgerInRange);
                     if (unavailableBookiesInfoOfThisLedger == null) {
                         ledgersWithUnavailableBookies.putIfAbsent(ledgerInRange,
-                                Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                                new MissingEntriesInfoOfLedger(ledgerInRange, ensembleSize, writeQuorumSize,
+                                        ackQuorumSize,
+                                        Collections.synchronizedList(new ArrayList<MissingEntriesInfo>())));
                         unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies.get(ledgerInRange);
                     }
-                    unavailableBookiesInfoOfThisLedger
+                    unavailableBookiesInfoOfThisLedger.getMissingEntriesInfoList()
                     .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
                     /*
                      * here though GetListOfEntriesOfLedger has failed with
@@ -1406,13 +1578,15 @@ public class Auditor implements AutoCloseable {
             final List<Long> unavailableEntriesList = availabilityOfEntriesOfLedger
                     .getUnavailableEntries(startEntryIdOfSegment, lastEntryIdOfSegment, entriesStripedToThisBookie);
             if ((unavailableEntriesList != null) && (!unavailableEntriesList.isEmpty())) {
-                List<MissingEntriesInfo> missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
+                MissingEntriesInfoOfLedger missingEntriesInfoOfThisLedger = ledgersWithMissingEntries
+                        .get(ledgerInRange);
                 if (missingEntriesInfoOfThisLedger == null) {
                     ledgersWithMissingEntries.putIfAbsent(ledgerInRange,
-                            Collections.synchronizedList(new ArrayList<MissingEntriesInfo>()));
+                            new MissingEntriesInfoOfLedger(ledgerInRange, ensembleSize, writeQuorumSize, ackQuorumSize,
+                                    Collections.synchronizedList(new ArrayList<MissingEntriesInfo>())));
                     missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
                 }
-                missingEntriesInfoOfThisLedger.add(
+                missingEntriesInfoOfThisLedger.getMissingEntriesInfoList().add(
                         new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
             }
             /*
@@ -1444,10 +1618,10 @@ public class Auditor implements AutoCloseable {
     }
 
     void replicasCheck() throws BKAuditException {
-        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries =
-                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
-        ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies =
-                    new ConcurrentHashMap<Long, List<MissingEntriesInfo>>();
+        ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries =
+                    new ConcurrentHashMap<Long, MissingEntriesInfoOfLedger>();
+        ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies =
+                    new ConcurrentHashMap<Long, MissingEntriesInfoOfLedger>();
         LedgerRangeIterator ledgerRangeIterator = ledgerManager.getLedgerRanges(zkOpTimeoutMs);
         while (true) {
             LedgerRange ledgerRange = null;
@@ -1463,6 +1637,9 @@ public class Auditor implements AutoCloseable {
             }
             ledgersWithMissingEntries.clear();
             ledgersWithUnavailableBookies.clear();
+            numLedgersFoundHavingNoReplicaOfAnEntry.set(0);
+            numLedgersFoundHavingLessThanAQReplicasOfAnEntry.set(0);
+            numLedgersFoundHavingLessThanWQReplicasOfAnEntry.set(0);
             Set<Long> ledgersInRange = ledgerRange.getLedgers();
             int numOfLedgersInRange = ledgersInRange.size();
             // Reading the result after processing all the ledgers
@@ -1518,37 +1695,72 @@ public class Auditor implements AutoCloseable {
     }
 
     private void reportLedgersWithMissingEntries(
-            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithMissingEntries) {
+            ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries) {
         StringBuilder errMessage = new StringBuilder();
-        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithMissingEntriesInfo : ledgersWithMissingEntries
+        HashMultiset<Long> missingEntries = HashMultiset.create();
+        int writeQuorumSize;
+        int ackQuorumSize;
+        for (Map.Entry<Long, MissingEntriesInfoOfLedger> missingEntriesInfoOfLedgerEntry : ledgersWithMissingEntries
                 .entrySet()) {
+            missingEntries.clear();
             errMessage.setLength(0);
-            long ledgerWithMissingEntries = ledgerWithMissingEntriesInfo.getKey();
-            List<MissingEntriesInfo> missingEntriesInfoList = ledgerWithMissingEntriesInfo.getValue();
+            long ledgerWithMissingEntries = missingEntriesInfoOfLedgerEntry.getKey();
+            MissingEntriesInfoOfLedger missingEntriesInfoOfLedger = missingEntriesInfoOfLedgerEntry.getValue();
+            List<MissingEntriesInfo> missingEntriesInfoList = missingEntriesInfoOfLedger.getMissingEntriesInfoList();
+            writeQuorumSize = missingEntriesInfoOfLedger.getWriteQuorumSize();
+            ackQuorumSize = missingEntriesInfoOfLedger.getAckQuorumSize();
             errMessage.append("Ledger : " + ledgerWithMissingEntries + " has following missing entries : ");
             for (int listInd = 0; listInd < missingEntriesInfoList.size(); listInd++) {
                 MissingEntriesInfo missingEntriesInfo = missingEntriesInfoList.get(listInd);
+                List<Long> unavailableEntriesList = missingEntriesInfo.getUnavailableEntriesList();
                 Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo = missingEntriesInfo.getSegmentInfo();
+                missingEntries.addAll(unavailableEntriesList);
                 errMessage.append(
                         "In segment starting at " + segmentInfo.getKey() + " with ensemble " + segmentInfo.getValue()
-                                + ", following entries " + missingEntriesInfo.getUnavailableEntriesList()
+                                + ", following entries " + unavailableEntriesList
                                 + " are missing in bookie: " + missingEntriesInfo.getBookieMissingEntries());
                 if (listInd < (missingEntriesInfoList.size() - 1)) {
                     errMessage.append(", ");
                 }
             }
             LOG.error(errMessage.toString());
+            Set<Multiset.Entry<Long>> missingEntriesSet = missingEntries.entrySet();
+            int maxNumOfMissingReplicas = 0;
+            long entryWithMaxNumOfMissingReplicas = -1L;
+            for (Multiset.Entry<Long> missingEntryWithCount : missingEntriesSet) {
+                if (missingEntryWithCount.getCount() > maxNumOfMissingReplicas) {
+                    maxNumOfMissingReplicas = missingEntryWithCount.getCount();
+                    entryWithMaxNumOfMissingReplicas = missingEntryWithCount.getElement();
+                }
+            }
+            int leastNumOfReplicasOfAnEntry = writeQuorumSize - maxNumOfMissingReplicas;
+            if (leastNumOfReplicasOfAnEntry == 0) {
+                numLedgersFoundHavingNoReplicaOfAnEntry.incrementAndGet();
+                LOG.error("Ledger : {} entryId : {} is missing all replicas", ledgerWithMissingEntries,
+                        entryWithMaxNumOfMissingReplicas);
+            } else if (leastNumOfReplicasOfAnEntry < ackQuorumSize) {
+                numLedgersFoundHavingLessThanAQReplicasOfAnEntry.incrementAndGet();
+                LOG.error("Ledger : {} entryId : {} is having: {} replicas, less than ackQuorum num of replicas : {}",
+                        ledgerWithMissingEntries, entryWithMaxNumOfMissingReplicas, leastNumOfReplicasOfAnEntry,
+                        ackQuorumSize);
+            } else if (leastNumOfReplicasOfAnEntry < writeQuorumSize) {
+                numLedgersFoundHavingLessThanWQReplicasOfAnEntry.incrementAndGet();
+                LOG.error("Ledger : {} entryId : {} is having: {} replicas, less than writeQuorum num of replicas : {}",
+                        ledgerWithMissingEntries, entryWithMaxNumOfMissingReplicas, leastNumOfReplicasOfAnEntry,
+                        writeQuorumSize);
+            }
         }
     }
 
     private void reportLedgersWithUnavailableBookies(
-            ConcurrentHashMap<Long, List<MissingEntriesInfo>> ledgersWithUnavailableBookies) {
+            ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies) {
         StringBuilder errMessage = new StringBuilder();
-        for (Map.Entry<Long, List<MissingEntriesInfo>> ledgerWithUnavailableBookiesInfo : ledgersWithUnavailableBookies
-                .entrySet()) {
+        for (Map.Entry<Long, MissingEntriesInfoOfLedger> ledgerWithUnavailableBookiesInfo :
+                ledgersWithUnavailableBookies.entrySet()) {
             errMessage.setLength(0);
             long ledgerWithUnavailableBookies = ledgerWithUnavailableBookiesInfo.getKey();
-            List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue();
+            List<MissingEntriesInfo> missingBookiesInfoList = ledgerWithUnavailableBookiesInfo.getValue()
+                    .getMissingEntriesInfoList();
             errMessage.append("Ledger : " + ledgerWithUnavailableBookies + " has following unavailable bookies : ");
             for (int listInd = 0; listInd < missingBookiesInfoList.size(); listInd++) {
                 MissingEntriesInfo missingBookieInfo = missingBookiesInfoList.get(listInd);
