@@ -2242,11 +2242,10 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     }
 
     /**
-     * Sets the regularity/interval at which the auditor will run a replicas
-     * check of all ledgers, which are closed. This should not be run very often
-     * since it validates availability of replicas of all ledgers by querying
-     * bookies. Setting this to 0 will completely disable the periodic replicas
-     * check.
+     * Sets the interval at which the auditor will run a replicas check of all
+     * ledgers. This should not be run very often since it validates
+     * availability of replicas of all ledgers by querying bookies. Setting this
+     * to 0 will disable the periodic replicas check.
      *
      * @param interval
      *            The interval in seconds. e.g. 86400 = 1 day, 604800 = 1 week
@@ -2256,8 +2255,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     }
 
     /**
-     * Get the regularity at which the auditor does replicas check of all
-     * ledgers, which are closed.
+     * Get the interval at which the auditor does replicas check of all ledgers.
      *
      * @return The interval in seconds. By default it is disabled.
      */

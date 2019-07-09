@@ -62,7 +62,7 @@ public interface LedgerUnderreplicationManager extends AutoCloseable {
             throws ReplicationException.UnavailableException;
 
     /**
-     * Get the UnderreplicatedLedger info instance if this ledger is marked
+     * Get the UnderreplicatedLedger info if this ledger is marked
      * underreplicated otherwise it returns null.
      *
      * @param ledgerId

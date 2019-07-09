@@ -239,14 +239,13 @@ public interface DistributionSchedule {
     boolean hasEntry(long entryId, int bookieIndex);
 
     /**
-     * For this DistributionSchedule, get the bitset representing the entries
-     * from entrystartEntryId to lastEntryId, that would be striped to the
-     * bookie with index - bookieIndex. Value of the bit with the 'bitIndex+n',
-     * indicate whether entry with entryid 'startEntryId+n' is striped to this
-     * bookie or not.
+     * Get the bitset representing the entries from entry 'startEntryId' to
+     * 'lastEntryId', that would be striped to the bookie with index -
+     * bookieIndex. Value of the bit with the 'bitIndex+n', indicate whether
+     * entry with entryid 'startEntryId+n' is striped to this bookie or not.
      *
      * @param bookieIndex
-     *            index of the bookie
+     *            index of the bookie in the ensemble starting with 0
      * @param startEntryId
      *            starting entryid
      * @param lastEntryId

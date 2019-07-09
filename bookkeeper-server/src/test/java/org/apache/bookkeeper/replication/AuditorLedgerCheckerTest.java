@@ -810,7 +810,6 @@ public class AuditorLedgerCheckerTest extends BookKeeperClusterTestCase {
         for (int i = 0; i < secondsToWait; i++) {
             try {
                 UnderreplicatedLedger data = urLedgerMgr.getLedgerUnreplicationInfo(ledgerId);
-                assertNotNull("UnderreplicatedLedger info is not expected to be null", data);
                 boolean all = true;
                 for (String r : replicas) {
                     all = all && data.getReplicaList().contains(r);

@@ -195,6 +195,11 @@ public class AvailabilityOfEntriesOfLedgerTest {
 
     @Test
     public void testGetUnavailableEntries() {
+        /*
+         * AvailabilityOfEntriesOfLedger is going to be created with this
+         * entries. It is equivalent to considering that Bookie has these
+         * entries.
+         */
         long[][] availableEntries = {
                 { 1, 2},
                 { 0, 1, 2 },
@@ -206,6 +211,10 @@ public class AvailabilityOfEntriesOfLedgerTest {
                 { 1, 2, 3, 5, 6, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 1001, 10000, 20000, 20001 }
         };
 
+        /*
+         * getUnavailableEntries method is going to be called with these entries
+         * as expected to contain.
+         */
         long[][] expectedToContainEntries = {
                 { 1, 2},
                 { 0, 1, 2, 3, 5 },
@@ -217,6 +226,12 @@ public class AvailabilityOfEntriesOfLedgerTest {
                 { 4, 18, 1002, 19999, 20003 }
         };
 
+        /*
+         * Considering what AvailabilityOfEntriesOfLedger contains
+         * (availableEntries), what it is expected to contain
+         * (expectedToContainEntries), following are the entries which are
+         * supposed to be reported as unavailable (unavailableEntries).
+         */
         long[][] unavailableEntries = {
                 { },
                 { 3, 5 },

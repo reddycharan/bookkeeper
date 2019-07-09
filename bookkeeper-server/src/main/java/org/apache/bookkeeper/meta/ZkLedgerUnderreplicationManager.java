@@ -1002,9 +1002,6 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
 
     @Override
     public void setReplicasCheckCTime(long replicasCheckCTime) throws UnavailableException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("setReplicasCheckCTime");
-        }
         try {
             List<ACL> zkAcls = ZkUtils.getACLs(conf);
             ReplicasCheckFormat.Builder builder = ReplicasCheckFormat.newBuilder();
@@ -1014,6 +1011,9 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
                 zkc.setData(replicasCheckCtimeZnode, replicasCheckFormatByteArray, -1);
             } else {
                 zkc.create(replicasCheckCtimeZnode, replicasCheckFormatByteArray, zkAcls, CreateMode.PERSISTENT);
+            }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("setReplicasCheckCTime completed successfully");
             }
         } catch (KeeperException ke) {
             throw new ReplicationException.UnavailableException("Error contacting zookeeper", ke);
@@ -1025,12 +1025,12 @@ public class ZkLedgerUnderreplicationManager implements LedgerUnderreplicationMa
 
     @Override
     public long getReplicasCheckCTime() throws UnavailableException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("getReplicasCheckCTime");
-        }
         try {
             byte[] data = zkc.getData(replicasCheckCtimeZnode, false, null);
             ReplicasCheckFormat replicasCheckFormat = ReplicasCheckFormat.parseFrom(data);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("getReplicasCheckCTime completed successfully");
+            }
             return replicasCheckFormat.hasReplicasCheckCTime() ? replicasCheckFormat.getReplicasCheckCTime() : -1;
         } catch (KeeperException.NoNodeException ne) {
             LOG.warn("replicasCheckCtimeZnode is not yet available");

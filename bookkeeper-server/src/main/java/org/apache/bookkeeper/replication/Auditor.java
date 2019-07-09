@@ -39,6 +39,7 @@ import static org.apache.bookkeeper.replication.ReplicationStats.NUM_UNDER_REPLI
 import static org.apache.bookkeeper.replication.ReplicationStats.PLACEMENT_POLICY_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.REPLICAS_CHECK_TIME;
 import static org.apache.bookkeeper.replication.ReplicationStats.URL_PUBLISH_TIME_FOR_LOST_BOOKIE;
+import static org.apache.bookkeeper.util.SafeRunnable.safeRun;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
@@ -470,14 +471,14 @@ public class Auditor implements AutoCloseable {
                 LOG.info("executor is already shutdown");
                 return;
             }
-            executor.submit(new Runnable() {
+            executor.submit(safeRun(new Runnable() {
                 public void run() {
                     synchronized (Auditor.this) {
                         LOG.info("Shutting down Auditor's Executor");
                         executor.shutdown();
                     }
                 }
-            });
+            }));
         }
     }
 
@@ -488,7 +489,7 @@ public class Auditor implements AutoCloseable {
             f.setException(new BKAuditException("Auditor shutting down"));
             return f;
         }
-        return executor.submit(new Runnable() {
+        return executor.submit(safeRun(new Runnable() {
                 @SuppressWarnings("unchecked")
                 public void run() {
                     try {
@@ -544,13 +545,13 @@ public class Auditor implements AutoCloseable {
                         }
                         if (auditTask == null) {
                             // if there is no scheduled audit, schedule one
-                            auditTask = executor.schedule(new Runnable() {
+                            auditTask = executor.schedule(safeRun(new Runnable() {
                                 public void run() {
                                     startAudit(false);
                                     auditTask = null;
                                     bookiesToBeAudited.clear();
                                 }
-                            }, lostBookieRecoveryDelay, TimeUnit.SECONDS);
+                            }), lostBookieRecoveryDelay, TimeUnit.SECONDS);
                             numBookieAuditsDelayed.inc();
                             LOG.info("Delaying bookie audit by {} secs for {}", lostBookieRecoveryDelay,
                                     bookiesToBeAudited);
@@ -564,7 +565,7 @@ public class Auditor implements AutoCloseable {
                         LOG.error("Exception while watching available bookies", ue);
                     }
                 }
-            });
+            }));
     }
 
     synchronized Future<?> submitLostBookieRecoveryDelayChangedEvent() {
@@ -573,7 +574,7 @@ public class Auditor implements AutoCloseable {
             f.setException(new BKAuditException("Auditor shutting down"));
             return f;
         }
-        return executor.submit(new Runnable() {
+        return executor.submit(safeRun(new Runnable() {
             int lostBookieRecoveryDelay = -1;
             public void run() {
                 try {
@@ -603,13 +604,13 @@ public class Auditor implements AutoCloseable {
                     } else if (auditTask != null) {
                         LOG.info("lostBookieRecoveryDelay has been set to {}, so rescheduling AuditTask accordingly",
                                 lostBookieRecoveryDelay);
-                        auditTask = executor.schedule(new Runnable() {
+                        auditTask = executor.schedule(safeRun(new Runnable() {
                             public void run() {
                                 startAudit(false);
                                 auditTask = null;
                                 bookiesToBeAudited.clear();
                             }
-                        }, lostBookieRecoveryDelay, TimeUnit.SECONDS);
+                        }), lostBookieRecoveryDelay, TimeUnit.SECONDS);
                         numBookieAuditsDelayed.inc();
                     }
                 } catch (InterruptedException ie) {
@@ -623,7 +624,7 @@ public class Auditor implements AutoCloseable {
                     }
                 }
             }
-        });
+        }));
     }
 
     public void start() {
@@ -663,11 +664,11 @@ public class Auditor implements AutoCloseable {
         long bookieCheckInterval = conf.getAuditorPeriodicBookieCheckInterval();
         if (bookieCheckInterval == 0) {
             LOG.info("Auditor periodic bookie checking disabled, running once check now anyhow");
-            executor.submit(bookieCheck);
+            executor.submit(safeRun(bookieCheck));
         } else {
             LOG.info("Auditor periodic bookie checking enabled" + " 'auditorPeriodicBookieCheckInterval' {} seconds",
                     bookieCheckInterval);
-            executor.scheduleAtFixedRate(bookieCheck, 0, bookieCheckInterval, TimeUnit.SECONDS);
+            executor.scheduleAtFixedRate(safeRun(bookieCheck), 0, bookieCheckInterval, TimeUnit.SECONDS);
         }
     }
 
@@ -705,7 +706,7 @@ public class Auditor implements AutoCloseable {
                             + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
                     checkAllLedgersLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
 
-            executor.scheduleAtFixedRate(new Runnable() {
+            executor.scheduleAtFixedRate(safeRun(new Runnable() {
                 public void run() {
                     try {
                         if (!ledgerUnderreplicationManager.isLedgerReplicationEnabled()) {
@@ -732,7 +733,7 @@ public class Auditor implements AutoCloseable {
                         LOG.error("Underreplication manager unavailable running periodic check", ue);
                     }
                 }
-                }, initialDelay, interval, TimeUnit.SECONDS);
+                }), initialDelay, interval, TimeUnit.SECONDS);
         } else {
             LOG.info("Periodic checking disabled");
         }
@@ -772,7 +773,7 @@ public class Auditor implements AutoCloseable {
                             + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
                     placementPolicyCheckLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
 
-            executor.scheduleAtFixedRate(new Runnable() {
+            executor.scheduleAtFixedRate(safeRun(new Runnable() {
                 public void run() {
                     try {
                         Stopwatch stopwatch = Stopwatch.createStarted();
@@ -852,7 +853,7 @@ public class Auditor implements AutoCloseable {
                                 numOfURLedgersElapsedRecoveryGracePeriodValue, e);
                     }
                 }
-            }, initialDelay, interval, TimeUnit.SECONDS);
+            }), initialDelay, interval, TimeUnit.SECONDS);
         } else {
             LOG.info("Periodic placementPolicy check disabled");
         }
@@ -861,104 +862,99 @@ public class Auditor implements AutoCloseable {
     private void scheduleReplicasCheckTask() {
         long interval = conf.getAuditorPeriodicReplicasCheckInterval();
 
-        if (interval > 0) {
-            LOG.info("Auditor periodic replicas check enabled" + " 'auditorReplicasCheckInterval' {} seconds",
-                    interval);
-            long replicasCheckLastExecutedCTime;
-            long durationSinceLastExecutionInSecs;
-            long initialDelay;
-            try {
-                replicasCheckLastExecutedCTime = ledgerUnderreplicationManager.getReplicasCheckCTime();
-            } catch (UnavailableException ue) {
-                LOG.error("Got UnavailableException while trying to get replicasCheckCTime", ue);
-                replicasCheckLastExecutedCTime = -1;
-            }
-            if (replicasCheckLastExecutedCTime == -1) {
-                durationSinceLastExecutionInSecs = -1;
-                initialDelay = 0;
-            } else {
-                durationSinceLastExecutionInSecs = (System.currentTimeMillis() - replicasCheckLastExecutedCTime) / 1000;
-                if (durationSinceLastExecutionInSecs < 0) {
-                    // this can happen if there is no strict time ordering
-                    durationSinceLastExecutionInSecs = 0;
-                }
-                initialDelay = durationSinceLastExecutionInSecs > interval ? 0
-                        : (interval - durationSinceLastExecutionInSecs);
-            }
-            LOG.info(
-                    "replicasCheck scheduling info. replicasCheckLastExecutedCTime: {} "
-                            + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
-                    replicasCheckLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
+        if (interval <= 0) {
+            LOG.info("Periodic replicas check disabled");
+            return;
+        }
 
-            executor.scheduleAtFixedRate(new Runnable() {
-                public void run() {
-                    try {
-                        Stopwatch stopwatch = Stopwatch.createStarted();
-                        LOG.info("Starting ReplicasCheck");
-                        replicasCheck();
-                        long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
-                        int numLedgersFoundHavingNoReplicaOfAnEntryValue =
-                                numLedgersFoundHavingNoReplicaOfAnEntry.get();
-                        int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
-                                numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
-                        int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
-                                numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
-                        LOG.info(
-                                "Completed ReplicasCheck in {} milliSeconds numLedgersFoundHavingNoReplicaOfAnEntry {}"
-                                        + " numLedgersFoundHavingLessThanAQReplicasOfAnEntry {}"
-                                        + " numLedgersFoundHavingLessThanWQReplicasOfAnEntry {}.",
-                                replicasCheckDuration, numLedgersFoundHavingNoReplicaOfAnEntryValue,
-                                numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue,
-                                numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
+        LOG.info("Auditor periodic replicas check enabled" + " 'auditorReplicasCheckInterval' {} seconds", interval);
+        long replicasCheckLastExecutedCTime;
+        long durationSinceLastExecutionInSecs;
+        long initialDelay;
+        try {
+            replicasCheckLastExecutedCTime = ledgerUnderreplicationManager.getReplicasCheckCTime();
+        } catch (UnavailableException ue) {
+            LOG.error("Got UnavailableException while trying to get replicasCheckCTime", ue);
+            replicasCheckLastExecutedCTime = -1;
+        }
+        if (replicasCheckLastExecutedCTime == -1) {
+            durationSinceLastExecutionInSecs = -1;
+            initialDelay = 0;
+        } else {
+            durationSinceLastExecutionInSecs = (System.currentTimeMillis() - replicasCheckLastExecutedCTime) / 1000;
+            if (durationSinceLastExecutionInSecs < 0) {
+                // this can happen if there is no strict time ordering
+                durationSinceLastExecutionInSecs = 0;
+            }
+            initialDelay = durationSinceLastExecutionInSecs > interval ? 0
+                    : (interval - durationSinceLastExecutionInSecs);
+        }
+        LOG.info(
+                "replicasCheck scheduling info. replicasCheckLastExecutedCTime: {} "
+                        + "durationSinceLastExecutionInSecs: {} initialDelay: {} interval: {}",
+                replicasCheckLastExecutedCTime, durationSinceLastExecutionInSecs, initialDelay, interval);
+
+        executor.scheduleAtFixedRate(safeRun(new Runnable() {
+            public void run() {
+                try {
+                    Stopwatch stopwatch = Stopwatch.createStarted();
+                    LOG.info("Starting ReplicasCheck");
+                    replicasCheck();
+                    long replicasCheckDuration = stopwatch.stop().elapsed(TimeUnit.MILLISECONDS);
+                    int numLedgersFoundHavingNoReplicaOfAnEntryValue = numLedgersFoundHavingNoReplicaOfAnEntry.get();
+                    int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
+                            numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
+                    int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
+                            numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
+                    LOG.info(
+                            "Completed ReplicasCheck in {} milliSeconds numLedgersFoundHavingNoReplicaOfAnEntry {}"
+                                    + " numLedgersFoundHavingLessThanAQReplicasOfAnEntry {}"
+                                    + " numLedgersFoundHavingLessThanWQReplicasOfAnEntry {}.",
+                            replicasCheckDuration, numLedgersFoundHavingNoReplicaOfAnEntryValue,
+                            numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue,
+                            numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
+                    numLedgersHavingNoReplicaOfAnEntryGuageValue.set(numLedgersFoundHavingNoReplicaOfAnEntryValue);
+                    numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue
+                            .set(numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue);
+                    numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue
+                            .set(numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
+                    replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
+                } catch (BKAuditException e) {
+                    LOG.error("BKAuditException running periodic replicas check.", e);
+                    int numLedgersFoundHavingNoReplicaOfAnEntryValue = numLedgersFoundHavingNoReplicaOfAnEntry.get();
+                    if (numLedgersFoundHavingNoReplicaOfAnEntryValue > 0) {
+                        /*
+                         * Though there is BKAuditException while doing
+                         * replicasCheck, it found few ledgers having no replica
+                         * of an entry. So reporting it.
+                         */
                         numLedgersHavingNoReplicaOfAnEntryGuageValue.set(numLedgersFoundHavingNoReplicaOfAnEntryValue);
+                    }
+                    int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
+                            numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
+                    if (numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue > 0) {
+                        /*
+                         * Though there is BKAuditException while doing
+                         * replicasCheck, it found few ledgers having an entry
+                         * less than AQ num of Replicas. So reporting it.
+                         */
                         numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue
                                 .set(numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue);
+                    }
+                    int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
+                            numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
+                    if (numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue > 0) {
+                        /*
+                         * Though there is BKAuditException while doing
+                         * replicasCheck, it found few ledgers having an entry
+                         * less than WQ num of Replicas. So reporting it.
+                         */
                         numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue
                                 .set(numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
-                        replicasCheckTime.registerSuccessfulEvent(replicasCheckDuration, TimeUnit.MILLISECONDS);
-                    } catch (BKAuditException e) {
-                        LOG.error("BKAuditException running periodic replicas check.", e);
-                        int numLedgersFoundHavingNoReplicaOfAnEntryValue = numLedgersFoundHavingNoReplicaOfAnEntry
-                                .get();
-                        if (numLedgersFoundHavingNoReplicaOfAnEntryValue > 0) {
-                            /*
-                             * Though there is BKAuditException while doing
-                             * replicasCheck, it found few ledgers having no
-                             * replica of an entry. So reporting it.
-                             */
-                            numLedgersHavingNoReplicaOfAnEntryGuageValue
-                                    .set(numLedgersFoundHavingNoReplicaOfAnEntryValue);
-                        }
-                        int numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue =
-                                numLedgersFoundHavingLessThanAQReplicasOfAnEntry.get();
-                        if (numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue > 0) {
-                            /*
-                             * Though there is BKAuditException while doing
-                             * replicasCheck, it found few ledgers having an
-                             * entry less than AQ num of Replicas. So reporting
-                             * it.
-                             */
-                            numLedgersHavingLessThanAQReplicasOfAnEntryGuageValue
-                                    .set(numLedgersFoundHavingLessThanAQReplicasOfAnEntryValue);
-                        }
-                        int numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue =
-                                numLedgersFoundHavingLessThanWQReplicasOfAnEntry.get();
-                        if (numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue > 0) {
-                            /*
-                             * Though there is BKAuditException while doing
-                             * replicasCheck, it found few ledgers having an
-                             * entry less than WQ num of Replicas. So reporting
-                             * it.
-                             */
-                            numLedgersHavingLessThanWQReplicasOfAnEntryGuageValue
-                                    .set(numLedgersFoundHavingLessThanWQReplicasOfAnEntryValue);
-                        }
                     }
                 }
-            }, initialDelay, interval, TimeUnit.SECONDS);
-        } else {
-            LOG.info("Periodic replicas check disabled");
-        }
+            }
+        }), initialDelay, interval, TimeUnit.SECONDS);
     }
 
     private class LostBookieRecoveryDelayChangedCb implements GenericCallback<Void> {
@@ -1044,7 +1040,7 @@ public class Auditor implements AutoCloseable {
             if (!ledgerUnderreplicationManager.isLedgerReplicationEnabled()) {
                 // has been disabled while we were generating the index
                 // discard this run, and schedule a new one
-                executor.submit(bookieCheck);
+                executor.submit(safeRun(bookieCheck));
                 return;
             }
         } catch (UnavailableException ue) {
@@ -1248,8 +1244,13 @@ public class Auditor implements AutoCloseable {
                     }
                 }
             }
-            LOG.error("Following Underreplicated ledgers have elapsed recovery graceperiod: {}",
-                    urLedgersElapsedRecoveryGracePeriod);
+            if (urLedgersElapsedRecoveryGracePeriod.isEmpty()) {
+                LOG.info("No Underreplicated ledger has elapsed recovery graceperiod: {}",
+                        urLedgersElapsedRecoveryGracePeriod);
+            } else {
+                LOG.error("Following Underreplicated ledgers have elapsed recovery graceperiod: {}",
+                        urLedgersElapsedRecoveryGracePeriod);
+            }
         }
         Processor<Long> ledgerProcessor = new Processor<Long>() {
             @Override
@@ -1341,9 +1342,18 @@ public class Auditor implements AutoCloseable {
     }
 
     private static class MissingEntriesInfo {
+        // ledger id of missing entries
         private final long ledgerId;
+        /*
+         * segment details, like start entryid of the segment and ensemble List.
+         */
         private final Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo;
+        // bookie missing these entries
         private final BookieSocketAddress bookieMissingEntries;
+        /*
+         * entries of this segment which are supposed to contain in this bookie
+         * but missing in this bookie.
+         */
         private final List<Long> unavailableEntriesList;
 
         private MissingEntriesInfo(long ledgerId, Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo,
@@ -1468,9 +1478,9 @@ public class Auditor implements AutoCloseable {
             MultiCallback mcbForThisLedger = new MultiCallback(ensembleSize * segments.size(), mcbForThisLedgerRange,
                     null, BKException.Code.OK, BKException.Code.ReadException);
             for (int segmentNum = 0; segmentNum < segments.size(); segmentNum++) {
-                final Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry = segments.get(segmentNum);
-                final List<BookieSocketAddress> ensembleOfSegment = segmentEntry.getValue();
-                final long startEntryIdOfSegment = segmentEntry.getKey();
+                final Entry<Long, ? extends List<BookieSocketAddress>> currentSegment = segments.get(segmentNum);
+                final List<BookieSocketAddress> ensembleOfSegment = currentSegment.getValue();
+                final long startEntryIdOfSegment = currentSegment.getKey();
                 final long lastEntryIdOfSegment = (segmentNum == (segments.size() - 1)) ? metadata.getLastEntryId()
                         : segments.get(segmentNum + 1).getKey() - 1;
                 for (int bookieIndex = 0; bookieIndex < ensembleOfSegment.size(); bookieIndex++) {
@@ -1484,13 +1494,19 @@ public class Auditor implements AutoCloseable {
                          * getListOfEntriesOfLedger call for this bookie. So
                          * instead callback with success result.
                          */
+                        if (LOG.isDebugEnabled()) {
+                            LOG.debug(
+                                    "For ledger: {}, in Segment: {}, no entry is expected to contain in"
+                                            + " this bookie: {}. So skipping getListOfEntriesOfLedger call",
+                                    ledgerInRange, currentSegment, bookieInEnsemble);
+                        }
                         mcbForThisLedger.processResult(BKException.Code.OK, null, null);
                         continue;
                     }
                     admin.asyncGetListOfEntriesOfLedger(bookieInEnsemble, ledgerInRange)
                             .whenComplete(new GetListOfEntriesOfLedgerCallbackForReplicasCheck(ledgerInRange,
                                     ensembleSize, writeQuorumSize, ackQuorumSize, startEntryIdOfSegment,
-                                    lastEntryIdOfSegment, bookieInEnsemble, segmentEntry, entriesStripedToThisBookie,
+                                    lastEntryIdOfSegment, bookieInEnsemble, currentSegment, entriesStripedToThisBookie,
                                     ledgersWithMissingEntries, ledgersWithUnavailableBookies, mcbForThisLedger));
                 }
             }
@@ -1506,7 +1522,7 @@ public class Auditor implements AutoCloseable {
         private long startEntryIdOfSegment;
         private long lastEntryIdOfSegment;
         private BookieSocketAddress bookieInEnsemble;
-        private Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry;
+        private Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo;
         private BitSet entriesStripedToThisBookie;
         private ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries;
         private ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies;
@@ -1514,7 +1530,7 @@ public class Auditor implements AutoCloseable {
 
         private GetListOfEntriesOfLedgerCallbackForReplicasCheck(long ledgerInRange, int ensembleSize,
                 int writeQuorumSize, int ackQuorumSize, long startEntryIdOfSegment, long lastEntryIdOfSegment,
-                BookieSocketAddress bookieInEnsemble, Entry<Long, ? extends List<BookieSocketAddress>> segmentEntry,
+                BookieSocketAddress bookieInEnsemble, Entry<Long, ? extends List<BookieSocketAddress>> segmentInfo,
                 BitSet entriesStripedToThisBookie,
                 ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithMissingEntries,
                 ConcurrentHashMap<Long, MissingEntriesInfoOfLedger> ledgersWithUnavailableBookies,
@@ -1526,7 +1542,7 @@ public class Auditor implements AutoCloseable {
             this.startEntryIdOfSegment = startEntryIdOfSegment;
             this.lastEntryIdOfSegment = lastEntryIdOfSegment;
             this.bookieInEnsemble = bookieInEnsemble;
-            this.segmentEntry = segmentEntry;
+            this.segmentInfo = segmentInfo;
             this.entriesStripedToThisBookie = entriesStripedToThisBookie;
             this.ledgersWithMissingEntries = ledgersWithMissingEntries;
             this.ledgersWithUnavailableBookies = ledgersWithUnavailableBookies;
@@ -1560,7 +1576,7 @@ public class Auditor implements AutoCloseable {
                         unavailableBookiesInfoOfThisLedger = ledgersWithUnavailableBookies.get(ledgerInRange);
                     }
                     unavailableBookiesInfoOfThisLedger.getMissingEntriesInfoList()
-                    .add(new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, null));
+                    .add(new MissingEntriesInfo(ledgerInRange, segmentInfo, bookieInEnsemble, null));
                     /*
                      * here though GetListOfEntriesOfLedger has failed with
                      * exception, mcbForThisLedger should be called back with OK
@@ -1587,7 +1603,7 @@ public class Auditor implements AutoCloseable {
                     missingEntriesInfoOfThisLedger = ledgersWithMissingEntries.get(ledgerInRange);
                 }
                 missingEntriesInfoOfThisLedger.getMissingEntriesInfoList().add(
-                        new MissingEntriesInfo(ledgerInRange, segmentEntry, bookieInEnsemble, unavailableEntriesList));
+                        new MissingEntriesInfo(ledgerInRange, segmentInfo, bookieInEnsemble, unavailableEntriesList));
             }
             /*
              * here though unavailableEntriesList is not empty, mcbForThisLedger
@@ -1642,7 +1658,7 @@ public class Auditor implements AutoCloseable {
             numLedgersFoundHavingLessThanWQReplicasOfAnEntry.set(0);
             Set<Long> ledgersInRange = ledgerRange.getLedgers();
             int numOfLedgersInRange = ledgersInRange.size();
-            // Reading the result after processing all the ledgers
+            // Final result after processing all the ledgers
             final AtomicInteger resultCode = new AtomicInteger();
             final CountDownLatch replicasCheckLatch = new CountDownLatch(1);
 
@@ -1669,9 +1685,9 @@ public class Auditor implements AutoCloseable {
                  * an issue and blocking the single threaded auditor executor
                  * thread is not expected.
                  */
-                if (!replicasCheckLatch.await(90, TimeUnit.SECONDS)) {
+                if (!replicasCheckLatch.await(120, TimeUnit.SECONDS)) {
                     LOG.error("For LedgerRange with num of ledgers : {} it didn't complete replicascheck"
-                            + " in 60 secs, so giving up", numOfLedgersInRange);
+                            + " in 120 secs, so giving up", numOfLedgersInRange);
                     throw new BKAuditException("Got InterruptedException while doing replicascheck");
                 }
             } catch (InterruptedException ie) {
